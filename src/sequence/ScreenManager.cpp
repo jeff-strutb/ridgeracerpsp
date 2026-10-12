@@ -1,4 +1,4 @@
-/* The front end's screen manager (retail 0x017bfc to 0x01908c). One global object drives the
+/* The front end's screen manager (retail 0x017bd4 to 0x01908c). One global object drives the
    menu screens: it opens the screen layer for the requested menu, loads that menu's package,
    hands it the settings the game prepared, steps it until the player is done and closes it
    again. The object file also owns the menu objects themselves, the settings objects that are
@@ -323,6 +323,7 @@ struct ScreenMgr {
     bool reopen;
     bool m33;
 
+    void f_017be0();
     void f_017bfc();
     void f_017c88();
     void f_017cb8();
@@ -352,7 +353,6 @@ struct ScreenMgr {
     void f_018b10();
     void f_018b48();
 };
-extern "C" void f_017be0(ScreenMgr *);
 
 ScreenMgr D_2301b0;
 CPackage D_2301d4;
@@ -377,6 +377,24 @@ Data233de8 D_233de8;
 Data233e00 D_233e00;
 Data233e80 D_233e80;
 int D_233f6c;
+
+/* @implements 0x017bd4 us f_017bd4
+   WHAT IT DOES: Returns the main menu object. */
+MainMenu *f_017bd4()
+{
+    return &D_2304f8;
+}
+
+/* @implements 0x017be0 us f_017be0
+   WHAT IT DOES: Marks the menu package as loaded (once), so the loading screen is not set up
+   again. */
+void ScreenMgr::f_017be0()
+{
+    if (!m4) {
+        m4 = 1;
+        m5 = 0;
+    }
+}
 
 /* @implements 0x017bfc us f_017bfc
    WHAT IT DOES: Shows the loading screen. The first time after it was requested, it first
@@ -442,7 +460,7 @@ void ScreenMgr::f_017d94()
     m4 = 0;
     layer = 0;
     f_017ccc();
-    f_017be0(this);
+    f_017be0();
 }
 
 /* @implements 0x017de0 us f_017de0
