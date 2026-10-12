@@ -17,6 +17,7 @@ struct Pair {
     int b;
     Pair() { a = 0; }
     Pair(int v) { a = v; }
+    inline void Set(const struct Name &n);
 };
 
 /* A row of a table named by its interned name. */
@@ -61,6 +62,12 @@ struct CTable {
 };
 
 
+inline void Pair::Set(const Name &n)
+{
+    a = n.a;
+    b = n.b;
+}
+
 /* Names the row of the table with the given name (its interned name), none for no name. */
 inline void Name::Set(CTable &t, const char *name)
 {
@@ -91,7 +98,7 @@ public:
 
 /* The race setup record (652 bytes; saved and loaded byte for byte). */
 struct RaceSetup {
-    Pair seq;
+    Name seq;
     int m8;
     int m12;
     int m16;
@@ -210,18 +217,18 @@ int f_014a28()
     return r;
 }
 
-/* The course table row whose selection number is the given course. */
-static inline void FindCourse(Name &out, int course)
+/* The row of a table whose selection number is the given one. */
+static inline void FindSelect(Name &out, CTable &t, int num)
 {
     int i;
 
-    for (i = 0; i < D_2407a8.nRows; i++) {
-        void *rec = D_2407a8.Get("SelectNum", 0, i);
+    for (i = 0; i < t.nRows; i++) {
+        void *rec = t.Get("SelectNum", 0, i);
         memcpy(D_24063c, rec, D_1a211c[1]);
-        if (course == D_24063c[0])
+        if (num == D_24063c[0])
             break;
     }
-    out.Set(D_2407a8, D_2407a8.Row(i));
+    out.Set(t, t.Row(i));
 }
 
 /* @implements 0x014a4c us f_014a4c
@@ -237,6 +244,81 @@ int f_014a4c(int course, bool *reverse)
         *reverse = 1;
         course -= 24;
     }
-    FindCourse(id, course);
+    FindSelect(id, D_2407a8, course);
     return D_1a0e48[D_2407a8.Index((const char *)id.a)];
+}
+
+/* @implements 0x014b9c us f_014b9c
+   WHAT IT DOES: Turns a car number of the menus into the car's class (0 to 6): it finds the
+   car table row whose selection number matches and reads the class from the car's record. */
+int f_014b9c(int car)
+{
+    Name id;
+
+    FindSelect(id, D_240740, car);
+    void *rec = D_240740.Get("Class", (const char *)id.a, 0);
+    memcpy(D_24063c, rec, D_1a211c[1]);
+    int c = D_24063c[0];
+    if (c >= 7)
+        c = 6;
+    return c;
+}
+
+/* Names the row of a table with the given name. */
+static inline void Lookup(Name &out, const char *name)
+{
+    Name n = D_2407d0.Find(name);
+    out = D_2407d0.Find((const char *)n.a);
+}
+
+/* @implements 0x014cf8 us f_014cf8
+   WHAT IT DOES: Selects the wireless time trial race sequence for the given two numbers
+   ("wt_<a>_<b>"), forward direction. */
+void f_014cf8(int a, int b)
+{
+    sprintf(D_22fd38, "wt_%d_%d", a, b);
+    Lookup(D_1ee1f0.seq, D_22fd38);
+    D_1ee1f0.m636 = 0;
+    D_1dd6b0.m276.Set(D_1ee1f0.seq);
+}
+
+/* @implements 0x014dd0 us f_014dd0
+   WHAT IT DOES: Selects the single race sequence for the chosen course and car
+   ("sr_<course>_c<class>"), in the course's direction. */
+void f_014dd0(int course, int car)
+{
+    bool reverse = 0;
+    int c = f_014a4c(course, &reverse);
+    int cls = f_014b9c(car);
+    sprintf(D_22fd58, "sr_%02d_c%d", c, cls);
+    Lookup(D_1ee1f0.seq, D_22fd58);
+    D_1ee1f0.m636 = reverse;
+    D_1dd6b0.m276.Set(D_1ee1f0.seq);
+}
+
+/* @implements 0x014ec8 us f_014ec8
+   WHAT IT DOES: Selects the time attack sequence for the chosen course ("ta_<course>"), in the
+   course's direction, and clears the ghost choice. */
+void f_014ec8(int course)
+{
+    bool reverse = 0;
+    int c = f_014a4c(course, &reverse);
+    sprintf(D_22fd78, "ta_%02d", c);
+    Lookup(D_1ee1f0.seq, D_22fd78);
+    D_1ee1f0.m636 = reverse;
+    D_1ee1f0.m576 = 0;
+    D_1dd6b0.m276.Set(D_1ee1f0.seq);
+}
+
+/* @implements 0x014fb0 us f_014fb0
+   WHAT IT DOES: Selects the wireless battle sequence for the chosen course ("wb_<course>_c1"),
+   in the course's direction. */
+void f_014fb0(int course)
+{
+    bool reverse = 0;
+    int c = f_014a4c(course, &reverse);
+    sprintf(D_22fd98, "wb_%02d_c1", c);
+    Lookup(D_1ee1f0.seq, D_22fd98);
+    D_1ee1f0.m636 = reverse;
+    D_1dd6b0.m276.Set(D_1ee1f0.seq);
 }
