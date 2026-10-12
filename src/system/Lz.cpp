@@ -100,15 +100,15 @@ void Settings::f_0030ec(unsigned char v)
     m20 = v;
 }
 
-/* @draft 0x0030f4 us f_0030f4
+/* @implements 0x0030f4 us f_0030f4
    WHAT IT DOES: Clears the first value of every pair in the first two tables. */
 void Settings::f_0030f4()
 {
-    int i;
+    int i, j;
 
-    for (i = 0; i < 2; i++) {
-        first[i] = Pair();
-        second[i] = Pair();
+    for (j = 0; j < 2; j++) {
+        first[j] = Pair();
+        second[j] = Pair();
     }
     for (i = 0; i < 15; i++) {
         first[i] = Pair();
