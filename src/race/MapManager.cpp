@@ -47,7 +47,7 @@ void f_0d7f4c(void *p, int a);
 void f_02b67c(void *p);
 void f_02c960(void *view);
 void f_02b7f0(void *view);
-void f_02b81c(void *v);
+
 int f_02bdcc(void *part, void *view, int arg);
 void f_02bbc0(void);
 void f_02cec4(void *p, int a, int b);
@@ -58,8 +58,8 @@ extern char D_23ffc0[];
 
 struct MainLoopJobView {
     char m0[11];
-    bool m11;
-    bool m12;
+    unsigned char m11;
+    unsigned char m12;
 };
 extern MainLoopJobView *D_1d88a0;
 
@@ -121,9 +121,12 @@ struct MapClass {
     char m[16];
 };
 
-struct Vec4 {
-    float x, y, z, w;
+/* A direction: three floats and a padding word. */
+struct Dir {
+    float x, y, z;
+    int w;
 };
+void f_02b81c(Dir *d);
 
 class MapManager {
 public:
@@ -149,27 +152,26 @@ public:
     MapClass m12976;
     int m12992;
     int m12996;
-    bool m_isValid;
-    bool m13001;
+    char m_isValid;
+    char m13001;
     int m13004;
     int m13008;
     int m13012;
-    bool m13016;
+    char m13016;
     int m13020;
 };
 
 extern CoursePart *D_254374;
 
-/* @draft 0x028f80 us MapManager12AllocateFree
+/* @implements 0x028f80 us MapManager12AllocateFree
    WHAT IT DOES: Loads every texture of the given pack into the given texture area, and
    remembers that area so Delete can empty it. */
 void MapManager::AllocateFree(void *data, int area)
 {
-    Pack pack;
-    int i;
-
     if (m_isValid)
         f_126f1c("MapManager::Allocate  m_isValid == 0  in AllocateFree");
+    Pack pack;
+    int i;
     f_0299f8(&pack, data);
     for (i = 0; i < f_029a44(&pack); i++)
         f_0d7154(f_029a60(&pack, i), f_029a4c(&pack, i), area);
@@ -226,7 +228,7 @@ void MapManager::Allocate(void *motionPack, void *classPack, int eventArg, int s
     f_00d354(D_245178, 1024, "MapManager Allocate done\n");
 }
 
-/* @draft 0x0292fc us MapManager6Delete
+/* @implements 0x0292fc us MapManager6Delete
    WHAT IT DOES: Frees the loaded course: releases the map class and motion entries, the
    motion system and the course textures, and shuts down the shading. */
 void MapManager::Delete()
@@ -246,7 +248,7 @@ void MapManager::Delete()
     m_isValid = 0;
 }
 
-/* @draft 0x0293e4 us MapManager6Update
+/* @implements 0x0293e4 us MapManager6Update
    WHAT IT DOES: Updates the course part for the given mode (0, 1 or 2) against the view. In
    mode 0 the shading is updated first, and refreshed when a refresh was requested. */
 void MapManager::Update(int mode, View *view)
@@ -279,7 +281,7 @@ void MapManager::Update(int mode, View *view)
     }
 }
 
-/* @draft 0x029524 us MapManager4Draw
+/* @implements 0x029524 us MapManager4Draw
    WHAT IT DOES: Draws the course part for the given mode against the view and returns the
    updated draw state. Mode 2 draws with the view's forward direction; mode 4 draws course
    part 0 with the shading set for it. */
@@ -298,8 +300,8 @@ int MapManager::Draw(int mode, View *view, int arg)
     case 2: {
         f_02b7f0(view);
         float *m = view->m288;
-        Vec4 v = { -m[2], -m[6], -m[10], 0 };
-        f_02b81c(&v);
+        Dir dir = { -m[2], -m[6], -m[10], 0 };
+        f_02b81c(&dir);
         arg = f_02bdcc(&m0[2], view, arg);
         break;
     }
@@ -311,7 +313,7 @@ int MapManager::Draw(int mode, View *view, int arg)
     return arg;
 }
 
-/* @draft 0x029688 us f_029688
+/* @implements 0x029688 us f_029688
    WHAT IT DOES: Requests a shading refresh and resets the frame counter. */
 void MapManager::f_029688()
 {
@@ -322,11 +324,11 @@ void MapManager::f_029688()
 
 MapManager D_23c820;
 
-/* @draft 0x0296b0 us __static_initialization_and_destruction_0
+/* @implements 0x0296b0 us __static_initialization_and_destruction_0
    WHAT IT DOES: Constructs the global map manager at start up and destroys it at exit. */
-/* @draft 0x0297e4 us _GLOBAL__I
+/* @implements 0x0297e4 us _GLOBAL__I
    WHAT IT DOES: Runs the start up half of the above. */
-/* @draft 0x029804 us _GLOBAL__D
+/* @implements 0x029804 us _GLOBAL__D
    WHAT IT DOES: Runs the exit half of the above. */
 /* @draft 0x029824 us _ZN10MapManagerC1Ev
    WHAT IT DOES: Constructs the map manager: the three course parts, the event data, two empty
