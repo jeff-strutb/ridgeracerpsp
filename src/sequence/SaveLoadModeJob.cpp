@@ -131,9 +131,16 @@ public:
     virtual void v8();
     virtual void v9();
     virtual int v10(int what);
+    void Restart()
+    {
+        m453 = 1;
+        LayerSub *t = &m4;
+        if (t->p)
+            t->f_04b290();
+    }
     LayerSub m4;
     char m8[453 - 8];
-    unsigned char m453;
+    bool m453;
 };
 struct ScreenMgr {
     CLayer *layer;
@@ -214,8 +221,8 @@ struct ScreenMsg {
     ~ScreenMsg() { f_078734(this); }
     void *vt;
     int m4;
-    unsigned char m8;
-    unsigned char m9;
+    bool m8;
+    bool m9;
 };
 
 extern "C" {
@@ -308,7 +315,7 @@ void Sequence::CSaveLoadModeJob::f_012094()
 {
 }
 
-/* @draft 0x01209c us f_01209c
+/* @implements 0x01209c us f_01209c
    WHAT IT DOES: State 3: the save and load menu itself. It reacts to the item the player
    chose: load (event 4), save (event 5), or delete, which asks first (event 6) unless the
    game saves automatically or the delete needs no confirmation (event 7). Unless the player
@@ -323,10 +330,10 @@ void Sequence::CSaveLoadModeJob::f_01209c()
         queue.Push(5);
         break;
     case 8:
-        if (!f_006018() && D_237cfc)
-            queue.Push(6);
-        else
+        if (f_006018() || !D_237cfc)
             queue.Push(7);
+        else
+            queue.Push(6);
         break;
     }
     if (D_2301b0.layer->v10(6) == 9)
@@ -355,7 +362,7 @@ void Sequence::CSaveLoadModeJob::f_01223c()
     f_01a91c(&D_23ba90, 0);
 }
 
-/* @draft 0x0122bc us f_0122bc
+/* @implements 0x0122bc us f_0122bc
    WHAT IT DOES: State 6: when the load has finished, tells the screen whether it succeeded,
    restarts the screen layer and sends event 2. */
 void Sequence::CSaveLoadModeJob::f_0122bc()
@@ -367,10 +374,7 @@ void Sequence::CSaveLoadModeJob::f_0122bc()
     n.m9 = !D_23ba90.m4;
     n.m8 = 1;
     D_2301b0.layer->v2(&n, 0);
-    CLayer *l = D_2301b0.layer;
-    l->m453 = 1;
-    if (l->m4.p)
-        l->m4.f_04b290();
+    D_2301b0.layer->Restart();
     queue.Push(2);
 }
 
@@ -387,7 +391,7 @@ void Sequence::CSaveLoadModeJob::f_0123b4()
     f_01ad04(&D_23ba90, 0);
 }
 
-/* @draft 0x0123d8 us f_0123d8
+/* @implements 0x0123d8 us f_0123d8
    WHAT IT DOES: State 9: when the memory stick check is done, tells the screen what it found
    and restarts the screen layer. When save data was read, it shows the machine and display
    options again. Then it sends event 8 when the stick needs attention and event 2
@@ -401,10 +405,7 @@ void Sequence::CSaveLoadModeJob::f_0123d8()
     n.m8 = !D_23ba90.m6;
     n.m9 = !D_23ba90.m4;
     D_2301b0.layer->v2(&n, 0);
-    CLayer *l = D_2301b0.layer;
-    l->m453 = 1;
-    if (l->m4.p)
-        l->m4.f_04b290();
+    D_2301b0.layer->Restart();
     if (f_01a900(&D_23ba90)) {
         Options o;
         o.m8 = D_233f70.m15688;
@@ -440,7 +441,7 @@ void Sequence::CSaveLoadModeJob::f_0125e4()
     f_01bb3c(&D_23ba90);
 }
 
-/* @draft 0x012604 us f_012604
+/* @implements 0x012604 us f_012604
    WHAT IT DOES: State 12: when the memory stick check is done, sends event 9 if the stick can
    be written; otherwise it tells the screen about the problem, restarts the screen layer and
    sends event 8. */
@@ -456,10 +457,7 @@ void Sequence::CSaveLoadModeJob::f_012604()
     n.m9 = !D_23ba90.m4;
     n.m8 = 1;
     D_2301b0.layer->v2(&n, 0);
-    CLayer *l = D_2301b0.layer;
-    l->m453 = 1;
-    if (l->m4.p)
-        l->m4.f_04b290();
+    D_2301b0.layer->Restart();
     queue.Push(8);
 }
 
@@ -507,7 +505,7 @@ void Sequence::CSaveLoadModeJob::f_01280c()
     f_01a91c(&D_23ba90, 1);
 }
 
-/* @draft 0x01288c us f_01288c
+/* @implements 0x01288c us f_01288c
    WHAT IT DOES: State 18: when the save has finished, tells the screen how it went, restarts
    the screen layer and sends event 9 on success and event 8 on failure. */
 void Sequence::CSaveLoadModeJob::f_01288c()
@@ -519,10 +517,7 @@ void Sequence::CSaveLoadModeJob::f_01288c()
     n.m8 = !D_23ba90.m6;
     n.m9 = !D_23ba90.m4;
     D_2301b0.layer->v2(&n, 0);
-    CLayer *l = D_2301b0.layer;
-    l->m453 = 1;
-    if (l->m4.p)
-        l->m4.f_04b290();
+    D_2301b0.layer->Restart();
     if (f_01a900(&D_23ba90))
         queue.Push(9);
     else
@@ -556,15 +551,16 @@ void Sequence::CSaveLoadModeJob::f_012a28()
 {
 }
 
-/* @draft 0x012a30 us f_012a30
+/* @implements 0x012a30 us f_012a30
    WHAT IT DOES: State 23: clears the option value on the screen and in the mode, and opens
    the system message dialog with message 1. */
 void Sequence::CSaveLoadModeJob::f_012a30()
 {
     Options o;
     D_2301b0.layer->v3(&o, 0);
+    CLayer *l = D_2301b0.layer;
     o.m28 = 0;
-    D_2301b0.layer->v2(&o, 0);
+    l->v2(&o, 0);
     m360 = 0;
     D_237cc8 = 0;
     f_0997ac(D_2451f4, 1);
