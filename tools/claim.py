@@ -18,7 +18,8 @@ file lock, so two sessions never race on the claims or on git's index.
 
 `commit` refuses unless every PATH is under src/ (outside src/control/) and every tag in it lies
 in an object file NAME holds live; it then commits exactly those paths (`git commit --only`),
-whatever else is staged, so sessions never sweep up each other's work.
+whatever else is staged, so sessions never sweep up each other's work. A PATH that no longer
+exists is committed as a removal, judged by the tags it held in the last commit.
 """
 import argparse
 import csv
@@ -100,7 +101,12 @@ def main():
                 if not rel.startswith('src/') or rel.startswith('src/control/'):
                     bad.append(f'{rel}: only source files under src/ (outside src/control/) are committed this way')
                     continue
-                for addr, name in TAG.findall(open(os.path.join(ROOT, rel)).read()):
+                full = os.path.join(ROOT, rel)
+                if os.path.exists(full):
+                    text = open(full).read()
+                else:  # a removal: judged by what the file held when last committed
+                    text = subprocess.run(['git', '-C', ROOT, 'show', 'HEAD:' + rel], capture_output=True, text=True).stdout
+                for addr, name in TAG.findall(text):
                     t = tu_of(int(addr, 16), table)
                     if t not in mine:
                         bad.append(f'{rel}: 0x{int(addr, 16):06x} {name} is in object file {t}, which {a.who} does not hold')
