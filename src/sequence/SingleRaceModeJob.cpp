@@ -1575,7 +1575,11 @@ void Sequence::CSingleRaceModeJob::f_00bbb8()
    the replay, the result branch or the save branch. When the player confirms a choice, it
    frees the race data buffer and acts on it: back to the menus (the race kind's mode), to the
    series next race (moving on in the series, or preparing the next race of a time attack and
-   its course records) or to retrying the race. */
+   its course records) or to retrying the race.
+   Remaining difference: the screen's choice is kept in s0 and the constant 2 in s2 (retail:
+   choice in v1, 2 in s0, shared with D_1d1108 = 2 and the D_1d110c switch), which shifts the
+   rest of the allocation; 1288 bytes against 1276. Cases 3 and 4 of the first switch are
+   separate (retail tests them one by one). */
 void Sequence::CSingleRaceModeJob::f_00bbc0()
 {
     switch (D_2301b0.layer->v10(3)) {
@@ -1586,6 +1590,8 @@ void Sequence::CSingleRaceModeJob::f_00bbc0()
         queue.push(15);
         break;
     case 3:
+        queue.push(17);
+        break;
     case 4:
         queue.push(17);
         break;
