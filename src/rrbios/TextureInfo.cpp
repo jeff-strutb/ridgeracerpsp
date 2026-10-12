@@ -54,9 +54,20 @@ public:
         Node() {}
         ~Node() {}
     };
-    struct Iterator {
+    class Iterator {
+    public:
         Node *n;
+        Iterator(Node *p) : n(p) {}
+        bool operator!=(const Iterator &o) const { return n != o.n; }
+        Iterator &operator++()
+        {
+            n = n->next;
+            return *this;
+        }
+        T *Get() const { return &n->data; }
     };
+    Iterator Begin() { return Iterator(m_used.next); }
+    Iterator End() { return Iterator(&m_used); }
 
     Node *m_pool;
     Node m_free;
@@ -115,9 +126,11 @@ public:
     }
     void Erase(Node *n)
     {
+        Node *x = n->next;
         if (m_num) {
             m_num--;
-            Unlink(n);
+            n->prev->next = x;
+            n->next->prev = n->prev;
             Link(m_free.next, n);
         }
     }
@@ -166,6 +179,7 @@ public:
 template <class T> class CKeyLinkList : public CLinkList<T> {
 public:
     CKeyTable<T> m_table;
+    CKeyLinkList() {}
     virtual ~CKeyLinkList() {}
     int Remove(unsigned int key);
 };
@@ -177,7 +191,19 @@ typedef CLinkList<CInfo>::Node InfoNode;
 extern signed char D_1d1a00[];
 CKeyLinkList<CInfo> D_23c240;
 
-void f_023d38(CLinkList<CInfo> *l);
+/* The palette load list: mode, address, buffer width, load, then return. */
+static inline void ClutList(unsigned int *c, unsigned int fmt, unsigned int num, int a)
+{
+    c[0] = fmt | 0xc500ff00;
+    c[1] = (a & 0xffffff) | 0xb0000000;
+    c[2] = ((a >> 24) & 0xf) << 16 | 0xb1000000;
+    c[3] = num | 0xc4000000;
+    c[4] = 0xff000000;
+    c[5] = 0xff000000;
+    c[6] = 0xff000000;
+    c[7] = 0x0b000000;
+    sceKernelDcacheWritebackInvalidateRange(c, 32);
+}
 
 /* @implements 0x023340 us f_023340
    WHAT IT DOES: Makes room for n textures: the keyed table and the pool of n records, all on
@@ -224,21 +250,24 @@ CInfo *f_02347c(unsigned int id)
 CInfo *f_0234a4(unsigned int id)
 {
     CInfo tmp;
+    CKeyLinkList<CInfo> *g = &D_23c240;
     CLinkList<CInfo> *l = &D_23c240;
     InfoNode *n = l->Insert(l->m_used.next, tmp);
     CInfo *p = &n->data;
-    if (!D_23c240.m_table.Insert(id, p)) {
+    CInfo *r = 0;
+    if (!g->m_table.Insert(id, p)) {
         l->Erase(n);
-        return 0;
+    } else {
+        if (p) {
+            p->clutList = 0;
+            p->clutCall = 0;
+            p->texList = 0;
+            p->clutData = 0;
+            p->image = 0;
+        }
+        r = p;
     }
-    if (p) {
-        p->clutList = 0;
-        p->clutCall = 0;
-        p->texList = 0;
-        p->clutData = 0;
-        p->image = 0;
-    }
-    return p;
+    return r;
 }
 
 /* @implements 0x023588 us f_023588
@@ -257,16 +286,7 @@ void f_0235ac(CInfo *info, TexHeader *h)
 {
     info->head = *h;
     if (h->clutOfs) {
-        unsigned int a = h->clut;
-        info->clut[0] = h->clutFmt | 0xc500ff00;
-        info->clut[1] = (a & 0xffffff) | 0xb0000000;
-        info->clut[2] = ((a >> 24) & 0xf) << 16 | 0xb1000000;
-        info->clut[3] = h->clutNum | 0xc4000000;
-        info->clut[6] = 0xff000000;
-        info->clut[7] = 0x0b000000;
-        info->clut[4] = 0xff000000;
-        info->clut[5] = 0xff000000;
-        sceKernelDcacheWritebackInvalidateRange(info, 32);
+        ClutList(info->clut, h->clutFmt, h->clutNum, h->clut);
         info->clutList = info->clut;
         info->clutCall = info->clut;
     } else {
@@ -333,24 +353,16 @@ void f_0235ac(CInfo *info, TexHeader *h)
     info->texList = start;
 }
 
-/* @draft 0x023988 us f_023988
+/* @implements 0x023988 us f_023988
    WHAT IT DOES: Builds only a palette load list (mode, address, count) for a texture whose
    palette is given directly, flushes it from the data cache, and marks the record as having no
    select list. */
-void f_023988(CInfo *info, unsigned int fmt, unsigned int num, unsigned int a)
+void f_023988(CInfo *info, unsigned int fmt, unsigned int num, int a)
 {
-    info->clut[0] = fmt | 0xc500ff00;
-    info->clut[1] = (a & 0xffffff) | 0xb0000000;
-    info->clut[2] = ((a >> 24) & 0xf) << 16 | 0xb1000000;
-    info->clut[3] = num | 0xc4000000;
-    info->clut[6] = 0xff000000;
-    info->clut[7] = 0x0b000000;
-    info->clut[4] = 0xff000000;
-    info->clut[5] = 0xff000000;
-    sceKernelDcacheWritebackInvalidateRange(info, 32);
-    info->texList = 0;
+    ClutList(info->clut, fmt, num, a);
     info->clutList = info->clut;
     info->clutCall = info->clut;
+    info->texList = 0;
 }
 
 /* @draft 0x023a20 us f_023a20
@@ -390,7 +402,7 @@ void f_023a20(CInfo *info, unsigned int format, int w, int h, unsigned int a)
     info->texList = start;
 }
 
-/* @draft 0x023b6c us __static_initialization_and_destruction_0
+/* @implements 0x023b6c us __static_initialization_and_destruction_0
    WHAT IT DOES: At startup, builds the texture info store empty; at shutdown, frees its table
    and pool. */
 
@@ -433,6 +445,10 @@ template <class T> int CKeyTable<T>::Alloc(unsigned int n)
     return 1;
 }
 
+/* @implements 0x023dd8 us _ZN9CLinkListIN6RRBios14TextureManager5CInfoEE5AllocEj
+   (the pool's in class Alloc, emitted out of line in a link once section for the constructor)
+   WHAT IT DOES: Makes a pool of n nodes and puts them all on the free list. */
+
 /* @implements 0x023e54 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE4FreeEv
    WHAT IT DOES: Frees the table's nodes. */
 template <class T> void CKeyTable<T>::Free()
@@ -443,7 +459,7 @@ template <class T> void CKeyTable<T>::Free()
     m_capacity = 0;
 }
 
-/* @draft 0x023e98 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE5ResetEv
+/* @implements 0x023e98 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE5ResetEv
    WHAT IT DOES: Empties the table: chains every node on the free list and points every bucket
    at the sentinel. */
 template <class T> void CKeyTable<T>::Reset()
@@ -457,8 +473,9 @@ template <class T> void CKeyTable<T>::Reset()
             n++;
         }
         n->m0 = 0;
+        Node **b = m_bucket;
         for (i = 0; i < 101; i++)
-            m_bucket[i] = &m_nil;
+            *b++ = &m_nil;
         m_num = 0;
     }
 }
@@ -518,7 +535,7 @@ template <class T> int CKeyTable<T>::Insert(unsigned int key, T *value)
     return 1;
 }
 
-/* @draft 0x0240cc us _ZN12CKeyLinkListIN6RRBios14TextureManager5CInfoEE6RemoveEj
+/* @implements 0x0240cc us _ZN12CKeyLinkListIN6RRBios14TextureManager5CInfoEE6RemoveEj
    WHAT IT DOES: Drops the record stored under a key: back to the free list, out of the table.
    Returns 1 if it was present. */
 template <class T> int CKeyLinkList<T>::Remove(unsigned int key)
@@ -526,10 +543,10 @@ template <class T> int CKeyLinkList<T>::Remove(unsigned int key)
     T *p = m_table.Find(key);
     if (!p)
         return 0;
-    typename CLinkList<T>::Iterator it;
-    for (it.n = this->m_used.next; it.n != &this->m_used; it.n = it.n->next) {
-        if (&it.n->data == p) {
-            this->Erase(it.n);
+    CLinkList<T> *l = this;
+    for (typename CLinkList<T>::Iterator it = l->Begin(); it != this->End(); ++it) {
+        if (it.Get() == p) {
+            l->Erase(it.n);
             m_table.Remove(key);
             return 1;
         }
