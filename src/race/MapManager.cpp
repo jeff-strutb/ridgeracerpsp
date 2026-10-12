@@ -139,6 +139,16 @@ public:
     void Update(int mode, View *view);
     int Draw(int mode, View *view, int arg);
     void f_029688();
+    void Start()
+    {
+        m13020 = 0x12dfc3e;
+        m13016 = 1;
+        m_isValid = 1;
+        m12992 = 0;
+        m12996 = 0;
+        m13004 = 0;
+        m13008 = 0;
+    }
 
     CoursePart m0[3];
     CourseEvents m12144;
@@ -161,7 +171,7 @@ public:
     int m13020;
 };
 
-extern CoursePart *D_254374;
+extern CourseEvents *D_254374;
 
 /* @implements 0x028f80 us MapManager12AllocateFree
    WHAT IT DOES: Loads every texture of the given pack into the given texture area, and
@@ -191,22 +201,30 @@ void MapManager::Allocate(void *motionPack, void *classPack, int eventArg, int s
 
     if (m_isValid)
         f_126f1c("MapManager::Allocate  m_isValid == 0  in Allocate");
-    f_0299f8(&m12192, motionPack);
-    f_0299f8(&m12212, classPack);
-    f_0d8270(&m12512, motionA, motionB, motionC, m12240[2]);
-    f_0d5d80(&m12144, eventArg, &m12192);
-    m12144.m40 = 0;
-    m12144.m44 = motionC ? m12240[2] : -1;
-    for (i = 0; i < f_029a44(&m12212); i++)
-        f_0d7154(f_029a60(&m12212, i), f_029a4c(&m12212, i), -1);
-    for (i = 0; i < f_029a44(&m12192); i++) {
-        f_0cb688(m12144.m4[i].m0);
-        f_0d711c(f_029a60(&m12192, i), &m12212);
+    Pack *motion = &m12192;
+    f_0299f8(motion, motionPack);
+    Pack *cls = &m12212;
+    f_0299f8(cls, classPack);
+    int *setup = m12240;
+    f_0d8270(&m12512, motionA, motionB, motionC, setup[2]);
+    CourseEvents *ev = &m12144;
+    f_0d5d80(ev, eventArg, motion);
+    ev->m40 = 0;
+    int frame = setup[2];
+    if (!motionC)
+        frame = -1;
+    ev->m44 = frame;
+    for (i = 0; i < f_029a44(cls); i++)
+        f_0d7154(f_029a60(cls, i), f_029a4c(cls, i), -1);
+    for (i = 0; i < f_029a44(motion); i++) {
+        EventRecord *r = &ev->m4[i];
+        f_0cb688(r->m0);
+        f_0d711c(f_029a60(motion, i), cls);
     }
     f_00d354(D_245178, 1024, "Motion init\n");
     f_0d7f4c(&m12976, classArg);
     f_00d354(D_245178, 1024, "MapClass init\n");
-    D_254374 = m0;
+    D_254374 = ev;
     f_0d54e8(&m0[0], m12448);
     f_0d54e8(&m0[1], 0);
     f_0d54e8(&m0[2], 0);
