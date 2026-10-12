@@ -2,7 +2,7 @@
 
 **Started October 12, 2026.** The retail executable is mapped and its compiler is identified. A per-function grader compiles C with that compiler and compares it to the original bytes. On a random control set of 61 retail functions, 49 already compile to identical bytes.
 
-613, game functions are now filed and byte-exact, 7.0% of the game's code (see [Current Status](#current-status)).
+613 game functions are now filed and byte-exact, 7.0% of the game's code (see [Current Status](#current-status)).
 
 **Maintainer:** Jeffrey Wilbur, Strut B, LLC\
 **Contact:** [retro@strutb.com](mailto:retro@strutb.com)
