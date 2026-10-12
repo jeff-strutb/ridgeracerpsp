@@ -355,9 +355,9 @@ struct Options {
     int m16;
     int m20;
     int m24;
-    unsigned char m28;
-    unsigned char m29;
-    unsigned char m30;
+    bool m28;
+    bool m29;
+    bool m30;
     unsigned char m31[8];
     char p39[75 - 39];
     signed char m75;
@@ -566,38 +566,35 @@ void Sequence::COptionModeJob::f_0137e0()
    sound test, it plays it (event 7 for a replay, 6 and 8 for the others). When the player
    leaves, or asks to save, it takes every setting from the screen, writes them into the game's
    settings and sends event 2; a save goes on with event 4, or with event 5 when the game
-   saves automatically or the memory stick is not usable. */
+   saves automatically or the memory stick is not usable.
+   Remaining difference (2 words, plus the shifted branch offsets): retail loads the constant 1
+   once (li a2,1 next to the D_1d1a94 loads) and stores it to both m512 and m500, the second
+   store in a bnezl slot; this build materialises 1 separately in each conditional block. */
 void Sequence::COptionModeJob::f_0137e8()
 {
     bool save = false;
-    int r = D_2301b0.layer->v10(3);
-    if (r == 8) {
+    switch (D_2301b0.layer->v10(3)) {
+    case 8:
         save = true;
-    } else if (r == 9) {
+        break;
+    case 9: {
         PairMsg p;
         D_2301b0.layer->v3(&p, 0);
-        m496 = p.m12;
         m492 = p.m8;
+        m496 = p.m12;
         f_0030f4(&D_1dd6b0);
-        switch (m496) {
-        case 1:
-        case 2:
-        case 3:
-        case 4:
-        case 5:
-        case 6:
+        if (m496 >= 1 && m496 <= 6) {
             D_1dd6b0.m284 = m496;
             f_018b04(&D_2301b0);
             f_018af8(&D_2301b0);
             queue.Push(7);
-            break;
-        case 7:
+        } else if (m496 == 7) {
             queue.Push(6);
-            break;
-        case 8:
+        } else if (m496 == 8) {
             queue.Push(8);
-            break;
         }
+        break;
+    }
     }
     if (D_2301b0.layer->v10(6) == 8 && !save)
         return;
