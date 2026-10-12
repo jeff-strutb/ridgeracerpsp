@@ -1,11 +1,10 @@
-/* The save and load mode job, from its Step (retail 0x011ec8 to 0x012bc4, then the class's
-   inline methods emitted out of line at 0x012bc4 to 0x012c2c): the game mode behind the save
-   and load menu, which loads, saves and deletes the game's save data on the memory stick. Like
+/* The save and load mode job (retail 0x0117fc to 0x012c2c): the game mode behind the save and
+   load menu, which loads, saves and deletes the game's save data on the memory stick. Like
    every mode job it is a state machine: a table of 27 member functions, one per state, a queue
    of state events and a small script interpreter (in the base class) that decides the next
-   state. The constructors and Begin come before this, at the end of the previous object file
-   (0x011b50 and 0x011ea4); Begin is defined here because it is the class's key function, which
-   makes this file emit the vtable and the destructors. The vtable
+   state. The constructors and Begin come first (0x0117fc to 0x011ec8, after the wireless battle
+   mode job's inline functions), then Step and the state handlers, then the class's inline
+   methods emitted out of line at 0x012bc4 to 0x012c2c. The vtable
    (_ZTVN8Sequence16CSaveLoadModeJobE) names Begin, Step, End, the state runner at 0x012b5c and
    the event sender at 0x012bc4. */
 
@@ -229,6 +228,8 @@ extern "C" {
 int f_006018(void);
 }
 
+extern short D_1d146c[];
+extern unsigned char D_1d1498[];
 extern int D_237cc8;
 extern unsigned char D_237cfc;
 
@@ -240,8 +241,50 @@ public:
 }
 extern System::CGameModeJob D_1e8ec4;
 
-/* Begin (retail 0x011ea4, object file 18, tagged with that object file's functions): starts
-   the mode from its first state, with the saved option value. */
+/* @implements 0x0117fc us _ZN8Sequence16CSaveLoadModeJobC2Ev
+   WHAT IT DOES: Constructs the save and load mode job: an empty event queue, the table of
+   state handlers and the job's script. */
+/* @implements 0x011b50 us _ZN8Sequence16CSaveLoadModeJobC1Ev
+   WHAT IT DOES: The same constructor, for a complete object. */
+Sequence::CSaveLoadModeJob::CSaveLoadModeJob()
+{
+    states[0] = &CSaveLoadModeJob::f_01205c;
+    states[1] = &CSaveLoadModeJob::f_012064;
+    states[2] = &CSaveLoadModeJob::f_012094;
+    states[3] = &CSaveLoadModeJob::f_01209c;
+    states[4] = &CSaveLoadModeJob::f_012234;
+    states[5] = &CSaveLoadModeJob::f_01223c;
+    states[6] = &CSaveLoadModeJob::f_0122bc;
+    states[7] = &CSaveLoadModeJob::f_0123ac;
+    states[8] = &CSaveLoadModeJob::f_0123b4;
+    states[9] = &CSaveLoadModeJob::f_0123d8;
+    states[10] = &CSaveLoadModeJob::f_0125dc;
+    states[11] = &CSaveLoadModeJob::f_0125e4;
+    states[12] = &CSaveLoadModeJob::f_012604;
+    states[13] = &CSaveLoadModeJob::f_012740;
+    states[14] = &CSaveLoadModeJob::f_012748;
+    states[15] = &CSaveLoadModeJob::f_01276c;
+    states[16] = &CSaveLoadModeJob::f_012804;
+    states[17] = &CSaveLoadModeJob::f_01280c;
+    states[18] = &CSaveLoadModeJob::f_01288c;
+    states[19] = &CSaveLoadModeJob::f_01299c;
+    states[20] = &CSaveLoadModeJob::f_0129a4;
+    states[21] = &CSaveLoadModeJob::f_0129cc;
+    states[22] = &CSaveLoadModeJob::f_012a28;
+    states[23] = &CSaveLoadModeJob::f_012a30;
+    states[24] = &CSaveLoadModeJob::f_012ad4;
+    states[25] = &CSaveLoadModeJob::f_012b30;
+    states[26] = &CSaveLoadModeJob::f_012b38;
+    m52 = D_1d146c;
+    m56 = D_1d1498;
+}
+
+/* @draft 0x011ea4 us _ZN8Sequence16CSaveLoadModeJob5BeginEv
+   WHAT IT DOES: Starts the mode from its first state, with the saved option value.
+   Remaining difference: retail keeps the frame counter store first (sw zero,68 before the
+   load of D_237cc8) and holds the loaded value in a1 with li v1,1 issued before the load;
+   every order of these five statements (and a volatile source) gives the load first and the
+   counter store after it. */
 void Sequence::CSaveLoadModeJob::Begin()
 {
     m68 = 0;
