@@ -79,11 +79,24 @@ struct NetInfo {
         return true;
     }
 };
+/* One console in the session: its player's name, whether it is present, its car, its
+   finishing time, its gap to the winner (-1 when it did not finish) and its distance run. */
+struct NetEntry {
+    char name[18];
+    signed char active;
+    unsigned char car;
+    int m20[2];
+    int time;
+    int gap;
+    float dist;
+};
 struct NetSession {
     int state;
     int m4;
     char m8[76];
     NetInfo info;
+    char m96[72];
+    NetEntry entries[8];
 };
 extern NetSession D_241810;
 extern char D_241e98[];
@@ -167,21 +180,6 @@ struct LobbyReply {
     int m288[4];
 };
 
-void f_07a9d8(void *);
-void f_07aa54(void *);
-
-/* A request to the screen manager to open a screen. */
-struct ScreenReq {
-    ScreenReq() { f_07a9d8(this); }
-    ~ScreenReq() { f_07aa54(this); }
-    int m0[2];
-    unsigned char m8;
-    unsigned int m12;
-    unsigned char m16;
-    unsigned char m17;
-    unsigned char m18;
-    int m20[3];
-};
 
 /* A request to the lobby's message screen. */
 struct LobbyMsg {
@@ -193,6 +191,7 @@ struct LobbyMsg {
 };
 
 extern "C" {
+int sprintf(char *, const char *, ...);
 int f_006018(void);
 int f_0160bc(void);
 int f_015ce4(void);
@@ -231,11 +230,95 @@ struct Rec {
     int m4;
 };
 extern Rec D_1dd7c4;
+extern int D_1d110c;
+
+void f_07a9d8(void *);
+void f_07aa54(void *);
+void f_07aab4(void *);
+void f_0792a0(void *);
+void f_07931c(void *);
+void f_07937c(void *);
+void f_07a08c(void *);
+void f_07a108(void *);
+
+/* A request to the screen manager to open a screen. */
+struct ScreenReq {
+    ScreenReq() { f_07a9d8(this); }
+    ~ScreenReq() { f_07aa54(this); }
+    void Reset() { f_07aab4(this); }
+    int m0[2];
+    unsigned char m8;
+    unsigned int m12;
+    unsigned char m16;
+    unsigned char m17;
+    unsigned char m18;
+    int m20[3];
+};
+
+/* The result of the race just run: the finishing times by position, the player's lap times,
+   the player's position and the best lap times. */
+struct RaceResult {
+    char p0[120];
+    int time[14];
+    float lap[3];
+    int me;
+    int best[3];
+};
+extern RaceResult D_240800;
+
+/* The result screen's message: the player's place, car and times. */
+struct ResultMsg {
+    ResultMsg() { f_0792a0(this); }
+    ~ResultMsg() { f_07931c(this); }
+    void Reset() { f_07937c(this); }
+    void *vt;
+    int m4;
+    int place;
+    int car;
+    int color;
+    int m20;
+    int m24;
+    int time;
+    int laps[6];
+    unsigned int avg;
+    unsigned int lapMs[6];
+    unsigned int record;
+    int bestLap;
+    bool newRecord;
+    bool m93;
+    char p94[112 - 94];
+    int m112;
+    int m116;
+    int m120;
+    int m124;
+};
+
+/* The ranking screen's list: one line per console. */
+struct RankLine {
+    int rank;
+    int car;
+    int gap;
+    int m12;
+    char name[12];
+};
+struct RankMsg {
+    RankMsg() { f_07a08c(this); }
+    ~RankMsg() { f_07a108(this); }
+    void *vt;
+    int m4;
+    int count;
+    RankLine line[8];
+};
+void f_01833c(ScreenMgr *, ScreenReq *);
+void f_018380(ScreenMgr *, ResultMsg *);
+void f_0184e8(ScreenMgr *, RankMsg *);
+void f_018abc(ScreenMgr *, int);
 extern int D_1d1108;
 
 /* Finds the car whose SelectNum is the given number. */
 #define FIND_CAR(out, num)                                                               \
     do {                                                                                 \
+        Rec *o_ = (out);                                                                 \
         int key_ = (num);                                                                \
         int i_;                                                                          \
         for (i_ = 0; i_ < D_240740.count; i_++) {                                        \
@@ -245,9 +328,9 @@ extern int D_1d1108;
         }                                                                                \
         char *p_ = f_036984(&D_240740, 0, i_, D_240740.index, D_240740.count);           \
         if (p_)                                                                          \
-            (out).rec = f_036984(&D_240740, p_, 0, D_240740.index, D_240740.count);      \
+            o_->rec = f_036984(&D_240740, p_, 0, D_240740.index, D_240740.count);        \
         else                                                                             \
-            (out).rec = 0;                                                               \
+            o_->rec = 0;                                                                 \
     } while (0)
 
 /* The course's index in its table. */
@@ -299,8 +382,25 @@ Entry D_1ee140;
 int D_1ee168;
 int D_1ee16c;
 int D_1ee170;
-int D_1ee1a4;
-int D_1ee1a8;
+/* What the race needs to start: the chosen event, random seeds, the course's records, the
+   cars and the options. */
+struct Tri {
+    int v[3];
+};
+struct RaceStart {
+    int event;
+    unsigned int seed1;
+    unsigned int seed2;
+    int record;
+    int lapRecord;
+    Tri m20[3];
+    int m56;
+    int car[2];
+    int color[2];
+    int m76[2];
+    int m84;
+};
+RaceStart D_1ee198;
 
 /* The pad: buttons held (with repeat) and buttons newly pressed. */
 namespace Controller {
@@ -329,13 +429,13 @@ int f_096918(char *);
     do {                                                                                 \
         f_014fb0((team), m3164);                                                         \
         Rec car_;                                                                        \
-        FIND_CAR(car_, m3164);                                                           \
+        FIND_CAR(&car_, m3164);                                                           \
         memcpy(D_24063c, f_0368e8(&D_240740, "Class", car_.rec, 0, 0), D_1a211c[1]);     \
         int cls_ = D_24063c[0] - 1;                                                      \
         Rec crs_ = ChosenCourse(D_1dd7c4);                                               \
         int n_ = cls_ * 24 + CourseIndex(crs_);                                          \
-        D_1ee1a8 = m1820[n_];                                                            \
-        D_1ee1a4 = m476[n_];                                                             \
+        D_1ee198.lapRecord = m1820[n_];                                                  \
+        D_1ee198.record = m476[n_];                                                      \
         f_018af8(&D_2301b0);                                                             \
         queue.Push(12);                                                                  \
     } while (0)
@@ -858,6 +958,104 @@ void Sequence::CWirelessBattleModeJob::f_01031c()
     f_016220();
     f_0057d0(D_1dd6b0);
     queue.Push(2);
+}
+
+/* @draft 0x010378 us f_010378
+   WHAT IT DOES: State 17: shows the race result. It finds the record slot of the chosen course
+   and car class, opens the result screen, fills the result message with the player's place,
+   car, finishing time, best laps, lap times and the course record, then ranks the consoles
+   that finished (by gap to the winner; those that did not finish after them, by distance run)
+   and shows the ranking with each player's car and gap. It counts a win when the player's
+   time is the winner's and a loss otherwise. */
+void Sequence::CWirelessBattleModeJob::f_010378()
+{
+    int me = D_240800.me;
+    Rec car;
+    FIND_CAR(&car, m3164);
+    memcpy(D_24063c, f_0368e8(&D_240740, "Class", car.rec, 0, 0), D_1a211c[1]);
+    int cls = D_24063c[0] - 1;
+    Rec crs = ChosenCourse(D_1dd7c4);
+    int k = cls * 24 + CourseIndex(crs);
+
+    ScreenReq req;
+    req.Reset();
+    req.m12 = D_1d110c;
+    req.m16 = m3188;
+    req.m8 = D_1ee168 == 0;
+    req.m17 = 0;
+    req.m18 = 0;
+    f_01833c(&D_2301b0, &req);
+
+    ResultMsg m;
+    m.Reset();
+    m.time = D_240800.time[me] / 3;
+    m.car = m3164;
+    m.color = m3168;
+    m.place = me + 1;
+    m.m24 = 1;
+    m.m20 = 1;
+    m.record = (unsigned int)m476[k] / 3;
+    int i;
+    for (i = 0; i < 6; i++)
+        m.laps[i] = 0;
+    m.avg = 0;
+    for (i = 0; i < 6; i++)
+        m.lapMs[i] = 0;
+    m.bestLap = -1;
+    for (i = 0; i < 3; i++)
+        m.laps[i] = D_240800.best[i] / 3;
+    for (i = 0; i < 3; i++)
+        m.lapMs[i] = (unsigned int)(D_240800.lap[i] * 1000.0f);
+    m.newRecord = 0;
+    m.m93 = 0;
+    m.m112 = 0;
+    f_018380(&D_2301b0, &m);
+
+    NetEntry *e = D_241810.entries;
+    int list[8];
+    int n = 0;
+    for (i = 0; i < 8; i++)
+        if (e[i].active && e[i].time != -2)
+            list[n++] = i;
+    for (i = 0; i < n - 1; i++) {
+        int b = i;
+        for (int j = i + 1; j < n; j++) {
+            NetEntry *pj = &e[list[j]];
+            NetEntry *pb = &e[list[b]];
+            if (pj->gap == -1) {
+                if (pb->gap == -1 && !(pj->dist < pb->dist))
+                    b = j;
+            } else if (pb->gap == -1 || !(pb->gap < pj->gap)) {
+                b = j;
+            }
+        }
+        int t = list[b];
+        list[b] = list[i];
+        list[i] = t;
+    }
+
+    RankMsg r;
+    for (i = 0; i < n; i++) {
+        r.line[i].rank = i + 1;
+        r.line[i].car = e[list[i]].car;
+        if (i == 0)
+            r.line[i].gap = e[list[0]].time / 3;
+        else if (e[list[i]].gap == -1)
+            r.line[i].gap = 0;
+        else
+            r.line[i].gap = (e[list[i]].gap - e[list[0]].gap) / 3;
+        r.line[i].m12 = 1;
+        sprintf(r.line[i].name, "%s", e[list[i]].name);
+    }
+    for (; i < 8; i++)
+        r.line[i].name[0] = 0;
+    r.count = n;
+    f_0184e8(&D_2301b0, &r);
+    if (e[list[0]].time != D_240800.time[me])
+        m3180++;
+    else
+        m3184++;
+    f_018abc(&D_2301b0, 13);
 }
 
 /* State 18 (retail 0x010ac4). Byte-exact, but left untagged here: the compiler control set
