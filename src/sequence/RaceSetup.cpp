@@ -19,7 +19,27 @@ struct Pair {
     Pair(int v) { a = v; }
     inline void Set(const struct Name &n);
     inline Pair(const struct Name &n);
+    inline Pair(const struct Slot &s);
 };
+
+/* A name and row kept in a record (plain data, saved byte for byte). */
+struct Slot {
+    int a;
+    int b;
+    Slot &operator=(const Pair &p)
+    {
+        a = p.a;
+        b = p.b;
+        return *this;
+    }
+    inline Slot &operator=(const struct Name &n);
+};
+
+inline Pair::Pair(const Slot &s)
+{
+    a = s.a;
+    b = s.b;
+}
 
 /* A row of a table named by its interned name. */
 struct Name {
@@ -63,6 +83,13 @@ struct CTable {
 };
 
 
+inline Slot &Slot::operator=(const Name &n)
+{
+    a = n.a;
+    b = n.b;
+    return *this;
+}
+
 inline Pair::Pair(const Name &n)
 {
     a = n.a;
@@ -103,11 +130,12 @@ public:
     int f_005c34(const char *name);
 };
 
-/* A fixed size array. */
-template <class T, int N> struct Array {
-    T e[N];
-    Array() {}
-    T &operator[](int i) { return e[i]; }
+/* The two players' cars; their setup code is in the next object file. */
+struct Cars {
+    Slot e[2];
+    Cars() { f_017968(); }
+    void f_017968();
+    Slot &operator[](int i) { return e[i]; }
 };
 
 /* Three options kept together. */
@@ -128,12 +156,12 @@ struct RaceSetup {
     int m20;
     int m24;
     int m28;
-    Array<Pair, 2> car;
+    Cars car;
     int m48[2];
     int m56[2];
     int m64[2];
     int m72[2];
-    Pair rival[13];
+    Slot rival[13];
     int m184[13];
     int m236[13];
     int m288[2];
@@ -246,7 +274,7 @@ public:
     virtual void v76();
     virtual void *v80();
 };
-inline CCourseView *f_017970();
+CCourseView *f_017970();
 
 extern "C" {
 void f_01797c(void);
@@ -372,17 +400,17 @@ struct NetName {
     unsigned char m24;
     NetName() { f_083ac0(this); }
     ~NetName() { f_083aec(this); }
-};
-
-/* The local player's name entry, with its state word. */
-struct NetSelf : NetName {
-    int m28;
-    NetSelf() { m28 = 0; }
     void f_083af4(int n);
     void f_083bd4(int id);
     void f_083c18();
 };
-extern NetSelf D_22fd18;
+extern NetName D_22fd18;
+
+/* A counter of the link, cleared at program start. */
+struct LinkCount {
+    int n;
+    LinkCount() { n = 0; }
+};
 
 /* The wireless session: the players of a wireless race and their choices. */
 struct Session {
@@ -433,8 +461,8 @@ extern Link D_241810;
 
 /* The message queue of the wireless link. */
 struct LinkQueue {
-    void f_0840f4(NetSelf *n);
-    int f_084150(NetSelf *n);
+    void f_0840f4(NetName *n);
+    int f_084150(NetName *n);
 };
 extern LinkQueue D_241804;
 extern int D_1d164c;
@@ -464,7 +492,8 @@ int f_01fad0(int);
 RaceSetup D_1ee1f0;
 GhostData D_1ee480;
 GhostData D_20f0cc;
-NetSelf D_22fd18;
+NetName D_22fd18;
+LinkCount D_22fd34;
 
 /* @implements 0x014950 us f_014950
    WHAT IT DOES: Clears the parts of the setup that describe the second car and the ghosts:
@@ -1365,16 +1394,6 @@ void f_0170a8()
     D_1dd6b0.m292 = 0;
 }
 
-/* The course display object. */
-extern CCourseView D_22fdbc;
-
-/* @implements 0x017970 us f_017970
-   WHAT IT DOES: Returns the course display object. */
-inline CCourseView *f_017970()
-{
-    return &D_22fdbc;
-}
-
 /* @draft 0x01730c us f_01730c
    WHAT IT DOES: Loads a saved replay into the second player's slot: unpacks the saved setup
    into a local copy, names its rows again, checks the sequence matches, loads the replay's
@@ -1497,7 +1516,7 @@ void f_0177b0()
     Swap(D_1ee1f0.m296[0], D_1ee1f0.m296[1]);
 }
 
-/* @draft 0x017868 us __static_initialization_and_destruction_0
+/* @implements 0x017868 us __static_initialization_and_destruction_0
    WHAT IT DOES: Builds the setup record, the two ghost records and the local player's name
    entry at program start, and tears the name entry and the ghost records down at exit. */
 
@@ -1506,7 +1525,3 @@ void f_0177b0()
 
 /* @implements 0x017948 us _GLOBAL__D_
    WHAT IT DOES: The program-exit hook that tears them down. */
-
-/* @draft 0x017968 us _ZN5ArrayI4PairLi2EEC1Ev
-   WHAT IT DOES: Builds the two players' car slots (nothing to do). A template member made at
-   the end of the file, after its users, so it is called rather than inlined. */
