@@ -193,6 +193,7 @@ struct CModel {
         m1706 = 1;
         m1704 = 0;
     }
+    void SetLevel(int i, unsigned int v) { level[i] = v; }
     CModelHeader *data;
     int m4;
     int colour;
@@ -312,9 +313,9 @@ public:
     float m2712;
     float m2716;
     unsigned char col[3];
-    unsigned char m2723;
+    signed char m2723;
     signed char mode;
-    unsigned char m2725;
+    signed char m2725;
     signed char anim;
     unsigned char m2727;
     unsigned char m2728;
@@ -367,7 +368,7 @@ struct FlarePoint {
 extern FlarePoint D_23c0c8[13];
 extern FlarePoint D_23c130[13];
 
-/* @draft 0x01dbc4 us f_01dbc4
+/* @implements 0x01dbc4 us f_01dbc4
    WHAT IT DOES: Sets the model up from its model data: the resource it draws with, the wheel,
    light and axle positions (halved, mirrored left to right, then scaled from model units),
    the steering limit, the body colour (one of the car's colour sets) and the light flags.
@@ -379,73 +380,99 @@ int CCarModel::f_01dbc4(CModelHeader *data, int a, int b, int colour)
     if (!f_026ab0(&res, a, b))
         return 0;
     model.data = data;
-    if (!f_024fb4(&model))
+    CModel *m = &model;
+    if (!f_024fb4(m))
         return 0;
-    CModelHeader *h = model.data;
-    table.on = h->m40;
+    table.on = model.data->m40;
     f_026efc(&table);
-    h = model.data;
+    CModelHeader *h = model.data;
     float hw = h->halfWidth;
     float fx = h->frontX;
     float rx = h->rearX;
-    wheel[0].x = -fx * 0.5f;
-    wheel[0].y = h->frontY;
-    wheel[0].z = -hw * 0.5f;
-    wheel[1].x = fx * 0.5f;
-    wheel[1].y = h->frontY;
-    wheel[1].z = -hw * 0.5f;
-    wheel[2].x = -rx * 0.5f;
-    wheel[2].y = h->rearY;
-    wheel[2].z = hw * 0.5f;
-    wheel[3].x = rx * 0.5f;
-    wheel[3].y = h->rearY;
-    wheel[3].z = hw * 0.5f;
-    light[0].x = h->light[0];
-    light[0].y = h->light[1];
-    light[0].z = h->light[2];
-    light[1].x = -h->light[0];
-    light[1].y = h->light[1];
-    light[1].z = h->light[2];
+    float wz = -hw * 0.5f;
+    float hz = hw * 0.5f;
+    float w0x = -fx * 0.5f;
+    float w1x = fx * 0.5f;
+    float w2x = -rx * 0.5f;
+    float w3x = rx * 0.5f;
+    float fy = h->frontY;
+    float ry = h->rearY;
+    wheel[0].x = w0x;
+    wheel[0].y = fy;
+    wheel[0].z = wz;
+    wheel[1].x = w1x;
+    wheel[1].y = fy;
+    wheel[1].z = wz;
+    wheel[2].x = w2x;
+    wheel[2].y = ry;
+    wheel[2].z = hz;
+    wheel[3].x = w3x;
+    wheel[3].y = ry;
+    wheel[3].z = hz;
+    float lx = h->light[0];
+    float ly = h->light[1];
+    float lz = h->light[2];
+    light[0].x = lx;
+    light[0].y = ly;
+    light[0].z = lz;
+    light[1].x = -lx;
+    light[1].y = ly;
+    light[1].z = lz;
     m2716 = h->m140 * 0.5f * 136.0f;
     col[0] = h->m144[0];
     col[1] = h->m144[1];
     col[2] = h->m144[2];
-    pivot[0].x = h->axle[0];
-    pivot[0].y = h->axle[1];
-    pivot[0].z = h->axle[2];
-    pivot[1].x = -h->axle[0];
-    pivot[1].y = h->axle[1];
-    pivot[1].z = h->axle[2];
-    knuckle[0].x = h->m84[0];
-    knuckle[0].y = h->m84[1];
-    knuckle[0].z = h->m84[2];
-    knuckle[1].x = h->m84[0];
-    knuckle[1].y = -h->m84[1];
-    knuckle[1].z = -h->m84[2];
+    float ax = h->axle[0];
+    float ay = h->axle[1];
+    float az = h->axle[2];
+    pivot[0].x = ax;
+    pivot[0].y = ay;
+    pivot[0].z = az;
+    pivot[1].x = -ax;
+    pivot[1].y = ay;
+    pivot[1].z = az;
+    float kx = h->m84[0];
+    float ky = h->m84[1];
+    float kz = h->m84[2];
+    knuckle[0].x = kx;
+    knuckle[0].y = ky;
+    knuckle[0].z = kz;
+    knuckle[1].x = kx;
+    knuckle[1].y = -ky;
+    knuckle[1].z = -kz;
     steerMax = h->angle * 3.1415927f / 180.0f;
     steer = 0.0f;
-    for (int i = 0; i < 4; i++) {
-        wheel[i].x *= 0.00024414062f;
-        wheel[i].y *= 0.00024414062f;
-        wheel[i].z *= 0.00024414062f;
-    }
-    for (int i = 0; i < 2; i++) {
-        pivot[i].x *= 0.00024414062f;
-        pivot[i].y *= 0.00024414062f;
-        pivot[i].z *= 0.00024414062f;
-    }
+    wheel[0].x = w0x * 0.00024414062f;
+    wheel[0].y = fy * 0.00024414062f;
+    wheel[0].z = wz * 0.00024414062f;
+    wheel[1].x = w1x * 0.00024414062f;
+    wheel[1].y = fy * 0.00024414062f;
+    wheel[1].z = wz * 0.00024414062f;
+    wheel[2].x = w2x * 0.00024414062f;
+    wheel[2].y = ry * 0.00024414062f;
+    wheel[2].z = hz * 0.00024414062f;
+    wheel[3].x = w3x * 0.00024414062f;
+    wheel[3].y = ry * 0.00024414062f;
+    wheel[3].z = hz * 0.00024414062f;
+    pivot[0].x = ax * 0.00024414062f;
+    pivot[0].y = ay * 0.00024414062f;
+    pivot[0].z = az * 0.00024414062f;
+    pivot[1].x = -ax * 0.00024414062f;
+    pivot[1].y = ay * 0.00024414062f;
+    pivot[1].z = az * 0.00024414062f;
     m2723 = h->flags & 1;
     mode = (h->flags >> 1) & 3;
     f_026bc8(&res, h->colour[colour][0], h->colour[colour][1], h->colour[colour][2]);
     f_026e5c(&res);
-    h = model.data;
-    model.m1604[3] = model.m1604[2] = h->colour2[colour] & 0xffffff;
-    unsigned int v = h->colour[colour][3];
-    model.m1604[0] = v | v << 8 | v << 16;
-    v = h->colour2[colour] >> 24;
-    model.m1604[1] = v | v << 8 | v << 16;
-    model.m1620 = h->m172[colour];
-    model.colour = colour;
+    CModelHeader *d = model.data;
+    m->m1604[3] = m->m1604[2] = d->colour2[colour] & 0xffffff;
+    unsigned int v = d->colour[colour][3];
+    m->m1604[0] = v | v << 8 | v << 16;
+    v = d->colour2[colour] >> 24;
+    m->m1604[1] = v | v << 8 | v << 16;
+    unsigned char *mc = &d->m172[colour];
+    m->m1620 = *mc;
+    m->colour = colour;
     return 1;
 }
 
@@ -868,15 +895,15 @@ void CCarModel::f_01e648(CCarState *s, Mat *world, Vec4 *p, Vec4 *v, void *c)
     else
         t = 1.0f;
     t = t * 255.0f;
-    model.level[9] = Level(255.0f - t);
-    model.level[10] = Level(t);
-    model.level[1] = Level(s->m1728 * 255.0f);
-    model.level[2] = Level(s->m1728 * 255.0f);
+    model.SetLevel(9, (unsigned int)(255.0f - t));
+    model.SetLevel(10, (unsigned int)(t));
+    model.SetLevel(1, (unsigned int)(s->m1728 * 255.0f));
+    model.SetLevel(2, (unsigned int)(s->m1728 * 255.0f));
     f = s->m1736 * 255.0f;
-    model.level[3] = Level(f);
+    model.SetLevel(3, (unsigned int)(f));
     m2672 = f;
     f = s->m1740 * 255.0f;
-    model.level[4] = Level(f);
+    model.SetLevel(4, (unsigned int)(f));
     m2676 = f;
     if (mode == 2)
         m200 = s->m2116 * 0.2f;
@@ -890,8 +917,8 @@ void CCarModel::f_01e648(CCarState *s, Mat *world, Vec4 *p, Vec4 *v, void *c)
             f = 255.0f;
         if (f < g)
             f = g;
-        model.level[7] = Level(f);
-        model.level[5] = Level(g);
+        model.SetLevel(7, (unsigned int)(f));
+        model.SetLevel(5, (unsigned int)(g));
     }
     f_028d94(&save);
     VLoadM300(&s->world);
@@ -1099,19 +1126,19 @@ void CCarModel::f_01eee4()
     }
 levels:
     f = m2704 * 255.0f;
-    model.level[5] = Level(f);
+    model.SetLevel(5, (unsigned int)(f));
     m2680 = f;
     f = m2708 * 255.0f;
-    model.level[7] = Level(f);
+    model.SetLevel(7, (unsigned int)(f));
     m2688 = f;
     f = m2712 * 255.0f;
-    model.level[8] = Level(f);
+    model.SetLevel(8, (unsigned int)(f));
     m2692 = f;
     if (m2725) {
-        model.level[6] = 255;
+        model.SetLevel(6, 255);
         m2684 = 255.0f;
     } else {
-        model.level[6] = 0;
+        model.SetLevel(6, 0);
         m2684 = 0;
     }
     f_026f70(&table);
