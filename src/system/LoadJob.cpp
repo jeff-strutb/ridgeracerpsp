@@ -671,7 +671,7 @@ void f_0023d4(const char *package)
     D_1b8c04[f_002084(package)].wanted = 1;
 }
 
-/* @draft 0x002410 us f_002410
+/* @implements 0x002410 us f_002410
    WHAT IT DOES: Builds the list of what to load from the wanted marks: a whole package when it
    is wanted or every one of its files is, otherwise each wanted file on its own. */
 void f_002410(void)
@@ -680,15 +680,15 @@ void f_002410(void)
     int i, j;
 
     for (i = 0; i < D_1d106c; i++) {
-        Package *p = &D_1b8c04[i];
-        if (!p->wanted) {
-            if (p->first == p->last)
+        if (!D_1b8c04[i].wanted) {
+            int first = D_1b8c04[i].first, last = D_1b8c04[i].last;
+            if (first == last)
                 continue;
-            for (j = p->first; j < p->last; j++)
+            for (j = first; j < last; j++)
                 if (!D_1c0614[j].wanted)
                     break;
-            if (j < p->last) {
-                for (j = p->first; j < p->last; j++) {
+            if (j < last) {
+                for (j = first; j < last; j++) {
                     if (D_1c0614[j].wanted == 1) {
                         D_1dd4b0[n].file = D_1c0614[j].name;
                         D_1dd4b0[n].package = D_1b8c04[i].name;
@@ -698,7 +698,7 @@ void f_002410(void)
                 continue;
             }
         }
-        D_1dd4b0[n].package = p->name;
+        D_1dd4b0[n].package = D_1b8c04[i].name;
         D_1dd4b0[n].file = 0;
         n++;
     }
