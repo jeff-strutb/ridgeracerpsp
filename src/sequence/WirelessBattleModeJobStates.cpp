@@ -108,6 +108,31 @@ int f_0056d0(void *);
 void f_005720(void *);
 void f_0057d0(void *);
 
+void f_07a314(void *);
+void f_07a390(void *);
+void f_07a88c(void *);
+void f_07a908(void *);
+
+/* The reply the lobby screen fills in about the race settings chosen. */
+struct LobbyReply {
+    LobbyReply() { f_07a314(this); }
+    ~LobbyReply() { f_07a390(this); }
+    int m0[5];
+    int m20;
+    int m24[65];
+    int m284;
+    int m288[4];
+};
+
+/* A request to the lobby's message screen. */
+struct LobbyMsg {
+    LobbyMsg() { f_07a88c(this); }
+    ~LobbyMsg() { f_07a908(this); }
+    int m0[5];
+    int m20;
+    int m24[2];
+};
+
 extern "C" {
 int f_006018(void);
 int f_0160bc(void);
@@ -389,6 +414,17 @@ void Sequence::CWirelessBattleModeJob::f_00e068()
     D_233f70.m15700 = m3184;
 }
 
+/* @implements 0x00e084 us f_00e084
+   WHAT IT DOES: Asks the lobby screen for the race settings the player chose and keeps the
+   course and the second setting. */
+void Sequence::CWirelessBattleModeJob::f_00e084()
+{
+    LobbyReply r;
+    D_2301b0.screen->v3(&r, 0);
+    m3172 = r.m20;
+    m3176 = r.m284;
+}
+
 /* @implements 0x00e0f4 us f_00e0f4
    WHAT IT DOES: State 0: nothing to do. */
 void Sequence::CWirelessBattleModeJob::f_00e0f4()
@@ -549,6 +585,17 @@ void Sequence::CWirelessBattleModeJob::f_00fefc()
     if (!D_241810.m4)
         f_086440(&D_241810);
     queue.Push(2);
+}
+
+/* @implements 0x010100 us f_010100
+   WHAT IT DOES: State 12: shows the lobby message for the session's role (1 when joining, 2
+   when hosting). */
+void Sequence::CWirelessBattleModeJob::f_010100()
+{
+    LobbyMsg msg;
+    int hosting = D_1ee168 != 0;
+    msg.m20 = hosting + 1;
+    f_017970()->v2(&msg, 0);
 }
 
 /* @implements 0x010284 us f_010284
