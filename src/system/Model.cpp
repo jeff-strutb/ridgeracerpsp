@@ -27,11 +27,17 @@ struct ModelMesh {
     ModelPrim *prim[1];
 };
 
-/* A part: its meshes, twelve bytes each. */
+/* A part: its meshes, twelve bytes each: the bone it hangs from, its kind (an alpha index;
+   11 takes the model's own alpha command, 256 adds an environment mapped pass, 512 is
+   environment mapped only), its primitives and its flags (1: material colours, 2: may be
+   culled). */
 struct ModelPartEntry {
-    int m0;
+    unsigned short bone;
+    unsigned short kind;
     ModelMesh *mesh;
-    int m8;
+    unsigned char flags;
+    unsigned char alpha;
+    short m10;
 };
 struct ModelPart {
     unsigned int count;
@@ -48,9 +54,37 @@ struct ModelHeader {
     int m40;
 };
 
-/* A model instance as the game keeps it. */
+/* A 4x4 matrix. */
+struct Mat {
+    float m[16];
+};
+
+/* A model instance as the renderer keeps it (1712 bytes): its file, the end of its GE list,
+   its texture set, an environment map texture, the view matrix, the light space matrix, the
+   bone matrices, the bones' environment map matrices (2x3), the material alpha of each kind
+   of primitive, the material colours, two lights and the culling and light flags. */
 struct CModel {
     ModelHeader *data;
+    unsigned int *list;
+    int texSet;
+    CInfo *envTex;
+    Mat view;
+    Mat lightSpace;
+    Mat bone[17];
+    float envMat[15][6];
+    unsigned char alpha[12];
+    unsigned int colour[4];
+    unsigned char envAlpha;
+    unsigned int alphaCmd;
+    unsigned int boneCmd;
+    unsigned int envColour;
+    int m1636[3];
+    float lightDir[2][4];
+    unsigned int lightAmbient[2];
+    unsigned int lightDiffuse[2];
+    unsigned int lightSpecular[2];
+    unsigned short culled;
+    signed char lights;
 };
 
 /* A call list of primitive lists: its own command list, then the primitives. */
@@ -59,6 +93,10 @@ struct PrimList {
     unsigned int count;
     char *prim[1];
 };
+
+static const float D_1a1914 = 4096.0f;
+static const float D_1a1918 = 4096.0f;
+static const float D_1a191c = 4096.0f;
 
 extern "C" {
 void sceKernelDcacheWritebackAll(void);
@@ -72,6 +110,12 @@ void f_025288(ModelPart *g);
 void f_0252f0(ModelMesh *m);
 void f_025364(ModelPrim *p);
 void f_025590(CModel *m, ModelPart *part);
+void f_028d94(Mat *m);
+void f_028e9c(const Mat *m);
+float *f_027f5c(float *d, const float *a);
+void f_02546c(CModel *m);
+unsigned int *f_026898(unsigned int *p, PrimList *l, int idx);
+unsigned int *f_0269e8(unsigned int *p, PrimList *l);
 void f_025eb8(CModel *m, ModelPart *part, int arg);
 unsigned int *f_026948(unsigned int *p, char *prim, int idx);
 unsigned int *f_026a6c(unsigned int *p, int addr);
@@ -281,8 +325,8 @@ void f_025364(ModelPrim *p)
 }
 
 /* @implements 0x025440 us f_025440
-   WHAT IT DOES: Returns the signed distance of a bounding plane (normal at +0, point at +48)
-   from the viewer, both taken through the view matrix in M400. */
+   WHAT IT DOES: Takes a bone matrix's x axis (row 0) and position (row 3) through the view
+   matrix in M400 and returns their dot product: which way the bone faces the viewer. */
 float f_025440(const float *b)
 {
     float r;
@@ -293,14 +337,13 @@ float f_025440(const float *b)
     return r;
 }
 
-static const float D_1a1914 = 4096.0f;
-
 /* @implements 0x02546c us f_02546c
-   WHAT IT DOES: Loads the model's view matrix (at +16, rotation scaled by 4096) into M400 and
-   tests eight bounding planes against the viewer, keeping one visibility bit pair per plane
-   in the halfword at +1704. */
-void f_02546c(char *m)
+   WHAT IT DOES: Loads the model's view matrix (rotation scaled by 4096) into M400 and tests
+   which way eight bones (1 to 4 and 9 to 12) face the viewer, keeping the bones that can be
+   culled as bits of the halfword at +1704. */
+void f_02546c(CModel *mm)
 {
+    char *m = (char *)mm;
     unsigned short bits;
     float zero;
 
@@ -326,6 +369,461 @@ void f_02546c(char *m)
     if (zero <= f_025440((float *)(m + 912)))
         bits |= 0x1000;
     *(unsigned short *)(m + 1704) = bits;
+}
+
+/* The bits of a float as the GE takes them: the top 24. */
+static inline unsigned int F24(const float *f)
+{
+    return *(const unsigned int *)f >> 8;
+}
+
+/* Writes the 4x3 matrix of a bone (or the identity for bone 0) as a world or texture matrix
+   upload. */
+static inline unsigned int *PutTexMatrix(unsigned int *p, const float *e)
+{
+    *p = 0x40000000;
+    p++;
+    *p = (F24(&e[0]) & 0xffffff) | 0x41000000;
+    p++;
+    *p = (F24(&e[1]) & 0xffffff) | 0x41000000;
+    p++;
+    *p = 0x41000000;
+    p++;
+    *p = (F24(&e[2]) & 0xffffff) | 0x41000000;
+    p++;
+    *p = (F24(&e[3]) & 0xffffff) | 0x41000000;
+    p++;
+    *p = 0x41000000;
+    p++;
+    *p = (F24(&e[4]) & 0xffffff) | 0x41000000;
+    p++;
+    *p = (F24(&e[5]) & 0xffffff) | 0x41000000;
+    p++;
+    *p = 0x41000000;
+    p++;
+    *p = 0x413f0000;
+    p++;
+    *p = 0x413f0000;
+    p++;
+    *p = 0x413f8000;
+    p++;
+    return p;
+}
+
+/* @draft 0x025590 us f_025590
+   WHAT IT DOES: Draws one part of a model into the model's GE list: sets up the two lights
+   (direction through the light space matrix, colours, on or off), uploads the view matrix
+   (scaled from model units), culls the bones against the view, then for every mesh that is
+   not culled uploads its bone's world matrix when the bone changes, sets the material alpha
+   and colours, and calls its primitives' lists with the model's texture set; meshes of kind
+   512 are drawn environment mapped through their bone's texture matrix, and meshes of kind
+   256 get a second, blended environment mapped pass with the model's environment texture.
+   Draft: the control flow and every command written follow retail; the code layout and
+   register use are not matched (retail keeps the light command bases in stack slots, and its
+   two texture matrix uploads are not merged). */
+void f_025590(CModel *m, ModelPart *part)
+{
+    unsigned int *p = m->list;
+    unsigned int lastBone, lastEnv;
+    float d[4] __attribute__((aligned(16)));
+    Mat v;
+    unsigned int k;
+    int i;
+
+    f_028e9c(&m->lightSpace);
+    lastBone = 0xffff;
+    lastEnv = 0xffff;
+    for (i = 0; i < 2; i++) {
+        if ((m->lights >> i) & 1) {
+            f_027f5c(d, m->lightDir[i]);
+            *p = (0x63000000 + i * 0x03000000) | F24(&d[0]);
+            p++;
+            *p = (0x64000000 + i * 0x03000000) | F24(&d[1]);
+            p++;
+            *p = (0x65000000 + i * 0x03000000) | F24(&d[2]);
+            p++;
+            *p = (0x8f000000 + i * 0x03000000) | m->lightAmbient[i];
+            p++;
+            *p = (0x90000000 + i * 0x03000000) | m->lightDiffuse[i];
+            p++;
+            *p = (0x91000000 + i * 0x03000000) | m->lightSpecular[i];
+            p++;
+            *p = (0x18000000 + i * 0x01000000) | 1;
+        } else {
+            *p = 0x18000000 + i * 0x01000000;
+        }
+        p++;
+    }
+    f_028e9c(&m->view);
+    __asm__ volatile(VFPU_BEGIN "lv.s S400, %0\n\tvscl.t C700, C700, S400\n\tvscl.t C710, C710, S400\n\t"
+                     "vscl.t C720, C720, S400" VFPU_END
+                     : : "m"(D_1a1918) : "memory");
+    f_028d94(&v);
+    *p = 0x3c000000;
+    p++;
+    *p = 0x3d000000 | F24(&v.m[0]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[1]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[2]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[4]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[5]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[6]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[8]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[9]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[10]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[12]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[13]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[14]);
+    p++;
+    f_02546c(m);
+    for (k = 0; k < part->count; k++) {
+        ModelPartEntry *e = &part->e[k];
+        unsigned int kind;
+
+        if ((e->flags & 2) && ((m->culled >> e->bone) & 1))
+            continue;
+        if (e->bone != lastBone) {
+            lastBone = e->bone;
+            *p = 0x3a000000;
+            p++;
+            if (lastBone == 0) {
+                *p = 0x3b3f8000;
+                p++;
+                *p = 0x3b000000;
+                p++;
+                *p = 0x3b000000;
+                p++;
+                *p = 0x3b000000;
+                p++;
+                *p = 0x3b3f8000;
+                p++;
+                *p = 0x3b000000;
+                p++;
+                *p = 0x3b000000;
+                p++;
+                *p = 0x3b000000;
+                p++;
+                *p = 0x3b3f8000;
+                p++;
+                *p = 0x3b000000;
+                p++;
+                *p = 0x3b000000;
+                p++;
+                *p = 0x3b000000;
+                p++;
+            } else {
+                const float *b = m->bone[lastBone].m;
+                *p = (F24(&b[0]) & 0xffffff) | 0x3b000000;
+                p++;
+                *p = (F24(&b[1]) & 0xffffff) | 0x3b000000;
+                p++;
+                *p = (F24(&b[2]) & 0xffffff) | 0x3b000000;
+                p++;
+                *p = (F24(&b[4]) & 0xffffff) | 0x3b000000;
+                p++;
+                *p = (F24(&b[5]) & 0xffffff) | 0x3b000000;
+                p++;
+                *p = (F24(&b[6]) & 0xffffff) | 0x3b000000;
+                p++;
+                *p = (F24(&b[8]) & 0xffffff) | 0x3b000000;
+                p++;
+                *p = (F24(&b[9]) & 0xffffff) | 0x3b000000;
+                p++;
+                *p = (F24(&b[10]) & 0xffffff) | 0x3b000000;
+                p++;
+                *p = (F24(&b[12]) & 0xffffff) | 0x3b000000;
+                p++;
+                *p = (F24(&b[13]) & 0xffffff) | 0x3b000000;
+                p++;
+                *p = (F24(&b[14]) & 0xffffff) | 0x3b000000;
+                p++;
+            }
+        }
+        kind = e->kind;
+        if (kind == 11) {
+            *p = (m->alphaCmd >> 24) | 0x58000000;
+            p++;
+            *p = (m->alphaCmd & 0xffffff) | 0x55000000;
+            p++;
+        } else {
+            *p = m->alpha[kind & 0xff] | 0x58000000;
+            p++;
+            if (e->flags & 1) {
+                *p = m->colour[0] | 0x55000000;
+                p++;
+                *p = m->colour[1] | 0x56000000;
+                p++;
+                *p = m->colour[3] | 0x57000000;
+                p++;
+            }
+        }
+        if (kind == 512) {
+            *p = 0xc0000301;
+            p++;
+            if (e->bone != lastEnv) {
+                lastEnv = e->bone;
+                p = PutTexMatrix(p, m->envMat[lastEnv]);
+            }
+        } else {
+            *p = 0xc0000000;
+            p++;
+        }
+        if (lastBone - 15 < 2) {
+            *p = m->boneCmd;
+            p++;
+        }
+        p = f_026898(p, (PrimList *)e->mesh, m->texSet);
+        if (e->kind != 256)
+            continue;
+        if (m->envTex == 0 || m->envColour == 0)
+            continue;
+        if (e->flags & 1)
+            *p = m->envAlpha | 0x58000000;
+        else
+            *p = e->alpha | 0x58000000;
+        p++;
+        *p = m->envColour | 0x55000000;
+        p++;
+        p = f_024a3c(m->envTex, p);
+        *p = 0x1e000001;
+        p++;
+        *p = 0xc0000301;
+        p++;
+        if (e->bone != lastEnv) {
+            lastEnv = e->bone;
+            p = PutTexMatrix(p, m->envMat[lastEnv]);
+        }
+        *p = 0x21000001;
+        p++;
+        *p = 0xdf0000a6;
+        p++;
+        *p = 0x17000000;
+        p++;
+        p = f_0269e8(p, (PrimList *)e->mesh);
+    }
+    m->list = p;
+}
+
+/* @draft 0x025eb8 us f_025eb8
+   WHAT IT DOES: Draws one part of a model faded: like f_025590, but in two passes. The first
+   writes the meshes at full alpha into the stencil only (colour writes masked); the second
+   draws them with every material alpha scaled by the fade level (0 to 255) where the stencil
+   was set, and only this pass adds the environment mapped layer of kind 256 meshes. */
+void f_025eb8(CModel *m, ModelPart *part, int fade)
+{
+    unsigned int *p = m->list;
+    unsigned int lastBone, lastEnv;
+    float d[4] __attribute__((aligned(16)));
+    Mat v;
+    unsigned int k;
+    int i, pass, level;
+
+    f_028e9c(&m->lightSpace);
+    lastBone = 0xffff;
+    lastEnv = 0xffff;
+    for (i = 0; i < 2; i++) {
+        if ((m->lights >> i) & 1) {
+            f_027f5c(d, m->lightDir[i]);
+            *p = (0x63000000 + i * 0x03000000) | F24(&d[0]);
+            p++;
+            *p = (0x64000000 + i * 0x03000000) | F24(&d[1]);
+            p++;
+            *p = (0x65000000 + i * 0x03000000) | F24(&d[2]);
+            p++;
+            *p = (0x8f000000 + i * 0x03000000) | m->lightAmbient[i];
+            p++;
+            *p = (0x90000000 + i * 0x03000000) | m->lightDiffuse[i];
+            p++;
+            *p = (0x91000000 + i * 0x03000000) | m->lightSpecular[i];
+            p++;
+            *p = (0x18000000 + i * 0x01000000) | 1;
+        } else {
+            *p = 0x18000000 + i * 0x01000000;
+        }
+        p++;
+    }
+    f_028e9c(&m->view);
+    __asm__ volatile(VFPU_BEGIN "lv.s S400, %0\n\tvscl.t C700, C700, S400\n\tvscl.t C710, C710, S400\n\t"
+                     "vscl.t C720, C720, S400" VFPU_END
+                     : : "m"(D_1a191c) : "memory");
+    f_028d94(&v);
+    *p = 0x3c000000;
+    p++;
+    *p = 0x3d000000 | F24(&v.m[0]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[1]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[2]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[4]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[5]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[6]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[8]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[9]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[10]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[12]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[13]);
+    p++;
+    *p = 0x3d000000 | F24(&v.m[14]);
+    p++;
+    f_02546c(m);
+    for (pass = 0; pass < 2; pass++) {
+        if (pass == 0) {
+            *p = 0xe8ffffff;
+            p++;
+            *p = 0xdbfff807;
+            p++;
+            level = 255;
+        } else {
+            *p = 0xe8000000;
+            p++;
+            *p = 0xdbfff806;
+            p++;
+            level = fade;
+        }
+        for (k = 0; k < part->count; k++) {
+            ModelPartEntry *e = &part->e[k];
+            unsigned int kind;
+
+            if ((e->flags & 2) && ((m->culled >> e->bone) & 1))
+                continue;
+            if (e->bone != lastBone) {
+                lastBone = e->bone;
+                *p = 0x3a000000;
+                p++;
+                if (lastBone == 0) {
+                    *p = 0x3b3f8000;
+                    p++;
+                    *p = 0x3b000000;
+                    p++;
+                    *p = 0x3b000000;
+                    p++;
+                    *p = 0x3b000000;
+                    p++;
+                    *p = 0x3b3f8000;
+                    p++;
+                    *p = 0x3b000000;
+                    p++;
+                    *p = 0x3b000000;
+                    p++;
+                    *p = 0x3b000000;
+                    p++;
+                    *p = 0x3b3f8000;
+                    p++;
+                    *p = 0x3b000000;
+                    p++;
+                    *p = 0x3b000000;
+                    p++;
+                    *p = 0x3b000000;
+                    p++;
+                } else {
+                    const float *b = m->bone[lastBone].m;
+                    *p = (F24(&b[0]) & 0xffffff) | 0x3b000000;
+                    p++;
+                    *p = (F24(&b[1]) & 0xffffff) | 0x3b000000;
+                    p++;
+                    *p = (F24(&b[2]) & 0xffffff) | 0x3b000000;
+                    p++;
+                    *p = (F24(&b[4]) & 0xffffff) | 0x3b000000;
+                    p++;
+                    *p = (F24(&b[5]) & 0xffffff) | 0x3b000000;
+                    p++;
+                    *p = (F24(&b[6]) & 0xffffff) | 0x3b000000;
+                    p++;
+                    *p = (F24(&b[8]) & 0xffffff) | 0x3b000000;
+                    p++;
+                    *p = (F24(&b[9]) & 0xffffff) | 0x3b000000;
+                    p++;
+                    *p = (F24(&b[10]) & 0xffffff) | 0x3b000000;
+                    p++;
+                    *p = (F24(&b[12]) & 0xffffff) | 0x3b000000;
+                    p++;
+                    *p = (F24(&b[13]) & 0xffffff) | 0x3b000000;
+                    p++;
+                    *p = (F24(&b[14]) & 0xffffff) | 0x3b000000;
+                    p++;
+                }
+            }
+            kind = e->kind;
+            if (kind == 11) {
+                *p = (unsigned int)(level * (m->alphaCmd >> 24)) / 255 | 0x58000000;
+                p++;
+                *p = (m->alphaCmd & 0xffffff) | 0x55000000;
+                p++;
+            } else {
+                *p = (unsigned int)(level * m->alpha[kind & 0xff]) / 255 | 0x58000000;
+                p++;
+                if (e->flags & 1) {
+                    *p = m->colour[0] | 0x55000000;
+                    p++;
+                    *p = m->colour[1] | 0x56000000;
+                    p++;
+                    *p = m->colour[3] | 0x57000000;
+                    p++;
+                }
+            }
+            if (kind == 512) {
+                *p = 0xc0000301;
+                p++;
+                if (e->bone != lastEnv) {
+                    lastEnv = e->bone;
+                    p = PutTexMatrix(p, m->envMat[lastEnv]);
+                }
+            } else {
+                *p = 0xc0000000;
+                p++;
+            }
+            if (lastBone - 15 < 2) {
+                *p = m->boneCmd;
+                p++;
+            }
+            p = f_026898(p, (PrimList *)e->mesh, m->texSet);
+            if (pass == 0)
+                continue;
+            if (e->kind != 256)
+                continue;
+            if (m->envTex == 0 || m->envColour == 0)
+                continue;
+            *p = (unsigned int)(level * ((e->flags & 1) ? m->envAlpha : e->alpha)) / 255 | 0x58000000;
+            p++;
+            *p = m->envColour | 0x55000000;
+            p++;
+            p = f_024a3c(m->envTex, p);
+            *p = 0x1e000001;
+            p++;
+            *p = 0xc0000301;
+            p++;
+            if (e->bone != lastEnv) {
+                lastEnv = e->bone;
+                p = PutTexMatrix(p, m->envMat[lastEnv]);
+            }
+            *p = 0x21000001;
+            p++;
+            *p = 0xdf0000a6;
+            p++;
+            *p = 0x17000000;
+            p++;
+            p = f_0269e8(p, (PrimList *)e->mesh);
+        }
+    }
+    m->list = p;
 }
 
 /* @implements 0x026898 us f_026898
