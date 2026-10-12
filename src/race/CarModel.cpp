@@ -206,8 +206,23 @@ struct CColour12 {
     char m9[3];
 };
 extern CColour12 D_1d1800[];
+unsigned char f_01f9bc(int i);
+unsigned char f_01f9d8(int i);
+unsigned char f_01f9f4(int i);
+unsigned char f_01fa70(int i);
+unsigned char f_01fa90(int i);
+unsigned char f_01fab0(int i);
+unsigned int f_01fad0(int i);
 int D_23c0c0;
 int D_23c0c4;
+
+/* A flare's outline offset. */
+struct FlarePoint {
+    float x;
+    float y;
+};
+extern FlarePoint D_23c0c8[13];
+extern FlarePoint D_23c130[13];
 
 /* @draft 0x01dbc4 us f_01dbc4
    WHAT IT DOES: Sets the model up from its model data: the resource it draws with, the wheel,
@@ -454,6 +469,8 @@ void f_01e0ec(Vec4 *pivot, Vec4 *at, Mat *out, float angle)
 }
 
 /* The model scale on the vector unit (model units per world unit). */
+static const float kFlareSize = -0.5f;
+static const float kFlareDepth = 0.5f;
 static const float kModelScale = 0.00024414062f;
 
 /* How far ahead along the velocity the lights are placed. */
@@ -901,3 +918,156 @@ void CCarModel::f_01eebc(int arg)
 {
     f_025154(&model, anim, arg);
 }
+
+/* @implements 0x01f234 us f_01f234
+   WHAT IT DOES: Sets the model's animation set from the given animation data. */
+void CCarModel::f_01f234(int a)
+{
+    CModel *m = &model;
+    m->m12 = f_02347c(a);
+}
+
+/* @draft 0x01f264 us f_01f264
+   WHAT IT DOES: Prepares the flare drawing: loads the matrix stored at the model's +64,
+   folds the depth into the flare size on the vector unit (size * -0.5 + depth * 0.5),
+   records half the flare viewport size and starts the flare pass. */
+void CCarModel::f_01f264(int a)
+{
+    f_028e9c((char *)&model + 64);
+    __asm__ volatile(
+        "lv.s S400.s, %0\n"
+        "\tlv.s S401.s, %1\n"
+        "\tvmul.s S722.s, S722.s, S400.s\n"
+        "\tvmul.s S402.s, S723.s, S401.s\n"
+        "\tvmul.s S732.s, S732.s, S400.s\n"
+        "\tvadd.s S722.s, S722.s, S402.s"
+        : : "m"(kFlareSize), "m"(kFlareDepth));
+    int *raw = (int *)this;
+    int w = raw[126] / 2;
+    int h = raw[127] / 2;
+    D_23c0c4 = h;
+    D_23c0c0 = w;
+    f_02df08(a);
+}
+
+/* @implements 0x01f9a0 us f_01f9a0
+   WHAT IT DOES: Ends the flare pass. */
+void f_01f9a0(void)
+{
+    f_02dba8();
+}
+
+/* @implements 0x01f9bc us f_01f9bc
+   WHAT IT DOES: Returns the red part of one of the body colours. */
+unsigned char f_01f9bc(int i)
+{
+    return D_1d17b0[i][0];
+}
+
+/* @implements 0x01f9d8 us f_01f9d8
+   WHAT IT DOES: Returns the green part of one of the body colours. */
+unsigned char f_01f9d8(int i)
+{
+    return D_1d17b0[i][1];
+}
+
+/* @implements 0x01f9f4 us f_01f9f4
+   WHAT IT DOES: Returns the blue part of one of the body colours. */
+unsigned char f_01f9f4(int i)
+{
+    return D_1d17b0[i][2];
+}
+
+/* @implements 0x01fa10 us f_01fa10
+   WHAT IT DOES: Returns one of the body colours as a packed red, green, blue value. */
+unsigned int f_01fa10(int i)
+{
+    unsigned int r = f_01f9bc(i);
+    unsigned int g = f_01f9d8(i);
+    unsigned int b = f_01f9f4(i);
+    return r | g << 8 | b << 16;
+}
+
+/* @implements 0x01fa70 us f_01fa70
+   WHAT IT DOES: Returns the red part of one of the light colours. */
+unsigned char f_01fa70(int i)
+{
+    return D_1d1800[i].r;
+}
+
+/* @implements 0x01fa90 us f_01fa90
+   WHAT IT DOES: Returns the green part of one of the light colours. */
+unsigned char f_01fa90(int i)
+{
+    return D_1d1800[i].g;
+}
+
+/* @implements 0x01fab0 us f_01fab0
+   WHAT IT DOES: Returns the blue part of one of the light colours. */
+unsigned char f_01fab0(int i)
+{
+    return D_1d1800[i].b;
+}
+
+/* @implements 0x01fad0 us f_01fad0
+   WHAT IT DOES: Returns one of the light colours as a packed red, green, blue value. */
+unsigned int f_01fad0(int i)
+{
+    unsigned int r = f_01fa70(i);
+    unsigned int g = f_01fa90(i);
+    unsigned int b = f_01fab0(i);
+    return r | g << 8 | b << 16;
+}
+
+/* @implements 0x01fb30 us f_01fb30
+   WHAT IT DOES: Returns light colour 24 packed. */
+unsigned int f_01fb30(void)
+{
+    return f_01fad0(24);
+}
+
+/* @implements 0x01fb4c us f_01fb4c
+   WHAT IT DOES: Returns light colour 25 packed. */
+unsigned int f_01fb4c(void)
+{
+    return f_01fad0(25);
+}
+
+/* The outlines of the two flare shapes: thirteen points round a circle (the last closing
+   it), a small one and a larger one. */
+FlarePoint D_23c0c8[13] = {
+    { cosf(0.0f) * 0.5f * 0.15f, sinf(0.0f) * 0.5f * 0.15f },
+    { cosf(0.5235988f) * 0.5f * 0.15f, sinf(0.5235988f) * 0.5f * 0.15f },
+    { cosf(1.0471976f) * 0.5f * 0.15f, sinf(1.0471976f) * 0.5f * 0.15f },
+    { cosf(1.5707964f) * 0.5f * 0.15f, sinf(1.5707964f) * 0.5f * 0.15f },
+    { cosf(2.0943952f) * 0.5f * 0.15f, sinf(2.0943952f) * 0.5f * 0.15f },
+    { cosf(2.617994f) * 0.5f * 0.15f, sinf(2.617994f) * 0.5f * 0.15f },
+    { cosf(3.1415927f) * 0.5f * 0.15f, sinf(3.1415927f) * 0.5f * 0.15f },
+    { cosf(3.6651917f) * 0.5f * 0.15f, sinf(3.6651917f) * 0.5f * 0.15f },
+    { cosf(4.1887903f) * 0.5f * 0.15f, sinf(4.1887903f) * 0.5f * 0.15f },
+    { cosf(4.712389f) * 0.5f * 0.15f, sinf(4.712389f) * 0.5f * 0.15f },
+    { cosf(5.235988f) * 0.5f * 0.15f, sinf(5.235988f) * 0.5f * 0.15f },
+    { cosf(5.759587f) * 0.5f * 0.15f, sinf(5.759587f) * 0.5f * 0.15f },
+    { cosf(6.2831855f) * 0.5f * 0.15f, sinf(6.2831855f) * 0.5f * 0.15f },
+};
+FlarePoint D_23c130[13] = {
+    { cosf(0.0f) * 0.5f * 9.0f / 15.0f, sinf(0.0f) * 0.5f * 9.0f / 15.0f },
+    { cosf(0.5235988f) * 0.5f * 9.0f / 15.0f, sinf(0.5235988f) * 0.5f * 9.0f / 15.0f },
+    { cosf(1.0471976f) * 0.5f * 9.0f / 15.0f, sinf(1.0471976f) * 0.5f * 9.0f / 15.0f },
+    { cosf(1.5707964f) * 0.5f * 9.0f / 15.0f, sinf(1.5707964f) * 0.5f * 9.0f / 15.0f },
+    { cosf(2.0943952f) * 0.5f * 9.0f / 15.0f, sinf(2.0943952f) * 0.5f * 9.0f / 15.0f },
+    { cosf(2.617994f) * 0.5f * 9.0f / 15.0f, sinf(2.617994f) * 0.5f * 9.0f / 15.0f },
+    { cosf(3.1415927f) * 0.5f * 9.0f / 15.0f, sinf(3.1415927f) * 0.5f * 9.0f / 15.0f },
+    { cosf(3.6651917f) * 0.5f * 9.0f / 15.0f, sinf(3.6651917f) * 0.5f * 9.0f / 15.0f },
+    { cosf(4.1887903f) * 0.5f * 9.0f / 15.0f, sinf(4.1887903f) * 0.5f * 9.0f / 15.0f },
+    { cosf(4.712389f) * 0.5f * 9.0f / 15.0f, sinf(4.712389f) * 0.5f * 9.0f / 15.0f },
+    { cosf(5.235988f) * 0.5f * 9.0f / 15.0f, sinf(5.235988f) * 0.5f * 9.0f / 15.0f },
+    { cosf(5.759587f) * 0.5f * 9.0f / 15.0f, sinf(5.759587f) * 0.5f * 9.0f / 15.0f },
+    { cosf(6.2831855f) * 0.5f * 9.0f / 15.0f, sinf(6.2831855f) * 0.5f * 9.0f / 15.0f },
+};
+
+/* @draft 0x01fb68 us __static_initialization_and_destruction_0
+   WHAT IT DOES: At startup, computes the two flare outlines. */
+
+/* @implements 0x0201b4 us _GLOBAL__I_
+   WHAT IT DOES: The startup entry for this file's static data. */
