@@ -169,7 +169,7 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | Rows copied into a global, element 0 from the base and 1 to 3 through a row pointer, the source addressed flat | plain struct assignment per row: `D.p[i] = m->p[i];` | f_02b67c |
 | In a copy followed by float updates, only the last row's overwritten word dropped as dead | copy all rows first, then `D.p[i].w = -D.p[i].y * d;` through field access | f_02b714 |
 | A float temporary copied word by word, its fourth word stored as `sw zero` | an aggregate initialiser whose fourth member is `int`: `struct { float x, y, z; int w; } d = {-a, -b, -c, 0};` | 0x029524 |
-| `lb` on flag fields | plain `char` fields (but `unsigned char` where they feed a stored `\|\|`; `bool` gives `lb` there) | 0x0293e4, 0x0292fc |
+| `lb` on flag fields (also f_02cf3c) | plain `char` fields (but `unsigned char` where they feed a stored `\|\|`; `bool` gives `lb` there) | 0x0293e4, 0x0292fc |
 | The loop tail loads the next word, tests `>> 24`, copies it to the top register in the slot | `do { c = *p++; ... } while ((*p >> 24) != 11);` | 0x02b854 |
 | Inline asm ending in a store keeps `jr ra; nop` | wrap it in `.set push` / `.set noreorder` / ... / `.set pop` (or end with a local label, above) | 0x028b3c, 0x028d94 |
 | `vpfxt [x,x,x,x]` rejected by the assembler | write `.word 0xdd000000` | f_027de4 |
@@ -183,6 +183,15 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A chained zero assignment's store order | the leftmost element first, then the following statement, then the rest right to left | f_02822c |
 | A data file open whose success path returns v0 directly | `if (fd >= 0) return fd; iprintf(...); return fd;` | f_027850, f_027a28 |
 | Saved register pairs left unused around `long long` calls | hold the 64-bit results in `int` locals | f_02799c |
+| A ring buffer with mixed this-based and ring-pointer addressing | loops read `head`/`tail` on the member directly; `At(i)`, `Pop()`, `Count()`, `Init()`, `Free()`, `Add()` are inline methods on the sub-object | f_032070, f_032780, f_0328b0 |
+| A ring wrap with the size reloaded after the tail store | `if (i >= size) return i - size; return i;` | f_032138 |
+| A pointer argument held in a register across setup | hold it in a local first: `char *out = m144; f(view->m288, out);` | 0x031cbc |
+| A re-test of `a` in a two-arm condition | `if (a == 0 && b >= K) {...} else if (a == 1 && b >= L) {...}` | f_02ea2c |
+| A float local copied to a field through integer registers (`lw`/`sw`) | the field and the local are a union with one float member (`union Angle { float a; };`); a one-float struct still uses FP registers | f_036600 |
+| Both arms' constants loaded before a branch, stores merged into shared tails, `addiu v0,a0,16` in the slots | an inline helper that writes the words and returns `p + 4`, used as `return Helper(p, ...)` in every arm; test the flag negated for retail's fall-through | f_02dba8, f_02dcc8 |
+| An 8-byte struct copy through one stack temporary, stored via a saved register holding the global | `T *m = &D; Rec r; ...; m->m0 = r;` | f_02c870 |
+| Static init zeroing members in field order across two sub-objects | an explicit inline constructor on the outer class, and separate field-order statements in the sub-object's constructor (a chained assignment reverses the order) | f_02da28 |
+| One block of stores reached from several returns, each loading its constant | separate `return White(out)` calls merged by cross-jumping | f_02cf3c |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** This includes the v0 versus v1 choice for later temporaries (f_01c2cc, f_01c648). Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
@@ -191,6 +200,8 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 
 - **`beqzl` with the not-found zero store in the slot, after a lookup.** Source: the field read after the lookup goes into a local before the copy, `char *f = f_0368e8(...); memcpy(D_24063c, f, D_1a211c[1]);`. Inline in the `memcpy` call, D_1a211c's address is built before the call and held in a saved register, and `dbr` then fills the branch from the found path. The lookup's own spelling does not matter. All four retail `beqzl` sites (f_010378, f_010b4c twice) now come out `beqzl`, but those functions still differ elsewhere. Single race lookups use plain `beqz` in retail too.
 - C++ inline functions with two `return`s were not inlined here (emitted out of line).
+- **A division by a variable set to a constant** (`div` by a register holding `li 32`, with the `break 7` check, not shifts): the divisor assigned to a local first (`int w = 32; pos / w`). Seen on 0x02e400 and 0x02e704, both still drafts.
+- **Vertex pointer steps kept in one register** (`addiu v0,v0,5` between writes): the returned pointer stepped in place (`Vtx *q = f(); Vtx *v = q; q->...; q++;`). A float's bits loaded with `lw` after the preceding stores: `*(unsigned int *)&f` (a union lets the load move early). A constant spilled across a call: a `volatile` local. All three on parts of f_032c20, which is still a draft.
 
 ## Open residue (not understood; do not guess)
 
