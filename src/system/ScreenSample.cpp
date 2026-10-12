@@ -40,7 +40,7 @@ STVert D_1d1960[2] = { { 0, 0, 0, 0, 0 }, { 32, 16, 32, 16, 0 } };
 SVert D_23c198;
 SVert D_23c1a0;
 
-/* @draft 0x02048c us f_02048c
+/* @implements 0x02048c us f_02048c
    WHAT IT DOES: writes the commands that sample a square around a screen position into the
    given target. The low bits of the mode pick the size of the square and the sampling step
    (4 by 4, 8 by 8, or 16 by 16 sampled every other pixel); the top bit picks a 32 by 16 read
@@ -54,7 +54,6 @@ unsigned int *f_02048c(const Pos16 *pos, unsigned int fb, int mode, unsigned int
     SVert *marker;
     STVert *pts;
     STVert *d;
-    const void *rb;
     short x0, x1, y0, y1, x, y;
     int n, i;
 
@@ -192,11 +191,13 @@ unsigned int *f_02048c(const Pos16 *pos, unsigned int fb, int mode, unsigned int
     *p++ = 0x55ffffff;
     *p++ = 0x580000ff;
     *p++ = 0x12800102;
-    rb = D_1d1960;
-    if (!(mode & 0x80))
-        rb = D_1d194c;
-    *p++ = 0x10000000 | ((((unsigned int)rb >> 24) & 0xf) << 16);
-    *p++ = 0x01000000 | ((unsigned int)rb & 0xffffff);
+    if (mode & 0x80) {
+        *p++ = 0x10000000 | ((((unsigned int)D_1d1960 >> 24) & 0xf) << 16);
+        *p++ = 0x01000000 | ((unsigned int)D_1d1960 & 0xffffff);
+    } else {
+        *p++ = 0x10000000 | ((((unsigned int)D_1d194c >> 24) & 0xf) << 16);
+        *p++ = 0x01000000 | ((unsigned int)D_1d194c & 0xffffff);
+    }
     *p++ = 0x04060002;
     *p++ = 0xd2000000 | D_23c1c0;
     {
