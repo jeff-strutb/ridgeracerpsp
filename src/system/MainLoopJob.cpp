@@ -42,7 +42,6 @@ void f_096334(void *p);
 void f_0960cc(void *p);
 void f_093fe0(void *p, void *a, void *b);
 void f_09411c(void *p);
-void f_03680c(void *p, void *data);
 void f_02c870(void);
 void f_0451b4(int size);
 void f_017d94(void *p);
@@ -64,16 +63,16 @@ public:
 };
 }
 
-/* The display timing block whose constructor is at 0x0992fc; the class is only known by it. */
+/* The display timing settings. Their base part is only known by its constructor, at 0x0992fc;
+   the compiler supplies the constructor of the whole. */
 struct f_0992fc_t {
     f_0992fc_t();
-    void f_099354(int a, int b);
     int m0[15];
-    int m60;
 };
 
-/* The display timing settings; the compiler supplies its constructor. */
 struct CDisplayTiming : f_0992fc_t {
+    void f_099354(int a, int b);
+    int m60;
 };
 
 /* The pad reader. */
@@ -93,7 +92,7 @@ namespace Controller {
 class CCustomController {
 public:
     CCustomController() {}
-    virtual void f_0425b0();
+    virtual void f_0425b0(int a, int b, int c);
     virtual ~CCustomController();
     virtual void f_041e48();
     int m4[29];
@@ -116,12 +115,16 @@ public:
 struct CStream {
     void *m0;
     void *m4;
-    int m8;
+};
+
+/* A table read from the database package. */
+struct CTable {
+    void f_03680c(void *data);
 };
 
 struct CFlags {
     char m0[2056];
-    char loaded;
+    bool loaded;
 };
 
 namespace System {
@@ -136,18 +139,18 @@ public:
     void f_001380(Ng::CJob *job);
 
     int m4;
-    unsigned char m8;
-    unsigned char m9;
-    unsigned char m10;
-    unsigned char m11;
-    unsigned char m12;
-    unsigned char m13;
-    unsigned char m14;
+    bool m8;
+    bool m9;
+    bool m10;
+    bool m11;
+    bool m12;
+    bool m13;
+    bool m14;
     Ng::CJob *m16;
     int m20;
     int m24;
     int m28;
-    unsigned char m32;
+    bool m32;
 };
 }
 
@@ -162,11 +165,12 @@ extern char D_1dd6b0[];
 extern char D_23bb4c[];
 extern char D_241810[];
 extern CStream D_242ca8;
+extern char D_242cb0[];
 extern char D_242c90[];
-extern char D_2407a8[];
-extern char D_240740[];
-extern char D_2407d0[];
-extern char D_24504c[];
+extern CTable D_2407a8;
+extern CTable D_240740;
+extern CTable D_2407d0;
+extern CTable D_24504c;
 extern char D_2301b0[];
 extern CPackage D_2301d4;
 extern int D_24517c;
@@ -183,7 +187,7 @@ CPackage D_1d8cd0;
 CPackage D_1d8de8;
 CPackage D_1d8f00;
 
-/* @draft 0x000810 us f_000810
+/* @implements 0x000810 us f_000810
    WHAT IT DOES: The first setup when the game starts. It records the heap statistics, sets up
    the memory and the display, clears the screen, and shows NOW LOADING (in the console's
    language, centred) on both display buffers; in German it adds the two dots of the umlaut. */
@@ -224,18 +228,16 @@ void System::CMainLoopJob::f_000810()
    Rally-X data and the main menu package, and finally starts the first job. */
 void System::CMainLoopJob::Begin()
 {
-    const char *name;
-
-    m10 = 1;
     m4 = 0;
     D_1d9c20 = 1;
-    m8 = 1;
-    m9 = 1;
-    m11 = 0;
-    m12 = 0;
-    m13 = 0;
-    m14 = 0;
-    D_1d8910[0].f_0425b0();
+    m8 = true;
+    m9 = true;
+    m10 = true;
+    m11 = false;
+    m12 = false;
+    m13 = false;
+    m14 = false;
+    D_1d8910[0].f_0425b0(0, 10, 5);
     D_24517c = -1;
     D_245178 = -1;
     D_1d88a4.m60 = -1;
@@ -243,30 +245,28 @@ void System::CMainLoopJob::Begin()
     D_1d88a4.f_099354(256, 8);
     f_006040();
     f_0058b4(D_1dd6b0);
-    D_1d9c5c.loaded = 0;
+    D_1d9c5c.loaded = false;
     D_1d9c20 = 2;
 
     int lang = f_01c260();
     switch (lang) {
-    case 2: name = "SoundCommonHD_Fr"; break;
-    case 3: name = "SoundCommonHD_Sp"; break;
-    case 4: name = "SoundCommonHD_Ge"; break;
-    case 5: name = "SoundCommonHD_It"; break;
-    default: name = "SoundCommonHD_En"; break;
+    case 2: D_1d8988.f_00260c("SoundCommonHD_Fr", 0, 0); break;
+    case 3: D_1d8988.f_00260c("SoundCommonHD_Sp", 0, 0); break;
+    case 4: D_1d8988.f_00260c("SoundCommonHD_Ge", 0, 0); break;
+    case 5: D_1d8988.f_00260c("SoundCommonHD_It", 0, 0); break;
+    default: D_1d8988.f_00260c("SoundCommonHD_En", 0, 0); break;
     }
-    D_1d8988.f_00260c(name, 0, 0);
     D_1d8988.f_002734(0);
     f_01c2cc(D_23bb4c, D_1d8988.f_002acc("SndCnfg"));
     {
         CPackage bd;
         switch (lang) {
-        case 2: name = "SoundCommonBD_Fr"; break;
-        case 3: name = "SoundCommonBD_Sp"; break;
-        case 4: name = "SoundCommonBD_Ge"; break;
-        case 5: name = "SoundCommonBD_It"; break;
-        default: name = "SoundCommonBD_En"; break;
+        case 2: bd.f_00260c("SoundCommonBD_Fr", 0, 0); break;
+        case 3: bd.f_00260c("SoundCommonBD_Sp", 0, 0); break;
+        case 4: bd.f_00260c("SoundCommonBD_Ge", 0, 0); break;
+        case 5: bd.f_00260c("SoundCommonBD_It", 0, 0); break;
+        default: bd.f_00260c("SoundCommonBD_En", 0, 0); break;
         }
-        bd.f_00260c(name, 0, 0);
         bd.f_002734(0);
         f_01c458(D_23bb4c, D_1d8988.f_002acc("System"), bd.f_002acc("System"), 0, 0);
         f_01c458(D_23bb4c, D_1d8988.f_002acc("RallyX"), bd.f_002acc("RallyX"), 0, 0);
@@ -280,23 +280,23 @@ void System::CMainLoopJob::Begin()
     D_1d8f00.f_00260c("StreamCommon", 0, 0);
     D_1d8f00.f_002734(0);
     f_095854(D_242ca8.m4, 0, D_1d8f00.f_002acc("BgmHeader"));
-    f_096334(&D_242ca8.m8);
+    f_096334(D_242cb0);
     void *tbl = D_1d8f00.f_002acc("DjTbl");
     f_093fe0(D_242c90, tbl, D_1d8f00.f_002acc("DjDrive"));
     D_1d9c20 = 4;
     D_1d8de8.f_00260c("DB", 0, 0);
     D_1d8de8.f_002734(0);
-    f_03680c(D_2407a8, D_1d8de8.f_002acc("Course"));
-    f_03680c(D_240740, D_1d8de8.f_002acc("Car"));
-    f_03680c(D_2407d0, D_1d8de8.f_002acc("Race"));
-    f_03680c(D_24504c, D_1d8de8.f_002acc("MenuBgm"));
+    D_2407a8.f_03680c(D_1d8de8.f_002acc("Course"));
+    D_240740.f_03680c(D_1d8de8.f_002acc("Car"));
+    D_2407d0.f_03680c(D_1d8de8.f_002acc("Race"));
+    D_24504c.f_03680c(D_1d8de8.f_002acc("MenuBgm"));
     f_02c870();
     f_0451b4(0x100000);
     f_017d94(D_2301b0);
     D_1d8bb8.f_00260c("RallyXCommon", 0, 0);
     D_1d8cd0.f_00260c("RallyX_BGM", 0, 0);
     D_2301d4.f_00260c(f_01c26c("MainMenuSwg"), 0, 0);
-    D_1d9c5c.loaded = 1;
+    D_1d9c5c.loaded = true;
     m16->Begin();
 }
 
@@ -379,7 +379,7 @@ int System::CMainLoopJob::Step()
    the sound banks, then counts the frame. */
 int System::CMainLoopJob::f_001154(bool first)
 {
-    m32 = 1;
+    m32 = true;
     m14 = !first;
     if (!m14) {
         f_000f08();
