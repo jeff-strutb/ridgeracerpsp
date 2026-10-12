@@ -336,20 +336,21 @@ void f_0235ac(CInfo *info, TexHeader *h)
     *p++ = (bw | 0xa8000000) | ((img >> 24) & 0xf) << 16;
     int lv = 0;
     *p++ = (0xb8000000 | Log2(tw)) | Log2(th) << 8;
+    int a = img;
     while (lv < levels) {
-        img += (w + n - 1) / n * ((ht + 7) / 8) * 128;
+        a += (w + n - 1) / n * ((ht + 7) / 8) * 128;
         bw = ((bw >> 1) + n - 1) / n * n;
         lv++;
         tw >>= 1;
         th >>= 1;
         w >>= 1;
         ht >>= 1;
-        *p++ = ((0xa0 + lv) << 24) | (img & 0xffffff);
-        *p++ = (((0xa8 + lv) << 24) | bw) | ((img >> 24) & 0xf) << 16;
+        *p++ = ((0xa0 + lv) << 24) | (a & 0xffffff);
+        *p++ = (((0xa8 + lv) << 24) | bw) | ((a >> 24) & 0xf) << 16;
         *p++ = (((0xb8 + lv) << 24) | Log2(tw)) | Log2(th) << 8;
     }
-    p[1] = 0x0b000000;
     p[0] = 0xcb000000;
+    p[1] = 0x0b000000;
     sceKernelDcacheWritebackInvalidateRange(start, 152);
     info->texList = start;
 }
