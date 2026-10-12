@@ -66,6 +66,16 @@ namespace System {
 class CGameModeJob {
 public:
     void f_0069ec(int mode);
+    unsigned int Rand()
+    {
+        seed = seed * 0x19660d + 0x3c6ef35f;
+        return seed;
+    }
+    void *vt;
+    int mode;
+    int nextMode;
+    void *job;
+    unsigned int seed;
 };
 }
 extern System::CGameModeJob D_1e8ec4;
@@ -90,6 +100,13 @@ public:
     virtual void v1();
     virtual void v2(void *msg, int arg);
     virtual void v3(void *msg, int arg);
+    virtual void v4();
+    virtual void v5();
+    virtual void v6();
+    virtual void v7();
+    virtual void v8();
+    virtual void v9();
+    virtual int v10(int what);
     void Restart()
     {
         m453 = 1;
@@ -122,7 +139,10 @@ struct MemoryStick {
     int m0;
     char m4[3];
     bool m7;
-    int m8[6];
+    int m8[3];
+    char *m20;
+    int m24;
+    int m28;
     int m32;
 };
 extern MemoryStick D_23ba90;
@@ -165,10 +185,68 @@ int f_0194c4(void);
 int f_006018(void);
 }
 extern char *D_1ee084;
+
+/* A table of the game database: records found by index or by name. */
+struct CTable;
+extern "C" char *f_0368e8(CTable *t, const char *field, char *rec, int a, int b);
+struct CTable {
+    char *Field(const char *f, char *rec) { return f_0368e8(this, f, rec, 0, 0); }
+    int m0;
+    int m4;
+    int count;
+    int m12[3];
+    int *index;
+    int m28[2];
+    char *base;
+};
+extern CTable D_240740;
+extern CTable D_2407a8;
+extern CTable D_2407d0;
+extern unsigned char D_24063c[];
+extern const int D_1a211c[];
+extern "C" {
+void *memcpy(void *, const void *, unsigned int);
+char *f_0368e8(CTable *t, const char *field, char *rec, int a, int b);
+char *f_036984(CTable *t, char *name, int i, int *index, int count);
+void f_01b7d4(MemoryStick *, int);
+}
+
+/* A record found in a database table. */
+struct Row {
+    char *rec;
+    int m4[3];
+};
+
+/* Finds the record of the table whose SelectNum field is the given number (the record after
+   the last when none is). */
+#define FIND_SELECT(out, table, num)                                                   \
+    do {                                                                               \
+        int key_ = (num);                                                              \
+        Row *o_ = (out);                                                               \
+        int i_;                                                                        \
+        for (i_ = 0; i_ < (table).count; i_++) {                                       \
+            memcpy(D_24063c, f_0368e8(&(table), "SelectNum", 0, 0, i_), D_1a211c[1]);  \
+            if (key_ == D_24063c[0])                                                   \
+                break;                                                                 \
+        }                                                                              \
+        char *r_ = f_036984(&(table), 0, i_, (table).index, (table).count);            \
+        if (r_)                                                                        \
+            o_->rec = f_036984(&(table), r_, 0, (table).index, (table).count);         \
+        else                                                                           \
+            o_->rec = 0;                                                               \
+    } while (0)
 extern int D_237cc8;
 extern unsigned char D_237cfc;
 
 extern "C" {
+void f_07a558(void *);
+void f_07a5d4(void *);
+void f_07827c(void *);
+void f_078358(void *);
+void f_0782f8(void *);
+void f_0783cc(void *);
+void f_0784a8(void *);
+void f_078448(void *);
 void f_07a314(void *);
 void f_07a390(void *);
 void f_07a9d8(void *);
@@ -246,6 +324,111 @@ struct RaceSettings {
     int m15728;
 };
 extern RaceSettings D_233f70;
+
+/* The machine and display settings exchanged with the front end; it holds one value per
+   car from +84. */
+struct Options {
+    Options() { f_07a558(this); }
+    ~Options() { f_07a5d4(this); }
+    char p0[84];
+    int m84[63];
+};
+
+/* The models of the car the player has picked, shown on the car select screen. */
+struct CarModels {
+    CarModels() { f_07827c(this); }
+    ~CarModels() { f_0782f8(this); }
+    void Reset() { f_078358(this); }
+    void *vt;
+    int m4;
+    int mdl;
+    int clut;
+    int tex;
+    int m20;
+    int ref;
+    int m28;
+};
+
+/* The models and data of the course the player has picked, shown on the course select
+   screen. */
+struct CourseModels {
+    CourseModels() { f_0783cc(this); }
+    ~CourseModels() { f_078448(this); }
+    void Reset() { f_0784a8(this); }
+    void *vt;
+    int m4;
+    int mdl;
+    char p12[28 - 12];
+    int clut;
+    char p32[48 - 32];
+    int tex;
+    char p52[68 - 52];
+    int model;
+    char p72[88 - 72];
+    int texVram;
+    char p92[108 - 92];
+    int texMem;
+    char p112[128 - 112];
+    int mapClip;
+    char p132[148 - 132];
+    int event;
+    char p152[168 - 152];
+    int mapEnvC;
+    char p172[188 - 172];
+    int mapEnvD;
+    char p192[208 - 192];
+    int motion;
+    char p212[228 - 212];
+    int roadArea;
+    char p232[248 - 232];
+    int danmen;
+    char p252[288 - 252];
+    int carMotion;
+    char p292[308 - 292];
+    int cameraMotion;
+    char p312[336 - 312];
+};
+
+/* What the race needs to start: the chosen event, random seeds, the course's records, the
+   car and the options. */
+struct RaceStart {
+    int event;
+    unsigned int seed1;
+    unsigned int seed2;
+    int m12;
+    int m16;
+    Tri m20[3];
+    int m56;
+    int car[2];
+    int color[2];
+    int m76[2];
+    int m84;
+};
+extern RaceStart D_1ee198;
+extern int D_1d1638[5];
+
+/* A pair of values; only the first is used here. */
+struct Param {
+    int a;
+    int b;
+};
+extern Param D_1dd7c4;
+
+extern "C" {
+void f_003150(char *seq, int i, Row *p);
+void f_0030c8(char *seq, int n);
+void f_0030f4(char *seq);
+void f_00578c(char *seq);
+int f_005c34(char *seq, const char *name);
+struct Elem280;
+Elem280 *f_005a38(char *seq, const char *name);
+int f_002acc(Elem280 *e, const char *name);
+void f_014cf8(int a, int b);
+void f_014dd0(int a, int b);
+void f_014ec8(int a);
+int f_0151f4(void);
+int f_036a3c(CTable *t, char *rec, int *index, int count);
+}
 
 /* The race mode the main menu selected, and this job's script. */
 extern int D_1d110c;
@@ -694,6 +877,210 @@ void Sequence::CSingleRaceModeJob::f_009bf4()
     D_1edf64 = 0;
 }
 
+/* @draft 0x009c30 us f_009c30
+   WHAT IT DOES: State 4: runs the race setup screens. It draws two random seeds; when the
+   player moves to another car or course, it plays that car's or course's sound once the
+   previous one has finished and then hands the screen the models to show; it restarts the
+   screen when asked to. When the player backs out, it keeps the setup and returns (event 6).
+   When the player confirms, it takes the chosen setup, prepares the event of the selected
+   race kind (normal race, time attack or the others), fills in what the race needs (seeds,
+   the course's records, car, colour and options) and starts the race (event 4, or 5 for a
+   sequence that waits for something to load). */
+void Sequence::CSingleRaceModeJob::f_009c30()
+{
+    m16008 = D_1e8ec4.Rand();
+    m16012 = D_1e8ec4.Rand();
+
+    int car = D_2301b0.layer->v10(7);
+    if (car < 0) {
+        if (D_1edf5c) {
+            D_1edf5c = 0;
+            D_1edf54 = 0;
+            D_1edf50 = 0;
+            f_00578c(D_1dd6b0);
+        }
+        car = 0;
+    }
+    if (car == 0 && !D_1edf50 && D_1edf54)
+        car = D_1edf54;
+    if (car != 0) {
+        D_1edf54 = car;
+        if (!D_1edf50 && !f_0056d0(D_1dd6b0)) {
+            if (car == -1) {
+                D_1edf54 = 0;
+                D_1edf50 = 0;
+                if (D_1edf5c) {
+                    D_1edf5c = 0;
+                    f_0057d0(D_1dd6b0);
+                }
+            } else {
+                Row row;
+                FIND_SELECT(&row, D_240740, car);
+                f_003150(D_1dd6b0, 0, &row);
+                f_0030c8(D_1dd6b0, 4);
+                f_005554(D_1dd6b0, 1);
+                D_1edf58 = car;
+                D_1edf5c = 1;
+                D_1edf50 = 1;
+            }
+        }
+    }
+    if (D_1edf50 && !f_0056d0(D_1dd6b0)) {
+        D_1edf50 = 0;
+        if (D_1edf58 == D_1edf54) {
+            D_1edf54 = 0;
+            CarModels m;
+            m.Reset();
+            m.mdl = f_005c34(D_1dd6b0, "Mdl");
+            m.tex = f_005c34(D_1dd6b0, "Tex");
+            m.clut = f_005c34(D_1dd6b0, "Clut");
+            m.ref = f_005c34(D_1dd6b0, "Ref");
+            D_2301b0.layer->v2(&m, 0);
+        }
+    }
+
+    int course = D_2301b0.layer->v10(8);
+    if (course == 0 && !D_1edf5d && D_1edf60)
+        course = D_1edf60;
+    if (course != 0) {
+        D_1edf60 = course;
+        if (!D_1edf5d && !D_1edf50) {
+            if (course == -1) {
+                D_1edf60 = 0;
+                D_1edf5d = 0;
+                f_0057d0(D_1dd6b0);
+            } else {
+                Row row;
+                FIND_SELECT(&row, D_240740, course);
+                f_003150(D_1dd6b0, 0, &row);
+                f_0030c8(D_1dd6b0, 5);
+                f_005554(D_1dd6b0, 1);
+                D_1edf64 = course;
+                D_1edf5d = 1;
+            }
+        }
+    }
+    if (D_1edf5d && !f_0056d0(D_1dd6b0)) {
+        D_1edf5d = 0;
+        if (D_1edf64 == D_1edf60) {
+            D_1edf60 = 0;
+            CourseModels m;
+            m.Reset();
+            m.mdl = f_005c34(D_1dd6b0, "Mdl");
+            m.tex = f_005c34(D_1dd6b0, "Tex");
+            m.clut = f_005c34(D_1dd6b0, "Clut");
+            Elem280 *e = f_005a38(D_1dd6b0, "Course");
+            m.model = f_002acc(e, "Model");
+            m.texVram = f_002acc(e, "TexVram");
+            m.texMem = f_002acc(e, "TexMem");
+            m.mapClip = f_002acc(e, "MapClip");
+            m.event = f_002acc(e, "Event");
+            m.mapEnvC = f_002acc(e, "MapEnvC");
+            m.mapEnvD = f_002acc(e, "MapEnvD");
+            m.motion = f_002acc(e, "Motion");
+            m.roadArea = f_002acc(e, "RoadArea");
+            m.danmen = f_002acc(e, "Danmen");
+            m.carMotion = f_002acc(e, "CarMotion");
+            m.cameraMotion = f_002acc(e, "CameraMotion");
+            m.roadArea = f_002acc(e, "RoadArea");
+            D_2301b0.layer->v2(&m, 0);
+        }
+    }
+
+    if (D_2301b0.layer->v10(3) == 7)
+        D_2301b0.layer->Restart();
+    if (D_2301b0.layer->v10(6) == 2) {
+        f_009a44();
+        if ((unsigned int)(m15376 - 1) >= 47)
+            m15376 = 1;
+        f_009884();
+        queue.push(6);
+        return;
+    }
+    if (!D_2301b0.m24)
+        return;
+
+    Settings o;
+    D_2301b0.layer->v3(&o, 0);
+    D_1d1108 = 2;
+    D_1d110c = o.m8;
+    f_009a44();
+    f_0030f4(D_1dd6b0);
+    {
+        Options op;
+        D_2301b0.layer->v3(&op, 0);
+        D_1d1638[0] = op.m84[m15364] - 1;
+    }
+    D_1ee198.m84 = m15992;
+    D_1ee198.event = m15780;
+    D_1ee198.seed1 = D_1e8ec4.Rand();
+    D_1ee198.seed2 = D_1e8ec4.Rand();
+    m16004 = 0;
+    switch (D_1d110c) {
+    case 1:
+        if ((unsigned int)(m15376 - 1) < 47) {
+            f_014cf8(m15376, m15380);
+        } else {
+            m16004 = 1;
+            m15372 = (&m15380)[m15380];
+            f_014dd0(m15372, m15364);
+        }
+        break;
+    case 2:
+        f_014dd0(m15372, m15364);
+        break;
+    case 3:
+        f_014ec8(m15372);
+        break;
+    }
+
+    Row carRow;
+    FIND_SELECT(&carRow, D_240740, m15364);
+    memcpy(D_24063c, D_240740.Field("Class", carRow.rec), D_1a211c[1]);
+    int cls = D_24063c[0] - 1;
+    Param seq = D_1dd7c4;
+    char *r = D_2407d0.Field("CourseNumber", (char *)seq.a);
+    Row crs;
+    if (r)
+        crs.rec = f_036984(&D_2407a8, r, 0, D_2407a8.index, D_2407a8.count);
+    else
+        crs.rec = 0;
+    Row c = crs;
+    int k = cls * 24 + f_036a3c(&D_2407a8, c.rec, D_2407a8.index, D_2407a8.count);
+    if (m15788)
+        k += 168;
+    D_1ee198.m16 = m1924[k];
+    D_1ee198.m12 = m580[k];
+    for (int i = 0; i < 3; i++)
+        D_1ee198.m20[i] = m3268[i][k];
+    D_1ee198.car[0] = m15364;
+    D_1ee198.color[0] = m15368 - 1;
+    D_1ee198.car[1] = 0;
+    D_1ee198.m76[0] = m15788;
+    D_1d1638[1] = -1;
+    D_1ee198.color[1] = 0;
+    D_1ee198.m76[1] = 0;
+    D_1ee198.m56 = 1;
+    f_014950();
+    D_1d1638[2] = m15786;
+    if (m16004) {
+        D_1d1638[3] = m15484;
+        if (m15380 < m15480)
+            D_1d1638[4] = m15380;
+        else
+            D_1d1638[4] = 0;
+    } else {
+        D_1d1638[4] = -1;
+    }
+    D_1d3d3c = m15780;
+    Param sq = D_1dd7c4;
+    memcpy(D_24063c, D_2407d0.Field("SequenceNumber", (char *)sq.a), D_1a211c[1]);
+    if (D_24063c[0] != 2 || f_0151f4())
+        queue.push(4);
+    else
+        queue.push(5);
+}
+
 /* @implements 0x00a8f4 us f_00a8f4
    WHAT IT DOES: State 5: does nothing. */
 void Sequence::CSingleRaceModeJob::f_00a8f4()
@@ -973,6 +1360,30 @@ void Sequence::CSingleRaceModeJob::f_00c9c8()
    WHAT IT DOES: An idle state. */
 void Sequence::CSingleRaceModeJob::f_00ca4c()
 {
+}
+
+/* @draft 0x00ca54 us f_00ca54
+   WHAT IT DOES: Starts reading the ghost of the chosen course and car class from the memory
+   stick into a new half megabyte buffer.
+   Remaining difference: in the second lookup's loop entry retail puts move s1,a0 before
+   addiu s3,v0,%lo(D_1a211c) (+0x104); this build swaps the two. */
+void Sequence::CSingleRaceModeJob::f_00ca54()
+{
+    Row course, car;
+
+    FIND_SELECT(&course, D_2407a8, m15372);
+    FIND_SELECT(&car, D_240740, m15364);
+    char *p = D_2407a8.Field("SelectNum", course.rec);
+    int size = D_1a211c[1];
+    memcpy(D_24063c, p, size);
+    int c = D_24063c[0] - 1;
+    memcpy(D_24063c, D_240740.Field("Class", car.rec), size);
+    int k = D_24063c[0] - 1;
+    int n = c * 7 + k;
+    D_1ee084 = new char[0x80000];
+    D_23ba90.m20 = D_1ee084;
+    D_23ba90.m24 = 0x80000;
+    f_01b7d4(&D_23ba90, n);
 }
 
 /* @implements 0x00ccd4 us f_00ccd4
