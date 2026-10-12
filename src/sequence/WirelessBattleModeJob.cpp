@@ -1170,8 +1170,8 @@ void Sequence::CWirelessBattleModeJob::f_00e334()
         D_1ee140.record = (D_1ee140.record & 0xff000000) + (m3180 & 0xffffff);
         HostReply h;
         D_2301b0.screen->v3(&h, 0);
-        m3168 = h.color;
         m3196 = h.group;
+        m3168 = h.color;
         m3200 = h.rank;
         f_088138(&D_241810);
         D_1ee124.record = (D_1ee124.record & 0xffffff) + (pct << 24);
