@@ -266,15 +266,16 @@ void f_021880(unsigned int *p)
     Link(p);
 }
 
-/* @draft 0x02199c us f_02199c
+/* @implements 0x02199c us f_02199c
    WHAT IT DOES: starts recording a call list that draws into another target: sets the pixel
    format and colour buffer, the depth buffer (or turns depth writes and test off when there is
    none), and a scissor of the target's size. */
-void f_02199c(int psm, int width, int height, unsigned int fbp, unsigned int zbp)
+void f_02199c(int psm, unsigned int width, int height, unsigned int fbp, unsigned int zbp)
 {
-    int bw = (width + 63) >> 6 << 6;
+    unsigned int bw;
 
     f_115f8c(1, D_23c1b8 + 1, D_23c1b0);
+    bw = (width + 63) >> 6 << 6;
     f_117c90(psm, fbp, bw);
     if (zbp) {
         f_117cf8(zbp, bw);
@@ -335,7 +336,7 @@ void f_021b9c(void)
     f_1165dc(0, 0);
 }
 
-/* @draft 0x021bbc us f_021bbc
+/* @implements 0x021bbc us f_021bbc
    WHAT IT DOES: the frame flip. Writes the data cache back, waits for the previous frame's
    drawing and for the vertical blank, swaps the screen buffers, then ends this frame's chain
    of call lists and draws it from one direct list, and opens the other list buffer for the
@@ -349,7 +350,8 @@ void f_021bbc(void)
     sceDisplayWaitVblankStart();
     D_23c1c4 = (unsigned int)f_117e9c() != D_23c1c8[0];
     *D_23c1b8 = 0;
-    p = f_022bc0(D_23c1a8[D_23c1b4]);
+    p = (unsigned int *)D_23c1a8[D_23c1b4];
+    p = f_022bc0(p);
     f_115f8c(0, D_23c1b8 + 1, D_23c1b0);
     while (*p) {
         f_1164c8(p + 1);
