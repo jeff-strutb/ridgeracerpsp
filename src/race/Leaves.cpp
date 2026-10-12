@@ -113,34 +113,36 @@ public:
 
 /* @draft 0x035ef0 us f_035ef0
    WHAT IT DOES: Starts the leaves: room for n of them, the four corners of the leaf quad (a
-   flat square on the ground plane, its far edge in front) and the leaf texture. */
+   flat square on the ground plane, its far edge in front) and the leaf texture.
+   Remaining difference: retail keeps the texture record in a0 (move a0,v0) and stores it after
+   setting the zero result; here it is stored from v0 first (retail is 2 words longer). */
 int CLeaves::f_035ef0(int n)
 {
-    buf = (Leaf *)f_125c4c(64, n * sizeof(Leaf));
+    Leaf *b = (Leaf *)f_125c4c(64, n * sizeof(Leaf));
     step = 1;
+    buf = b;
     size = n;
-    head = 0;
-    tail = 0;
-    D_240628[0].u = 0;
-    D_240628[0].v = 0;
+    head = tail = 0;
     D_240628[0].x = -63;
     D_240628[0].y = 0;
     D_240628[0].z = 0;
-    D_240628[1].u = 1;
-    D_240628[1].v = 0;
     D_240628[1].x = 63;
     D_240628[1].y = 0;
     D_240628[1].z = 0;
-    D_240628[2].u = 0;
-    D_240628[2].v = 1;
     D_240628[2].x = -63;
     D_240628[2].y = 0;
     D_240628[2].z = -127;
-    D_240628[3].u = 1;
-    D_240628[3].v = 1;
     D_240628[3].x = 63;
     D_240628[3].y = 0;
     D_240628[3].z = -127;
+    D_240628[0].u = 0;
+    D_240628[0].v = 0;
+    D_240628[1].u = 128;
+    D_240628[1].v = 0;
+    D_240628[2].u = 0;
+    D_240628[2].v = 128;
+    D_240628[3].u = 128;
+    D_240628[3].v = 128;
     D_240620 = f_02347c(0xa000003);
     return 0;
 }
@@ -157,16 +159,32 @@ void CLeaves::f_035fcc()
    WHAT IT DOES: Moves every live leaf one frame. A leaf that has reached the ground or is older
    than 600 frames is retired (and its thrower's count lowered). Otherwise it is pushed by its
    gust (a new random gust starts when the old one has passed), falls under gravity, slows
-   down by a slightly random drag, moves, and spins. */
+   down by a slightly random drag, moves, and spins.
+   Remaining difference: block layout. Retail falls through from the height test into the
+   retire path and places the age test with the live path at the end; here the age test
+   follows the height test. The constants f23 to f27 are also assigned in a different order. */
 void CLeaves::f_035ff8()
 {
-    float drag = D_1d1be8 * 0.25f;
-    float gravity = D_1d1bec;
+    float gravity;
+    float drag;
+
+    drag = D_1d1be8 * 0.25f;
+    gravity = D_1d1bec;
 
     for (int i = head; i != tail; i = Next(i)) {
         Leaf *e = &buf[i];
         e->age++;
-        if (e->pos.y > e->ground + 1.0f && e->age < 601) {
+        if (e->pos.y <= e->ground + 1.0f) {
+            if (i == head)
+                head = Next(i);
+            if (e->count)
+                (*e->count)--;
+        } else if (e->age >= 601) {
+            if (i == head)
+                head = Next(i);
+            if (e->count)
+                (*e->count)--;
+        } else {
             Vec4 r;
             __asm__ volatile(VFPU_BEGIN "vrndf1.t C010\n\tlv.s S000, %1\n\t.word 0xdd0000c0\n\t"
                              "vsub.t C020, C010, C000\n\tsv.q C020, %0" VFPU_END
@@ -189,11 +207,6 @@ void CLeaves::f_035ff8()
             f_0ccaec(&e->rx);
             e->rz.a += 0.392699082f;
             f_0ccaec(&e->rz);
-        } else {
-            if (i == head)
-                head = Next(i);
-            if (e->count)
-                (*e->count)--;
         }
     }
     step = 0;
@@ -202,7 +215,9 @@ void CLeaves::f_035ff8()
 /* @draft 0x0362a8 us f_0362a8
    WHAT IT DOES: Draws the leaves: sets the render state for the leaf texture, then for every
    leaf above the ground loads a transform (spun, stretched to 190 by 532, placed at the leaf)
-   and draws the leaf quad in the leaf's colour. */
+   and draws the leaf quad in the leaf's colour.
+   Remaining difference: the hoisted high halves of the 190 and 532 constants swap s7 and s8
+   (2 words); everything else matches. */
 unsigned int *CLeaves::f_0362a8(unsigned int *p)
 {
     p = f_0249a0(D_240620, p);
@@ -214,11 +229,13 @@ unsigned int *CLeaves::f_0362a8(unsigned int *p)
     *p++ = 0x1e000001;
     *p++ = 0x17000000;
     *p++ = 0x12000081;
-    *p++ = (((int)D_240628 >> 24) & 0xf) << 16 | 0x10000000;
+    *p++ = (((unsigned int)D_240628 >> 24) & 0xf) << 16 | 0x10000000;
     *p++ = 0x580000ff;
     for (int i = head; i != tail; i = Next(i)) {
         Leaf *e = &buf[i];
-        if (e->pos.y > e->ground + 1.0f) {
+        if (e->pos.y <= e->ground + 1.0f)
+            continue;
+        {
             Matrix m;
             f_02842c();
             f_0284bc(e->rx.a);
@@ -244,8 +261,8 @@ unsigned int *CLeaves::f_0362a8(unsigned int *p)
             *p++ = 0x04040004;
         }
     }
-    *p++ = 0x1d000001;
     step = 0;
+    *p++ = 0x1d000001;
     f_028ca8();
     return p;
 }
