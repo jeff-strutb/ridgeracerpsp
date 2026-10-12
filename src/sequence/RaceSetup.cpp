@@ -41,6 +41,12 @@ inline Pair::Pair(const Slot &s)
     b = s.b;
 }
 
+/* A row of a table as the lookups pass it on. */
+struct RowRef {
+    int a;
+    int b;
+};
+
 /* A row of a table named by its interned name. */
 struct Name {
     int a;
@@ -71,9 +77,9 @@ struct CTable {
     const char *Row(int i) { return f_036984(0, i, rowNames, nRows); }
     int Index(const char *name) { return f_036a3c(name, rowNames, nRows); }
     void *Get(const char *col, const char *row, int i) { return f_0368e8(col, row, 0, i); }
-    Pair FindRow(const char *name)
+    RowRef FindRow(const char *name)
     {
-        Pair r;
+        RowRef r;
         if (name)
             r.a = (int)f_036984(name, 0, rowNames, nRows);
         else
@@ -607,7 +613,7 @@ static inline void Lookup(Name &out, const char *name)
 }
 
 /* Names the row of the course table given by another row. */
-static inline void Lookup2(Name &out, Pair n)
+static inline void Lookup2(Name &out, RowRef n)
 {
     out.Set(D_2407a8, (const char *)n.a);
 }
