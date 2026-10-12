@@ -127,8 +127,8 @@ public:
     void f_01dee4();
     void f_01e14c(Mat *world, void *pos, void *vel, void *c);
     void f_01e500(Mat *world);
-    void f_01e528(Vec4 *place, Mat *world, void *pos, void *vel, void *c);
-    void f_01e5d0(Vec4 *place, Mat *world);
+    void f_01e528(Mat *world, void *pos, void *vel, void *c);
+    void f_01e5d0(Mat *world);
     void f_01e648(CCarState *s, Mat *world, Vec4 *pos, Vec4 *vel, void *c);
     void f_01ed64(Mat *world);
     void f_01edfc();
@@ -140,11 +140,8 @@ public:
     void f_01f264(int a);
     unsigned int *f_01f2f0(unsigned int *list);
 
-    int m0[4];
-    int m16;
-    int m20;
-    int m24;
-    int m28;
+    Vec4 pos;
+    Vec4 rot;
     Vec4 wheel[4];
     Vec4 light[2];
     Vec4 pivot[2];
@@ -454,4 +451,453 @@ void f_01e0ec(Vec4 *pivot, Vec4 *at, Mat *out, float angle)
         "\tsv.q C320.q, 32(%2)\n"
         "\tsv.q C430.q, 48(%2)"
         : : "r"(pivot), "r"(at), "r"(out), "m"(angle) : "memory");
+}
+
+/* The model scale on the vector unit (model units per world unit). */
+static const float kModelScale = 0.00024414062f;
+
+/* How far ahead along the velocity the lights are placed. */
+static const float kLightLead = 25.0f;
+
+/* Vector unit helpers. The matrix in M300 is the one being built; M200 and M100 are scratch. */
+static inline void VLoadM300(const Mat *m)
+{
+    __asm__ volatile(
+        "lv.q C300.q, 0(%0)\n"
+        "\tlv.q C310.q, 16(%0)\n"
+        "\tlv.q C320.q, 32(%0)\n"
+        "\tlv.q C330.q, 48(%0)"
+        : : "r"(m) : "memory");
+}
+
+static inline void VStoreM300(Mat *m)
+{
+    __asm__ volatile(
+        "sv.q C300.q, 0(%0)\n"
+        "\tsv.q C310.q, 16(%0)\n"
+        "\tsv.q C320.q, 32(%0)\n"
+        "\tsv.q C330.q, 48(%0)"
+        : : "r"(m) : "memory");
+}
+
+/* Multiplies the given matrix by M300 and stores the product. */
+static inline void VMulStore(const Mat *a, Mat *out)
+{
+    __asm__ volatile(
+        "lv.q C200.q, 0(%0)\n"
+        "\tlv.q C210.q, 16(%0)\n"
+        "\tlv.q C220.q, 32(%0)\n"
+        "\tlv.q C230.q, 48(%0)\n"
+        "\tvmmul.q M100.q, M200.q, M300.q\n"
+        "\tsv.q C100.q, 0(%1)\n"
+        "\tsv.q C110.q, 16(%1)\n"
+        "\tsv.q C120.q, 32(%1)\n"
+        "\tsv.q C130.q, 48(%1)"
+        : : "r"(a), "r"(out) : "memory");
+}
+
+/* Stores the inverse of the rigid matrix M300 (transposed rotation, moved translation). */
+static inline void VStoreInverse(Mat *out)
+{
+    __asm__ volatile(
+        "vmmov.t M200.t, E300.t\n"
+        "\tvtfm3.t C230.t, M300.t, C330.t\n"
+        "\tvneg.t C230.t, C230.t\n"
+        "\tsv.q C200.q, 0(%0)\n"
+        "\tsv.q C210.q, 16(%0)\n"
+        "\tsv.q C220.q, 32(%0)\n"
+        "\tsv.q C230.q, 48(%0)"
+        : : "r"(out) : "memory");
+}
+
+/* Scales the translation of the current matrix (M700) to model units. */
+static inline void VScaleTranslation()
+{
+    __asm__ volatile("lv.s S400.s, %0\n\tvscl.t C730.t, C730.t, S400.s" : : "m"(kModelScale));
+}
+
+/* Loads the wheel scales into S000 and S001 and sets M400 to the identity. */
+static inline void VWheelScale(const Vec4 *scale)
+{
+    __asm__ volatile("lv.s S000.s, 0(%0)\n\tlv.s S001.s, 4(%0)\n\tvmidt.q M400.q"
+                     : : "r"(scale));
+}
+
+
+/* @draft 0x01e14c us f_01e14c
+   WHAT IT DOES: Places the model for drawing. It clears the hidden flags, saves the current
+   matrix, computes the model's world matrix and its inverse, builds the light matrices from
+   the given position, velocity and lighting, then builds every wheel's matrices (the front
+   wheels steer; how much depends on the model's steering mode) and the two steering
+   knuckles, the shadow vectors, and restores the matrix. */
+void CCarModel::f_01e14c(Mat *world, void *p, void *v, void *c)
+{
+    Vec4 tmp;
+    Mat save;
+    Vec4 wpos;
+    Vec4 wrot;
+    float a;
+
+    m2727 = 0;
+    m2728 = 0;
+    f_028d94(&save);
+    VLoadM300(&model.part[0]);
+    VMulStore(world, &model.world);
+    VStoreInverse(&model.inverse);
+    f_028188(&tmp, p, v);
+    f_028e9c(&model.inverse);
+    f_028a00(&tmp, c);
+    f_028748(&model.part[0]);
+    VScaleTranslation();
+    f_028d94(&model.part[16]);
+    f_028e9c(&model.inverse);
+    f_028a00(&tmp, &D_1d1750);
+    f_028748(&model.part[0]);
+    VScaleTranslation();
+    f_028d94(&model.part[15]);
+    VWheelScale(&D_1d1760);
+
+    wpos.x = wheel[0].x;
+    wpos.y = wheel[0].y;
+    wpos.z = wheel[0].z;
+    if (mode == 1) {
+        wrot.x = 0;
+        wrot.y = 0;
+        wrot.z = wheelRot[0].z;
+    } else if (mode == 2) {
+        wrot.x = wheelRot[0].x;
+        wrot.y = 0;
+        wrot.z = wheelRot[0].z;
+    } else {
+        wrot.x = wheelRot[0].x;
+        wrot.y = wheelRot[0].y;
+        wrot.z = wheelRot[0].z;
+    }
+    f_01e028(&wpos, &wheel[0], &wrot, &model.part[5], &model.part[1], &model.part[9]);
+    wpos.x = wheel[1].x;
+    wpos.y = wheel[1].y;
+    wpos.z = wheel[1].z;
+    if (mode == 1) {
+        wrot.x = 0;
+        wrot.y = 0;
+        wrot.z = wheelRot[1].z;
+    } else if (mode == 2) {
+        wrot.x = wheelRot[1].x;
+        wrot.y = 0;
+        wrot.z = wheelRot[1].z;
+    } else {
+        wrot.x = wheelRot[1].x;
+        wrot.y = wheelRot[1].y;
+        wrot.z = wheelRot[1].z;
+    }
+    f_01e028(&wpos, &wheel[1], &wrot, &model.part[6], &model.part[2], &model.part[10]);
+    wpos.x = wheel[2].x;
+    wpos.y = wheel[2].y;
+    wpos.z = wheel[2].z;
+    f_01e094(&wpos, &wheel[2], &wheelRot[2], &model.part[7], &model.part[3], &model.part[11]);
+    wpos.x = wheel[3].x;
+    wpos.y = wheel[3].y;
+    wpos.z = wheel[3].z;
+    f_01e094(&wpos, &wheel[3], &wheelRot[3], &model.part[8], &model.part[4], &model.part[12]);
+
+    if (mode == 1) {
+        a = 0.0f;
+        if (!(wheelRot[0].y <= a)) {
+            a = wheelRot[0].y + wheelRot[0].y;
+            if (0.69813174f < a)
+                a = 0.69813174f;
+        }
+    } else if (mode == 2) {
+        a = wheelRot[0].x;
+    } else {
+        a = steer;
+    }
+    f_01e0ec(&pivot[0], &knuckle[0], &model.part[13], a);
+    if (mode == 1) {
+        a = 0.0f;
+        if (!(a <= wheelRot[1].y)) {
+            a = -wheelRot[1].y + -wheelRot[1].y;
+            if (0.69813174f < a)
+                a = 0.69813174f;
+        }
+    } else if (mode == 2) {
+        a = wheelRot[1].x;
+    } else {
+        a = steer;
+    }
+    f_01e0ec(&pivot[1], &knuckle[1], &model.part[14], a);
+    f_01edfc();
+    f_028e9c(&save);
+}
+
+/* @draft 0x01e500 us f_01e500
+   WHAT IT DOES: Places the model for drawing with the default lighting and no velocity. */
+void CCarModel::f_01e500(Mat *world)
+{
+    f_01e14c(world, &model.part[0].m[12], &model.part[0].m[4], D_1d1770);
+}
+
+/* @draft 0x01e528 us f_01e528
+   WHAT IT DOES: Builds the model's own matrix from its position and rotation, stores it as the
+   body matrix, and places the model for drawing. */
+void CCarModel::f_01e528(Mat *world, void *p, void *v, void *c)
+{
+    Mat save;
+
+    f_028d94(&save);
+    f_02842c();
+    f_0287cc(pos.x, pos.y, pos.z);
+    f_0286fc(rot.x, rot.y, rot.z);
+    f_028d94(&model.part[0]);
+    f_028e9c(&save);
+    f_01e14c(world, p, v, c);
+}
+
+/* @draft 0x01e5d0 us f_01e5d0
+   WHAT IT DOES: Builds the model's own matrix from its position and rotation, stores it as the
+   body matrix, and places the model with the default lighting. */
+void CCarModel::f_01e5d0(Mat *world)
+{
+    Mat save;
+
+    f_028d94(&save);
+    f_02842c();
+    f_0287cc(pos.x, pos.y, pos.z);
+    f_0286fc(rot.x, rot.y, rot.z);
+    f_028d94(&model.part[0]);
+    f_028e9c(&save);
+    f_01e500(world);
+}
+
+/* Converts a level from 0 to 255 to a byte, as the game does (through an unsigned int). */
+static inline unsigned char Level(float f)
+{
+    return (unsigned int)f;
+}
+
+/* @draft 0x01e648 us f_01e648
+   WHAT IT DOES: Updates the model from the car's physics state each frame: whether the car is
+   hidden or braking, the drift light level (from the slip angle), the brake, head and reverse
+   light levels, the steering in one mode and the engine glow in another, the body and inverse
+   matrices, the light matrices (moving the light along the velocity), then every wheel's
+   matrices and the steering knuckles. */
+void CCarModel::f_01e648(CCarState *s, Mat *world, Vec4 *p, Vec4 *v, void *c)
+{
+    Vec4 tmp;
+    Mat save;
+    Vec4 wrot;
+    Vec4 *rp;
+    float a, t, f, g;
+
+    m2727 = s->m128;
+    if ((signed char)m2727 != 0)
+        return;
+    m2728 = s->m1796 != 0;
+    m2725 = s->m2112;
+    double d = s->m2116;
+    if (d < 0.0)
+        d = -d;
+    a = (float)d;
+    if (a < 0.2617994f)
+        t = 0.0f;
+    else if (a < 1.2217306f)
+        t = (a - 0.2617994f) / 0.9599312f;
+    else
+        t = 1.0f;
+    t = t * 255.0f;
+    model.level[9] = Level(255.0f - t);
+    model.level[10] = Level(t);
+    model.level[1] = Level(s->m1728 * 255.0f);
+    model.level[2] = Level(s->m1728 * 255.0f);
+    f = s->m1736 * 255.0f;
+    model.level[3] = Level(f);
+    m2672 = f;
+    f = s->m1740 * 255.0f;
+    model.level[4] = Level(f);
+    m2676 = f;
+    if (mode == 2)
+        m200 = s->m2116 * 0.2f;
+    if (mode == 3) {
+        g = s->m1792 * 255.0f;
+        if (s->m1756 < -10000.0f)
+            f = 0.0f;
+        else if (s->m1756 < 14000.0f)
+            f = (s->m1756 - -10000.0f) / 24000.0f * 255.0f;
+        else
+            f = 255.0f;
+        if (f < g)
+            f = g;
+        model.level[7] = Level(f);
+        model.level[5] = Level(g);
+    }
+    f_028d94(&save);
+    VLoadM300(&s->world);
+    VStoreM300(&model.part[0]);
+    VMulStore(world, &model.world);
+    VStoreInverse(&model.inverse);
+    __asm__ volatile(
+        "lv.q C210.q, 0(%0)\n"
+        "\tlv.s S220.s, %2\n"
+        "\tlv.q C200.q, 0(%1)\n"
+        "\tvscl.t C210.t, C210.t, S220.s\n"
+        "\tvadd.t C200.t, C200.t, C210.t\n"
+        "\tsv.q C200.q, 0(%1)"
+        : : "r"(v), "r"(p), "m"(kLightLead) : "memory");
+    f_028188(&tmp, p, v);
+    f_028e9c(&model.inverse);
+    f_028a00(&tmp, c);
+    f_028748(&model.part[0]);
+    VScaleTranslation();
+    f_028d94(&model.part[16]);
+    f_028e9c(&model.inverse);
+    f_028a00(&tmp, &D_1d1780);
+    f_028748(&model.part[0]);
+    VScaleTranslation();
+    f_028d94(&model.part[15]);
+    VWheelScale(&D_1d1790);
+
+    rp = &s->wheelRot[1];
+    if (mode == 1) {
+        wrot.x = 0;
+        wrot.y = 0;
+        wrot.z = s->wheelRot[1].z;
+        rp = &wrot;
+    } else if (mode == 2) {
+        wrot.x = s->wheelRot[1].x;
+        wrot.y = 0;
+        wrot.z = s->wheelRot[1].z;
+        rp = &wrot;
+    }
+    f_01e028(&s->wheelPos[1], &wheel[0], rp, &model.part[5], &model.part[1], &model.part[9]);
+    rp = &s->wheelRot[0];
+    if (mode == 1) {
+        wrot.x = 0;
+        wrot.y = 0;
+        wrot.z = s->wheelRot[0].z;
+        rp = &wrot;
+    } else if (mode == 2) {
+        wrot.x = s->wheelRot[0].x;
+        wrot.y = 0;
+        wrot.z = s->wheelRot[0].z;
+        rp = &wrot;
+    }
+    f_01e028(&s->wheelPos[0], &wheel[1], rp, &model.part[6], &model.part[2], &model.part[10]);
+    f_01e094(&s->wheelPos[3], &wheel[2], &s->wheelRot[3], &model.part[7], &model.part[3],
+             &model.part[11]);
+    f_01e094(&s->wheelPos[2], &wheel[3], &s->wheelRot[2], &model.part[8], &model.part[4],
+             &model.part[12]);
+
+    if (mode == 1) {
+        a = 0.0f;
+        if (!(s->wheelRot[1].y <= a)) {
+            a = s->wheelRot[1].y + s->wheelRot[1].y;
+            if (0.69813174f < a)
+                a = 0.69813174f;
+        }
+    } else if (mode == 2) {
+        a = -m208;
+    } else {
+        a = steer;
+    }
+    f_01e0ec(&pivot[0], &knuckle[0], &model.part[13], a);
+    if (mode == 1) {
+        a = 0.0f;
+        if (!(a <= s->wheelRot[0].y)) {
+            a = -s->wheelRot[0].y + -s->wheelRot[0].y;
+            if (0.69813174f < a)
+                a = 0.69813174f;
+        }
+    } else if (mode == 2) {
+        a = -m208;
+    } else {
+        a = steer;
+    }
+    f_01e0ec(&pivot[1], &knuckle[1], &model.part[14], a);
+    f_01edfc();
+    f_028e9c(&save);
+}
+
+/* @draft 0x01ed64 us f_01ed64
+   WHAT IT DOES: Unless the model is hidden, recomputes its world matrix from the given matrix
+   and its body matrix. */
+void CCarModel::f_01ed64(Mat *world)
+{
+    m2727 &= 1;
+    if (!m2727) {
+        VLoadM300(&model.part[0]);
+        VMulStore(world, &model.world);
+    }
+}
+
+/* @implements 0x01edb8 us f_01edb8
+   WHAT IT DOES: Transforms the two shadow vectors (left on the vector unit) by a matrix's
+   rotation and stores the six results interleaved. */
+void f_01edb8(float *out, Mat *m)
+{
+    __asm__ volatile(
+        "lv.q C300.q, 0(%1)\n"
+        "\tvdot.t S303.s, C400.t, C300.t\n"
+        "\tlv.q C310.q, 16(%1)\n"
+        "\tvdot.t S313.s, C400.t, C310.t\n"
+        "\tlv.q C320.q, 32(%1)\n"
+        "\tvdot.t S323.s, C400.t, C320.t\n"
+        "\tsv.s S303.s, 0(%0)\n"
+        "\tsv.s S313.s, 8(%0)\n"
+        "\tsv.s S323.s, 16(%0)\n"
+        "\tvdot.t S303.s, C410.t, C300.t\n"
+        "\tvdot.t S313.s, C410.t, C310.t\n"
+        "\tvdot.t S323.s, C410.t, C320.t\n"
+        "\tsv.s S303.s, 4(%0)\n"
+        "\tsv.s S313.s, 12(%0)\n"
+        "\tsv.s S323.s, 20(%0)\n"
+        "1:"
+        : : "r"(out), "r"(m) : "memory");
+}
+
+/* @draft 0x01edfc us f_01edfc
+   WHAT IT DOES: Computes the shadow vectors: the world matrix's first two columns, negated,
+   stored for the body and transformed into each steering knuckle's frame. */
+void CCarModel::f_01edfc()
+{
+    __asm__ volatile(
+        "lv.s S400.s, 0(%0)\n"
+        "\tlv.s S401.s, 16(%0)\n"
+        "\tlv.s S402.s, 32(%0)\n"
+        "\tlv.s S410.s, 4(%0)\n"
+        "\tlv.s S411.s, 20(%0)\n"
+        "\tlv.s S412.s, 36(%0)\n"
+        "\tvneg.t C400.t, C400.t\n"
+        "\tvneg.t C410.t, C410.t"
+        : : "r"(&model.world) : "memory");
+    __asm__ volatile(
+        "sv.s S400.s, 0(%0)\n"
+        "\tsv.s S410.s, 4(%0)\n"
+        "\tsv.s S401.s, 8(%0)\n"
+        "\tsv.s S411.s, 12(%0)\n"
+        "\tsv.s S402.s, 16(%0)\n"
+        "\tsv.s S412.s, 20(%0)"
+        : : "r"(model.m1232[0]) : "memory");
+    f_01edb8(model.m1232[13], &model.part[13]);
+    f_01edb8(model.m1232[14], &model.part[14]);
+}
+
+/* @implements 0x01ee78 us f_01ee78
+   WHAT IT DOES: Starts the model's current animation. */
+void CCarModel::f_01ee78()
+{
+    f_025118(&model, anim);
+}
+
+/* @implements 0x01ee98 us f_01ee98
+   WHAT IT DOES: Starts the second variant of the model's current animation. */
+void CCarModel::f_01ee98()
+{
+    f_025118(&model, anim + 4);
+}
+
+/* @implements 0x01eebc us f_01eebc
+   WHAT IT DOES: Passes a value to the model's current animation. */
+void CCarModel::f_01eebc(int arg)
+{
+    f_025154(&model, anim, arg);
 }
