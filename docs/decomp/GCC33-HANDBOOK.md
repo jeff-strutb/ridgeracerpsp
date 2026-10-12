@@ -102,6 +102,9 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | `addiu aX,vY,4` in a `beqz` slot, then `jal` with a `nop` slot, for a call on a sub-object | take the sub-object's address first: `Sub *sub = &l->m4; l->m453 = 1; if (sub->p) sub->f();` | f_0074f8 |
 | A mode job's event loop | inline `Pop()` returning -1 when empty, testing `tail == head` (the other order swaps the `beq` operands); `while ((e = queue.Pop()) >= 0) ...;` | 0x006f34 |
 | Another object file's constructor and destructor called with a landing pad | an inline wrapper `struct X { X() { f_07ab2c(this); } ~X() { f_07aba8(this); } };` | 0x0072b0 |
+| Struct elements copied load/store, load/store, loads addressed from the global's base (`lw 2712(a1)`) | element-wise copies through an array member (`d[j][k].v[0] = s[j][k].v[0];`, `struct Tri { int v[3]; }`). A struct copy folds the base into the symbol; named fields let GCC reorder the loads | 0x0093d0 |
+| Outer offset stepped by `addiu t3,t3,63` then `sll a2,t3,6`, inner `li 335`/`bgez` down-counter | a 2D array `T m[3][336]`; a 1D `[j*336+k]` steps by 4032 instead | 0x0093d0 |
+| Two separate compares `li s0,1; beq v1,s0; li v0,2; beq v1,v0` | two separate `if (x == 1) return; if (x == 2) return;`. `x == 1 \|\| x == 2` or a two-case switch folds to `addiu -1; sltiu 2` | 0x008244 |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
