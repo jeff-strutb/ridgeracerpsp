@@ -820,8 +820,10 @@ int Sequence::CReplaySaveData::Load(CSaveStream *s)
     if (version != 104)
         return -1;
     s->Get32(size);
-    for (int i = 0; i < size; i++)
-        data[i] = s->Get8();
+    int n = size;
+    unsigned char *d = data;
+    for (int i = 0; i < n; i++)
+        *d++ = *s->cur++;
     return 0;
 }
 
