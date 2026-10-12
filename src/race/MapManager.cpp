@@ -103,10 +103,14 @@ struct Pack {
     int m16;
 };
 
-struct Shade {
-    Shade() { f_0ce454(this); f_0cf85c(this); }
-    ~Shade() {}
+struct ShadeBase {
+    ShadeBase() { f_0ce454(this); }
     int m[13];
+};
+
+struct Shade : ShadeBase {
+    Shade() { f_0cf85c(this); }
+    ~Shade() {}
 };
 
 struct Motion {
@@ -139,16 +143,6 @@ public:
     void Update(int mode, View *view);
     int Draw(int mode, View *view, int arg);
     void f_029688();
-    void Start()
-    {
-        m13020 = 0x12dfc3e;
-        m13016 = 1;
-        m_isValid = 1;
-        m12992 = 0;
-        m12996 = 0;
-        m13004 = 0;
-        m13008 = 0;
-    }
 
     CoursePart m0[3];
     CourseEvents m12144;
@@ -192,7 +186,12 @@ void MapManager::AllocateFree(void *data, int area)
    WHAT IT DOES: Loads a course: reads the motion and map class packs, sets up the motion and
    event systems, loads the textures of the map class pack, creates the motions, then brings up
    the map class, the three course parts, the event and shading systems, optionally a further
-   system, and marks the manager valid. Progress is logged to a text buffer. */
+   system, and marks the manager valid. Progress is logged to a text buffer.
+   Remaining difference (11 words): the two stack arguments tested before the optional system
+   are loaded into each other's registers, and the seven closing field stores come out in
+   another order (retail keeps source order exactly, as if every store depended on the one
+   before; making the int fields volatile reproduces it, which suggests a dependence this
+   source does not have). */
 void MapManager::Allocate(void *motionPack, void *classPack, int eventArg, int shadeArg,
                           int motionA, int motionB, int classArg, int a8, int a9, int a10,
                           int a11, int a12, int a13, int extra1, int extra0, int motionC)
@@ -350,4 +349,8 @@ MapManager D_23c820;
    WHAT IT DOES: Runs the exit half of the above. */
 /* @draft 0x029824 us _ZN10MapManagerC1Ev
    WHAT IT DOES: Constructs the map manager: the three course parts, the event data, two empty
-   pack readers, the shading, motion and map class systems; nothing is loaded yet. */
+   pack readers, the shading, motion and map class systems; nothing is loaded yet.
+   Remaining difference: retail keeps the one element shading array's construction loop (an
+   iteration counter from 0 down to -1, with -1 rematerialised inside the loop), and its
+   landing pad scales that counter; this compiler unrolls the single iteration away, which
+   shifts everything after it. */
