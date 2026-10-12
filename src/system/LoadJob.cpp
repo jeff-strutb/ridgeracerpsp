@@ -101,6 +101,7 @@ struct UnpackQueue {
     int tail;
     char timed;
     UnpackQueue() { head = 0; tail = 0; timed = 0; }
+    bool Empty() { return tail == head; }
 };
 
 /* A package placed in memory. */
@@ -138,6 +139,7 @@ struct RequestRing {
     int head;
     int tail;
     RequestRing() { head = 0; tail = 0; }
+    bool Empty() { return tail == head; }
     void Push(Request r)
     {
         e[tail++] = r;
@@ -476,14 +478,12 @@ void System::CLoadJob::End()
 
 extern "C" {
 
-/* @draft 0x001e34 us f_001e34
+/* @implements 0x001e34 us f_001e34
    WHAT IT DOES: Waits until every queued read and every queued unpack has finished, stepping
    the load job by hand and keeping the pad alive meanwhile. */
 void f_001e34(System::CLoadJob *job)
 {
-    UnpackQueue *q = &D_1d9c5c;
-
-    while (job->busy || job->ring.tail != job->ring.head || q->tail != q->head) {
+    while (job->busy || !job->ring.Empty() || !D_1d9c5c.Empty()) {
         job->Step();
         f_087f34(D_241810);
         sceKernelDelayThread(100);
