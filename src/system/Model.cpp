@@ -80,7 +80,9 @@ unsigned int *f_026a6c(unsigned int *p, int addr);
    WHAT IT DOES: Sets a model up from its file the first time it is used: turns the offsets of
    its parts (and of the extra table at +40) into addresses, sets each part up, writes the
    data cache back so the GE sees the changes, and marks the file as set up. Returns the file,
-   or 0 if there is none. */
+   or 0 if there is none.
+   Remaining difference: retail sets the part pointer register (move s0,s2) before the
+   set up test, leaving li s1,7 in the bltz slot; here the move fills the slot. */
 int f_024fb4(CModel *m)
 {
     ModelHeader *h = f_025280(m->data);
@@ -131,23 +133,21 @@ unsigned int *f_025068(unsigned int *p)
     return p;
 }
 
-/* @draft 0x025118 us f_025118
+/* @implements 0x025118 us f_025118
    WHAT IT DOES: Draws one part of a model, if the model has that part. */
 void f_025118(CModel *m, int part)
 {
-    ModelPart *g = m->data->part[part];
-    if (g)
-        f_025590(m, g);
+    if (m->data->part[part])
+        f_025590(m, m->data->part[part]);
 }
 
-/* @draft 0x025154 us f_025154
+/* @implements 0x025154 us f_025154
    WHAT IT DOES: Draws one part of a model the second way (f_025eb8), if the model has that
    part. */
 void f_025154(CModel *m, int part, int arg)
 {
-    ModelPart *g = m->data->part[part];
-    if (g)
-        f_025eb8(m, g, arg);
+    if (m->data->part[part])
+        f_025eb8(m, m->data->part[part], arg);
 }
 
 /* @implements 0x025190 us f_025190
@@ -234,7 +234,17 @@ void f_0252f0(ModelMesh *m)
     }
 }
 
-/* @draft 0x025364 us f_025364
+/* Points an address command at its data, which lies at the given offset from the primitive,
+   and turns the word before it into the BASE command for the address's upper bits. */
+static inline void Relocate(unsigned int *base, unsigned int *c, ModelPrim *p, unsigned int op)
+{
+    unsigned int a = *c + (unsigned int)p;
+    *c = a;
+    *base = ((a >> 24) & 0xf) << 16 | 0x10000000;
+    ((unsigned char *)c)[3] = op;
+}
+
+/* @implements 0x025364 us f_025364
    WHAT IT DOES: Sets a primitive up: replaces each of its three texture ids by the texture's
    record (0 if it is not loaded), then walks its GE command list up to the RET command and
    points every vertex and index address command at its data, writing the BASE command for
@@ -257,14 +267,15 @@ void f_025364(ModelPrim *p)
     while (((unsigned char *)c)[3] != 11) {
         unsigned int *base = c;
         unsigned int op = ((unsigned char *)c)[3];
-        if (op == 1 || op == 2) {
-            unsigned int a;
+        if (op == 1) {
             c++;
-            a = *c + (unsigned int)p;
-            *c = a;
-            *base = ((a >> 24) & 0xf) << 16 | 0x10000000;
-            ((unsigned char *)c)[3] = op;
+        } else if (op == 2) {
+            c++;
+        } else {
+            c++;
+            continue;
         }
+        Relocate(base, c, p, op);
         c++;
     }
 }
@@ -335,23 +346,20 @@ unsigned int *f_026898(unsigned int *p, PrimList *l, int idx)
     return p;
 }
 
-/* @draft 0x026948 us f_026948
+/* @implements 0x026948 us f_026948
    WHAT IT DOES: Writes the GE commands that draw one primitive with its texture number idx:
    texture mapping on with that texture selected (only if it changed), or off when it has none,
    then a call to the primitive's command list. Returns the end of the list. */
 unsigned int *f_026948(unsigned int *p, char *prim, int idx)
 {
-    CInfo *t = ((CInfo **)prim)[idx];
-    unsigned int cmd;
     int a;
 
-    if (t) {
-        p = f_024a3c(t, p);
-        cmd = 0x1e000001;
+    if (((CInfo **)prim)[idx]) {
+        p = f_024a3c(((CInfo **)prim)[idx], p);
+        *p = 0x1e000001;
     } else {
-        cmd = 0x1e000000;
+        *p = 0x1e000000;
     }
-    *p = cmd;
     p++;
     a = (int)(prim + 16);
     *p = ((a >> 24) & 0xf) << 16 | 0x10000000;
