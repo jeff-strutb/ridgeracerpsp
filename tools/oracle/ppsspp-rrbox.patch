@@ -299,10 +299,10 @@ index 0000000..f217fee
 +void OnWrite(u32 addr, u64 value, int size);
 +}
 diff --git a/headless/Headless.cpp b/headless/Headless.cpp
-index 293878d..37df7a8 100644
+index 293878d..8ca543e 100644
 --- a/headless/Headless.cpp
 +++ b/headless/Headless.cpp
-@@ -51,6 +51,14 @@
+@@ -51,6 +51,15 @@
  
  #include "Compare.h"
  #include "HeadlessHost.h"
@@ -313,11 +313,12 @@ index 293878d..37df7a8 100644
 +#include "Core/MemMap.h"
 +#include "Core/Screenshot.h"
 +#include "Core/RRBox.h"
++#include "Core/SaveState.h"
 +#include "GPU/Common/GPUDebugInterface.h"
  #if defined(_WIN32)
  #include "WindowsHeadlessHost.h"
  #elif defined(SDL)
-@@ -171,6 +179,42 @@ static HeadlessHost *getHost(GPUCore gpuCore) {
+@@ -171,6 +180,74 @@ static HeadlessHost *getHost(GPUCore gpuCore) {
  	}
  }
  
@@ -337,6 +338,38 @@ index 293878d..37df7a8 100644
 +	std::string dumpFile;
 +};
 +static RRBoxOptions g_rr;
++
++// rrbox driver: from frame `start` on, the inputs are chosen by search instead of read from the
++// script. At every `step` frames the machine is snapshotted (savestate in memory); each option
++// (an input held for `step` frames, then a second input up to `horizon` frames) is played out
++// from the snapshot, and the one whose car ends furthest (straight line) from where it began
++// is kept: hitting a wall or spinning costs distance. Chosen inputs are written as script lines
++// (FRAME 0xMASK), so the drive can be replayed by any rrbox run without search.
++struct RRDrive {
++	int start = -1, step = 20, horizon = 80;
++	std::string out;
++	bool rolling = false;
++	int base = 0, next = 0, opt = 0;
++	u32 baseHeld = 0;
++	std::vector<u8> state;
++	float p0[3] = {};
++	std::vector<float> score;
++};
++static RRDrive g_drv;
++static const u32 RR_GAS = 0x4000, RR_L = 0x80, RR_R = 0x20;  // CROSS accelerates; d-pad steers
++static const u32 g_drvOpts[][2] = {
++	{RR_GAS, RR_GAS}, {RR_GAS | RR_L, RR_GAS}, {RR_GAS | RR_R, RR_GAS},
++	{RR_GAS | RR_L, RR_GAS | RR_L}, {RR_GAS | RR_R, RR_GAS | RR_R},
++};
++static const int g_drvN = sizeof(g_drvOpts) / sizeof(g_drvOpts[0]);
++// The player's car position (US, measured: the camera's position is this x1000 when driving
++// straight; the camera itself swings out on every turn, so it is no measure of progress).
++static void RRCar(float p[3]) {
++	for (int k = 0; k < 3; k++) {
++		u32 w = Memory::Read_U32(0x08a4d3b0 + 4 * k);
++		memcpy(&p[k], &w, 4);
++	}
++}
 +static std::string g_rrWatch, g_rrCalls;  // A5: watched function list and the call log
 +static std::string g_rrCyclesRef;         // A5 candidate runs: retail's call log, for time-equalised lockstep
 +
@@ -360,7 +393,7 @@ index 293878d..37df7a8 100644
  struct AutoTestOptions {
  	double timeout;
  	double maxScreenshotError;
-@@ -226,6 +270,40 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -226,6 +303,40 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		draw->BeginFrame(Draw::DebugFlags::NONE);
  	}
  
@@ -401,12 +434,12 @@ index 293878d..37df7a8 100644
  	bool passed = true;
  	double deadline = time_now_d() + opt.timeout;
  	coreState = coreParameter.startBreak ? CORE_STEPPING_CPU : CORE_RUNNING_CPU;
-@@ -238,6 +316,68 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -238,6 +349,115 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		if (coreState == CORE_NEXTFRAME) {
  			coreState = CORE_RUNNING_CPU;
  			headlessHost->SwapBuffers();
 +			// rrbox: end of frame rrFrame: log it, then apply the input held for the next frame.
-+			if (rrTrace) {
++			if (rrTrace && !g_drv.rolling) {
 +				const u8 *ram = Memory::GetPointerUnchecked(PSP_GetUserMemoryBase());
 +				u64 h;
 +				if (g_rr.skipEnd > g_rr.skipStart) {
@@ -429,7 +462,7 @@ index 293878d..37df7a8 100644
 +					Core_Stop();
 +				}
 +			}
-+			if (g_rr.shotEvery && rrFrame % g_rr.shotEvery == 0 && gpuDebug) {
++			if (g_rr.shotEvery && rrFrame % g_rr.shotEvery == 0 && gpuDebug && !g_drv.rolling) {
 +				// The emulated PSP's displayed frame (480x272), not anything on the host's screen.
 +				GPUDebugBuffer buf;
 +				gpuDebug->GetCurrentFramebuffer(buf, GPU_DBG_FRAMEBUF_DISPLAY);
@@ -460,17 +493,64 @@ index 293878d..37df7a8 100644
 +				}
 +			}
 +			rrFrame++;
-+			auto it = rrScript.find(rrFrame);
-+			if (it != rrScript.end()) {
-+				__CtrlUpdateButtons(it->second & ~rrHeld, rrHeld & ~it->second);
-+				rrHeld = it->second;
++			auto setHeld = [&](u32 m) { __CtrlUpdateButtons(m & ~rrHeld, rrHeld & ~m); rrHeld = m; };
++			if (g_drv.start < 0 || rrFrame < g_drv.start) {
++				auto it = rrScript.find(rrFrame);
++				if (it != rrScript.end())
++					setHeld(it->second);
++			} else if (!g_drv.rolling) {
++				if (rrFrame == g_drv.start)
++					g_drv.next = rrFrame;
++				if (rrFrame == g_drv.next) {
++					g_drv.state.clear();
++					SaveState::SaveToRam(g_drv.state);
++					g_drv.base = rrFrame;
++					g_drv.baseHeld = rrHeld;
++					RRCar(g_drv.p0);
++					g_drv.opt = 0;
++					g_drv.score.assign(g_drvN, 0.0f);
++					g_drv.rolling = true;
++					setHeld(g_drvOpts[0][0]);
++				}
++			} else {
++				int t = rrFrame - g_drv.base;
++				if (t == g_drv.step)
++					setHeld(g_drvOpts[g_drv.opt][1]);
++				if (t >= g_drv.horizon) {
++					float p[3];
++					RRCar(p);
++					float d = 0;
++					for (int k = 0; k < 3; k++) d += (p[k] - g_drv.p0[k]) * (p[k] - g_drv.p0[k]);
++					g_drv.score[g_drv.opt++] = d;
++					std::string err;
++					if (SaveState::LoadFromRam(g_drv.state, &err) != CChunkFileReader::ERROR_NONE) {
++						fprintf(stderr, "rrbox: drive: cannot restore the snapshot: %s\n", err.c_str());
++						exit(3);
++					}
++					rrFrame = g_drv.base;
++					// The host's button state is not part of a savestate: put it back by hand, or
++					// buttons pressed in an earlier rollout stay held.
++					__CtrlUpdateButtons(g_drv.baseHeld, ~g_drv.baseHeld);
++					rrHeld = g_drv.baseHeld;
++					if (g_drv.opt < g_drvN) {
++						setHeld(g_drvOpts[g_drv.opt][0]);
++					} else {
++						int best = 0;
++						for (int k = 1; k < g_drvN; k++)
++							if (g_drv.score[k] > g_drv.score[best]) best = k;
++						g_drv.rolling = false;
++						setHeld(g_drvOpts[best][0]);
++						if (FILE *o = fopen(g_drv.out.c_str(), "a")) { fprintf(o, "%d 0x%x\n", g_drv.base, g_drvOpts[best][0]); fclose(o); }
++						g_drv.next = g_drv.base + g_drv.step;
++					}
++				}
 +			}
-+			if (g_rr.frames && rrFrame >= g_rr.frames)
++			if (g_rr.frames && rrFrame >= g_rr.frames && !g_drv.rolling)
 +				Core_Stop();
  		}
  		if (coreState == CORE_STEPPING_CPU && !coreParameter.startBreak) {
  			break;
-@@ -261,6 +401,7 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -261,6 +481,7 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  			Core_Stop();
  		}
  	}
@@ -478,7 +558,7 @@ index 293878d..37df7a8 100644
  	if (gpu) {
  		gpu->EndHostFrame();
  	}
-@@ -445,6 +586,37 @@ int main(int argc, const char* argv[])
+@@ -445,6 +666,44 @@ int main(int argc, const char* argv[])
  			teamCityMode = true;
  		else if (!strncmp(argv[i], "--state=", strlen("--state=")) && strlen(argv[i]) > strlen("--state="))
  			stateToLoad = argv[i] + strlen("--state=");
@@ -511,12 +591,19 @@ index 293878d..37df7a8 100644
 +			g_rr.dumpFrame = atoi(argv[i] + 16);
 +		else if (!strncmp(argv[i], "--rr-dump=", 10))
 +			g_rr.dumpFile = argv[i] + 10;
++		else if (!strncmp(argv[i], "--rr-drive=", 11)) {
++			char out[1024] = {};
++			sscanf(argv[i] + 11, "%d:%1023s", &g_drv.start, out);
++			g_drv.out = out;
++		}
++		else if (!strncmp(argv[i], "--rr-drive-params=", 18))
++			sscanf(argv[i] + 18, "%d:%d", &g_drv.step, &g_drv.horizon);
 +		else if (!strncmp(argv[i], "--rr-trace=", 11))
 +			g_rr.trace = argv[i] + 11;
  		else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
  			return printUsage(argv[0], NULL);
  		else if (!strcmp(argv[i], "--ignore")) {
-@@ -558,6 +730,13 @@ int main(int argc, const char* argv[])
+@@ -558,6 +817,13 @@ int main(int argc, const char* argv[])
  	g_Config.internalDataDirectory.clear();
  	g_Config.bUseOldAtrac = oldAtrac;
  	g_Config.iForceEnableHLE = 0xFFFFFFFF;  // Run all modules as HLE. We don't have anything to load in this context.
@@ -530,7 +617,7 @@ index 293878d..37df7a8 100644
  
  	// g_Config.bUseOldAtrac = true;
  
-@@ -572,6 +751,11 @@ int main(int argc, const char* argv[])
+@@ -572,6 +838,11 @@ int main(int argc, const char* argv[])
  #elif !PPSSPP_PLATFORM(ANDROID)
  	g_Config.memStickDirectory = Path(std::string(getenv("HOME"))) / ".ppsspp";
  #endif

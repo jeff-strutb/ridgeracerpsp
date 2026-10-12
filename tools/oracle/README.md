@@ -48,6 +48,8 @@ For each script in `scripts/`, retail and the candidate each record per frame th
 
 `--rr-peek=FILE` appends the listed memory words to every trace line, for studying game state.
 
+`--rr-drive=START:OUT` (with `--rr-drive-params=STEP:HORIZON`, default 20:80) drives the race by search from frame START. Every STEP frames rrbox snapshots the machine in memory, plays each of five options out to HORIZON frames (accelerate straight, or steer left or right for STEP frames and then straight or keep steering), and keeps the one whose car (0x08a4d3b0, x y z) ends furthest from where it started. Wall hits and spins cost distance. The chosen inputs are appended to OUT as ordinary script lines, so a race driven once becomes a plain script that every later run replays without search. Two details matter for the replay to match: the live button state is not part of a savestate, so it is put back by hand after every restore; and the trace, frame dumps and the stop frame ignore the rollouts. A restore leaves one sound buffer (0x08d5bd80 to 0x08d5d5b8) different from a straight run, which never reaches game state; the replayed script, not the search run, is the reference.
+
 `tools/oracle/explore.sh SCRIPT FRAMES EVERY OUTDIR [FIRST]` saves the emulated PSP's displayed frame every N frames and tiles them into a sheet (`sheet.py`). This is how scripts are written. These are the emulator's own output frames, never a capture of the host's screen.
 
 A script file holds one entry per line:
