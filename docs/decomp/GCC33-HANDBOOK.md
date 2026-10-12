@@ -143,6 +143,17 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A step function with a single exit `move v0,s2` | `int r = f(); if (r) {...} return r;`; a success branch written first gives retail's block order | f_01abf4, f_01bc5c |
 | Byte stream writes and reads in retail's order | `Put8(int v) { *cur++ = v; }` with `Put32` built on it; `Get8() { return *cur++; }`; copy loops written as `*s->cur++ = x[i]` with the count and data pointer in locals | 0x01b... (CGameSaveData::Save) |
 | A random index keeping the seed's register | `int idx = Rand() % 10;` in its own variable | f_0196cc |
+| A class copy that stops before the tail padding (236 of 256 bytes) | the class is non-POD (`CInfo() {}`) and its 64-byte alignment comes from a member attribute, not the type | 0x023f30 |
+| A non-polymorphic base placed at its alignment (+64) after the vptr | the `CKeyLinkList` layout: a 64-aligned member is not put into the base's tail padding | 0x023340 |
+| `delete[]` with a built-in null check and a 64-byte cookie (count at -4) | the element type has a destructor; for a POD array the null check is an explicit `if` | 0x0233dc, 0x023e54 |
+| A class constructor not inlined into static init | it is implicitly defined; declare it explicitly (`CKeyLinkList() {}`) | 0x023b6c |
+| No null check on a derived-to-base pointer conversion | take the base address directly: `CLinkList *l = &D_23c240;` | 0x0234a4 |
+| A BST search reloading `*link` each step | a link-only loop: `while (key != (*link)->key) link = ... ? &(*link)->m0 : &(*link)->m4;` | 0x023fe8, 0x0241a0 |
+| An iterator stored to a stack slot that is never read back | a small iterator class with `operator!=(const&)` | 0x0240cc |
+| A result in a saved register overwritten by the next call | one variable reused: `info = f(id); if (info) return 0; info = g(id);` | f_023038, f_022d00 |
+| A parameter's register reused as a down-counter | the parameter itself reassigned (`n = (n + 7) >> 3`) | f_022f54 |
+| Mipmap command words as induction registers stepped by 0x1000000 | `((0xa0 + lv) << 24)`; `(lv << 24) + 0xa0000000` shares the shift and nothing is reduced | f_0235ac |
+| `bnezl`/`sll` in power-of-two and log2 helpers | `static inline` helpers with `break` | 0x023a20 |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
@@ -178,6 +189,10 @@ Fixed in `tools/analysis/funcmap.py`: leaf functions directly after an FDE funct
 ## Library code
 
 Newlib is statically linked (`ratio`, `_mprec_log10` at 0x12f1c4 to 0x12f2xx), so it can be matched from its own source.
+
+## Searching statement orders
+
+When only the order of independent statements is open, compile every permutation of the block as separate functions in ONE scratch file and compare the `.s` output, rather than one scorer run (about 10 s) per order. Record the winning order as a tie-break, not a rule. `mips` and `shared` are predefined macros under the PSP driver and cannot be identifiers.
 
 ## Tools
 
