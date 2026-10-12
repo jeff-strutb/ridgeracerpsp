@@ -1,34 +1,6 @@
 /* @cflags: -fexceptions */
 /* Compiler-identification control set, batch 5. */
 
-/* ---- 0x002b34: buffer setup ---- */
-struct Pr2b { int lo, hi; };
-struct B2b { int base; int ptr; int aligned; int zero; int h; struct Pr2b pr; };
-int f_002260(int);
-int f_0022e4(int);
-struct Pr2b f_0996b0(int, int);
-int f_099684(int, int, int);
-int f_125e14(int);
-
-/* @implements 0x002b34 us f_002b34 */
-void f_002b34(struct B2b *p, int a, int b, int h, int n)
-{
-    int sz;
-    p->h = h;
-    p->zero = 0;
-    p->base = f_002260(a);
-    sz = f_0022e4(p->base);
-    if (p->h) {
-        /* statement expression: the call result goes through one stack
-           temporary, as a C++ TARGET_EXPR would */
-        p->pr = ({ f_0996b0(p->h, 0); });
-        p->ptr = f_099684(p->h, sz + 127, n);
-    } else {
-        p->ptr = f_125e14(sz + 127);
-    }
-    p->aligned = (p->ptr + 127) & ~127;
-}
-
 /* ---- 0x063068: destructor (C++ in retail; cleanup runs the base dtor) ---- */
 struct O063 { const void *vt; char pad[28]; char mem[4]; };
 extern const char D_1a3fb0[];

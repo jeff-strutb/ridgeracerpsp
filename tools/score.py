@@ -181,7 +181,7 @@ class Resolver:
             val = s['value'] + add
             if self.obj.sh[s['shndx']][2] & 4:  # executable: .text or .gnu.linkonce.t.*
                 for psec, cstart, csize, raddr in self.placed:
-                    if psec == s['shndx'] and cstart <= val <= cstart + csize:
+                    if psec == s["shndx"] and cstart <= val < cstart + csize:
                         return ('addr', raddr + val - cstart)
                 return ('unresolved', f'{nm}+0x{val:x} is outside every tagged function')
             if nm.startswith(DATA_SECTIONS):

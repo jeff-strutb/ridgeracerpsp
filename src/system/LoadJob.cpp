@@ -832,7 +832,7 @@ void *f_002acc(PackageLoader *l, const char *name)
     return l->files[i - D_1b8c04[l->package].first];
 }
 
-/* 0x002b34 f_002b34 (byte-exact; its tag lives in the control set, src/control/batch5.c)
+/* @implements 0x002b34 us f_002b34
    WHAT IT DOES: Prepares to load a single file: finds it and allocates its buffer, from the
    given heap or with malloc, aligned to 128 bytes. */
 void f_002b34(FileLoader *l, const char *name, int unused, void *heap, int fromTop)

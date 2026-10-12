@@ -88,6 +88,15 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | The block after a table jump is not the first case, yet that case's constant is first in `.rodata` | the first case's body written twice (an early `case 9:` and an identical later case group); cross-jumping keeps the later copy | f_005554 |
 | `jr ra; nop` with v0 left holding a loop's last `slti` result | the function falls off the end with no `return` (C); `return 0` adds `move v0,zero` | f_005a38 |
 | A strength-reduced index giv `addu v0,v0,this` (this second) | index the array inside the loop (`m668[n]...; n++`), not a pointer set up before it | f_005c34 |
+| `max` with the result in the first operand, plus a cross-jumped store | `if (a < x) a = x;` (ternary spellings swap the operands) | f_002108 |
+| `beqzl` to the loop latch | the body wrapped in `if (p) { ... }`; `if (!p) continue;` inverts the branch | f_002574 |
+| A sub-object field pointer kept in a callee-saved register | small inline methods on the sub-object (`ring.Empty()`, `Front()`, `Pop()`); plain field access folds the offset into `this` | f_001e34, f_001b3c, f_001ecc |
+| Ring push: `lw tail` before the block copy, `sw tail+1` through a separate address, then `lbu`/`sw` of the same word | `e[tail++] = r; tail = (unsigned char)tail;` | f_001ecc |
+| One struct copy versus two | a complete aggregate initialiser builds a temporary and copies it; a partial one clears first (a `sw zero` survives under halfword stores); `const T&` versus by value removes or adds a copy | f_002c50, f_001ecc |
+| Signed `lh` with full-index addressing | short fields read into `int` locals, the array indexed directly (not through a pointer) | f_002410 |
+| Loop counter and pointer allocated differently | one loop variable per loop | f_0030f4 |
+| Two clock reads through one volatile stack slot | an inline helper `Now()` with a volatile local | f_002edc |
+| A function placed after `_GLOBAL__I` | a non-static `inline` function emitted out of line (link once), defined before its caller | f_002edc |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
