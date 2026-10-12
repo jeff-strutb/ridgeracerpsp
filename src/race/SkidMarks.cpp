@@ -5,8 +5,10 @@
    and the track starts a new one. Closed strips fade with distance from the camera and are
    recycled once the pool runs low. */
 
+/* A vector unit quadword: three coordinates and a fourth word kept zero. */
 struct Vec4 {
-    float x, y, z, w;
+    float x, y, z;
+    int w;
 } __attribute__((aligned(16)));
 
 struct Matrix;
@@ -262,7 +264,7 @@ extern "C" void f_0351a8(SkidTrack *t, const Vec4 *pos, const Vec4 *dir, float m
     t->count = 1;
 }
 
-/* @draft 0x03529c us f_03529c
+/* @implements 0x03529c us f_03529c
    WHAT IT DOES: Moves a track's tyre to a new point. The width vector is the step's direction
    crossed with the given up vector and scaled. Once the tyre has moved far enough the point
    is committed: the first committed point starts the track's strip, later ones extend it,
@@ -270,8 +272,11 @@ extern "C" void f_0351a8(SkidTrack *t, const Vec4 *pos, const Vec4 *dir, float m
    when the tyre has not moved at all. */
 extern "C" int f_03529c(SkidTrack *t, SkidPool *pool, const Vec4 *pos, const Vec4 *up, float mark, float alpha)
 {
-    Vec4 v = Sub(pos, &t->pt[(t->cur + 1) & 1].p);
-    float len = f_027ebc(&v, &v);
+    Vec4 v;
+    float len;
+
+    v = Sub(pos, &t->pt[(t->cur + 1) & 1].p);
+    len = f_027ebc(&v, &v);
 
     if (len == 0.0f)
         return 0;
@@ -281,9 +286,10 @@ extern "C" int f_03529c(SkidTrack *t, SkidPool *pool, const Vec4 *pos, const Vec
     SetPoint(&t->pt[t->cur], pos, v, mark, (unsigned int)(alpha * 255.0f));
     if (D_1d1bd4 < len) {
         if (t->count == 1) {
-            t->pt[0].d = t->pt[1].d;
+            SkidPoint *p1 = &t->pt[1];
+            t->pt[0].d = p1->d;
             f_034f5c(pool, t->rec, &t->pt[0]);
-            f_034fd0(pool, t->rec, &t->pt[1]);
+            f_034fd0(pool, t->rec, p1);
         } else if (t->count != 0) {
             if (!f_034fd0(pool, t->rec, &t->pt[t->cur])) {
                 t->count++;
@@ -436,13 +442,16 @@ extern "C" unsigned int *f_035aa0(SkidMarks *m, unsigned int *dl, float x, float
         SkidRec *r = &m->pool.recs[i];
         float a, b;
         if (r->state == 3) {
-            f_034df4(pool, r);
+            f_034df4(&m->pool, r);
             continue;
         }
         if (r->count < 3)
             continue;
-        a = 1.0f - f_0e3b3c(D_23f7f0, z, r->start) / 700.0f;
-        b = 1.0f - f_0e3b3c(D_23f7f0, z, r->end) / 700.0f;
+        {
+        float s0 = r->start, s1 = r->end;
+        a = 1.0f - f_0e3b3c(D_23f7f0, z, s0) / 700.0f;
+        b = 1.0f - f_0e3b3c(D_23f7f0, z, s1) / 700.0f;
+        }
         if (a < 0 && b < 0) {
             if (r->state == 2 && m->keep < pool->used)
                 r->state = 3;
