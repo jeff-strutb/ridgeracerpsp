@@ -97,6 +97,11 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | Loop counter and pointer allocated differently | one loop variable per loop | f_0030f4 |
 | Two clock reads through one volatile stack slot | an inline helper `Now()` with a volatile local | f_002edc |
 | A function placed after `_GLOBAL__I` | a non-static `inline` function emitted out of line (link once), defined before its caller | f_002edc |
+| `xori`+`beqz` on a global struct's field | an inline predicate method `bool IsStatus(int s) { return status == s; }` | f_007178 |
+| A vptr load scheduled ahead of stores to a local object's fields | declare its byte field `bool` (`unsigned char` is alias set 0 and pins the load) | f_0074f8 |
+| `addiu aX,vY,4` in a `beqz` slot, then `jal` with a `nop` slot, for a call on a sub-object | take the sub-object's address first: `Sub *sub = &l->m4; l->m453 = 1; if (sub->p) sub->f();` | f_0074f8 |
+| A mode job's event loop | inline `Pop()` returning -1 when empty, testing `tail == head` (the other order swaps the `beq` operands); `while ((e = queue.Pop()) >= 0) ...;` | 0x006f34 |
+| Another object file's constructor and destructor called with a landing pad | an inline wrapper `struct X { X() { f_07ab2c(this); } ~X() { f_07aba8(this); } };` | 0x0072b0 |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
@@ -114,6 +119,10 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
   - The remaining differences are three tie-breaks: the zero stores at +8/+12 swapped; `move s1,v0`/`move a0,v0` swapped; and after `sceKernelStartModule`, retail fills the `bltz` slot from the success path (`move a0,s1`), which leaves `sceIoClose`'s slot a `nop` (+4 B).
   - Eight source spellings (goto, nested ifs, if-assign, value-init, field stores, declaration orders) compile to the same RTL.
   - Next: diff the `sched2` and `dbr` dumps against retail's order.
+
+## Object file boundaries
+
+`config/us/tus.csv` splits follow unwind info, not real object files. A C++ class's constructors and `Begin` often sit in the gap row before its first unwind-covered row, and its static init and out-of-line destructors in the gap row after. A worker matching a class claims the neighbouring rows it spills into.
 
 ## C++ objects in the scorer
 
