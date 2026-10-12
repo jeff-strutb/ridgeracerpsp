@@ -236,9 +236,8 @@ struct TexNormVertex {
    first vertex). A polygon with something left is written as vertices to out and as base,
    vertex address and fan commands to the display list; the ends of both outputs are returned
    through outEnd and dlEnd.
-   Remaining difference: retail spills planes and keeps the buffer index unscaled (s7), the
-   and the interpolated colour is computed before the position and normal stores of the same
-   block. */
+   Remaining difference: retail spills planes and keeps the buffer index unscaled (s7), and
+   computes the interpolated colour before the position and normal stores of the same block. */
 void f_02a22c(unsigned int planes, LitVertex *out, const LitVertex *in, unsigned int *dl, int n,
               LitVertex **outEnd, unsigned int **dlEnd)
 {
@@ -350,11 +349,10 @@ void f_02a22c(unsigned int planes, LitVertex *out, const LitVertex *in, unsigned
    first vertex). A polygon with something left is written as vertices to out and as base,
    vertex address and fan commands to the display list; the ends of both outputs are returned
    through outEnd and dlEnd.
-   Remaining difference: retail spills planes and keeps the buffer index unscaled (s7), the
-   and the interpolated colour is computed before the position and normal stores of the same
-   block. */
-void f_02a910(unsigned int planes, TexLitVertex *out, const TexLitVertex *in, unsigned int *dl, int n,
-              TexLitVertex **outEnd, unsigned int **dlEnd)
+   Remaining difference: retail spills planes and keeps the buffer index unscaled (s7), and
+   computes the interpolated colour before the position and normal stores of the same block. */
+void f_02a910(unsigned int planes, TexLitVertex *out, const TexLitVertex *in, unsigned int *dl,
+              int n, TexLitVertex **outEnd, unsigned int **dlEnd)
 {
     TexLitVertex buf[2][10];
     int cnt[2];
@@ -466,11 +464,10 @@ void f_02a910(unsigned int planes, TexLitVertex *out, const TexLitVertex *in, un
    first vertex). A polygon with something left is written as vertices to out and as base,
    vertex address and fan commands to the display list; the ends of both outputs are returned
    through outEnd and dlEnd.
-   Remaining difference: retail spills planes and keeps the buffer index unscaled (s7), the
-   and the interpolated colour is computed before the position and normal stores of the same
-   block. */
-void f_02b09c(unsigned int planes, TexNormVertex *out, const TexNormVertex *in, unsigned int *dl, int n,
-              TexNormVertex **outEnd, unsigned int **dlEnd)
+   Remaining difference: retail spills planes and keeps the buffer index unscaled (s7); the
+   rest is register allocation and scheduling that follows from it. */
+void f_02b09c(unsigned int planes, TexNormVertex *out, const TexNormVertex *in,
+              unsigned int *dl, int n, TexNormVertex **outEnd, unsigned int **dlEnd)
 {
     TexNormVertex buf[2][10];
     int cnt[2];
