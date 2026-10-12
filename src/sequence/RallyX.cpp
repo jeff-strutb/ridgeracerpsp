@@ -202,14 +202,17 @@ static inline void SelectStages()
     signed char hidden = D_2400c1;
     D_27ec75 = hidden;
     D_27ec74 = 0;
-    D_1d5a7c = hidden ? D_1d5910 : D_1d55ac;
+    Stage *list = D_1d5910;
+    if (!hidden)
+        list = D_1d55ac;
+    D_1d5a7c = list;
 }
 
 void f_02e380(void);
 void f_02e400(void);
 void f_02e704(void);
 
-/* @implements 0x02e264 us f_02e264
+/* @draft 0x02e264 us f_02e264
    WHAT IT DOES: Starts the mini game (in demo mode or not): clears the flags and counters,
    keeps the two high scores at least 20000 and 2000, clears the score board, selects the
    normal stages and enters the title state (or, in demo mode, starts a game at once), and
@@ -243,7 +246,7 @@ void f_02e264(int demo)
     D_1d1aa0 = f_093538(f_093330());
 }
 
-/* @implements 0x02e380 us f_02e380
+/* @draft 0x02e380 us f_02e380
    WHAT IT DOES: Starts a new game: three lives, no score, no extra life awarded, no new high
    score; unless a stage was chosen in stage select, starts from the first stage. Then starts
    the first round. */
@@ -266,7 +269,7 @@ static inline void Place(Car *c, short cx, short cy)
     c->y = cy * 384 + 192;
 }
 
-/* @implements 0x02e400 us f_02e400
+/* @draft 0x02e400 us f_02e400
    WHAT IT DOES: Starts a round of the current stage: loads its maze, puts the player's car at
    the maze start and each enemy car at its start cell with its driver (enemies 5 and 6 wait
    before leaving), then resets the round (f_02e704). */
@@ -343,7 +346,7 @@ void f_02e400(void)
     f_02e704();
 }
 
-/* @implements 0x02e664 us f_02e664
+/* @draft 0x02e664 us f_02e664
    WHAT IT DOES: Enters the title state: clears the hidden code progress and the chosen stage,
    and selects the current mode's stages. */
 void f_02e664(void)
@@ -353,10 +356,13 @@ void f_02e664(void)
     D_1d1a90 = 0;
     D_27ec75 = hidden;
     D_27ec74 = 0;
-    D_1d5a7c = hidden ? D_1d5910 : D_1d55ac;
+    Stage *list = D_1d5910;
+    if (!hidden)
+        list = D_1d55ac;
+    D_1d5a7c = list;
 }
 
-/* @implements 0x02e6ac us f_02e6ac
+/* @draft 0x02e6ac us f_02e6ac
    WHAT IT DOES: Enters the demo state: in the hidden mode, starts a round of its fifth stage. */
 void f_02e6ac(void)
 {
@@ -364,13 +370,16 @@ void f_02e6ac(void)
     if (hidden) {
         D_27ec75 = hidden;
         D_27ec74 = 0;
-        D_1d5a7c = hidden ? D_1d5910 : D_1d55ac;
+        Stage *list = D_1d5910;
+        if (!hidden)
+            list = D_1d55ac;
+        D_1d5a7c = list;
         D_27ec74 = 4;
         f_02e400();
     }
 }
 
-/* @implements 0x02e704 us f_02e704
+/* @draft 0x02e704 us f_02e704
    WHAT IT DOES: Resets the round after a start or a crash: every car back at its start cell
    facing the stage's directions, a full fuel gauge, the counters cleared, and the maze's
    display reset. */
@@ -434,7 +443,7 @@ void f_02e704(void)
     f_0e84b0();
 }
 
-/* @implements 0x02e8e8 us f_02e8e8
+/* @draft 0x02e8e8 us f_02e8e8
    WHAT IT DOES: Counts the fuel left into the score at the end of a round, 160 fuel units (8
    points) a frame. When asked to start, first remembers the gauge and the final score so the
    count can be skipped. Returns whether there was fuel left to count; with none, restores the
@@ -527,7 +536,7 @@ static inline bool Pressed(int pad)
     return pad != D_2402d4 && pad != 0;
 }
 
-/* @implements 0x02ec38 us f_02ec38
+/* @draft 0x02ec38 us f_02ec38
    WHAT IT DOES: The title state's update. Watches for the hidden code (Square, Up, Down, Down,
    Left, Right? pressed in turn) that unlocks stage select; L+R+Select toggles the hidden
    mode; in stage select, left and right choose the stage; Start begins the game. */
