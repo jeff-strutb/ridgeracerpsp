@@ -246,13 +246,14 @@ unsigned int *f_021798(int psm, unsigned int width, int height, unsigned int fbp
     return p;
 }
 
-/* @draft 0x021880 us f_021880
+/* @implements 0x021880 us f_021880
    WHAT IT DOES: writes the commands that point drawing back at the screen's back buffer
    (restoring the depth buffer, or depth writes and test if they were turned off), resets the
    scissor to the full screen, and closes the hand written call list there. */
 void f_021880(unsigned int *p)
 {
     unsigned int fbp = f_021d38();
+    unsigned int **prev;
 
     *p++ = 0xd2000000 | D_23c1c0;
     *p++ = 0x9c000000 | (fbp & 0xffffff);
@@ -261,14 +262,19 @@ void f_021880(unsigned int *p)
         *p++ = 0xe7000000;
         *p++ = 0x23000001;
     } else {
-        *p++ = 0x9e000000 | (D_23c1c8[2] & 0xffffff);
-        *p++ = 0x9f000000 | ((D_23c1c8[2] >> 24) << 16) | 512;
+        unsigned int zbp = D_23c1c8[2];
+
+        *p++ = 0x9e000000 | (zbp & 0xffffff);
+        *p++ = 0x9f000000 | ((zbp >> 24) << 16) | 512;
     }
     *p++ = 0xd4000000;
     *p++ = 0xd5000000 | 479 | (271 << 10);
     *p++ = 0xcc000000;
     *p++ = 0x0b000000;
-    Link(p);
+    p = f_022bc0(p);
+    prev = (unsigned int **)D_23c1b8;
+    D_23c1b8 = p;
+    *prev = p;
 }
 
 /* @implements 0x02199c us f_02199c
