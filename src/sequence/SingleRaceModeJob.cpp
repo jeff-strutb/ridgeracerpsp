@@ -492,6 +492,7 @@ int f_0151f4(void);
 int f_0151e8(void);
 int f_01c260(void);
 void f_01afa8(MemoryStick *);
+void f_01b4e8(MemoryStick *, int slot);
 int sprintf(char *, const char *, ...);
 void f_01833c(ScreenMgr *, ScreenReq *);
 void f_018380(ScreenMgr *, ResultMsg *);
@@ -1714,6 +1715,48 @@ void Sequence::CSingleRaceModeJob::f_00c4b4()
    WHAT IT DOES: An idle state. */
 void Sequence::CSingleRaceModeJob::f_00c538()
 {
+}
+
+/* @draft 0x00c540 us f_00c540
+   WHAT IT DOES: State 32: starts saving the race's ghost into the memory stick slot of the
+   course and car class, with a title naming the course, the car (and its class, unless it is
+   a special car) and the winning time in minutes, seconds and milliseconds, in the console's
+   language. */
+void Sequence::CSingleRaceModeJob::f_00c540()
+{
+    Row course, car;
+
+    FIND_SELECT(&course, D_2407a8, m15372);
+    FIND_SELECT(&car, D_240740, m15364);
+    char *p = D_2407a8.Field("SelectNum", course.rec);
+    int size = D_1a211c[1];
+    memcpy(D_24063c, p, size);
+    int c = D_24063c[0] - 1;
+    memcpy(D_24063c, D_240740.Field("Class", car.rec), size);
+    int time = D_240800.time[0] / 3;
+    int secs = time / 1000;
+    int minutes = time / 60000;
+    int ms = time - secs * 1000;
+    int s = secs - secs / 60 * 60;
+    int slot = c * 7 + (D_24063c[0] - 1);
+    memcpy(D_24063c, D_240740.Field("Class", car.rec), size);
+    if (D_24063c[0] == 7) {
+        int lang = f_01c260();
+        char *name = D_2407a8.Field("CourseName", course.rec);
+        sprintf(D_1edf84, D_1d12d8[lang], name, D_240740.Field("CarFullName", car.rec),
+                minutes, s, ms);
+    } else {
+        int lang = f_01c260();
+        char *name = D_2407a8.Field("CourseName", course.rec);
+        memcpy(D_24063c, D_240740.Field("Class", car.rec), size);
+        int cls = D_24063c[0];
+        sprintf(D_1edf84, D_1d12f4[lang], name, cls,
+                D_240740.Field("CarFullName", car.rec), minutes, s, ms);
+    }
+    D_23ba90.m20 = m16016;
+    D_23ba90.m24 = m16024;
+    D_23ba90.m28 = D_1edf84;
+    f_01b4e8(&D_23ba90, slot);
 }
 
 /* @implements 0x00c9c8 us f_00c9c8
