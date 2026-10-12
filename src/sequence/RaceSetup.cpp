@@ -1082,8 +1082,7 @@ struct Stream {
     unsigned int f_0162ec(unsigned char *dst, unsigned int n);
 };
 
-/* Retail 0x016280 (f_016280), byte-exact, not tagged here: the control set
-   (src/control/batch1.c) claims this address.
+/* @implements 0x016280 us f_016280
    WHAT IT DOES: Starts the stream at the beginning of the given buffer. */
 void Stream::f_016280(unsigned char *buf, unsigned int n)
 {

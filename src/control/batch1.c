@@ -15,14 +15,6 @@ void f_028eb4(void);
 void f_0ce068(int, int);
 void f_0f6ff0(int);
 
-/* @implements 0x016280 us f_016280 */
-void f_016280(int *p, int a, int b)
-{
-    p[2] = a;
-    p[0] = b;
-    p[1] = 0;
-}
-
 /* @implements 0x0299f8 us f_0299f8 */
 void f_0299f8(int *p, int a)
 {

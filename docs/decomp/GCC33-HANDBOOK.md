@@ -128,6 +128,13 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A two-value pointer select whose constants are reused only up to the join | write the dependent statements in both arms; cross-jumping merges the tails. A ternary gives no reuse; `x = A; if (!c) x = B;` reuses across a later call too | f_02048c |
 | A switch on `m & 0x7f` compiled as `slti v1,2` + `bnez` | the switch value a signed int; unsigned folds to `beqz` | f_02048c |
 | `addu v1,s8,v1` (offset register first) | the offset declared `short` | f_02048c |
+| An inline routine's output pointer kept in a saved register (`move s7,sp`, stores through it) | write through a reference parameter of an inline helper: `static inline void FindSelect(Name &out, ...) { out.Set(...); }` | f_014a4c, f_014b9c |
+| A table record read in a loop, the size table's base hoisted and no stray hoisted address | the record in its own variable: `void *rec = t.Get(...); memcpy(dst, rec, size);` | f_014a4c |
+| A lookup result stored to the stack and reloaded, then a second lookup into a slot | a `Name` type with a user copy constructor and a named-return `Find`: `Name n = Find(x); out = Find(n.a);` in an inline taking `Name &out` | f_014cf8 |
+| A value copied T to P on the stack, then `bnez` on P's first word | the inner lookup returns a POD row (no copy constructor) and an inline takes it by value plus an out reference | f_015ed8 |
+| Static init with one guard for all objects | the record has a user constructor and its arrays have POD elements; an element type with even an empty user constructor re-tests the guard | f_017868 |
+| A store right after a constructor, addressed by its own symbol | a separate global object with an inline constructor, not a member | f_017868 |
+| An `int` field read before a flag store, both before a destructor call | an early `if (!x) return 0;` rather than wrapping the body in `if (x) {...}` | f_017a20 |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
