@@ -3,7 +3,7 @@
 Entries come from evidence only:
   fde   an .eh_frame FDE (exact start and size)
   jal   the target of a relocated `jal`
-  pro   an `addiu sp,sp,-N` directly after a `jr ra` + delay slot (and any zero padding), inside a
+  pro   an `addiu sp,sp,-N` directly after an unconditional `jr ra`/`j`/`b` + delay slot (and any zero padding), inside a
         range no FDE covers. Catches static functions reached only by fallthrough-adjacent layout.
   ptr   an R_MIPS_32 word in .data/.rodata/.ctors/.dtors/.lib.ent/.rodata.sce* pointing into .text
         (vtable slots, callbacks, ctor lists). Pointers that land inside an FDE range are
@@ -54,7 +54,8 @@ def build(path):
                 ev.setdefault(t, set()).add('ptr')
     # prologue split: only where no FDE gives an exact extent
     for p in range(lo, hi - 8, 4):
-        if e.word(p) != 0x03e00008:  # jr ra
+        w = e.word(p)
+        if not (w == 0x03e00008 or w >> 26 == 2 or w >> 16 == 0x1000):  # jr ra, j, b (beq zero,zero)
             continue
         q = p + 8
         while q < hi and e.word(q) == 0:
