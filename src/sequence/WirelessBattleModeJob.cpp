@@ -986,7 +986,11 @@ void f_00e30c(void)
    or end the session (9). It previews the car the player points at, and when the player
    leaves the screen it ends the session (event 6); when the screen is done it takes the race
    settings, the random seeds, the course records and the player's car for the race and moves
-   on (event 4). */
+   on (event 4).
+   Remaining difference: control flow and every call match in order; the callee-saved
+   registers are numbered one off from retail (this in s5, retail s4), the racer copy loops
+   and the console list constructor are scheduled differently and the car lookup's null branch
+   does not become retail's branch-likely store (see f_010b4c). 6420 bytes against 6452. */
 void Sequence::CWirelessBattleModeJob::f_00e334()
 {
     m3204 = D_1e8ec4.Rand();
@@ -1557,7 +1561,10 @@ void Sequence::CWirelessBattleModeJob::f_01031c()
    car, finishing time, best laps, lap times and the course record, then ranks the consoles
    that finished (by gap to the winner; those that did not finish after them, by distance run)
    and shows the ranking with each player's car and gap. It counts a win when the player's
-   time is the winner's and a loss otherwise. */
+   time is the winner's and a loss otherwise.
+   Remaining difference: the car lookup's null branch (retail beqzl with the zero store in the
+   slot), the result message's store order and the sort's inner compare (retail beqzl that
+   assigns the best index in the slot) differ; 1856 bytes against 1868. */
 void Sequence::CWirelessBattleModeJob::f_010378()
 {
     int me = D_240800.me;
@@ -1674,7 +1681,10 @@ void Sequence::CWirelessBattleModeJob::f_010b44()
    course is picked (event 12); when the session is lost it ends it and goes back (event 7).
    Otherwise, once the screen has an answer: leaving with 3 or 0 and 2 ends the session and
    goes back to the menu (event 10), 4 enters the race (event 12) and 1 restarts the session as
-   host when it is not running. */
+   host when it is not running.
+   Remaining difference: retail keeps the session's address in s3 and this in s2 (here s4 and
+   s3), takes the car lookup's zero store into a branch-likely slot, and computes the
+   SelectNum size address after the Class call; 1640 bytes against 1592. */
 void Sequence::CWirelessBattleModeJob::f_010b4c()
 {
     if (D_241810.m4 == 1) {
