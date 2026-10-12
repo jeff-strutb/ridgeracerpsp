@@ -154,9 +154,18 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A parameter's register reused as a down-counter | the parameter itself reassigned (`n = (n + 7) >> 3`) | f_022f54 |
 | Mipmap command words as induction registers stepped by 0x1000000 | `((0xa0 + lv) << 24)`; `(lv << 24) + 0xa0000000` shares the shift and nothing is reduced | f_0235ac |
 | `bnezl`/`sll` in power-of-two and log2 helpers | `static inline` helpers with `break` | 0x023a20 |
+| Two independent loop-entry moves in the wrong order | read the field into a local before the copy (`char *f = lookup(...); memcpy(dst, f, n);`). sched1/sched2 tie and keep insn order, and loop hoisting follows the order in the body | f_00ca54 |
+| A 2D slot index with the -1 applied after the add | `int k = x - 1; int slot = c * 7 + k;`, before the arithmetic that follows | f_00c540 |
+| A remainder in a saved register that also holds its quotient | `secs % 60`, not `secs - secs/60*60` | f_00c540 |
+| A table entry's address formed right after a call, its load deferred past later calls | `const char **fmt = &T[f()]; ... sprintf(..., *fmt, ...)` | f_00c540 |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
+
+## Understood, not yet proven byte-exact
+
+- **`beqzl` with the not-found zero store in the slot, after a lookup.** Source: the field read after the lookup goes into a local before the copy, `char *f = f_0368e8(...); memcpy(D_24063c, f, D_1a211c[1]);`. Inline in the `memcpy` call, D_1a211c's address is built before the call and held in a saved register, and `dbr` then fills the branch from the found path. The lookup's own spelling does not matter. All four retail `beqzl` sites (f_010378, f_010b4c twice) now come out `beqzl`, but those functions still differ elsewhere. Single race lookups use plain `beqz` in retail too.
+- C++ inline functions with two `return`s were not inlined here (emitted out of line).
 
 ## Open residue (not understood; do not guess)
 
