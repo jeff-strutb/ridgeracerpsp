@@ -398,9 +398,12 @@ void CSaveStream::f_0192f8()
     f_019128(sig, (unsigned char *)&crc);
 }
 
-/* @implements 0x0193a8 us f_0193a8
+/* @draft 0x0193a8 us f_0193a8
    WHAT IT DOES: Reads every object back from the stream and checks the signature. Returns 0,
-   or -1 (with a message in the log) when an object's version or the signature is wrong. */
+   or -1 (with a message in the log) when an object's version or the signature is wrong.
+   Remaining difference: none in the code; the two log strings are followed in .rodata by
+   "Icon0" where retail has "MainMenuSwg", because f_01a91c still loads its strings in another
+   order. */
 int CSaveStream::f_0193a8()
 {
     unsigned char *sig = cur;
@@ -687,10 +690,14 @@ int Sequence::CGameSaveData::Save(CSaveStream *s)
     return 0;
 }
 
-/* @implements 0x019e7c us _ZN8Sequence13CGameSaveData4Load
+/* @draft 0x019e7c us _ZN8Sequence13CGameSaveData4Load
    WHAT IT DOES: Reads the saved game back from the stream. Returns -1 if the version byte is
    not this version's; otherwise skips the padding, clears the one value that must not
-   survive a load and sets miles for an English console. */
+   survive a load and sets miles for an English console.
+   Remaining difference (38 words): scheduling ties only; at four places (the third word of
+   each course record, m14852, m15696, m15748) retail stores the stream position after the
+   field, and in the block of single bytes after the records the two address registers a0/a1
+   are swapped. */
 int Sequence::CGameSaveData::Load(CSaveStream *s)
 {
     start = s->cur;
@@ -795,9 +802,11 @@ int Sequence::CReplaySaveData::Size()
     return size + 5;
 }
 
-/* @implements 0x01a7c4 us _ZN8Sequence15CReplaySaveData4Save
+/* @draft 0x01a7c4 us _ZN8Sequence15CReplaySaveData4Save
    WHAT IT DOES: Writes the replay into the stream: its version byte, its size and its
-   bytes. */
+   bytes.
+   Remaining difference (2 words): retail reloads the size before storing the stream position
+   after the size is written; here the two are in the other order. */
 int Sequence::CReplaySaveData::Save(CSaveStream *s)
 {
     start = s->cur;
@@ -841,11 +850,14 @@ int MemoryStick::f_01a90c()
     return result == 1;
 }
 
-/* @implements 0x01a91c us f_01a91c
+/* @draft 0x01a91c us f_01a91c
    WHAT IT DOES: Starts saving the game: writes the saved game into a new stream and opens the
    save dialog (automatic, or letting the player confirm) with the game's texts, the player's
    name and distance driven (in miles on an English console) and the menu package's icons and
-   picture. */
+   picture.
+   Remaining difference (29 words): register allocation; retail keeps "MainMenuSwg" in s2, the
+   package in s3 and the file table in s1 (the string's high part is hoisted early), here they
+   get s1, s2 and s3. The string order in .rodata follows from it. */
 void MemoryStick::f_01a91c(bool automatic)
 {
     char detail[1024];
@@ -978,9 +990,11 @@ int MemoryStick::f_01ae50()
     return r;
 }
 
-/* @implements 0x01afa8 us f_01afa8
+/* @draft 0x01afa8 us f_01afa8
    WHAT IT DOES: Starts saving a replay: writes it into a new stream and opens the save dialog
-   on a list of 99 slots, with the replay's texts and the result menu's icons and picture. */
+   on a list of 99 slots, with the replay's texts and the result menu's icons and picture.
+   Remaining difference (10 words): register allocation; retail keeps "ResultMenu" in s2 and
+   the file table in s1, here they are swapped. */
 void MemoryStick::f_01afa8()
 {
     char *ld = D_1dd6b0;
@@ -1096,10 +1110,11 @@ int MemoryStick::f_01b3b8()
     return r;
 }
 
-/* @implements 0x01b4e8 us f_01b4e8
+/* @draft 0x01b4e8 us f_01b4e8
    WHAT IT DOES: Starts saving a ghost to the given course's slot: writes it into a new stream
    and opens the save dialog with the ghost's texts and the result menu's icons and
-   picture. */
+   picture.
+   Remaining difference (18 words): the same register allocation difference as f_01afa8. */
 void MemoryStick::f_01b4e8(int slot)
 {
     char *ld = D_1dd6b0;
@@ -1328,9 +1343,11 @@ int MemoryStick::f_01bc5c()
 /* @implements 0x01be24 us _GLOBAL__I_
    WHAT IT DOES: The startup entry for this file's static data. */
 
-/* @implements 0x01be44 us _ZN8Sequence13CGameSaveDataaSERKS0_
+/* @draft 0x01be44 us _ZN8Sequence13CGameSaveDataaSERKS0_
    (the compiler emits it outside .text, in a link once section)
-   WHAT IT DOES: Copies a saved game, all but its vtable pointer. */
+   WHAT IT DOES: Copies a saved game, all but its vtable pointer.
+   Remaining difference (7 words): retail copies the word at +20 before the one at +16; the
+   member grouping that gives that order is not found. */
 
 /* @implements 0x01c1dc us _ZN8Sequence13CGameSaveData4SizeEv
    (the compiler emits it outside .text, in a link once section)
