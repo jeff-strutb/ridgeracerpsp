@@ -670,17 +670,14 @@ void f_014fb0(int course)
     D_1dd6b0.m276.Set(D_1ee1f0.seq);
 }
 
-/* @draft 0x0150a0 us f_0150a0
+/* @implements 0x0150a0 us f_0150a0
    WHAT IT DOES: Returns the course of the current race sequence: the course table row named by
-   the sequence's course number.
-   Remaining difference: the course row's slot is at sp+16 here and sp+32 in retail (retail
-   has one more 16 byte stack slot before it); the 4 words that address it differ. */
-Pair f_0150a0()
+   the sequence's course number. */
+RowRef f_0150a0()
 {
     Name seq = D_2407d0.Find((const char *)D_1ee1f0.seq.a);
     void *num = D_2407d0.Get("CourseNumber", (const char *)seq.a, 0);
-    Name course = D_2407a8.Find((const char *)num);
-    return course;
+    return D_2407a8.FindRow((const char *)num);
 }
 
 /* @implements 0x01515c us f_01515c
