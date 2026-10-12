@@ -11,3 +11,7 @@ addr,name,evidence
 0x013048,_ZN8Sequence14COptionModeJobC1Ev,as above for _ZTVN8Sequence14COptionModeJobE
 0x011b50,_ZN8Sequence16CSaveLoadModeJobC1Ev,as above for _ZTVN8Sequence16CSaveLoadModeJobE
 0x1521c8,_ZdaPv,operator delete[](void*): calls operator delete (0x1521a8) and returns, as libstdc++ del_opv does
+0x06c540,_ZN6Select9CBaseMenuC2Ev,base constructor called first by the Select::CLoading and CStartMenu constructors (0x018fcc and 0x01902c, byte exact in src/sequence/ScreenManager.cpp) before they store their own vptrs; class name from config/us/rtti.csv
+0x06c590,_ZN6Select9CBaseMenuD2Ev,base destructor called on the cleanup path of the static init at 0x018cac (byte exact)
+0x04a560,_ZN2An7CSwgSubC2Ev,constructor of the An::CSwgSub member called by the same two constructors after the base
+0x04a580,_ZN2An7CSwgSubD2Ev,its destructor on the same cleanup path

@@ -62,7 +62,7 @@ def compile_obj(src, cc, flags):
     cmd = (f'cd {ROOT} && rm -f {tmp}.s {tmp}.o && {driver} -S -Iinclude {flags} {rel} -o {tmp}.s && '
            f'{asm} -G0 {tmp}.s -o {tmp}.o && mv -f {tmp}.s {out}.s && mv -f {tmp}.o {out}.o')
     p = subprocess.run([os.path.join(ROOT, 'tools/toolchains/lima.sh'), 'sh', '-c', cmd],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, errors='replace')  # the VM's stderr is not always UTF-8
     if p.returncode != 0:
         subprocess.run([os.path.join(ROOT, 'tools/toolchains/lima.sh'), 'sh', '-c', f'cd {ROOT} && rm -f {tmp}.s {tmp}.o'])
         sys.stderr.write(p.stdout + p.stderr)

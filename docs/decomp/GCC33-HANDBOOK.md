@@ -135,6 +135,14 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | Static init with one guard for all objects | the record has a user constructor and its arrays have POD elements; an element type with even an empty user constructor re-tests the guard | f_017868 |
 | A store right after a constructor, addressed by its own symbol | a separate global object with an inline constructor, not a member | f_017868 |
 | An `int` field read before a flag store, both before a destructor call | an early `if (!x) return 0;` rather than wrapping the body in `if (x) {...}` | f_017a20 |
+| An object copy that leaves word 0 (the vptr) alone | a member type with an empty `operator=` (`struct VtPtr { void *p; VtPtr &operator=(const VtPtr&) { return *this; } };`); a shared word at +4 belongs to a base class, whose copy comes first | f_017e1c |
+| An implicit `operator=` called instead of inlined | it inlines only up to 22 member statements per class level; split larger ones with an intermediate base or array members | f_017e1c |
+| An 8-byte run of `lb` loads in a copy | a `char m[8]` array copied as a block; one `unsigned char` among `bool`s changes the load order | f_01808c, f_01833c |
+| A byte store addressed from the object base (`sb 472(v0)`) | the field belongs to the outer class, not its sub-object | f_017c88 |
+| `return 0` through v0 rather than a0 | one combined `if (!a \|\| !b) return 0;`; two early returns put it in a0 | f_01896c |
+| A step function with a single exit `move v0,s2` | `int r = f(); if (r) {...} return r;`; a success branch written first gives retail's block order | f_01abf4, f_01bc5c |
+| Byte stream writes and reads in retail's order | `Put8(int v) { *cur++ = v; }` with `Put32` built on it; `Get8() { return *cur++; }`; copy loops written as `*s->cur++ = x[i]` with the count and data pointer in locals | 0x01b... (CGameSaveData::Save) |
+| A random index keeping the seed's register | `int idx = Rand() % 10;` in its own variable | f_0196cc |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
