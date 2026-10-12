@@ -119,7 +119,7 @@ void f_006040(void)
     sceIoDevctl("mscmhc0:", 0x02015804, &cb, 4, 0, 0);
 }
 
-/* @draft 0x006094 us f_006094
+/* @implements 0x006094 us f_006094
    WHAT IT DOES: Returns the free space on the memory stick in kilobytes, or -1 when the stick
    cannot be asked. */
 int f_006094(void)
@@ -127,13 +127,19 @@ int f_006094(void)
     MsSize info;
     MsSize *p = &info;
     int cluster;
+    int ret;
 
-    if (sceIoDevctl("ms0:", 0x02425818, &p, 4, 0, 0) != 0)
+    ret = sceIoDevctl("ms0:", 0x02425818, &p, 4, 0, 0);
+    if (ret != 0)
         return -1;
     cluster = info.sectorSize * info.sectorCount;
-    if (cluster < 1024)
-        return info.freeClusters * cluster / 1024;
-    return info.freeClusters * (cluster / 1024);
+    if (cluster < 1024) {
+        ret = info.freeClusters * cluster / 1024;
+    } else {
+        cluster /= 1024;
+        ret = info.freeClusters * cluster;
+    }
+    return ret;
 }
 
 /* @implements 0x00612c us f_00612c
@@ -166,15 +172,17 @@ void CSaveData::f_0061a0(void *buf, int bufSize, int size)
     param.dataSize = size;
 }
 
-/* @draft 0x0061b0 us f_0061b0
+/* @implements 0x0061b0 us f_0061b0
    WHAT IT DOES: Sets the three texts the system shows for the save (the game title, the save's
    title and its details) and marks it suitable for all ages. */
 void CSaveData::f_0061b0(const char *title, const char *savedataTitle, const char *detail)
 {
-    memcpy(param.sfoParam.title, title, strlen(title) + 1);
-    memcpy(param.sfoParam.savedataTitle, savedataTitle, strlen(savedataTitle) + 1);
-    memcpy(param.sfoParam.detail, detail, strlen(detail) + 1);
-    param.sfoParam.parentalLevel = 1;
+    SavedataSFOParam *sfo = &param.sfoParam;
+
+    memcpy(sfo->title, title, strlen(title) + 1);
+    memcpy(sfo->savedataTitle, savedataTitle, strlen(savedataTitle) + 1);
+    memcpy(sfo->detail, detail, strlen(detail) + 1);
+    sfo->parentalLevel = 1;
 }
 
 /* @implements 0x006260 us f_006260
@@ -347,7 +355,7 @@ int CSaveData::f_006664()
     return sceUtilitySavedataInitStart(&param);
 }
 
-/* @draft 0x006680 us f_006680
+/* @implements 0x006680 us f_006680
    WHAT IT DOES: Advances the save data dialog by one frame (not while the game is held). When
    the dialog has closed it keeps the outcome and returns 1; while it is on screen it draws it;
    when the player has finished it starts closing it. */
@@ -360,15 +368,19 @@ int CSaveData::f_006680()
     f_021b9c();
     r = 0;
     switch (sceUtilitySavedataGetStatus()) {
-    case 0:
-        result = param.result;
-        r = 1;
+    case 1:
         break;
     case 2:
         r = sceUtilitySavedataUpdate(1);
         break;
+    case 0:
+        result = param.result;
+        r = 1;
+        break;
     case 3:
         r = sceUtilitySavedataShutdownStart();
+        break;
+    case 4:
         break;
     }
     return r;
