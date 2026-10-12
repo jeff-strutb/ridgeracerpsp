@@ -262,7 +262,7 @@ void Sequence::CTitleModeJob::Begin()
     m60 = 1;
 }
 
-/* @draft 0x006f34 us _ZN8Sequence13CTitleModeJob4StepEv
+/* @implements 0x006f34 us _ZN8Sequence13CTitleModeJob4StepEv
    WHAT IT DOES: Runs one frame of the title screen, unless the game is paused: on the first
    frame of a state it sends the script the enter event, then the per frame event, and counts
    the frames spent in the state. It then updates the screen. */
@@ -301,13 +301,16 @@ void Sequence::CTitleModeJob::End()
 }
 
 /* @draft 0x0070ec us f_0070ec
-   WHAT IT DOES: State 0: saves two game state words, then opens the title screen layer. */
+   WHAT IT DOES: State 0: saves two game state words, then opens the title screen layer.
+   Remaining difference (4 words): the two loads from D_233f70 and the two stores to D_1d1a94
+   come out second word first; retail does the first word first. sched2 ranks the second
+   load higher because its store's base register (v0) is reused right after the constructor
+   call. The statement order, temporaries, an array, a struct copy (wrong base: D_233f70+12)
+   and an inline setter all give the same order. */
 void Sequence::CTitleModeJob::f_0070ec()
 {
-    int b = D_233f70.m16;
-    int a = D_233f70.m12;
-    D_1d1a94.a = a;
-    D_1d1a94.b = b;
+    D_1d1a94.a = D_233f70.m12;
+    D_1d1a94.b = D_233f70.m16;
     LayerMsg msg;
     msg.m12 = 1;
     msg.m8 = 0;
@@ -333,8 +336,8 @@ void Sequence::CTitleModeJob::f_007178()
 }
 
 /* @implements 0x00725c us f_00725c
-   WHAT IT DOES: State 2: reads the save data; on failure it remembers the error and uses 0.
-   Then it starts watching the memory stick. */
+   WHAT IT DOES: State 2: reads the free space on the memory stick in kilobytes (0, with an
+   error flag, when the stick cannot be asked), then starts the memory stick check. */
 void Sequence::CTitleModeJob::f_00725c()
 {
     m244 = 0;
@@ -347,10 +350,17 @@ void Sequence::CTitleModeJob::f_00725c()
 }
 
 /* @draft 0x0072b0 us f_0072b0
-   WHAT IT DOES: State 3: when the memory stick check is done, decides how the title goes on:
-   with no memory stick inserted it asks for one (event 4); otherwise it tells the screen layer
-   which start the player gets (0 normal, 1 after a save data error, 2 with fewer than 700
-   saved), marks the game state and notifies the screen (event 3). */
+   WHAT IT DOES: State 3: when the memory stick check has finished, decides what the title
+   tells the player: nothing special (0) when the check reports its first result; a stick
+   that could not be read (1, also forgetting the insertion); otherwise, with no stick it
+   opens the message dialog instead (event 4), and with less than 700 KB free it warns (2).
+   It then starts the title layer with that notice, marks the game state and notifies the
+   screen (event 3).
+   Remaining difference (9 words, all in the shared tail): global allocation gives the
+   D_233f70 base s3 and the notice's address s1 (retail: s1 and s3, the notice ranked lower),
+   and the D_233f70.m14808 store then lands in the notice constructor's delay slot instead of
+   before it. A pointer local for D_233f70, bool fields and out of line constructors do not
+   change it. */
 void Sequence::CTitleModeJob::f_0072b0()
 {
     if (!f_01ae50(&D_23ba90))
