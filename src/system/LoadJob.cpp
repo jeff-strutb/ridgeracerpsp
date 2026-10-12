@@ -173,14 +173,17 @@ struct Lz {
     void f_002fe8(unsigned char **dst, unsigned char **src);
 };
 
-/* @implements 0x002edc us f_002edc
-   WHAT IT DOES: Unpacks a compressed block, 100 steps at a time, until it is done or the time
-   budget (in microseconds) runs out. Returns whether the block is finished. */
+/* The system clock, read through memory. */
 static inline unsigned int Now()
 {
     volatile unsigned int t = sceKernelGetSystemTimeLow();
     return t;
 }
+
+/* @implements 0x002edc us f_002edc
+   WHAT IT DOES: Unpacks a compressed block, 100 steps at a time, until it is done or the time
+   budget (in microseconds) runs out. Returns whether the block is finished.
+   An inline function emitted out of line, so retail places it after the constructors. */
 inline int f_002edc(Unpack *u, int budget)
 {
     Lz lz;
@@ -470,7 +473,11 @@ void System::CLoadJob::Begin()
    WHAT IT DOES: Runs once per frame. It services system callbacks and the unpack queue; when a
    read has finished it records the result (a single file is ready, a package's files are
    placed, or a compressed package is queued for unpacking) and then starts the next queued
-   read, from RRP.DAT or from a loose file. Never reports itself finished. */
+   read, from RRP.DAT or from a loose file. Never reports itself finished.
+   Remaining difference: the delay slot of the empty ring test takes the return path's
+   lw ra (one word longer), the slot address is formed base first (addu a2,s1,v0, retail
+   addu a2,v0,s1), and the package loop counter lands in s2 instead of s3. The pointer r
+   to cur reproduces retail's s2 = this+4 on every path into the start code. */
 int System::CLoadJob::Step()
 {
     Request *r;
@@ -500,9 +507,11 @@ int System::CLoadJob::Step()
     }
     r = &cur;
     if (!ring.Empty()) {
-        busy = 1;
+        int mode;
         *r = ring.Front();
-        if (D_1b8c00 == 2)
+        mode = D_1b8c00;
+        busy = 1;
+        if (mode == 2)
             f_0019f4(cur.buf, cur.sector, cur.sectors);
         else
             f_0017d4(cur.buf, cur.name, cur.size);
@@ -773,7 +782,10 @@ void f_0026cc(PackageLoader *l)
 /* @draft 0x002734 us f_002734
    WHAT IT DOES: Queues the read of a package from RRP.DAT unless all its files are already
    placed. A compressed package is read to the end of its buffer, to be unpacked to the start.
-   Unless asked not to, it waits for the loading to finish. */
+   Unless asked not to, it waits for the loading to finish.
+   Remaining difference: register allocation only. The file count is computed into v1
+   (retail a0, with the pointer in v1), and the request fields are loaded with lhu and
+   stored in a different order than retail's lh loads. */
 void f_002734(PackageLoader *l, unsigned char nowait)
 {
     int n = -(D_1b8c04[l->package].first - D_1b8c04[l->package].last);
@@ -897,7 +909,10 @@ void *f_002e5c(FileLoader *l)
 }
 
 /* @draft 0x002e64 us __static_initialization_and_destruction_0
-   WHAT IT DOES: Constructs the unpack queue and the load job, both empty. */
+   WHAT IT DOES: Constructs the unpack queue and the load job, both empty.
+   Remaining difference: the seven stores are scheduled in another order (retail: ring tail,
+   queue flag, queue head, queue tail, vptr, busy, ring head; here the vptr comes first).
+   Constructor spellings, member init lists and declaration orders were tried. */
 
 /* @implements 0x002ebc us _GLOBAL__I
    WHAT IT DOES: Runs the constructors of this object file's globals at startup. */
