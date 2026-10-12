@@ -110,6 +110,8 @@ struct Choice3 {
     int c;
 };
 
+extern int D_1ee1a4;
+
 /* The race setup record (652 bytes; saved and loaded byte for byte). */
 struct RaceSetup {
     Name seq;
@@ -147,6 +149,7 @@ struct RaceSetup {
     int m648;
 
     inline void SetOptions();
+    void SetMode() { m588 = D_1ee1a4; }
     void ClearPlayer(int i)
     {
         m48[i] = -1;
@@ -177,12 +180,24 @@ struct Ghost {
     int m36;
     int m40;
 };
+/* The result of a race. */
+struct RaceResult {
+    int times[8];
+};
+
 /* The rules object of the race being run, made for the race's mode. */
 class CRaceRule {
 public:
     virtual ~CRaceRule();
     virtual void v8();
-    virtual void *v12();
+    virtual struct RaceResult *v12();
+    struct RaceResult *Result()
+    {
+        struct RaceResult *r = v12();
+        if (!r)
+            return 0;
+        return r;
+    }
     virtual void v16();
     int m4[5];
     int m24;
@@ -196,6 +211,48 @@ public:
     int m76;
 };
 extern CRaceRule *D_1ee47c;
+
+/* The course display object, reached through its accessor. */
+class CCourseView {
+public:
+    virtual void v0();
+    virtual void v4();
+    virtual void v8();
+    virtual void v12();
+    virtual void v16();
+    virtual void v20();
+    virtual void v24();
+    virtual void v28();
+    virtual void v32();
+    virtual void v36();
+    virtual void v40();
+    virtual void v44();
+    virtual void v48();
+    virtual void v52();
+    virtual void v56();
+    virtual void v60();
+    virtual void v64();
+    virtual void v68();
+    virtual void v72();
+    virtual void v76();
+    virtual void *v80();
+};
+inline CCourseView *f_017970();
+
+extern "C" {
+void f_01797c(void);
+int f_017a20(void);
+void f_017ad8(void);
+int f_0967c4(void *);
+int f_077d38(void *, int);
+CRaceRule *f_0396b0(int mode);
+void f_0292fc(void *);
+void f_038828(void);
+}
+void f_038780(const Name &seq);
+extern char D_242cb0[];
+extern char D_23c820[];
+extern int D_1d3d3c;
 
 /* A ghost record: the recorded runs of up to 16 cars. */
 struct GhostTrack {
@@ -749,4 +806,174 @@ void f_015ec0()
    WHAT IT DOES: Nothing. */
 void f_015ed0()
 {
+}
+
+void f_01614c(int unused);
+void f_01619c();
+
+/* @draft 0x015ed8 us f_015ed8
+   WHAT IT DOES: Starts the rules of the race about to be run. It looks up the course, starts the
+   effects, picks the background music (the fixed one in the attract demo, otherwise the one the
+   course view chooses for the course), loads the sequence and makes the rules object for the
+   sequence's race mode. */
+void f_015ed8()
+{
+    Name seq = D_2407d0.Find((const char *)D_1ee1f0.seq.a);
+    void *num = D_2407d0.Get("CourseNumber", (const char *)seq.a, 0);
+    Name course;
+    Lookup2(course, D_2407a8.Find((const char *)num));
+    f_01614c(0);
+    if (D_1ee198 == -1) {
+        if (f_0967c4(D_242cb0) == 1) {
+            D_1d3d3c = 27;
+        } else {
+            void *v = f_017970()->v80();
+            void *rec = D_2407a8.Get("SelectNum", (const char *)course.a, 0);
+            memcpy(D_24063c, rec, D_1a211c[1]);
+            D_1d3d3c = f_077d38(v, D_24063c[0]);
+        }
+    }
+    f_038780(seq);
+    void *rec = D_2407d0.Get("SequenceNumber", (const char *)seq.a, 0);
+    memcpy(D_24063c, rec, D_1a211c[1]);
+    D_1ee47c = f_0396b0(D_24063c[0]);
+}
+
+/* @draft 0x0160bc us f_0160bc
+   WHAT IT DOES: Copies the chosen option into the setup and tells the rules object the race is
+   starting.
+   Remaining difference: retail forms the setup's full address (addiu) and stores at +588;
+   this build folds the offset into the %lo of the store (one word shorter). */
+void f_0160bc()
+{
+    CRaceRule *r = D_1ee47c;
+    D_1ee1f0.SetMode();
+    r->v8();
+}
+
+/* @draft 0x0160fc us f_0160fc
+   WHAT IT DOES: Asks the rules object for its result; none (0) when it has none.
+   Remaining difference: retail tests with bnez and fills the slot with the result copy,
+   then zeroes on the fall through; this build tests with beqz (the two moves swap). */
+RaceResult *f_0160fc()
+{
+    return D_1ee47c->Result();
+}
+
+/* @implements 0x016138 us f_016138
+   WHAT IT DOES: Tells the rules object the race has been abandoned. */
+void f_016138()
+{
+    D_1ee47c->m24 = 1;
+}
+
+/* @implements 0x01614c us f_01614c
+   WHAT IT DOES: Starts the race effects. */
+void f_01614c(int unused)
+{
+    f_01797c();
+}
+
+/* @implements 0x016168 us f_016168
+   WHAT IT DOES: Lets the rules object finish its result, then steps the race effects. */
+void f_016168()
+{
+    D_1ee47c->v12();
+    f_017a20();
+}
+
+/* @implements 0x01619c us f_01619c
+   WHAT IT DOES: Stops the race effects. */
+void f_01619c()
+{
+    f_017ad8();
+}
+
+/* @implements 0x0161b8 us f_0161b8
+   WHAT IT DOES: Ends the race in the rules object and keeps its results in the setup: the
+   rival record and the ghost, and (unless the race came from a replay) the best lap and time. */
+void f_0161b8()
+{
+    D_1ee47c->v16();
+    CRaceRule *r = D_1ee47c;
+    D_1ee1f0.m28 = r->m64;
+    D_1ee1f0.m568 = r->m60;
+    if (D_1ee1f0.m24 == 0) {
+        D_1ee1f0.m572 = r->m72;
+        D_1ee1f0.m576 = r->m76;
+    }
+}
+
+/* @implements 0x016220 us f_016220
+   WHAT IT DOES: Ends the race: stops the effects, deletes the rules object and frees the race
+   resources. */
+void f_016220()
+{
+    f_01619c();
+    if (D_1ee47c)
+        delete D_1ee47c;
+    D_1ee47c = 0;
+    f_0292fc(D_23c820);
+    f_038828();
+}
+
+/* A byte stream over a buffer of a known size. */
+struct Stream {
+    unsigned int size;
+    unsigned int pos;
+    unsigned char *p;
+
+    void f_016280(unsigned char *buf, unsigned int n);
+    unsigned int f_016290(const unsigned char *src, unsigned int n);
+    unsigned int f_0162ec(unsigned char *dst, unsigned int n);
+};
+
+/* Retail 0x016280 (f_016280), byte-exact, not tagged here: the control set
+   (src/control/batch1.c) claims this address.
+   WHAT IT DOES: Starts the stream at the beginning of the given buffer. */
+void Stream::f_016280(unsigned char *buf, unsigned int n)
+{
+    p = buf;
+    size = n;
+    pos = 0;
+}
+
+/* @implements 0x016290 us f_016290
+   WHAT IT DOES: Writes up to n bytes into the stream (as many as fit) and returns how many. */
+unsigned int Stream::f_016290(const unsigned char *src, unsigned int n)
+{
+    unsigned int i;
+    unsigned int k = size - pos;
+
+    if (n < k)
+        k = n;
+    for (i = 0; i < k; i++)
+        *p++ = *src++;
+    pos += k;
+    return k;
+}
+
+/* @implements 0x0162ec us f_0162ec
+   WHAT IT DOES: Reads up to n bytes from the stream (as many as are left) and returns how many. */
+unsigned int Stream::f_0162ec(unsigned char *dst, unsigned int n)
+{
+    unsigned int i;
+    unsigned int k = size - pos;
+
+    if (n < k)
+        k = n;
+    for (i = 0; i < k; i++)
+        *dst++ = *p++;
+    pos += k;
+    return k;
+}
+
+/* The course display object. */
+extern CCourseView D_22fdbc;
+
+/* @implements 0x017970 us f_017970
+   WHAT IT DOES: Returns the course display object. */
+inline CCourseView *f_017970()
+{
+    return &D_22fdbc;
 }
