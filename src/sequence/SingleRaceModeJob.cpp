@@ -477,6 +477,24 @@ struct Param {
 };
 extern Param D_1dd7c4;
 
+/* A record of a lookup returned by value. */
+struct Rec {
+    char *rec;
+    int m4;
+};
+
+/* The record of the course the player chose. */
+inline Rec ChosenCourse(Param sel)
+{
+    Rec r;
+    char *n = D_2407d0.Field("CourseNumber", (char *)sel.a);
+    if (n)
+        r.rec = f_036984(&D_2407a8, n, 0, D_2407a8.index, D_2407a8.count);
+    else
+        r.rec = 0;
+    return r;
+}
+
 extern "C" {
 void f_003150(char *seq, int i, Row *p);
 void f_0030c8(char *seq, int n);
@@ -1662,17 +1680,13 @@ void Sequence::CSingleRaceModeJob::f_00c0bc()
 /* @draft 0x00c0c4 us f_00c0c4
    WHAT IT DOES: State 29: starts saving the race's ghost to the memory stick, with a title
    naming the course, the car (and its class, unless it is a special car) and the finishing
-   time in minutes, seconds and milliseconds, in the console's language. */
+   time in minutes, seconds and milliseconds, in the console's language.
+   Remaining difference (5 words at +0x98): retail loads the car table's count (lw v0,8(a0))
+   before the course copy's first store (sw v1,0(sp)); here sched2 issues the store first
+   (it has the higher priority through the copy's second word and the m15364 load). */
 void Sequence::CSingleRaceModeJob::f_00c0c4()
 {
-    Param seq = D_1dd7c4;
-    char *r = D_2407d0.Field("CourseNumber", (char *)seq.a);
-    Row crs;
-    if (r)
-        crs.rec = f_036984(&D_2407a8, r, 0, D_2407a8.index, D_2407a8.count);
-    else
-        crs.rec = 0;
-    Row course = crs;
+    Rec course = ChosenCourse(D_1dd7c4);
     Row carRow;
     FIND_SELECT(&carRow, D_240740, m15364);
     int time = D_240800.time[D_240800.me] / 3;
@@ -1680,12 +1694,13 @@ void Sequence::CSingleRaceModeJob::f_00c0c4()
     int minutes = time / 60000;
     int ms = time % 1000;
     int s = secs % 60;
+    char *p = D_240740.Field("Class", carRow.rec);
     int size = D_1a211c[1];
-    memcpy(D_24063c, D_240740.Field("Class", carRow.rec), size);
+    memcpy(D_24063c, p, size);
     if (D_24063c[0] == 7) {
-        int lang = f_01c260();
+        const char **fmt = &D_1d12d8[f_01c260()];
         char *name = D_2407a8.Field("CourseName", course.rec);
-        sprintf(D_1edf84, D_1d12d8[lang], name, D_240740.Field("CarFullName", carRow.rec),
+        sprintf(D_1edf84, *fmt, name, D_240740.Field("CarFullName", carRow.rec),
                 minutes, s, ms);
     } else {
         const char **fmt = &D_1d12f4[f_01c260()];
