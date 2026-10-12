@@ -361,14 +361,14 @@ int System::CMainLoopJob::Step()
     n = 0;
     f_001154(true);
     D_1b8bfc = 1;
-    while (n < 3) {
+    do {
         sceKernelGetSystemTimeLow();
         n++;
-        if (f_000fcc(D_1b8bfc) == 0)
-            break;
+        if (!f_000fcc(D_1b8bfc))
+            return 0;
         f_001154(false);
-        D_1b8bfc = D_1b8bfc + 1;
-    }
+        D_1b8bfc++;
+    } while (n < 3);
     return 0;
 }
 
