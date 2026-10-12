@@ -101,6 +101,15 @@ def locate(obj, syms, tg):
 DATA_SECTIONS = ('.rodata', '.data', '.bss', '.sdata', '.sbss', '.gnu.linkonce.r', '.gnu.linkonce.d', '.gnu.linkonce.b')
 
 NAMED = re.compile(r'(?<![A-Za-z_])[fD]_([0-9a-f]{6})(?![0-9a-f])')  # also inside a C++ mangled name
+MANGLED = re.compile(r'(?<![0-9])8[fD]_([0-9a-f]{6})')  # <length 8><identifier> in a mangled name
+
+
+def named_addr(name):
+    """The address in an f_XXXXXX / D_XXXXXX name, plain or inside a C++ mangled name, else None.
+    In `_Z8f_118a54ff` the parameter codes `ff` follow the address directly; there the mangled
+    length prefix (8) is what delimits the identifier."""
+    m = NAMED.search(name) or MANGLED.search(name)
+    return int(m.group(1), 16) if m else None
 
 
 def _libsyms():
@@ -169,13 +178,13 @@ class Resolver:
         """('addr', a) | ('data', secidx, offset) | ('unresolved', why)."""
         s = self.syms[symidx]
         add = self.addend(sec, off, rtype)
-        m = NAMED.search(s['name'])
+        m = named_addr(s['name'])
         if s['name'] in LIBSYMS:
             return ('addr', LIBSYMS[s['name']] + add)
         if s['name'] in self.n2a:
             return ('addr', self.n2a[s['name']] + add)
-        if m:
-            return ('addr', int(m.group(1), 16) + add)
+        if m is not None:
+            return ('addr', m + add)
         if s['shndx'] and s['shndx'] < len(self.obj.sh):
             nm = self.obj.names[s['shndx']]
             val = s['value'] + add

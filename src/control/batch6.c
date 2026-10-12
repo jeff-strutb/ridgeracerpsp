@@ -66,42 +66,6 @@ int f_01b91c(struct P1b9 *p)
     return r;
 }
 
-/* ---- 0x022848 ---- */
-struct V228 { unsigned int x, y, z, w; };
-unsigned char *f_021b38(unsigned int);
-void f_116898(int);
-void f_1181c0(int);
-void f_116dfc(int, int, unsigned int, void *, void *);
-
-static __inline__ void put32(unsigned char *d, int o, unsigned int v)
-{
-    d[o + 0] = v;
-    d[o + 1] = v >> 8;
-    d[o + 2] = v >> 16;
-    d[o + 3] = v >> 24;
-}
-
-/* @implements 0x022848 us f_022848 */
-void f_022848(struct V228 *src, unsigned int n, int c)
-{
-    unsigned char *buf = f_021b38(n * 12);
-    unsigned char *d = buf;
-    unsigned int i;
-    for (i = 0; i < n; i++) {
-        put32(d, 0, src->x);
-        put32(d, 4, src->y);
-        put32(d, 8, src->z);
-        src++;
-        d += 12;
-    }
-    f_116898(5);
-    f_116898(7);
-    f_116898(9);
-    f_116898(10);
-    f_1181c0(c);
-    f_116dfc(4, 384, n, 0, buf);
-}
-
 /* ---- 0x03dd70 ---- */
 extern char D_1a2720[];
 void f_038bd0(void *);

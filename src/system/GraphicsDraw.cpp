@@ -285,7 +285,7 @@ void f_022738(const Vec4 *v, unsigned int n, unsigned int color)
     f_116dfc(2, 384, n, 0, buf);
 }
 
-/* Retail 0x022848, f_022848: byte-exact here, but its tag stays in src/control/batch6.c.
+/* @implements 0x022848 us f_022848
    WHAT IT DOES: draws a triangle strip in one colour through n points given as floating point
    vectors, with depth test, blending, texturing and fog off. */
 void f_022848(const Vec4 *v, unsigned int n, unsigned int color)

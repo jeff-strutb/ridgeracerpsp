@@ -9,6 +9,8 @@ Entries come from evidence only:
         (vtable slots, callbacks, ctor lists). Pointers that land inside an FDE range, and the
         words of a jump table (a table whose address is loaded by `lui`+`addiu`/`lw` shortly
         before a `jr` on a register other than ra), are case labels, not entries, and are ignored.
+  tail  code directly after an FDE function's extent (past zero padding) that nothing else
+        claims: the FDE proves the previous function ends there.
   split a function without an FDE ends after the delay slot of a `jr ra` or `j` that no earlier
         branch of the function jumps past; code after that (other than zero padding) is the
         next function (identical leaf functions laid out back to back, empty functions).
@@ -111,6 +113,16 @@ def build(path):
         elif r['type'] == R_32 and not (lo <= r['at'] < hi) and not in_fde(t) and r['at'] not in jt:
             if e.names[[i for i, s in enumerate(e.sh) if s[3] <= r['at'] < s[3] + s[5] and s[2] & 2][-1]] != '.eh_frame':
                 ev.setdefault(t, set()).add('ptr')
+    # tail: code right after an FDE function (past any zero padding) that no other evidence
+    # claims is a function of its own; an FDE gives its function's exact extent, so nothing
+    # else can own those words (leaf functions without unwind info, reached only by pointer
+    # or not at all)
+    for st in starts:
+        q = st + fde[st]
+        while q < hi and e.word(q) == 0:
+            q += 4
+        if q < hi and q not in ev and not in_fde(q) and q not in fde:
+            ev.setdefault(q, set()).add('tail')
     # prologue split: only where no FDE gives an exact extent
     for p in range(lo, hi - 8, 4):
         w = e.word(p)

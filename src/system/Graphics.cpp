@@ -400,14 +400,14 @@ void f_021cb8(void)
     f_115f60();
 }
 
-/* Retail 0x021cf8 (not in config/us/funcs.csv, so it cannot be tagged)
+/* @implements 0x021cf8 us f_021cf8
    WHAT IT DOES: returns the video memory offset of the buffer shown this frame. */
 unsigned int f_021cf8(void)
 {
     return D_23c1c8[D_23c1c4];
 }
 
-/* Retail 0x021d18 (not in config/us/funcs.csv, so it cannot be tagged)
+/* @implements 0x021d18 us f_021d18
    WHAT IT DOES: returns the address of the buffer shown this frame. */
 void *f_021d18(void)
 {

@@ -121,6 +121,13 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A word updated in one read-modify-write (`lhu` low half, `addu` high, `and 0xffff8000`, `addu` low) | hand-packed arithmetic on a plain unsigned int: `w = (w & 0xffff) + (hi << 16); w = (w & 0xffff8000) + lo;` (bitfields give `or`/`sh` chains) | f_00e238 |
 | A store kept before a global load even though it is overwritten later | read the global through a local pointer: `int *p = &D; m68 = 0; m360 = *p;` | 0x011ea4 |
 | Adjacent words zeroed as base+`%lo` and `4(reg)` pairs | `memset` of each small array, defined in the file (word aligned) rather than `extern` | f_00e12c |
+| `move aN,v0` after a call, the result kept in the argument's register | assign the result back into the variable passed in: `p = f(p);` (in an inline helper, the helper's own parameter) | f_0216e8, f_021750, f_0213a0 |
+| An aligned width or-ed into its own register (`or a1,a1,v0`) | the plain variable first: `K \| (bw \| ((fbp >> 24) << 16))` | f_021798 |
+| A null test with the zero case placed last and the other arm's increment hoisted | declare the argument a pointer and write `if (p == 0) {...} else {...}` | f_021798 |
+| Byte stores of a constant 16-bit field using its low byte directly (`li 16`, not `li 272`) | `__attribute__((packed))` vertex structs written field by field (an alternative to the put16/put32 helper row above; source arrays stay unpacked) | f_02202c |
+| A two-value pointer select whose constants are reused only up to the join | write the dependent statements in both arms; cross-jumping merges the tails. A ternary gives no reuse; `x = A; if (!c) x = B;` reuses across a later call too | f_02048c |
+| A switch on `m & 0x7f` compiled as `slti v1,2` + `bnez` | the switch value a signed int; unsigned folds to `beqz` | f_02048c |
+| `addu v1,s8,v1` (offset register first) | the offset declared `short` | f_02048c |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
@@ -151,7 +158,7 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 
 ## Map defects seen
 
-Fixed in `tools/analysis/funcmap.py`: jump-table case labels taken for functions (f_006978), and back-to-back leaf functions merged (0x006018 + 0x006024, 0x0992fc + 0x099328, the three empty functions at 0x099354). Earlier: `config/us/funcs.csv` merged two functions when the second has no FDE, no `jal` and no pointer reference: 0x119dc8 + 0x119e38, and 0x12f1c4 + 0x12f264 (newlib `ratio` + `_mprec_log10`). The fix is a prologue (`addiu sp,sp,-N`) split after `jr ra` + slot.
+Fixed in `tools/analysis/funcmap.py`: leaf functions directly after an FDE function and claimed by nothing else (0x021cf8, 0x021d18; 328 in all), jump-table case labels taken for functions (f_006978), and back-to-back leaf functions merged (0x006018 + 0x006024, 0x0992fc + 0x099328, the three empty functions at 0x099354). Earlier: `config/us/funcs.csv` merged two functions when the second has no FDE, no `jal` and no pointer reference: 0x119dc8 + 0x119e38, and 0x12f1c4 + 0x12f264 (newlib `ratio` + `_mprec_log10`). The fix is a prologue (`addiu sp,sp,-N`) split after `jr ra` + slot.
 
 ## Library code
 

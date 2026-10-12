@@ -10,7 +10,7 @@ void f_116258(void);
 extern void *D_23c1a8[2];
 extern unsigned int D_23c1b0;
 
-/* Retail 0x022b78, f_022b78: byte-exact here, but its tag stays in src/control/batch1.c.
+/* @implements 0x022b78 us f_022b78
    WHAT IT DOES: opens a direct display list. It passes the address of the table of the two
    list buffers, not a buffer itself, as the list memory. */
 void f_022b78(void)

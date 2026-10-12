@@ -23,9 +23,6 @@ void f_016280(int *p, int a, int b)
     p[1] = 0;
 }
 
-/* @implements 0x022b78 us f_022b78 */
-void f_022b78(void) { f_115f8c(0, D_23c1a8, D_23c1b0); }
-
 /* @implements 0x0299f8 us f_0299f8 */
 void f_0299f8(int *p, int a)
 {
