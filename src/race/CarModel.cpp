@@ -224,8 +224,9 @@ struct CCarState {
     int m128;
     char m132[124];
     Vec4 wheelPos[4];
+    char m320[64];
     Vec4 wheelRot[4];
-    char m320[256];
+    char m448[128];
     Mat world;
     char m640[1088];
     float m1728;
@@ -719,7 +720,10 @@ static inline void VWheelScale(const Vec4 *scale)
    matrix, computes the model's world matrix and its inverse, builds the light matrices from
    the given position, velocity and lighting, then builds every wheel's matrices (the front
    wheels steer; how much depends on the model's steering mode) and the two steering
-   knuckles, the shadow vectors, and restores the matrix. */
+   knuckles, the shadow vectors, and restores the matrix.
+   Remaining difference: CSE keeps the body matrix and inverse addresses (this+432, this+368)
+   in saved registers across the calls; retail recomputes each address before use, so its
+   frame saves two registers fewer. */
 void CCarModel::f_01e14c(Mat *world, void *p, void *v, void *c)
 {
     Vec4 tmp;
@@ -870,7 +874,10 @@ static inline unsigned char Level(float f)
    hidden or braking, the drift light level (from the slip angle), the brake, head and reverse
    light levels, the steering in one mode and the engine glow in another, the body and inverse
    matrices, the light matrices (moving the light along the velocity), then every wheel's
-   matrices and the steering knuckles. */
+   matrices and the steering knuckles.
+   Remaining difference: as in f_01e14c (matrix addresses held across calls), plus retail
+   reads the car state word at +2112 with lw where this build narrows it to lbu; the soft
+   double helpers __ltdf2 (0x164bc0) and __truncdfsf2 (0x164f7c) are not in libfuncs.csv. */
 void CCarModel::f_01e648(CCarState *s, Mat *world, Vec4 *p, Vec4 *v, void *c)
 {
     Vec4 tmp;
@@ -879,8 +886,9 @@ void CCarModel::f_01e648(CCarState *s, Mat *world, Vec4 *p, Vec4 *v, void *c)
     Vec4 *rp;
     float a, t, f, g;
 
-    m2727 = s->m128;
-    if ((signed char)m2727 != 0)
+    int hidden = s->m128;
+    m2727 = hidden;
+    if ((signed char)hidden != 0)
         return;
     m2728 = s->m1796 != 0;
     m2725 = s->m2112;
@@ -1097,7 +1105,9 @@ void CCarModel::f_01eebc(int arg)
    brightens and the pop-up lights rise (the other two lights brighten once they are fully
    up); while off, everything dims and the pop-up lights fold away once dark. It then writes
    the levels to the model (and keeps the scaled values), sets the indicator lamp, steps the
-   model's animation table and, for a rotating light, turns it towards its target speed. */
+   model's animation table and, for a rotating light, turns it towards its target speed.
+   Remaining difference: the rotating light part. Retail keeps the target in $f12 (the
+   constant 0.0698 loaded straight into it) and the speed in $f0; this build swaps them. */
 void CCarModel::f_01eee4()
 {
     float f;
@@ -1178,7 +1188,9 @@ void CCarModel::f_01f234(int a)
 /* @draft 0x01f264 us f_01f264
    WHAT IT DOES: Prepares the flare drawing: loads the matrix stored at the model's +64,
    folds the depth into the flare size on the vector unit (size * -0.5 + depth * 0.5),
-   records half the flare viewport size and starts the flare pass. */
+   records half the flare viewport size and starts the flare pass.
+   Remaining difference: the two lui of the half size globals are issued in the other order
+   (retail HI(D_23c0c4) first). */
 void CCarModel::f_01f264(int a)
 {
     f_028e9c((char *)&model + 64);
@@ -1258,7 +1270,10 @@ static inline unsigned int FlareColour(const unsigned char *col, unsigned int s)
    pop-up or the main light level; nothing is drawn when the car faces away or the lights are
    off. On the vector unit it projects both lights to the screen, works out each light's
    strength from how directly it faces the camera and its distance, and the flare sizes. Each
-   visible light gets a small flare (with the drawing state set up first) and a large one. */
+   visible light gets a small flare (with the drawing state set up first) and a large one.
+   Remaining difference: structure only. The flare fan helper is not inlined here (retail
+   inlines both fans); the vector unit block is one statement where retail interleaves its
+   address setup. */
 unsigned int *CCarModel::f_01f2f0(unsigned int *list)
 {
     Vec4 scr[2];
@@ -1486,7 +1501,9 @@ FlarePoint D_23c130[13] = {
    Remaining difference: two stores of 0xffffff (to +1632 and +1608) swapped by sched2. */
 
 /* @draft 0x01fb68 us __static_initialization_and_destruction_0
-   WHAT IT DOES: At startup, computes the two flare outlines. */
+   WHAT IT DOES: At startup, computes the two flare outlines.
+   Remaining difference: in the second outline the saved float registers for 0.15 and the
+   angle are swapped ($f21/$f22), shifting the schedule. */
 
 /* @implements 0x0201b4 us _GLOBAL__I_
    WHAT IT DOES: The startup entry for this file's static data. */
