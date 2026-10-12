@@ -124,10 +124,34 @@ int f_0194c4(void);
 extern int D_237cc8;
 extern unsigned char D_237cfc;
 
-/* This object file's own data. */
-extern unsigned char D_1ee088;
-extern int D_1ee168;
-extern int D_1ee170;
+/* This object file's own data: the two racers of a wireless battle (names, name pointers and
+   per racer values) and the state of the session. */
+unsigned char D_1ee088;
+char D_1ee0c4[2][8];
+char *D_1ee0d4[2];
+int D_1ee0dc[2];
+int D_1ee0e4[2];
+int D_1ee0ec[2];
+int D_1ee0f4[2];
+int D_1ee0fc[2];
+int D_1ee104[2];
+int D_1ee10c;
+int D_1ee110;
+unsigned char D_1ee114;
+int D_1ee118;
+int D_1ee11c;
+unsigned char D_1ee120;
+char D_1ee124[28];
+struct Entry {
+    char name[20];
+    unsigned int m20a : 15;
+    unsigned int m20b : 1;
+    unsigned int m20c : 16;
+};
+Entry D_1ee140;
+int D_1ee168;
+int D_1ee16c;
+int D_1ee170;
 
 namespace Ng {
 class CJob {
@@ -378,6 +402,28 @@ void Sequence::CWirelessBattleModeJob::f_00e0fc()
     queue.Push(2);
 }
 
+/* @implements 0x00e12c us f_00e12c
+   WHAT IT DOES: Clears the racers' names and values and the session's counters. */
+void Sequence::CWirelessBattleModeJob::f_00e12c()
+{
+    memset(D_1ee0c4, 0, sizeof(D_1ee0c4));
+    memset(D_1ee0d4, 0, sizeof(D_1ee0d4));
+    memset(D_1ee0dc, 0, sizeof(D_1ee0dc));
+    memset(D_1ee0e4, 0, sizeof(D_1ee0e4));
+    memset(D_1ee0ec, 0, sizeof(D_1ee0ec));
+    memset(D_1ee0f4, 0, sizeof(D_1ee0f4));
+    memset(D_1ee0fc, 0, sizeof(D_1ee0fc));
+    memset(D_1ee104, 0, sizeof(D_1ee104));
+    D_1ee10c = 0;
+    D_1ee110 = 0;
+    D_1ee114 = 0;
+    D_1ee118 = 0;
+    D_1ee11c = 0;
+    D_1ee120 = 0;
+    D_1ee16c = 0;
+    m3213 = 0;
+}
+
 /* @implements 0x00e21c us f_00e21c
    WHAT IT DOES: State 3: resets the session and this mode's race data. */
 void Sequence::CWirelessBattleModeJob::f_00e21c()
@@ -385,15 +431,22 @@ void Sequence::CWirelessBattleModeJob::f_00e21c()
     f_00e238();
 }
 
-/* @implements 0x00e238 us f_00e238
+/* @draft 0x00e238 us f_00e238
    WHAT IT DOES: Ends any network session, clears the race data this mode exchanges and puts
-   the player's name into both name slots. */
+   the player's name into both name slots, marking the second slot's entry word.
+   Remaining difference: retail sets the entry word at +20 in one read-modify-write (lhu of
+   the low half, addu 0xfbe00000, and 0xffff8000, addiu 0x1ff); the bitfield stores here give
+   lw/and/ori/sw plus a separate sh of the high half. */
 void Sequence::CWirelessBattleModeJob::f_00e238()
 {
     f_088138(&D_241810);
     m3216 = 0;
     D_1ee088 = 0;
     f_00e12c();
+    strncpy(D_1ee124, m3192, 9);
+    strncpy(D_1ee140.name, m3192, 9);
+    D_1ee140.m20a = 511;
+    D_1ee140.m20c = 0xfbe0;
 }
 
 /* @implements 0x00e2c8 us f_00e2c8
@@ -404,7 +457,8 @@ int f_00e2c8(void)
     if (!D_1ee088)
         return 1;
     int s = f_088338(D_241e98);
-    return !(s >= 8 && s <= 10);
+    int failed = s >= 8 && s <= 10;
+    return failed == 0;
 }
 
 /* @implements 0x00e30c us f_00e30c
@@ -473,12 +527,15 @@ void Sequence::CWirelessBattleModeJob::f_00fe44()
     if (m68 == 1) {
         f_0156d4();
         f_005554(D_1dd6b0, 1);
-    } else if (!f_0056d0(D_1dd6b0)) {
+    } else {
+        if (f_0056d0(D_1dd6b0))
+            goto update;
         f_017c88(&D_2301b0);
         f_015ed8();
         queue.Push(2);
         return;
     }
+update:
     f_017bfc(&D_2301b0);
 }
 
@@ -553,7 +610,10 @@ void Sequence::CWirelessBattleModeJob::f_011184()
    for reason 3 and message 0 otherwise. */
 void Sequence::CWirelessBattleModeJob::f_01118c()
 {
-    f_0997ac(D_2451f4, D_1ee170 == 3 ? 2 : 0);
+    if (D_1ee170 == 3)
+        f_0997ac(D_2451f4, 2);
+    else
+        f_0997ac(D_2451f4, 0);
 }
 
 /* @implements 0x0111d0 us f_0111d0
