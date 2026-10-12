@@ -138,6 +138,14 @@ def lo_imm(word):
     return lo & ~3 if word >> 26 in VFPU_MEM else lo
 
 
+def put_lo(word, value):
+    """Write the low half of `value` into a LO16-relocated instruction, keeping a VFPU load or
+    store's two register bits in the offset's low bits."""
+    if word >> 26 in VFPU_MEM:
+        return (word & 0xffff0003) | (value & 0xfffc)
+    return (word & 0xffff0000) | (value & 0xffff)
+
+
 def relmask(word, rtype):
     """Zero the relocated field of an instruction/word."""
     if rtype == R_26:

@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.join(ROOT, 'tools'))
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'analysis'))
 import score  # noqa: E402
 import rrdis  # noqa: E402
-from prx import Elf, R_26, R_HI16, R_LO16, SHT_PRXREL  # noqa: E402
+from prx import put_lo, Elf, R_26, R_HI16, R_LO16, SHT_PRXREL  # noqa: E402
 
 BASE = 0x08804000
 R_32 = 2
@@ -87,7 +87,7 @@ def main():
                 elif rtype == R_HI16:
                     w = (w & 0xffff0000) | (((a + 0x8000) >> 16) & 0xffff)
                 elif rtype == R_LO16:
-                    w = (w & 0xffff0000) | (a & 0xffff)
+                    w = put_lo(w, a)
                 elif rtype == R_32:
                     w = a & 0xffffffff
                 struct.pack_into('<I', body, q, w)

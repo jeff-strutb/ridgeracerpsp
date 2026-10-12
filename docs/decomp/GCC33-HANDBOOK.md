@@ -192,6 +192,12 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | An 8-byte struct copy through one stack temporary, stored via a saved register holding the global | `T *m = &D; Rec r; ...; m->m0 = r;` | f_02c870 |
 | Static init zeroing members in field order across two sub-objects | an explicit inline constructor on the outer class, and separate field-order statements in the sub-object's constructor (a chained assignment reverses the order) | f_02da28 |
 | One block of stores reached from several returns, each loading its constant | separate `return White(out)` calls merged by cross-jumping | f_02cf3c |
+| A per-row array through a non-invariant pointer, its address built in separate induction registers (base, +i*576, +j*144) | read the row into a local in the inner loop: `SkidCar *c = &m->cars[i]; f(&c->t[j]);` (`m->cars[i].t[j]` or a 2D array folds the indices) | f_0356b0, f_035818 |
+| A table index reusing its register (`andi t0,t0,3` then `addiu`/`andi` in place) | `[n & 3]` and `[((n & 3) + 1) & 3]`, not `(n + 1) & 3` or a separate variable | f_034e24 |
+| A colour load hoisted above a vertex's first float store | write the colour store first in each vertex | f_035d1c |
+| A fallthrough to the close path after `bnez` | `if (!(cond)) { close; return 0; } extend; return 1;` | f_034fd0 |
+| `c.lt.s` with the loaded value first | `if (s->ground > s->pos[k].y)` | f_033834 |
+| A constructor's array loop with `sb 48` before `sw 52` | the flag field plain `char` (alias set 0); `bool` lets the scheduler swap them | 0x037b78 |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** This includes the v0 versus v1 choice for later temporaries (f_01c2cc, f_01c648). Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).

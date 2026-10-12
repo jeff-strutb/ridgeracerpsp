@@ -1,8 +1,8 @@
 # Ridge Racer (PSP): decompilation
 
-**Started October 12, 2026.** The retail executable is mapped and its compiler is identified. A per-function grader compiles C with that compiler and compares it to the original bytes. On a random control set of 61 retail functions, 49 already compile to identical bytes.
+**Started October 12, 2026.** The retail executable is mapped and its compiler is identified. A per-function grader compiles C++ and C with that compiler and compares them to the original bytes, and a rebuilt `BOOT.BIN` holding every matched function is byte-identical to retail.
 
-613 game functions are now filed and byte-exact, 7.0% of the game's code (see [Current Status](#current-status)).
+941 game functions are now filed and byte-exact, 10.6% of the game's code (see [Current Status](#current-status)): startup and the main loop, loading and saving, every menu and mode job, race setup, the screen manager, graphics, textures, sound, models, vectors and transforms, and much of the race effects.
 
 **Maintainer:** Jeffrey Wilbur, Strut B, LLC\
 **Contact:** [retro@strutb.com](mailto:retro@strutb.com)
@@ -61,18 +61,18 @@ _Snapshot 2026-10-12._
 
 ```
 M1  Behaviour exact (T3 + T4)
-    ███░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    7.0%   79,028 / 1,123,956 B   614 / 5,438 fns
+    ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   10.6%   120,700 / 1,136,792 B   942 / 5,654 fns
 M2  Byte exact (T4)
-    ███░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    7.0%   78,736 / 1,123,956 B   613 / 5,438 fns
+    ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   10.6%   120,408 / 1,136,792 B   941 / 5,654 fns
 ```
 
 | Code | Functions | Bytes | Counted |
 |---|---:|---:|---|
-| **Game** (the denominator) | 5,438 | 1,123,956 | yes: T4 613, T3 1, T2 105, T1 4,719 |
-| Libraries: libstdc++, newlib, libgcc (fenced) | 1,449 | 317,632 | no; matched from their own source or linked |
-| Unidentified, in the library region | 342 | 42,164 | not until classified |
+| **Game** (the denominator) | 5,654 | 1,136,792 | yes: T4 941, T3 1, T2 161, T1 4,551 |
+| Libraries: libstdc++, newlib, libgcc (fenced) | 1,513 | 317,544 | no; matched from their own source or linked |
+| Unidentified, in the library region | 390 | 45,676 | not until classified |
 
-T2 includes the 51 functions of the compiler control set (`src/control/`), most of them byte-exact; they become T4 once filed into their translation units.
+T2 includes the 41 functions of the compiler control set (`src/control/`), most of them byte-exact; they become T4 once filed into their translation units.
 <!-- PROGRESS:END -->
 
 ![decomp progress treemap](docs/progress-map.svg)
@@ -88,7 +88,7 @@ Every box in the map is one function, sized by its bytes and grouped by the obje
 
 Green plus blue is the M1 corpus. Regenerate the block and the map together with `python3 tools/progress.py`; do not edit them by hand.
 
-The compiler control set is 61 retail functions chosen at random and transcribed by hand. Its purpose is to identify the compiler and its flags, and each function is graded with the same strict check as T4 work: 49 of the 61 are EXACT. Its sources are not filed into real translation units, so they count as T2.
+The compiler control set began as 61 retail functions chosen at random and transcribed by hand, to identify the compiler and its flags; each is graded with the same strict check as T4 work. As matching reaches a control function's object file, its tag moves into the real source (a filed tag takes precedence over the control copy). 54 remain there, 42 of them EXACT; they count as T2.
 
 Query the tree. Do not trust a number in this file.
 
@@ -99,7 +99,9 @@ python3 tools/analysis/funcmap.py                   # function map -> config/us/
 python3 tools/analysis/libid.py                     # library functions by fingerprint -> config/us/libfuncs.csv
 python3 tools/analysis/tumap.py                     # object spans, game/library classes -> config/us/tus.csv
 python3 tools/analysis/imports.py                   # imported system calls, named from PPSSPP's NID tables
+python3 tools/analysis/rtti.py                      # C++ vtables, typeinfo and type names -> config/us/rtti.csv
 python3 tools/rrdis.py 0xADDR                       # annotated retail listing of one function
+python3 tools/rrdis.py --tu N                       # every function of object file N
 python3 tools/score.py src/control/batch1.c         # compile and grade every @implements in a file
 python3 tools/score.py FILE --cc 1.3.1 -v           # same, stock compiler, word-by-word
 python3 tools/image.py                              # M2 gate: rebuilt BOOT.BIN vs retail, must be 0 differing bytes
@@ -107,6 +109,9 @@ python3 tools/image.py --control                    # gate self-test with the co
 python3 tools/progress.py                           # regenerate the progress block and treemap below
 tools/oracle/build.sh                               # build rrbox (PPSSPP v1.20.4 headless + patch)
 python3 tools/oracle/a7.py [--m1]                   # A7: candidate image vs retail on every input script
+python3 tools/oracle/a5.py                          # A5: every tagged function, call by call, against retail
+python3 tools/claim.py take N --who NAME            # claim object file N before working on it (parallel work)
+python3 tools/claim.py commit --who NAME -m MSG F   # commit only files whose functions you hold
 python3 tools/precommit.py --all                    # filing rules over the whole tree
 ```
 
@@ -117,7 +122,7 @@ T1 = a draft only; T2 = in the tree, not done; T3 = certified behaviour exact, n
 The oracle is `rrbox` ([tools/oracle/README.md](tools/oracle/README.md)): PPSSPP v1.20.4 headless with a small patch, running the original program deterministically. Ten one-minute runs give identical traces.
 
 - **A7, whole image (built).** `tools/oracle/a7.py` runs retail and the candidate image on every input script. Each frame's emulated time and the hash of all 24 MB of user RAM must agree. `--m1` leaves the code out of the hash, for images whose T3 bodies differ in bytes.
-  - The current T4 image is identical to retail on both scripts: boot to attract mode (1,800 frames), and the full new-game path into a live race (7,800 frames).
+  - The scripts so far: boot to attract mode (1,800 frames), the full new-game path into a live race (9,000 frames), and five fault scripts that force the module loader's error paths.
   - A planted wrong store is caught at frame 0.
 - **A5, per function (built).** `tools/oracle/a5.py` watches every tagged function in retail and in the M1 image. Every call must agree on arguments, return value, every memory write outside its own stack frame, and the callee-saved registers.
   - CPU time is held equal at every function boundary, because rewritten code legitimately runs a different number of cycles.
@@ -125,7 +130,7 @@ The oracle is `rrbox` ([tools/oracle/README.md](tools/oracle/README.md)): PPSSPP
   - Verdicts are recorded in `config/us/t3_live.csv`.
   - Two bugs planted in a draft were each caught at its first call.
 
-There are two input scripts so far. A7 only sees what the scripts exercise: a changed main-thread priority went unnoticed in attract mode. Scripts that steer through full races and reach every mode and course come next.
+A7 only sees what the scripts exercise: a changed main-thread priority went unnoticed in attract mode. To cover races, rrbox has a search driver (`--rr-drive`): every 20 frames it snapshots the machine, plays out five steering choices, keeps the one that makes the most progress along the car's direction of travel, and records the result as an ordinary input script that replays exactly. Full-race scripts for every mode and course come next.
 
 ### How T4 is verified
 
@@ -152,16 +157,20 @@ The checker is mutation-tested. A global moved by 4 bytes, a one-character chang
 
 It must report 0 differing bytes.
 
-Its self-test places the 49 EXACT control functions and produces a byte-identical file. A planted wrong global in a filed source fails it.
+It currently places 941 functions from 51 sources with 0 differing bytes. Its self-test adds the control set's EXACT functions (977 in all) and also produces a byte-identical file. A planted wrong global in a filed source fails it.
 
 ### Architecture
 
     src/control/            compiler-identification control set (not real TUs)
-    src/                    the decomp, filed by the original's translation units (from Phase 2)
-    config/us/              function map and, later, ledgers
+    src/system/ sequence/ race/ sound/ rrbios/
+                            the decomp, one source file per original object file
+    config/us/              function map, object files, library and C++ type tables, symbols, the T3 ledger
     tools/analysis/         ELF/PRX reader (SCE relocations) and the function mapper
     tools/rrdis.py          annotated listings
     tools/score.py          per-function grader
+    tools/image.py          M2 gate: rebuild BOOT.BIN from the matched functions
+    tools/claim.py          claims and commits for parallel matching
+    tools/oracle/           rrbox (the behaviour oracle), A7, A5, input scripts
     tools/toolchains/       pinned compilers, Lima VM config, the nocmov builder
     docs/PLAN.md            the plan and the standard
     docs/decomp/            GCC33-HANDBOOK.md: what the work has learned, one rule per finding

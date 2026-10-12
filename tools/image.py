@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.join(ROOT, 'tools'))
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'analysis'))
 import score  # noqa: E402
 import rrdis  # noqa: E402
-from prx import Elf, R_26, R_HI16, R_LO16, SHT_PRXREL  # noqa: E402
+from prx import put_lo, Elf, R_26, R_HI16, R_LO16, SHT_PRXREL  # noqa: E402
 
 R_32 = 2
 
@@ -91,7 +91,12 @@ def main(argv):
         for addr, name in tg:
             if addr not in found:
                 problems.append(f'{rel}: 0x{addr:06x} {name}: no such function in the object')
-        res = score.Resolver(obj, syms, n2a, plc, c['rel'], e)
+        # references are resolved through every tagged function of the file, drafts included (a
+        # claimed function may call a sibling that is still a draft: the call's target is that
+        # draft's retail address); only the claims are placed
+        drafts = [(a, n) for a, n in score.tags(src) if a not in {x for x, _ in tg}]
+        plc_all, n2a_all, _ = score.locate(obj, syms, tg + drafts)
+        res = score.Resolver(obj, syms, n2a_all, plc_all, c['rel'], e)
         for text, cstart, size, addr in plc:
             tdata = obj.data(text)
             orels = sorted(obj.object_rels(text))
@@ -124,7 +129,7 @@ def main(argv):
                 elif rtype == R_HI16:
                     w = (w & 0xffff0000) | (((v + 0x8000) >> 16) & 0xffff)
                 elif rtype == R_LO16:
-                    w = (w & 0xffff0000) | (v & 0xffff)
+                    w = put_lo(w, v)
                 elif rtype == R_32:
                     w = v & 0xffffffff
                 struct.pack_into('<I', body, p, w)
