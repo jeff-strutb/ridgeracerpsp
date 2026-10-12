@@ -1174,8 +1174,7 @@ void MemoryStick::f_01b7d4(int slot)
     D_1e38f4.f_006664();
 }
 
-/* f_01b91c (0x01b91c): its tag stays with the compiler control set (src/control/batch6.c)
-   until that copy moves here.
+/* @implements 0x01b91c us f_01b91c
    WHAT IT DOES: Runs the ghost load for a frame, like the replay load. Returns whether it has
    finished. */
 int MemoryStick::f_01b91c()
