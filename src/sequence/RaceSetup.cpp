@@ -18,6 +18,7 @@ struct Pair {
     Pair() { a = 0; }
     Pair(int v) { a = v; }
     inline void Set(const struct Name &n);
+    inline Pair(const struct Name &n);
 };
 
 /* A row of a table named by its interned name. */
@@ -62,6 +63,12 @@ struct CTable {
 };
 
 
+inline Pair::Pair(const Name &n)
+{
+    a = n.a;
+    b = n.b;
+}
+
 inline void Pair::Set(const Name &n)
 {
     a = n.a;
@@ -96,6 +103,13 @@ public:
     int f_005c34(const char *name);
 };
 
+/* Three options kept together. */
+struct Choice3 {
+    int a;
+    int b;
+    int c;
+};
+
 /* The race setup record (652 bytes; saved and loaded byte for byte). */
 struct RaceSetup {
     Name seq;
@@ -121,17 +135,18 @@ struct RaceSetup {
     int m568;
     int m572;
     int m576;
-    void *m580;
-    void *m584;
+    struct GhostData *m580;
+    struct GhostData *m584;
     int m588;
     int m592;
     int m596;
-    int m600[3][3];
+    Choice3 opt[3];
     int m636;
     int m640;
     int m644;
     int m648;
 
+    inline void SetOptions();
     void ClearPlayer(int i)
     {
         m48[i] = -1;
@@ -162,11 +177,70 @@ struct Ghost {
     int m36;
     int m40;
 };
-struct GhostHolder {
-    char m0[40];
+/* The rules object of the race being run, made for the race's mode. */
+class CRaceRule {
+public:
+    virtual ~CRaceRule();
+    virtual void v8();
+    virtual void *v12();
+    virtual void v16();
+    int m4[5];
+    int m24;
+    int m28[3];
     Ghost *m40;
+    int m44[4];
+    int m60;
+    int m64;
+    int m68;
+    int m72;
+    int m76;
 };
-extern GhostHolder *D_1ee47c;
+extern CRaceRule *D_1ee47c;
+
+/* A ghost record: the recorded runs of up to 16 cars. */
+struct GhostTrack {
+    int f_044608(int i);
+    void f_04461c(int i);
+    int f_044644(int i);
+    void f_0447ac(void *data, int size);
+    void f_044c3c(int i);
+};
+struct GhostData {
+    int m0[3];
+    GhostTrack track;
+    void f_037c34();
+    void f_037d0c();
+    void f_037d30(int a, int b);
+};
+extern GhostData D_1ee480;
+extern GhostData D_20f0cc;
+
+/* The wireless session. */
+struct Session {
+    void f_03fe1c();
+};
+extern Session D_240900;
+
+extern int D_1ee198;
+extern int D_1ee19c;
+extern int D_1ee1a0;
+extern int D_1ee1a4;
+extern int D_1ee1a8;
+extern Choice3 D_1ee1ac[3];
+extern int D_1ee1d0;
+extern int D_1ee1d4[2];
+extern int D_1ee1dc[2];
+extern int D_1ee1e4[2];
+extern int D_1ee1ec;
+extern int D_1d1638[2];
+extern int D_1d1640;
+extern int D_1d1644;
+extern int D_1d1648;
+
+extern "C" {
+int f_01fa10(int);
+int f_01fad0(int);
+}
 
 /* @implements 0x014950 us f_014950
    WHAT IT DOES: Clears the parts of the setup that describe the second car and the ghosts:
@@ -321,4 +395,130 @@ void f_014fb0(int course)
     Lookup(D_1ee1f0.seq, D_22fd98);
     D_1ee1f0.m636 = reverse;
     D_1dd6b0.m276.Set(D_1ee1f0.seq);
+}
+
+/* @draft 0x0150a0 us f_0150a0
+   WHAT IT DOES: Returns the course of the current race sequence: the course table row named by
+   the sequence's course number.
+   Remaining difference: the course row's slot is at sp+16 here and sp+32 in retail (retail
+   has one more 16 byte stack slot before it); the 4 words that address it differ. */
+Pair f_0150a0()
+{
+    Name seq = D_2407d0.Find((const char *)D_1ee1f0.seq.a);
+    void *num = D_2407d0.Get("CourseNumber", (const char *)seq.a, 0);
+    Name course = D_2407a8.Find((const char *)num);
+    return course;
+}
+
+/* @draft 0x01515c us f_01515c
+   WHAT IT DOES: Returns the number of laps of the current race sequence. */
+int f_01515c()
+{
+    Name seq = D_2407d0.Find((const char *)D_1ee1f0.seq.a);
+    void *rec = D_2407d0.Get("Laps", (const char *)seq.a, 0);
+    memcpy(D_24063c, rec, D_1a211c[1]);
+    return D_24063c[0];
+}
+
+/* @draft 0x0151e8 us f_0151e8
+   WHAT IT DOES: Returns the ghost choice of the setup. */
+int f_0151e8()
+{
+    return D_1ee1f0.m576;
+}
+
+/* @draft 0x0151f4 us f_0151f4
+   WHAT IT DOES: Tells whether the course is run in reverse. */
+bool f_0151f4()
+{
+    return D_1ee1f0.m636 != 0;
+}
+
+/* Copies the chosen race options into the setup. */
+inline void RaceSetup::SetOptions()
+{
+    int j;
+
+    m588 = D_1ee1a4;
+    m592 = D_1ee1a8;
+    for (j = 0; j < 3; j++)
+        opt[j] = D_1ee1ac[j];
+    m596 = D_1ee1ec;
+}
+
+/* Tells whether the record just read is of the given race mode. */
+static inline bool IsMode(int mode)
+{
+    return D_24063c[0] == mode;
+}
+
+/* @draft 0x015204 us f_015204
+   WHAT IT DOES: Builds the setup for a race from the player's choices: picks which ghost
+   record is written and which is played against, copies the chosen options, clears the
+   second car (unless the sequence is a two player one) and every rival, reads the laps and
+   the rivals' level of the sequence, and fills in each player's car (from its selection
+   number), colour and options. Then it resets the sequence manager. */
+void f_015204()
+{
+    int i;
+
+    Name seq = D_2407d0.Find((const char *)D_1ee1f0.seq.a);
+    D_1ee480.f_037d30(0, 0);
+    D_20f0cc.f_037d30(0, 1);
+    D_1ee1f0.m580 = !D_2407f8 ? &D_1ee480 : &D_20f0cc;
+    D_1ee1f0.m584 = !D_2407f8 ? &D_20f0cc : &D_1ee480;
+    D_1ee1f0.m24 = 0;
+    D_240900.f_03fe1c();
+    D_1ee1f0.SetOptions();
+    void *rec = D_2407d0.Get("SequenceNumber", (const char *)D_1ee1f0.seq.a, 0);
+    memcpy(D_24063c, rec, D_1a211c[1]);
+    if (!IsMode(2)) {
+        for (i = 1; i < 2; i++) {
+            D_1dd6b0.f_00317c(i, Pair());
+            D_1ee1f0.car[i] = Pair();
+            D_1ee1f0.ClearPlayer(i);
+        }
+    }
+    for (i = 0; i < 13; i++) {
+        D_1dd6b0.f_003150(i, Pair());
+        D_1ee1f0.rival[i] = Pair();
+        D_1ee1f0.m184[i] = -1;
+        D_1ee1f0.m304[i] = -1;
+        D_1ee1f0.m356[i] = -1;
+    }
+    D_1ee1f0.m8 = D_1ee19c;
+    D_1ee1f0.m20 = D_1ee1a0;
+    D_1ee1f0.m640 = D_1d1640;
+    D_1ee1f0.m644 = D_1d1644;
+    D_1ee1f0.m648 = D_1d1648;
+    int size = D_1a211c[1];
+    rec = D_2407d0.Get("Laps", (const char *)seq.a, 0);
+    memcpy(D_24063c, rec, size);
+    D_1ee1f0.m12 = D_24063c[0];
+    rec = D_2407d0.Get("CCar_Level", (const char *)seq.a, 0);
+    memcpy(D_24063c, rec, size);
+    D_1ee1f0.m16 = D_24063c[0];
+    for (i = 0; i < D_1ee1d0; i++) {
+        int num = D_1ee1d4[i];
+        int k;
+        for (k = 0; k < D_240740.nRows; k++) {
+            rec = D_240740.Get("SelectNum", 0, k);
+            memcpy(D_24063c, rec, D_1a211c[1]);
+            if (num == D_24063c[0])
+                break;
+        }
+        D_1ee1f0.car[i] = D_240740.Find(D_240740.Row(k));
+        if (D_1d1638[i] < 0) {
+            D_1ee1f0.m288[i] = -1;
+            D_1ee1f0.m296[i] = -1;
+        } else {
+            D_1ee1f0.m288[i] = f_01fa10(D_1d1638[i]);
+            D_1ee1f0.m296[i] = f_01fad0(D_1d1638[i]);
+        }
+        D_1ee1f0.m48[i] = i;
+        D_1ee1f0.m64[i] = D_1ee1dc[i];
+        D_1ee1f0.m72[i] = D_1ee1e4[i];
+    }
+    D_1dd6b0.f_0057d0();
+    D_1dd6b0.f_0030c8(0);
 }
