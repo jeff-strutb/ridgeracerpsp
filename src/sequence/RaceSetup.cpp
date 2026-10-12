@@ -15,7 +15,7 @@ void *memcpy(void *, const void *, size_t);
 struct Pair {
     int a;
     int b;
-    Pair() { a = 0; }
+    Pair() {}
     Pair(int v) { a = v; }
     inline void Set(const struct Name &n);
     inline Pair(const struct Name &n);
@@ -103,6 +103,13 @@ public:
     int f_005c34(const char *name);
 };
 
+/* A fixed size array. */
+template <class T, int N> struct Array {
+    T e[N];
+    Array() {}
+    T &operator[](int i) { return e[i]; }
+};
+
 /* Three options kept together. */
 struct Choice3 {
     int a;
@@ -121,7 +128,7 @@ struct RaceSetup {
     int m20;
     int m24;
     int m28;
-    Pair car[2];
+    Array<Pair, 2> car;
     int m48[2];
     int m56[2];
     int m64[2];
@@ -148,6 +155,7 @@ struct RaceSetup {
     int m644;
     int m648;
 
+    RaceSetup() {}
     inline void SetOptions();
     void SetMode() { m588 = D_1ee1a4; }
     void ClearPlayer(int i)
@@ -170,6 +178,7 @@ extern int D_240800;
 extern unsigned char D_24063c[];
 extern const int D_1a211c[];
 extern const int D_1a0e48[];
+extern const int D_1a0f28[];
 extern char D_22fd38[];
 extern char D_22fd58[];
 extern char D_22fd78[];
@@ -262,11 +271,90 @@ struct GhostTrack {
     void f_0447ac(void *data, int size);
     void f_044c3c(int i);
 };
+extern "C" {
+void f_043fa4(void *);
+void f_043fdc(void *);
+}
+
+/* The packer's dictionary (made and destroyed by the packer code). */
+struct CodecDict {
+    char m0[16];
+    CodecDict() { f_043fa4(this); }
+    ~CodecDict() { f_043fdc(this); }
+};
+
+/* Three counters of a packer channel. */
+struct CodecCount {
+    int a;
+    int b;
+    int c;
+    void Clear()
+    {
+        a = 0;
+        b = 0;
+        c = 0;
+    }
+};
+
+/* One channel of the packer. */
+struct CodecChannel {
+    int m0;
+    int m4;
+    CodecCount in;
+    CodecCount out;
+    int m32;
+    int m36;
+    int m40;
+    int m44;
+    bool m48;
+    int m52;
+    int m56;
+    int m60;
+    CodecChannel()
+    {
+        m0 = 0;
+        m4 = 0;
+        m32 = 1;
+        m36 = 0;
+        m40 = 0;
+        m44 = 0;
+        m48 = 0;
+        m52 = 0;
+        in.Clear();
+        out.Clear();
+        m60 = 0;
+    }
+};
+
+/* The packer used for the saved replays: 16 channels of bytes packed into one stream. */
+struct Codec {
+    char m0[2056];
+    CodecChannel ch[16];
+    CodecDict dict;
+
+    void f_0447ac(void *data, int size);
+    int f_044608(int i);
+    void f_04461c(int i);
+    int f_044644(int i);
+    void f_0449c0(int i, int byte);
+    void f_044a28(int i);
+    int f_044a68(int i);
+    void f_044aa4(void *work, int n);
+    void f_044b44(int i, int a);
+    void f_044c3c(int i);
+    void f_044d98();
+};
+
+extern "C" {
+void f_037c34(void *);
+void f_037d0c(void *);
+}
 struct GhostData {
     int m0[3];
     GhostTrack track;
-    void f_037c34();
-    void f_037d0c();
+    char m13[134220 - 13];
+    GhostData() { f_037c34(this); }
+    ~GhostData() { f_037d0c(this); }
     void f_037d30(int a, int b);
 };
 extern GhostData D_1ee480;
@@ -373,6 +461,11 @@ int f_01fa10(int);
 int f_01fad0(int);
 }
 
+RaceSetup D_1ee1f0;
+GhostData D_1ee480;
+GhostData D_20f0cc;
+NetSelf D_22fd18;
+
 /* @implements 0x014950 us f_014950
    WHAT IT DOES: Clears the parts of the setup that describe the second car and the ghosts:
    no ghost and no rival record, the wireless flag off, and the second car slot of the sequence
@@ -385,8 +478,8 @@ void f_014950()
     D_1ee1f0.m576 = 0;
     D_2407f8 = 0;
     for (int i = 1; i < 2; i++) {
-        D_1dd6b0.f_00317c(i, Pair());
-        D_1ee1f0.car[i] = Pair();
+        D_1dd6b0.f_00317c(i, Pair(0));
+        D_1ee1f0.car[i] = Pair(0);
         D_1ee1f0.ClearPlayer(i);
     }
 }
@@ -611,14 +704,14 @@ void f_015204()
     memcpy(D_24063c, rec, D_1a211c[1]);
     if (!IsMode(2)) {
         for (i = 1; i < 2; i++) {
-            D_1dd6b0.f_00317c(i, Pair());
-            D_1ee1f0.car[i] = Pair();
+            D_1dd6b0.f_00317c(i, Pair(0));
+            D_1ee1f0.car[i] = Pair(0);
             D_1ee1f0.ClearPlayer(i);
         }
     }
     for (i = 0; i < 13; i++) {
-        D_1dd6b0.f_003150(i, Pair());
-        D_1ee1f0.rival[i] = Pair();
+        D_1dd6b0.f_003150(i, Pair(0));
+        D_1ee1f0.rival[i] = Pair(0);
         D_1ee1f0.m184[i] = -1;
         D_1ee1f0.m304[i] = -1;
         D_1ee1f0.m356[i] = -1;
@@ -968,6 +1061,310 @@ unsigned int Stream::f_0162ec(unsigned char *dst, unsigned int n)
     return k;
 }
 
+void f_0177b0();
+
+/* @draft 0x016348 us f_016348
+   WHAT IT DOES: Saves the race setup and the two ghost records into the given buffer: a zero
+   word, the race sequence's row, the packed setup record, then each ghost record (the
+   recorded one first), storing the stream position after each ghost. It returns 0, or a
+   negative code for the part that did not fit. At the end, a two player race whose setup has
+   a ghost choice gets its players swapped back. */
+int f_016348(unsigned char *data, int *firstEnd, int *size)
+{
+    int status = 0;
+    Stream st;
+    int i;
+    int j;
+    int k;
+    int magic;
+    int idx;
+    int n;
+    unsigned char *blk;
+    unsigned char *q;
+
+    st.f_016280(data, *size);
+    unsigned char *work = new unsigned char[0x20000];
+    Codec codec;
+    codec.f_044aa4(work, 512);
+    magic = 0;
+    if (st.f_016290((unsigned char *)&magic, 4) != 4) {
+        status = -2;
+        goto done;
+    }
+    idx = D_2407d0.Index((const char *)D_1ee1f0.seq.a);
+    if (st.f_016290((unsigned char *)&idx, 4) != 4) {
+        status = -2;
+        goto done;
+    }
+    D_1ee1f0.seq.b = D_2407d0.Index((const char *)D_1ee1f0.seq.a);
+    for (i = 0; i < 2; i++) {
+        if (D_1ee1f0.car[i].a)
+            D_1ee1f0.car[i].b = D_240740.Index((const char *)D_1ee1f0.car[i].a);
+    }
+    for (i = 0; i < 13; i++) {
+        if (D_1ee1f0.rival[i].a)
+            D_1ee1f0.rival[i].b = D_240740.Index((const char *)D_1ee1f0.rival[i].a);
+    }
+    codec.f_044b44(0, 1);
+    for (i = 0; i < (int)sizeof(RaceSetup); i++)
+        codec.f_0449c0(0, ((unsigned char *)&D_1ee1f0)[i]);
+    codec.f_044a28(0);
+    n = codec.f_044608(0);
+    blk = new unsigned char[n + 4];
+    *(int *)blk = n;
+    q = blk + 4;
+    codec.f_04461c(0);
+    for (k = 0; k < n; k++)
+        *q++ = codec.f_044644(0);
+    if (st.f_016290(blk, n + 4) != (unsigned int)(n + 4)) {
+        delete[] blk;
+        codec.f_044c3c(0);
+        status = -7;
+        goto done;
+    }
+    delete[] blk;
+    codec.f_044c3c(0);
+    if (D_2407f8 == 0) {
+        n = 0;
+        for (i = 0; i < 16; i++)
+            n += D_1ee480.track.f_044608(i);
+        if (n >= 0) {
+            blk = new unsigned char[n + 4];
+            *(int *)blk = n;
+            q = blk + 4;
+            for (j = 0; j < 16; j++) {
+                D_1ee480.track.f_04461c(j);
+                int cnt = D_1ee480.track.f_044608(j);
+                for (k = 0; k < cnt; k++)
+                    *q++ = D_1ee480.track.f_044644(j);
+            }
+            if (st.f_016290(blk, n + 4) != (unsigned int)(n + 4)) {
+                delete[] blk;
+                status = -4;
+                goto done;
+            }
+            delete[] blk;
+        }
+        *firstEnd = st.pos;
+        n = 0;
+        for (i = 0; i < 16; i++)
+            n += D_20f0cc.track.f_044608(i);
+        if (n >= 0) {
+            blk = new unsigned char[n + 4];
+            *(int *)blk = n;
+            q = blk + 4;
+            for (j = 0; j < 16; j++) {
+                D_20f0cc.track.f_04461c(j);
+                int cnt = D_20f0cc.track.f_044608(j);
+                for (k = 0; k < cnt; k++)
+                    *q++ = D_20f0cc.track.f_044644(j);
+            }
+            if (st.f_016290(blk, n + 4) != (unsigned int)(n + 4)) {
+                delete[] blk;
+                status = -5;
+                goto done;
+            }
+            delete[] blk;
+        }
+    } else {
+        n = 0;
+        for (i = 0; i < 16; i++)
+            n += D_20f0cc.track.f_044608(i);
+        if (n >= 0) {
+            blk = new unsigned char[n + 4];
+            *(int *)blk = n;
+            q = blk + 4;
+            for (j = 0; j < 16; j++) {
+                D_20f0cc.track.f_04461c(j);
+                int cnt = D_20f0cc.track.f_044608(j);
+                for (k = 0; k < cnt; k++)
+                    *q++ = D_20f0cc.track.f_044644(j);
+            }
+            if (st.f_016290(blk, n + 4) != (unsigned int)(n + 4)) {
+                delete[] blk;
+                status = -5;
+                goto done;
+            }
+            delete[] blk;
+        }
+        *firstEnd = st.pos;
+        n = 0;
+        for (i = 0; i < 16; i++)
+            n += D_1ee480.track.f_044608(i);
+        if (n >= 0) {
+            blk = new unsigned char[n + 4];
+            *(int *)blk = n;
+            q = blk + 4;
+            for (j = 0; j < 16; j++) {
+                D_1ee480.track.f_04461c(j);
+                int cnt = D_1ee480.track.f_044608(j);
+                for (k = 0; k < cnt; k++)
+                    *q++ = D_1ee480.track.f_044644(j);
+            }
+            if (st.f_016290(blk, n + 4) != (unsigned int)(n + 4)) {
+                delete[] blk;
+                status = -4;
+                goto done;
+            }
+            delete[] blk;
+        }
+    }
+    *size = st.pos;
+done:
+    codec.f_044d98();
+    delete[] work;
+    void *rec = D_2407d0.Get("SequenceNumber", (const char *)D_1ee1f0.seq.a, 0);
+    memcpy(D_24063c, rec, D_1a211c[1]);
+    if (IsMode(2) && f_0151e8())
+        f_0177b0();
+    return status;
+}
+
+/* @draft 0x016b28 us f_016b28
+   WHAT IT DOES: Loads what f_016348 saved: checks the leading zero word, unpacks the setup
+   record, turns its table rows back into names (the sequence, the cars and the rivals), checks
+   that the sequence is the one saved, and unpacks the two ghost records. Returns 0, or a
+   negative code for the part that was missing or wrong. */
+int f_016b28(unsigned char *data, unsigned int size)
+{
+    int status = 0;
+    Stream st;
+    int i;
+    int magic;
+    int idx;
+    int len;
+    unsigned char *blk;
+
+    st.f_016280(data, size);
+    unsigned char *work = new unsigned char[0x20000];
+    Codec codec;
+    codec.f_044aa4(work, 512);
+    if (st.f_0162ec((unsigned char *)&magic, 4) != 4 || magic != 0) {
+        status = -2;
+        goto done;
+    }
+    if (st.f_0162ec((unsigned char *)&idx, 4) != 4) {
+        status = -2;
+        goto done;
+    }
+    if (st.f_0162ec((unsigned char *)&len, 4) != 4) {
+        status = -3;
+        goto done;
+    }
+    if (len > 0) {
+        blk = new unsigned char[len];
+        if (st.f_0162ec(blk, len) != (unsigned int)len) {
+            delete[] blk;
+            status = -3;
+            goto done;
+        }
+        codec.f_0447ac(blk, len);
+        delete[] blk;
+        for (i = 0; i < (int)sizeof(RaceSetup); i++)
+            ((unsigned char *)&D_1ee1f0)[i] = codec.f_044a68(0);
+        for (i = 0; i < 16; i++)
+            codec.f_044c3c(i);
+    }
+    D_1ee1f0.m580 = &D_1ee480;
+    D_1ee1f0.m584 = &D_20f0cc;
+    D_2407f8 = 0;
+    D_1ee1f0.seq.a = (int)D_2407d0.Row(D_1ee1f0.seq.b);
+    for (i = 0; i < 2; i++) {
+        if (D_1ee1f0.car[i].a)
+            D_1ee1f0.car[i].a = (int)D_240740.Row(D_1ee1f0.car[i].b);
+    }
+    for (i = 0; i < 13; i++) {
+        if (D_1ee1f0.rival[i].a)
+            D_1ee1f0.rival[i].a = (int)D_240740.Row(D_1ee1f0.rival[i].b);
+    }
+    if (D_2407d0.Index((const char *)D_1ee1f0.seq.a) != idx) {
+        status = -3;
+        goto done;
+    }
+    if (st.f_0162ec((unsigned char *)&len, 4) != 4) {
+        status = -2;
+        goto done;
+    }
+    if (len > 0) {
+        blk = new unsigned char[len];
+        if (st.f_0162ec(blk, len) != (unsigned int)len) {
+            delete[] blk;
+            status = -2;
+            goto done;
+        }
+        for (i = 0; i < 16; i++)
+            D_1ee480.track.f_044c3c(i);
+        D_1ee480.track.f_0447ac(blk, len);
+        delete[] blk;
+    }
+    if (st.f_0162ec((unsigned char *)&len, 4) != 4) {
+        status = -2;
+        goto done;
+    }
+    if (len > 0) {
+        blk = new unsigned char[len];
+        if (st.f_0162ec(blk, len) != (unsigned int)len) {
+            delete[] blk;
+            status = -2;
+            goto done;
+        }
+        for (i = 0; i < 16; i++)
+            D_20f0cc.track.f_044c3c(i);
+        D_20f0cc.track.f_0447ac(blk, len);
+        delete[] blk;
+    }
+done:
+    codec.f_044d98();
+    delete[] work;
+    return status;
+}
+
+/* @implements 0x016fd4 us f_016fd4
+   WHAT IT DOES: Prepares a replay of the race just run: hands the race sequence back to the
+   sequence manager, marks the setup as a replay, restarts the wireless session's record and
+   resets the sequence manager. */
+void f_016fd4()
+{
+    D_2407d0.Find((const char *)D_1ee1f0.seq.a);
+    D_1dd6b0.m276 = Pair(D_1ee1f0.seq);
+    D_1ee1f0.m24 = 2;
+    D_240900.f_03fe1c();
+    D_2407d0.Find((const char *)D_1ee1f0.seq.a);
+    D_1dd6b0.f_0057d0();
+    D_1dd6b0.f_0030c8(0);
+}
+
+/* @draft 0x0170a8 us f_0170a8
+   WHAT IT DOES: Builds the sequence manager's view of a wireless race from the setup: sends the
+   setup's choices to the session, gives every player's car as a rival slot, and sets the
+   course, the sequence and both players' cars. */
+void f_0170a8()
+{
+    int i;
+    int n;
+
+    Name seq = D_2407d0.Find((const char *)D_1ee1f0.seq.a);
+    int mode = D_1ee1f0.m20;
+    D_240900.f_03fe80(mode, seq, D_1ee1f0.m288[0], D_1ee1f0.m296[0]);
+    n = D_240900.count;
+    for (i = 0; i < n; i++)
+        D_1dd6b0.f_003150(i, D_1ee1f0.rival[i]);
+    Name seq2 = D_2407d0.Find((const char *)D_1ee1f0.seq.a);
+    void *rec = D_2407d0.Get("SequenceNumber", (const char *)seq2.a, 0);
+    memcpy(D_24063c, rec, D_1a211c[1]);
+    void *num = D_2407d0.Get("CourseNumber", (const char *)seq2.a, 0);
+    Name course;
+    Lookup2(course, D_2407a8.Find((const char *)num));
+    D_1dd6b0.f_0030d0(course);
+    Pair cur = D_1ee1f0.seq;
+    D_1dd6b0.m276 = cur;
+    D_1dd6b0.m320 = D_1ee1f0.m16;
+    D_1dd6b0.f_0030c8(8);
+    D_1dd6b0.f_00317c(0, D_1ee1f0.car[0]);
+    D_1dd6b0.f_00317c(1, D_1ee1f0.car[1]);
+    D_1dd6b0.m292 = 0;
+}
+
 /* The course display object. */
 extern CCourseView D_22fdbc;
 
@@ -977,3 +1374,139 @@ inline CCourseView *f_017970()
 {
     return &D_22fdbc;
 }
+
+/* @draft 0x01730c us f_01730c
+   WHAT IT DOES: Loads a saved replay into the second player's slot: unpacks the saved setup
+   into a local copy, names its rows again, checks the sequence matches, loads the replay's
+   ghost record into the second ghost, and copies the first player's car, options, colours and
+   record times of the saved race into the second player of the current setup. Returns 0 or a
+   negative code. */
+int f_01730c(unsigned char *data, unsigned int size)
+{
+    int status = 0;
+    RaceSetup rs;
+    Stream st;
+    int i;
+    int magic;
+    int idx;
+    int len;
+    unsigned char *blk;
+
+    st.f_016280(data, size);
+    unsigned char *work = new unsigned char[0x20000];
+    Codec codec;
+    codec.f_044aa4(work, 512);
+    if (st.f_0162ec((unsigned char *)&magic, 4) != 4 || magic != 0) {
+        status = -2;
+        goto done;
+    }
+    if (st.f_0162ec((unsigned char *)&idx, 4) != 4) {
+        status = -2;
+        goto done;
+    }
+    if (st.f_0162ec((unsigned char *)&len, 4) != 4) {
+        status = -3;
+        goto done;
+    }
+    if (len > 0) {
+        blk = new unsigned char[len];
+        if (st.f_0162ec(blk, len) != (unsigned int)len) {
+            delete[] blk;
+            status = -3;
+            goto done;
+        }
+        codec.f_0447ac(blk, len);
+        delete[] blk;
+        for (i = 0; i < (int)sizeof(RaceSetup); i++)
+            ((unsigned char *)&rs)[i] = codec.f_044a68(0);
+        for (i = 0; i < 16; i++)
+            codec.f_044c3c(i);
+    }
+    D_1ee1f0.m584 = &D_20f0cc;
+    D_1ee1f0.m580 = &D_1ee480;
+    D_2407f8 = 0;
+    rs.seq.a = (int)D_2407d0.Row(rs.seq.b);
+    for (i = 0; i < 2; i++) {
+        if (rs.car[i].a)
+            rs.car[i].a = (int)D_240740.Row(rs.car[i].b);
+    }
+    for (i = 0; i < 13; i++) {
+        if (rs.rival[i].a)
+            rs.rival[i].a = (int)D_240740.Row(rs.rival[i].b);
+    }
+    if (D_2407d0.Index((const char *)rs.seq.a) != idx) {
+        status = -3;
+        goto done;
+    }
+    if (st.f_0162ec((unsigned char *)&len, 4) != 4) {
+        status = -2;
+        goto done;
+    }
+    if (len > 0) {
+        blk = new unsigned char[len];
+        if (st.f_0162ec(blk, len) != (unsigned int)len) {
+            delete[] blk;
+            status = -2;
+            goto done;
+        }
+        for (i = 0; i < 16; i++)
+            D_20f0cc.track.f_044c3c(i);
+        D_20f0cc.track.f_0447ac(blk, len);
+        delete[] blk;
+    }
+    D_1ee1f0.m296[1] = rs.m296[0];
+    D_1ee1f0.m572 = rs.m572;
+    D_1ee1f0.m64[1] = rs.m64[0];
+    D_1ee1f0.m72[1] = rs.m72[0];
+    D_1ee1f0.m288[1] = rs.m288[0];
+    D_1dd6b0.f_00317c(1, rs.car[0]);
+    D_1ee1f0.car[1] = rs.car[0];
+done:
+    codec.f_044d98();
+    delete[] work;
+    return status;
+}
+
+/* @implements 0x017788 us f_017788
+   WHAT IT DOES: Sets the rival record of the setup from the table of records for the given
+   course (1 based), when the course has one. */
+void f_017788(int course)
+{
+    int v = D_1a0f28[course - 1];
+    if (v > 0)
+        D_1ee1f0.m28 = v;
+}
+
+template <class T> inline void Swap(T &a, T &b)
+{
+    T t = a;
+    a = b;
+    b = t;
+}
+
+/* @draft 0x0177b0 us f_0177b0
+   WHAT IT DOES: Swaps the two players of a two player race: their cars, options and colours,
+   and which ghost record each one writes. */
+void f_0177b0()
+{
+    D_2407f8 = 1 - D_2407f8;
+    Swap(D_1ee1f0.car[0], D_1ee1f0.car[1]);
+    Swap(D_1ee1f0.m64[0], D_1ee1f0.m64[1]);
+    Swap(D_1ee1f0.m72[0], D_1ee1f0.m72[1]);
+    Swap(D_1ee1f0.m288[0], D_1ee1f0.m288[1]);
+    Swap(D_1ee1f0.m296[0], D_1ee1f0.m296[1]);
+}
+
+/* @draft 0x017868 us __static_initialization_and_destruction_0
+   WHAT IT DOES: Builds the setup record, the two ghost records and the local player's name
+   entry at program start, and tears the name entry and the ghost records down at exit. */
+
+/* @implements 0x017928 us _GLOBAL__I_
+   WHAT IT DOES: The program-start hook that builds this file's objects. */
+
+/* @implements 0x017948 us _GLOBAL__D_
+   WHAT IT DOES: The program-exit hook that tears them down. */
+
+/* @draft 0x017968 us _ZN5ArrayI4PairLi2EEC1Ev
+   WHAT IT DOES: Builds the two players' car slots (nothing to do). A template member made at
+   the end of the file, after its users, so it is called rather than inlined. */
