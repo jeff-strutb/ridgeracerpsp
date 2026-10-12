@@ -105,6 +105,12 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | Struct elements copied load/store, load/store, loads addressed from the global's base (`lw 2712(a1)`) | element-wise copies through an array member (`d[j][k].v[0] = s[j][k].v[0];`, `struct Tri { int v[3]; }`). A struct copy folds the base into the symbol; named fields let GCC reorder the loads | 0x0093d0 |
 | Outer offset stepped by `addiu t3,t3,63` then `sll a2,t3,6`, inner `li 335`/`bgez` down-counter | a 2D array `T m[3][336]`; a 1D `[j*336+k]` steps by 4032 instead | 0x0093d0 |
 | Two separate compares `li s0,1; beq v1,s0; li v0,2; beq v1,v0` | two separate `if (x == 1) return; if (x == 2) return;`. `x == 1 \|\| x == 2` or a two-case switch folds to `addiu -1; sltiu 2` | 0x008244 |
+| `lw v0,layer` ... `move a0,v0` around a field store before a virtual call | read the object into a local first, then store, then call: `CLayer *l = G.layer; o.m28 = 0; l->v2(&o, 0);` | 0x012a30, 0x014754 |
+| Retail keeps the main block as the fall-through after `bnez` | spell the other arm `else { g(...); return; }` with `g` again after the if | 0x0140c8 |
+| One `li a2,1` shared by two conditional bool stores | hold the constant in a local: `bool one = 1; if (A) m512 = one; if (m512 && B) m500 = one;` | 0x0137e8 |
+| `(x-1) < 6u`, then `beq 7`, then `beq 8` | an if-chain `if (x >= 1 && x <= 6) ... else if (x == 7) ... else if (x == 8)`; a switch gives `slti`/`blez` | 0x0137e8 |
+| `new` of N bytes then `jal` to another class's constructor, no vptr store, cleanup calling `operator delete` | allocate a plain block whose inline constructor calls it: `(CReplay *)new CReplayBlock` | 0x013bac |
+| String literals BADREF only by their order in `.rodata` | keep functions in retail address order even where a state table lists them otherwise | 0x013dc4, 0x013f34 |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
