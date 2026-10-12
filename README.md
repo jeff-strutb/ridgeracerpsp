@@ -2,7 +2,7 @@
 
 **Started October 12, 2026.** The retail executable is mapped and its compiler is identified. A per-function grader compiles C with that compiler and compares it to the original bytes. On a random control set of 61 retail functions, 49 already compile to identical bytes.
 
-494 game functions are now filed and byte-exact, 5.5% of the game's code (see [Current Status](#current-status)).
+613, game functions are now filed and byte-exact, 7.0% of the game's code (see [Current Status](#current-status)).
 
 **Maintainer:** Jeffrey Wilbur, Strut B, LLC\
 **Contact:** [retro@strutb.com](mailto:retro@strutb.com)
@@ -61,18 +61,18 @@ _Snapshot 2026-10-12._
 
 ```
 M1  Behaviour exact (T3 + T4)
-    ██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    5.5%   62,128 / 1,123,956 B   495 / 5,438 fns
+    ███░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    7.0%   79,028 / 1,123,956 B   614 / 5,438 fns
 M2  Byte exact (T4)
-    ██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    5.5%   61,836 / 1,123,956 B   494 / 5,438 fns
+    ███░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    7.0%   78,736 / 1,123,956 B   613 / 5,438 fns
 ```
 
 | Code | Functions | Bytes | Counted |
 |---|---:|---:|---|
-| **Game** (the denominator) | 5,438 | 1,123,956 | yes: T4 494, T3 1, T2 83, T1 4,860 |
+| **Game** (the denominator) | 5,438 | 1,123,956 | yes: T4 613, T3 1, T2 105, T1 4,719 |
 | Libraries: libstdc++, newlib, libgcc (fenced) | 1,449 | 317,632 | no; matched from their own source or linked |
 | Unidentified, in the library region | 342 | 42,164 | not until classified |
 
-T2 includes the 52 functions of the compiler control set (`src/control/`), most of them byte-exact; they become T4 once filed into their translation units.
+T2 includes the 51 functions of the compiler control set (`src/control/`), most of them byte-exact; they become T4 once filed into their translation units.
 <!-- PROGRESS:END -->
 
 ![decomp progress treemap](docs/progress-map.svg)
