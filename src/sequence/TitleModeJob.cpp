@@ -53,11 +53,21 @@ struct Screen {
     int m20;
     int m24;
     int m28[2];
+    bool IsStatus(int s) { return status == s; }
 };
 extern Screen D_2301b0;
 extern char D_2301d4[];
 
 /* The global game state words this mode saves, restores and sets. */
+struct SavedPair {
+    void Set(int x, int y)
+    {
+        a = x;
+        b = y;
+    }
+    int a;
+    int b;
+};
 struct GameState {
     int m0[3];
     int m12;
@@ -73,11 +83,7 @@ struct GameState {
     int m15708;
 };
 extern GameState D_233f70;
-struct SavedPair {
-    int a;
-    int b;
-};
-extern SavedPair D_1d1a94;
+SavedPair D_1d1a94 = {20000, 2000};
 extern int D_240100;
 extern int D_237ccc;
 
@@ -173,7 +179,7 @@ public:
     }
     int Pop()
     {
-        if (head == tail)
+        if (tail == head)
             return -1;
         int v = buf[head++];
         head &= 15;
@@ -213,7 +219,7 @@ public:
     int m8[11];
     short *m52;
     unsigned char *m56;
-    unsigned char m60;
+    bool m60;
     int m64;
     int m68;
     CStateQueue queue;
@@ -298,8 +304,10 @@ void Sequence::CTitleModeJob::End()
    WHAT IT DOES: State 0: saves two game state words, then opens the title screen layer. */
 void Sequence::CTitleModeJob::f_0070ec()
 {
-    D_1d1a94.a = D_233f70.m12;
-    D_1d1a94.b = D_233f70.m16;
+    int b = D_233f70.m16;
+    int a = D_233f70.m12;
+    D_1d1a94.a = a;
+    D_1d1a94.b = b;
     LayerMsg msg;
     msg.m12 = 1;
     msg.m8 = 0;
@@ -307,12 +315,12 @@ void Sequence::CTitleModeJob::f_0070ec()
     f_018abc(&D_2301b0, 9);
 }
 
-/* @draft 0x007178 us f_007178
+/* @implements 0x007178 us f_007178
    WHAT IT DOES: State 1: once the screen reports it is ready, starts the title layer, releases
    four loaded packages, starts the title music and queues event 2. */
 void Sequence::CTitleModeJob::f_007178()
 {
-    if (D_2301b0.status == 4) {
+    if (D_2301b0.IsStatus(4)) {
         D_2301b0.layer->v10(3);
         f_002734(D_1d8bb8, 1);
         f_002734(D_1d8cd0, 1);
