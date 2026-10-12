@@ -63,6 +63,25 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A C++ `new T` with no landing pad, followed by a call on the new object | the constructor is inline and cannot throw; the call is a **separate statement** after `new` (`g = new T; g->Init();`). A call inside the constructor adds a cleanup that deletes the object. | main (0x0006b8) |
 | Small struct: words zeroed except the fields then assigned, plus a redundant byte store | `memset(&s, 0, sizeof s)` expanded inline. The stores the following field assignments overwrite are deleted as dead, and a later `s.char_field = 0` survives. | f_0004a4 |
 | `mov.s $f20,$f12` hoisted before a branch, with `f20` saved | the float is passed to a callee on the cold path | f_0fa640 |
+| `move v0,v1` return; the error path sets `li v1,-1` | the status variable reused for the result: `ret = call(); if (ret != 0) return -1; ...; ret = expr; return ret;` | f_006094 |
+| A signed `/1024` whose result stays in the dividend's register | in-place `x /= 1024;` before the use | f_006094 |
+| A sub-struct's address in a saved register (`addiu s3,s0,128`) for later field stores | a pointer local: `T *sfo = &param.sfoParam;` | f_0061b0 |
+| Blocks after a jump-table `jr` in a fixed order; cases equal to the default still in the table | write the cases in retail's block order and list the empty ones (`case 1: break;`) | f_006680 |
+| Static destruction: one `beqz` guard per object, each vptr store in the next guard's slot | each derived class declares its own `virtual ~X() {}`. A non-virtual inline destructor lets cse merge guards; a base-only virtual destructor stores the base vtable | 0x006a58 |
+| Member zeroing stores to +64 then +68 in a constructor | `head = tail = 0;` in the body. A mem-initializer list gives the reverse order | 0x006bbc |
+| `sw v0,0(sp); lw v0,0(sp)` straight after a call | a `volatile` local: `volatile unsigned t = f(); seed = t;` | 0x0067b4 |
+| A `_GLOBAL__D_` with an empty destruction branch | some static object has a non-trivial (even empty, user-declared) destructor; without one there is no `_GLOBAL__D_` | 0x006794 |
+| Pointer-to-member constants copied from `.rodata` `{pfn, 0}` pairs through registers | `states[i] = &C::f;` assigned in the constructor body, before the plain pointer members | 0x006bbc |
+| `move s2,s1` in the prologue; two registers holding one global's HI in a loop | an early `return 0` inside a do-while instead of `break` | 0x0010b8 |
+| Byte flag stores interleaved with int and global stores; loads scheduled across them | declare the fields `bool` (own alias set), not `char` (alias set 0) | 0x0009b8 |
+| One `li 1` register feeding an int global store and later byte stores | put the int store before the bool stores | 0x0009b8 |
+| A global store kept after stores to other globals (not hoisted by sched2) | store through `this` in an inline method (`D.Reset()` doing `m60 = -1`) | 0x0009b8 |
+| `lui a0; addiu a0; jal; move a1,v0` rather than `addiu a0` in the slot | the callee returns a value (a void prototype changes sched2 priorities) | 0x0009b8 |
+| Virtual call loading the function pointer from the static vtable (`lw v1,%lo(_ZTV+8)`) | call on the global object itself (`D_1d8910[0].f()`); a load through the vptr means a local pointer was used | 0x0009b8, f_001154 |
+| `bnez` with `move a0,zero` in the slot, then `li a0,1`, then a shared `jal` | separate calls in if/else; a ternary folds to `sltiu` | f_001154 |
+| Branch on an `xori` result that is also stored to a field | `m14 = !first; if (!m14)` | f_001154 |
+| Multiply scheduled after a call in a comparison | write the call first: `Hcount() - D > frames*286 - 5` | f_000fcc |
+| A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
 
@@ -80,9 +99,15 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
   - Eight source spellings (goto, nested ifs, if-assign, value-init, field stores, declaration orders) compile to the same RTL.
   - Next: diff the `sched2` and `dbr` dumps against retail's order.
 
+## C++ objects in the scorer
+
+- Vtables, typeinfo and type-name strings are resolved by address from `config/us/rtti.csv` (`tools/analysis/rtti.py`), so constructors and virtual calls on the static vtable grade EXACT.
+- Inline methods emitted out of line, and compiler-generated constructors and destructors, live in `.gnu.linkonce.t.*` sections. Tag them like any function (Name = a substring of the mangled name). An object file's out-of-line D1/D0 destructors often sit after its `_GLOBAL__D_`.
+- A constructor of another object file's class, called by name, needs a `config/us/symbols.csv` row; add it once a byte-exact caller proves the address.
+
 ## Map defects seen
 
-`config/us/funcs.csv` merges two functions when the second has no FDE, no `jal` and no pointer reference: 0x119dc8 + 0x119e38, and 0x12f1c4 + 0x12f264 (newlib `ratio` + `_mprec_log10`). The fix is a prologue (`addiu sp,sp,-N`) split after `jr ra` + slot.
+Fixed in `tools/analysis/funcmap.py`: jump-table case labels taken for functions (f_006978), and back-to-back leaf functions merged (0x006018 + 0x006024, 0x0992fc + 0x099328, the three empty functions at 0x099354). Earlier: `config/us/funcs.csv` merged two functions when the second has no FDE, no `jal` and no pointer reference: 0x119dc8 + 0x119e38, and 0x12f1c4 + 0x12f264 (newlib `ratio` + `_mprec_log10`). The fix is a prologue (`addiu sp,sp,-N`) split after `jr ra` + slot.
 
 ## Library code
 
