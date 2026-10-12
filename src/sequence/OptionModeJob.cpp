@@ -661,15 +661,15 @@ void Sequence::COptionModeJob::f_013bac()
     D_1ee190 = 0;
 }
 
-/* @draft 0x013c44 us f_013c44
+/* @implements 0x013c44 us f_013c44
    WHAT IT DOES: State 7: runs the replay. A press of the skip button marks it skipped; until
    then the camera keeps playing. Sends event 2 when the replay has finished. */
 void Sequence::COptionModeJob::f_013c44()
 {
     D_1d88a0->m32 = 0;
     if (D_1d8910[0].f_043030()) {
-        D_1ee190 = 1;
         D_1ee18c->m24 = 1;
+        D_1ee190 = 1;
     }
     if (!D_1ee190)
         f_0982c4(D_245074);
