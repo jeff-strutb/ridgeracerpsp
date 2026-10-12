@@ -172,6 +172,17 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | `lb` on flag fields | plain `char` fields (but `unsigned char` where they feed a stored `\|\|`; `bool` gives `lb` there) | 0x0293e4, 0x0292fc |
 | The loop tail loads the next word, tests `>> 24`, copies it to the top register in the slot | `do { c = *p++; ... } while ((*p >> 24) != 11);` | 0x02b854 |
 | Inline asm ending in a store keeps `jr ra; nop` | wrap it in `.set push` / `.set noreorder` / ... / `.set pop` (or end with a local label, above) | 0x028b3c, 0x028d94 |
+| `vpfxt [x,x,x,x]` rejected by the assembler | write `.word 0xdd000000` | f_027de4 |
+| `sqrt.s` with no errno call | the object file uses `/* @cflags: -fno-math-errno */` (`-ffast-math` breaks `x-x` and division) | f_027d70, f_027d8c |
+| Float stores kept interleaved with loads of the source | a `float *` source; a source of the same struct type lets GCC assume no overlap and hoist the loads | f_028188, f_02889c |
+| A switch tested `beq 1`, `beqz`, `beq 2`, default falling through | `switch` on an unsigned value with cases 0, 1, 2 and default (a signed switch gives `slti`) | f_026bc8 |
+| An address or-ed in place into the pointer's own register | two steps: `d = (T *)info->vram; d = (T *)((unsigned)d \| 0x40000000);` | f_026bc8 |
+| A loop pointer initialised before a guard (`move` before `bltz`) | an early `return` instead of wrapping the loop in `if` | f_024fb4 |
+| Separate equality tests sharing one body, constants hoisted after the tests | `if (op == 1) c++; else if (op == 2) c++; else { c++; continue; }` | f_025364 |
+| A null-tested table entry put out of line | test the array element directly (no pointer local) and store in each arm (the reverse of the pointer-local row) | f_025118, f_026948 |
+| A chained zero assignment's store order | the leftmost element first, then the following statement, then the rest right to left | f_02822c |
+| A data file open whose success path returns v0 directly | `if (fd >= 0) return fd; iprintf(...); return fd;` | f_027850, f_027a28 |
+| Saved register pairs left unused around `long long` calls | hold the 64-bit results in `int` locals | f_02799c |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** This includes the v0 versus v1 choice for later temporaries (f_01c2cc, f_01c648). Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
@@ -204,6 +215,10 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 - Vtables, typeinfo and type-name strings are resolved by address from `config/us/rtti.csv` (`tools/analysis/rtti.py`), so constructors and virtual calls on the static vtable grade EXACT.
 - Inline methods emitted out of line, and compiler-generated constructors and destructors, live in `.gnu.linkonce.t.*` sections. Tag them like any function (Name = a substring of the mangled name). An object file's out-of-line D1/D0 destructors often sit after its `_GLOBAL__D_`.
 - A constructor of another object file's class, called by name, needs a `config/us/symbols.csv` row; add it once a byte-exact caller proves the address.
+
+## Data defined in a source file
+
+A file-local constant named `D_XXXXXX` is resolved by address, like any `D_` name: the reference is proven to be retail's, and the M2 image keeps retail's bytes, but the constant's own contents are not compared. A full relink must check them (Vector.c, Transform.cpp: D_1a1914, D_1a1918, D_1a191c, D_1a1a80).
 
 ## Map defects seen
 
