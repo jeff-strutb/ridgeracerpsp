@@ -279,20 +279,18 @@ Sequence::CSaveLoadModeJob::CSaveLoadModeJob()
     m56 = D_1d1498;
 }
 
-/* @draft 0x011ea4 us _ZN8Sequence16CSaveLoadModeJob5BeginEv
-   WHAT IT DOES: Starts the mode from its first state, with the saved option value.
-   Remaining difference: retail keeps the frame counter store first (sw zero,68 before the
-   load of D_237cc8) and holds the loaded value in a1 with li v1,1 issued before the load;
-   every order of these five statements (and a volatile source) gives the load first and the
-   counter store after it. */
+/* @implements 0x011ea4 us _ZN8Sequence16CSaveLoadModeJob5BeginEv
+   WHAT IT DOES: Starts the mode from its first state, with the saved option value. */
 void Sequence::CSaveLoadModeJob::Begin()
 {
+    int *p = &D_237cc8;
+
     m68 = 0;
-    m360 = D_237cc8;
+    m360 = *p;
     m60 = 1;
-    m64 = 0;
     m68 = 0;
     state = 0;
+    m64 = 0;
 }
 
 /* @implements 0x011ec8 us _ZN8Sequence16CSaveLoadModeJob4StepEv
