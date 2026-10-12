@@ -273,11 +273,15 @@ void f_005720(CSequence *);
 void f_0057d0(CSequence *);
 int f_005c34(CSequence *, const char *);
 
-/* The replay being shown, built by the replay code. */
+/* The replay being shown, built by the replay code. Its constructor (0x041aa4) belongs to
+   that code, so the object is created through a plain block of its size that runs it. */
 void f_041aa4(void *);
+struct CReplayBlock {
+    CReplayBlock() { f_041aa4(this); }
+    char p0[84];
+};
 class CReplay {
 public:
-    CReplay() { f_041aa4(this); }
     virtual ~CReplay();
     virtual void v2();
     virtual int v3();
@@ -645,12 +649,12 @@ void Sequence::COptionModeJob::f_013b68()
         queue.Push(2);
 }
 
-/* @draft 0x013bac us f_013bac
+/* @implements 0x013bac us f_013bac
    WHAT IT DOES: State 6: creates the replay player for the chosen demo and starts the replay
    camera and sound for it. */
 void Sequence::COptionModeJob::f_013bac()
 {
-    D_1ee18c = new CReplay;
+    D_1ee18c = (CReplay *)new CReplayBlock;
     D_1ee18c->f_041b5c();
     f_0981fc(D_245074, m492);
     f_0983bc(D_245074);
