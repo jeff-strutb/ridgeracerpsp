@@ -455,42 +455,46 @@ extern "C" unsigned int *f_035aa0(SkidMarks *m, unsigned int *dl, float x, float
     return dl;
 }
 
-/* @draft 0x035d1c us f_035d1c
+/* @implements 0x035d1c us f_035d1c
    WHAT IT DOES: Draws the piece of a track between its two remembered points, the part its
    strip does not cover yet, as a four vertex strip. */
 extern "C" unsigned int *f_035d1c(SkidMarks *m, SkidTrack *t, unsigned int *dl)
 {
     SkidVtx *v = (SkidVtx *)f_021b38(80);
+    SkidVtx *v0 = v;
     SkidPoint *a = &t->pt[(t->cur + 1) & 1];
     SkidPoint *b;
 
-    v[0].x = a->p.x + a->d.x;
-    v[0].color = (a->alpha << 24) | 0xffffff;
-    v[0].y = a->p.y + a->d.y;
-    v[0].z = a->p.z + a->d.z;
-    v[0].u = 0;
-    v[0].v = 0;
-    v[1].color = (a->alpha << 24) | 0xffffff;
-    v[1].x = a->p.x - a->d.x;
-    v[1].y = a->p.y - a->d.y;
-    v[1].z = a->p.z - a->d.z;
-    v[1].u = 0x80;
-    v[1].v = 0;
+    v->color = (a->alpha << 24) | 0xffffff;
+    v->x = a->p.x + a->d.x;
+    v->y = a->p.y + a->d.y;
+    v->z = a->p.z + a->d.z;
+    v->u = 0;
+    v->v = 0;
+    v++;
+    v->color = (a->alpha << 24) | 0xffffff;
+    v->x = a->p.x - a->d.x;
+    v->y = a->p.y - a->d.y;
+    v->z = a->p.z - a->d.z;
+    v->u = 0x80;
+    v->v = 0;
+    v++;
     b = &t->pt[t->cur];
-    v[2].color = (b->alpha << 24) | 0xffffff;
-    v[2].x = b->p.x + b->d.x;
-    v[2].y = b->p.y + b->d.y;
-    v[2].z = b->p.z + b->d.z;
-    v[2].u = 0;
-    v[2].v = 0x80;
-    v[3].color = (b->alpha << 24) | 0xffffff;
-    v[3].x = b->p.x - b->d.x;
-    v[3].y = b->p.y - b->d.y;
-    v[3].z = b->p.z - b->d.z;
-    v[3].u = 0x80;
-    v[3].v = 0x80;
-    *dl++ = 0x10000000 | ((((unsigned int)v >> 24) & 0xf) << 16);
-    *dl++ = ((unsigned int)v & 0xffffff) | 0x01000000;
+    v->color = (b->alpha << 24) | 0xffffff;
+    v->x = b->p.x + b->d.x;
+    v->y = b->p.y + b->d.y;
+    v->z = b->p.z + b->d.z;
+    v->u = 0;
+    v->v = 0x80;
+    v++;
+    v->color = (b->alpha << 24) | 0xffffff;
+    v->x = b->p.x - b->d.x;
+    v->y = b->p.y - b->d.y;
+    v->z = b->p.z - b->d.z;
+    v->u = 0x80;
+    v->v = 0x80;
+    *dl++ = 0x10000000 | ((((unsigned int)v0 >> 24) & 0xf) << 16);
+    *dl++ = ((unsigned int)v0 & 0xffffff) | 0x01000000;
     *dl++ = 0x04040004;
     return dl;
 }
