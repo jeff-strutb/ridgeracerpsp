@@ -35,15 +35,18 @@ struct TexVertex {
 
 /* @draft 0x029b58 us f_029b58
    WHAT IT DOES: The vector unit version of the strip clipper, for textured, coloured
-   vertices, working in two polygon buffers in the fast on-chip memory at 0x10000. Clips a triangle strip
-   against the enabled clip planes (bits 0 to 3 of planes) and writes what is left as triangle
-   fans. With strips set, the strip is taken two triangles at a time as a quad (one triangle
+   vertices, working in two polygon buffers in the fast on-chip memory at 0x10000. Clips a
+   triangle strip against the enabled clip planes (bits 0 to 3 of planes) and writes what is
+   left as triangle fans. With strips set, the strip is taken two triangles at a time as a quad (one triangle
    when only one is left); otherwise one triangle at a time, every other one with its vertex
    order reversed to keep the winding. Each polygon is cut against each enabled plane in turn:
    vertices on the inner side are kept, and where an edge crosses the plane a new vertex is
    interpolated along the edge (texture coordinates, colour and position). A polygon with
    something left is written as vertices to out and as base, vertex address and fan commands
-   to the display list; the ends of both outputs are returned through outEnd and dlEnd. */
+   to the display list; the ends of both outputs are returned through outEnd and dlEnd.
+   Remaining difference: control flow and the vector code match; register allocation differs
+   from the strip pointer's register (retail keeps the input in s1, set after the first test)
+   and the distance loop's index givs onward. */
 void f_029b58(unsigned int planes, TexVertex *out, const TexVertex *in, unsigned int *dl, int n,
               TexVertex **outEnd, unsigned int **dlEnd, int strips)
 {
@@ -232,7 +235,10 @@ struct TexNormVertex {
    new vertex is interpolated along the edge (position and colour; the normal is taken from the edge's
    first vertex). A polygon with something left is written as vertices to out and as base,
    vertex address and fan commands to the display list; the ends of both outputs are returned
-   through outEnd and dlEnd. */
+   through outEnd and dlEnd.
+   Remaining difference: retail spills planes and keeps the buffer index unscaled (s7), the
+   and the interpolated colour is computed before the position and normal stores of the same
+   block. */
 void f_02a22c(unsigned int planes, LitVertex *out, const LitVertex *in, unsigned int *dl, int n,
               LitVertex **outEnd, unsigned int **dlEnd)
 {
@@ -343,7 +349,10 @@ void f_02a22c(unsigned int planes, LitVertex *out, const LitVertex *in, unsigned
    new vertex is interpolated along the edge (position, colour and texture coordinates; the normal is taken from the edge's
    first vertex). A polygon with something left is written as vertices to out and as base,
    vertex address and fan commands to the display list; the ends of both outputs are returned
-   through outEnd and dlEnd. */
+   through outEnd and dlEnd.
+   Remaining difference: retail spills planes and keeps the buffer index unscaled (s7), the
+   and the interpolated colour is computed before the position and normal stores of the same
+   block. */
 void f_02a910(unsigned int planes, TexLitVertex *out, const TexLitVertex *in, unsigned int *dl, int n,
               TexLitVertex **outEnd, unsigned int **dlEnd)
 {
@@ -456,7 +465,10 @@ void f_02a910(unsigned int planes, TexLitVertex *out, const TexLitVertex *in, un
    new vertex is interpolated along the edge (position and texture coordinates; the normal is taken from the edge's
    first vertex). A polygon with something left is written as vertices to out and as base,
    vertex address and fan commands to the display list; the ends of both outputs are returned
-   through outEnd and dlEnd. */
+   through outEnd and dlEnd.
+   Remaining difference: retail spills planes and keeps the buffer index unscaled (s7), the
+   and the interpolated colour is computed before the position and normal stores of the same
+   block. */
 void f_02b09c(unsigned int planes, TexNormVertex *out, const TexNormVertex *in, unsigned int *dl, int n,
               TexNormVertex **outEnd, unsigned int **dlEnd)
 {
