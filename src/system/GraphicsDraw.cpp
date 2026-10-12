@@ -18,11 +18,13 @@ void f_1181c0(unsigned int color);
 unsigned char *f_021b38(unsigned int size);
 void *f_021d5c(void);
 
-/* The pixel format, and the clear colour, stencil value and depth. */
+/* The pixel format (owned by the graphics system). */
 extern int D_23c1c0;
-extern unsigned int D_23c1e4;
-extern int D_23c1e8;
-extern unsigned short D_23c1ec;
+
+/* The clear colour, stencil value and depth. */
+unsigned int D_23c1e4;
+int D_23c1e8;
+unsigned short D_23c1ec;
 
 /* The vertex layouts the drawing calls build, packed because the vertex block is filled
    without regard to alignment: screen space with 16 bit coordinates, the same with 16 bit

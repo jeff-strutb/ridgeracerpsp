@@ -62,24 +62,34 @@ unsigned int f_021d38(void);
 
 /* The two display list buffers, the size of each, which one is being filled this frame, the
    end of the open call list chunk, and the low end of the data taken from the back. */
-extern void *D_23c1a8[2];
-extern unsigned int D_23c1b0;
-extern int D_23c1b4;
-extern unsigned int *D_23c1b8;
-extern char *D_23c1bc;
+void *D_23c1a8[2];
+unsigned int D_23c1b0;
+int D_23c1b4;
+unsigned int *D_23c1b8;
+char *D_23c1bc;
 
 /* The pixel format, which screen buffer is drawn this frame, the buffers' offsets in video
    memory (draw, display, depth) and their addresses, and whether depth is off for the
    current target. */
-extern int D_23c1c0;
-extern int D_23c1c4;
-extern unsigned int D_23c1c8[3];
-extern void *D_23c1d4[3];
-extern int D_23c1e0;
+int D_23c1c0;
+int D_23c1c4;
+unsigned int D_23c1c8[3];
+void *D_23c1d4[3];
+int D_23c1e0;
 
 /* The dither matrix and the identity matrix. */
-extern int D_1d1980[16];
-extern float D_1d19c0[16];
+int D_1d1980[16] = {
+    -4, 0, -3, 1,
+    2, -2, 3, -1,
+    -3, 1, -4, 0,
+    3, -1, 2, -2,
+};
+float D_1d19c0[16] = {
+    1.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 1.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 1.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 1.0f,
+};
 
 /* @implements 0x0213a0 us f_0213a0
    WHAT IT DOES: brings up the graphics engine. Allocates the two display list buffers, each

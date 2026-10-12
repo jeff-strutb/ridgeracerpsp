@@ -1,7 +1,7 @@
 /* The screen sampling object file (retail 0x02048c to 0x0213a0): two command list writers that
    measure how much of a small screen area is covered (for example a light that may be hidden
    behind scenery). Each one draws a marker sprite over the area with a stencil or alpha test
-   against the depth of the scene, then, rendering into a 64 pixel wide scratch target at the
+   against the depth of the scene, then, rendering into a 64 pixel wide work target at the
    top of video memory, sums every sampled pixel of the area into one point with additive
    blending, and leaves the result where the caller can read it back. */
 
@@ -218,7 +218,7 @@ unsigned int *f_02048c(const Pos16 *pos, unsigned int fb, int mode, unsigned int
 /* @implements 0x020cd4 us f_020cd4
    WHAT IT DOES: the second sampler. Writes the commands that sample a square around a screen
    position (the mode picks the size and step as for f_02048c) and sum it into one pixel of the
-   scratch target, then point drawing back at the screen's back buffer. Returns the end of the
+   work target, then point drawing back at the screen's back buffer. Returns the end of the
    commands. */
 unsigned int *f_020cd4(const Pos16 *pos, int mode, unsigned int *p)
 {
