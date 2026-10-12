@@ -495,20 +495,18 @@ void Sequence::CGameSaveData::f_01959c()
    course's rank to the highest. */
 void Sequence::CGameSaveData::f_019628()
 {
-    int i;
-
-    m15472 = 1;
     m15676 = 1;
     m15476 = 1;
-    for (i = 0; i < 48; i++)
+    m15472 = 1;
+    for (int i = 0; i < 48; i++)
         m14872[i] = 1;
-    for (i = 0; i < 60; i++)
+    for (int i = 0; i < 60; i++)
         m15064[i] = 1;
-    for (i = 0; i < 28; i++)
+    for (int i = 0; i < 28; i++)
         m15304[i] = 1;
-    for (i = 0; i < 10; i++)
+    for (int i = 0; i < 10; i++)
         m15416[i] = 1;
-    for (i = 0; i < 48; i++)
+    for (int i = 0; i < 48; i++)
         m15484[i] = 10;
 }
 
@@ -518,18 +516,17 @@ void Sequence::CGameSaveData::f_019628()
    the current time and a random number as the save's identity. */
 void Sequence::CGameSaveData::f_0196cc()
 {
-    int i, j;
     unsigned long long tick;
 
     m20 = 0;
     m12 = 20000;
     m16 = 2000;
-    for (i = 0; i < 336; i++) {
+    for (int i = 0; i < 336; i++) {
         m24[i] = 0x525d7d;
         m1368[i] = 0x1b747f;
     }
-    for (i = 0; i < 3; i++) {
-        for (j = 0; j < 336; j++) {
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 336; j++) {
             m2712[i][j].v[0] = 0x7fffffff;
             m2712[i][j].v[1] = 0x7fffffff;
             m2712[i][j].v[2] = 0x7fffffff;
@@ -551,13 +548,13 @@ void Sequence::CGameSaveData::f_0196cc()
     m14860 = 1;
     m14864 = 1;
     m14868 = 0;
-    for (i = 0; i < 48; i++)
+    for (int i = 0; i < 48; i++)
         m14872[i] = 0;
-    for (i = 0; i < 60; i++)
+    for (int i = 0; i < 60; i++)
         m15064[i] = 0;
-    for (i = 0; i < 28; i++)
+    for (int i = 0; i < 28; i++)
         m15304[i] = 0;
-    for (i = 0; i < 10; i++)
+    for (int i = 0; i < 10; i++)
         m15416[i] = 0;
     m15456 = 1;
     m15460 = 1;
@@ -566,7 +563,7 @@ void Sequence::CGameSaveData::f_0196cc()
     m15472 = 0;
     m15476 = 0;
     m15480 = 1;
-    for (i = 0; i < 48; i++)
+    for (int i = 0; i < 48; i++)
         m15484[i] = 0;
     m15676 = 0;
     m15680 = 0;
@@ -578,7 +575,8 @@ void Sequence::CGameSaveData::f_0196cc()
     m15704 = 0;
     m15708 = 1;
     m15712 = 1;
-    f_019994(D_1d16e0[D_1e8ec4.Rand() % 10]);
+    int idx = D_1e8ec4.Rand() % 10;
+    f_019994(D_1d16e0[idx]);
     if (f_01c260() == 6)
         m15728 = 1;
     else
@@ -587,15 +585,15 @@ void Sequence::CGameSaveData::f_0196cc()
     m15732 = 0;
     m15736 = 1;
     m15740 = 1;
-    m15064[1] = 1;
-    m15064[2] = 1;
-    m15064[3] = 1;
     m15304[1] = 1;
     m15304[3] = 1;
     m15304[5] = 1;
     m15304[7] = 1;
     m15304[9] = 1;
     m15304[11] = 1;
+    m15064[1] = 1;
+    m15064[2] = 1;
+    m15064[3] = 1;
     sceRtcGetCurrentTick(&tick);
     m15744 = tick >> 32;
     m15748 = tick;
