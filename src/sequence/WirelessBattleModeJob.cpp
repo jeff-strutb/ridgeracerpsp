@@ -577,10 +577,12 @@ int f_096918(char *);
         f_014fb0((team), m3164);                                                         \
         Rec car_;                                                                        \
         FIND_CAR(&car_, m3164);                                                           \
-        memcpy(D_24063c, f_0368e8(&D_240740, "Class", car_.rec, 0, 0), D_1a211c[1]);     \
+        char *f_ = f_0368e8(&D_240740, "Class", car_.rec, 0, 0);                        \
+        memcpy(D_24063c, f_, D_1a211c[1]);                                               \
         int cls_ = D_24063c[0] - 1;                                                      \
         Rec crs_ = ChosenCourse(D_1dd7c4);                                               \
-        int n_ = cls_ * 24 + CourseIndex(crs_);                                          \
+        int idx_ = CourseIndex(crs_);                                                    \
+        int n_ = cls_ * 24 + idx_;                                                       \
         D_1ee198.lapRecord = m1820[n_];                                                  \
         D_1ee198.record = m476[n_];                                                      \
         f_018af8(&D_2301b0);                                                             \
@@ -1349,10 +1351,12 @@ void Sequence::CWirelessBattleModeJob::f_00e334()
     f_014fb0(m3168, m3164);
     Rec c;
     FIND_CAR(&c, m3164);
-    memcpy(D_24063c, f_0368e8(&D_240740, "Class", c.rec, 0, 0), D_1a211c[1]);
+    char *f = f_0368e8(&D_240740, "Class", c.rec, 0, 0);
+    memcpy(D_24063c, f, D_1a211c[1]);
     int cls = D_24063c[0] - 1;
     Rec crs = ChosenCourse(D_1dd7c4);
-    int k = cls * 24 + CourseIndex(crs);
+    int idx = CourseIndex(crs);
+    int k = cls * 24 + idx;
     D_1ee198.car[0] = m3164;
     D_1ee198.m76[0] = 0;
     D_1ee198.color[0] = m3172 - 1;
@@ -1570,10 +1574,12 @@ void Sequence::CWirelessBattleModeJob::f_010378()
     int me = D_240800.me;
     Rec car;
     FIND_CAR(&car, m3164);
-    memcpy(D_24063c, f_0368e8(&D_240740, "Class", car.rec, 0, 0), D_1a211c[1]);
+    char *f = f_0368e8(&D_240740, "Class", car.rec, 0, 0);
+    memcpy(D_24063c, f, D_1a211c[1]);
     int cls = D_24063c[0] - 1;
     Rec crs = ChosenCourse(D_1dd7c4);
-    int k = cls * 24 + CourseIndex(crs);
+    int idx = CourseIndex(crs);
+    int k = cls * 24 + idx;
 
     ScreenReq req;
     req.Reset();
