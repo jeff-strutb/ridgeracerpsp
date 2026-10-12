@@ -1,4 +1,4 @@
-/* The race setup (retail 0x014950 to 0x01797c): the record that describes the race about to be
+/* The race setup (retail 0x014950 to 0x017968): the record that describes the race about to be
    run (its sequence, course, laps, the cars of the player and of the rivals, the ghosts), the
    lookups that turn menu choices into that record through the course, car and race tables, the
    copy of the record into the sequence manager, and its save and load through a byte stream
@@ -430,7 +430,7 @@ struct LinkCount {
 struct Session {
     int m0[4];
     int count;
-    Pair cars[13];
+    Slot cars[13];
     int m124[13];
     int m176[13];
     int m228[13];
@@ -727,7 +727,12 @@ static inline bool IsMode(int mode)
    record is written and which is played against, copies the chosen options, clears the
    second car (unless the sequence is a two player one) and every rival, reads the laps and
    the rivals' level of the sequence, and fills in each player's car (from its selection
-   number), colour and options. Then it resets the sequence manager. */
+   number), colour and options. Then it resets the sequence manager.
+   Remaining difference: register and giv choices. Retail copies the three options with the
+   setup's base register and offsets 600 to 608 (this build hoists base+600), keeps no register
+   for the setup's address after the copy, strength reduces the car loop from &car[0], and
+   spills the player counter to the stack; this build indexes the cars and keeps the counter in
+   a register (237 of 308 words). */
 void f_015204()
 {
     int i;
@@ -822,7 +827,11 @@ static inline int Colour555(unsigned int c)
    player's name entry to the session; other modes send the setup's choices. Every player of
    the session becomes a rival (with its car, colours and options, and in link races its
    name), the local player's own car, colours and name are taken from the link, and the
-   sequence manager is given the course, the sequence and the player's car. */
+   sequence manager is given the course, the sequence and the player's car.
+   Remaining difference: in the rival loop retail reloads the session's address inside the
+   loop, indexes cars[k] as (base + 8k) + 20 and keeps a second copy of the loop counter; this
+   build hoists base + 20 out of the loop. The block order and stack slots after the loop
+   follow from that (293 of 394 words). */
 void f_0156d4()
 {
     int i;
@@ -881,7 +890,10 @@ void f_0156d4()
    yet started it checks every other player: when all are ready the link is started; otherwise
    the local player's entry is sent again every 16 steps. Once started (or stopped), it
    answers whether waiting is over (1), or, while the link is busy, takes a message from it and
-   marks the local player ready when the message came. */
+   marks the local player ready when the message came.
+   Remaining difference: retail keeps &entry[0] in a saved register computed from the link's
+   address at entry and a register holding 6 for the state tests and store; this build folds
+   the entry address into constants (116 of 119 words, 32 bytes shorter). */
 int f_015ce4()
 {
     int i;
@@ -1108,7 +1120,10 @@ void f_0177b0();
    word, the race sequence's row, the packed setup record, then each ghost record (the
    recorded one first), storing the stream position after each ghost. It returns 0, or a
    negative code for the part that did not fit. At the end, a two player race whose setup has
-   a ghost choice gets its players swapped back. */
+   a ghost choice gets its players swapped back.
+   Remaining difference: register allocation and scheduling throughout (the packer's stream
+   object, the block pointers and the loop counters land in other registers); the control flow
+   and calls are the same (1828 against 2016 bytes). */
 int f_016348(unsigned char *data, int *firstEnd, int *size)
 {
     int status = 0;
@@ -1264,7 +1279,9 @@ done:
    WHAT IT DOES: Loads what f_016348 saved: checks the leading zero word, unpacks the setup
    record, turns its table rows back into names (the sequence, the cars and the rivals), checks
    that the sequence is the one saved, and unpacks the two ghost records. Returns 0, or a
-   negative code for the part that was missing or wrong. */
+   negative code for the part that was missing or wrong.
+   Remaining difference: register allocation and scheduling throughout; the control flow and
+   calls are the same (1136 against 1196 bytes). */
 int f_016b28(unsigned char *data, unsigned int size)
 {
     int status = 0;
@@ -1377,7 +1394,10 @@ void f_016fd4()
 /* @draft 0x0170a8 us f_0170a8
    WHAT IT DOES: Builds the sequence manager's view of a wireless race from the setup: sends the
    setup's choices to the session, gives every player's car as a rival slot, and sets the
-   course, the sequence and both players' cars. */
+   course, the sequence and both players' cars.
+   Remaining difference: retail passes each rival slot to f_003150 as a plain copy through a
+   strength reduced pointer and keeps the hand-back copy of the sequence in its own stack slot;
+   here the slot is converted to the call's pair type (indexed loop, shared temporary slot). */
 void f_0170a8()
 {
     int i;
@@ -1410,7 +1430,9 @@ void f_0170a8()
    into a local copy, names its rows again, checks the sequence matches, loads the replay's
    ghost record into the second ghost, and copies the first player's car, options, colours and
    record times of the saved race into the second player of the current setup. Returns 0 or a
-   negative code. */
+   negative code.
+   Remaining difference: register allocation and scheduling throughout; the control flow and
+   calls are the same (1108 against 1148 bytes). */
 int f_01730c(unsigned char *data, unsigned int size)
 {
     int status = 0;
@@ -1516,7 +1538,10 @@ template <class T> inline void Swap(T &a, T &b)
 
 /* @draft 0x0177b0 us f_0177b0
    WHAT IT DOES: Swaps the two players of a two player race: their cars, options and colours,
-   and which ghost record each one writes. */
+   and which ghost record each one writes.
+   Remaining difference: retail anchors every address on &car[1] with the setup's base derived
+   from it and holds the loaded values in s0 to s4 (48 byte frame); this build anchors the int
+   fields on &car[1] too and uses temporaries only (32 byte frame). */
 void f_0177b0()
 {
     D_2407f8 = 1 - D_2407f8;
