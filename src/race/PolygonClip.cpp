@@ -24,6 +24,539 @@ extern Vector4 D_23fb80;
 extern Vector4 D_23fb90;
 extern float D_23fba0;
 
+PlaneSet *f_02b7e4(void);
+
+/* A textured, coloured strip vertex: texture coordinates, colour, position. */
+struct TexVertex {
+    float u, v;
+    unsigned char c[4];
+    float x, y, z;
+};
+
+/* @draft 0x029b58 us f_029b58
+   WHAT IT DOES: The vector unit version of the strip clipper, for textured, coloured
+   vertices, working in two polygon buffers in the fast on-chip memory at 0x10000. Clips a triangle strip
+   against the enabled clip planes (bits 0 to 3 of planes) and writes what is left as triangle
+   fans. With strips set, the strip is taken two triangles at a time as a quad (one triangle
+   when only one is left); otherwise one triangle at a time, every other one with its vertex
+   order reversed to keep the winding. Each polygon is cut against each enabled plane in turn:
+   vertices on the inner side are kept, and where an edge crosses the plane a new vertex is
+   interpolated along the edge (texture coordinates, colour and position). A polygon with
+   something left is written as vertices to out and as base, vertex address and fan commands
+   to the display list; the ends of both outputs are returned through outEnd and dlEnd. */
+void f_029b58(unsigned int planes, TexVertex *out, const TexVertex *in, unsigned int *dl, int n,
+              TexVertex **outEnd, unsigned int **dlEnd, int strips)
+{
+    TexVertex *buf[2];
+    int cnt[2];
+    float dist[12];
+    float di;
+    float dj;
+    int k;
+
+    buf[0] = (TexVertex *)0x10000;
+    buf[1] = (TexVertex *)0x10180;
+    for (k = 0; k < n - 2; ) {
+        int cur;
+        int p;
+
+        cnt[1] = 0;
+        cur = 0;
+        if (n - k - 2 < 2 || !strips) {
+            cnt[0] = 3;
+            if (k & 1) {
+                buf[0][0] = in[2];
+                buf[0][1] = in[1];
+                buf[0][2] = in[0];
+            } else {
+                buf[0][0] = in[0];
+                buf[0][1] = in[1];
+                buf[0][2] = in[2];
+            }
+            k++;
+            in++;
+        } else {
+            cnt[0] = 4;
+            k += 2;
+            buf[0][0] = in[1];
+            buf[0][1] = in[3];
+            buf[0][2] = in[2];
+            buf[0][3] = in[0];
+            in += 2;
+        }
+        for (p = 0; p < 4; p++) {
+            if (planes & (1 << p)) {
+                Plane *pl = &f_02b7e4()->p[p];
+                int i;
+                int m;
+
+                /* The signed distance of every vertex from the plane, two at a time. */
+                for (i = cnt[cur] - 1; i >= 0; ) {
+                    if (i < 2) {
+                        __asm__ volatile(
+                            "lv.q C000.q, 0(%0)\n"
+                            "\tlv.s S010.s, 12(%1)\n\tlv.s S011.s, 16(%1)\n\tlv.s S012.s, 20(%1)\n"
+                            "\tvone.s S013.s\n"
+                            "\tvdot.q S100.s, C000.q, C010.q\n"
+                            "\tsv.s S100.s, 0(%2)"
+                            : : "r"(pl), "r"(&buf[cur][i]), "r"(&dist[i]) : "memory");
+                        i--;
+                    } else {
+                        __asm__ volatile(
+                            "lv.q C000.q, 0(%0)\n"
+                            "\tlv.s S010.s, 12(%1)\n\tlv.s S011.s, 16(%1)\n\tlv.s S012.s, 20(%1)\n"
+                            "\tvone.s S013.s\n"
+                            "\tlv.s S020.s, -12(%1)\n\tlv.s S021.s, -8(%1)\n"
+                            "\tvdot.q S100.s, C000.q, C010.q\n"
+                            "\tlv.s S022.s, -4(%1)\n"
+                            "\tvone.s S023.s\n"
+                            "\tvdot.q S101.s, C000.q, C020.q\n"
+                            "\tsv.s S100.s, 0(%2)\n"
+                            "\tsv.s S101.s, -4(%2)"
+                            : : "r"(pl), "r"(&buf[cur][i]), "r"(&dist[i]) : "memory");
+                        i -= 2;
+                    }
+                }
+                m = 0;
+                for (i = 0; i < cnt[cur]; i++) {
+                    int j = (i + 1) % cnt[cur];
+                    TexVertex *a = &buf[cur][i];
+                    TexVertex *b;
+
+                    di = dist[i];
+                    if (di >= 0.0f) {
+                        buf[1 - cur][m] = *a;
+                        m++;
+                    }
+                    dj = dist[j];
+                    b = &buf[cur][j];
+                    if (di * dj < 0.0f) {
+                        /* t = |di| / max(|di| + |dj|, e); the new vertex is a + (b - a) t,
+                           the colour converted to floats and back. */
+                        __asm__ volatile(
+                            "lv.s S200.s, %0\n"
+                            "\tlv.s S201.s, %1\n"
+                            "\tlbu $8, 8(%2)\n\tlbu $9, 9(%2)\n"
+                            "\tvabs.p C200.p, C200.p\n"
+                            "\tvcst.s S203.s, VFPU_E\n"
+                            "\tlbu $10, 10(%2)\n"
+                            "\tvadd.s S202.s, S200.s, S201.s\n"
+                            "\tlbu $11, 11(%2)\n"
+                            "\tmtv $8, S010.s\n"
+                            "\tvmax.s S202.s, S202.s, S203.s\n"
+                            "\tmtv $9, S011.s\n\tmtv $10, S012.s\n"
+                            "\tvdiv.s S200.s, S200.s, S202.s\n"
+                            "\tmtv $11, S013.s\n"
+                            "\tlv.s S000.s, 0(%2)\n\tlv.s S001.s, 4(%2)\n"
+                            "\tlv.s S020.s, 12(%2)\n\tlv.s S021.s, 16(%2)\n\tlv.s S022.s, 20(%2)\n"
+                            "\tvi2f.q C010.q, C010.q, 1/2^0\n"
+                            "\tlbu $8, 8(%3)\n\tlbu $9, 9(%3)\n\tlbu $10, 10(%3)\n\tlbu $11, 11(%3)\n"
+                            "\tmtv $8, S110.s\n\tmtv $9, S111.s\n\tmtv $10, S112.s\n\tmtv $11, S113.s\n"
+                            "\tlv.s S100.s, 0(%3)\n\tlv.s S101.s, 4(%3)\n"
+                            "\tlv.s S120.s, 12(%3)\n\tlv.s S121.s, 16(%3)\n\tlv.s S122.s, 20(%3)\n"
+                            "\tvi2f.q C110.q, C110.q, 1/2^0\n"
+                            "\tvone.s S202.s\n"
+                            "\tvsub.s S201.s, S202.s, S200.s\n"
+                            "\tvscl.p C300.p, C000.p, S201.s\n"
+                            "\tvscl.q C310.q, C010.q, S201.s\n"
+                            "\tvscl.t C320.t, C020.t, S201.s\n"
+                            "\tvscl.p C000.p, C100.p, S200.s\n"
+                            "\tvscl.q C010.q, C110.q, S200.s\n"
+                            "\tvscl.t C020.t, C120.t, S200.s\n"
+                            "\tvadd.p C000.p, C300.p, C000.p\n"
+                            "\tvadd.q C010.q, C310.q, C010.q\n"
+                            "\tvadd.t C020.t, C320.t, C020.t\n"
+                            "\tsv.s S000.s, 0(%4)\n"
+                            "\tvf2in.q C010.q, C010.q, 1/2^23\n"
+                            "\tsv.s S001.s, 4(%4)\n"
+                            "\tsv.s S020.s, 12(%4)\n"
+                            "\tvi2uc.q S120.s, C010.q\n"
+                            "\tsv.s S021.s, 16(%4)\n"
+                            "\tsv.s S022.s, 20(%4)\n"
+                            "\tsv.s S120.s, 8(%4)"
+                            : : "m"(di), "m"(dj), "r"(a), "r"(b), "r"(&buf[1 - cur][m])
+                            : "$8", "$9", "$10", "$11", "memory");
+                        m++;
+                    }
+                }
+                if (m == 0)
+                    goto next;
+                cur = 1 - cur;
+                cnt[cur] = m;
+                cnt[1 - cur] = 0;
+            }
+        }
+        {
+            int c = cnt[cur];
+            int i;
+
+            *dl++ = ((((int)out >> 24) & 0xf) << 16) | 0x10000000;
+            *dl++ = ((unsigned int)out & 0xffffff) | 0x01000000;
+            *dl++ = c | 0x04050000;
+            for (i = 0; i < c; i++)
+                *out++ = buf[cur][i];
+        }
+    next:;
+    }
+    *outEnd = out;
+    *dlEnd = dl;
+}
+
+/* A coloured, lit strip vertex: colour, three normal shorts, position. */
+struct LitVertex {
+    unsigned char c[4];
+    unsigned short n[3];
+    float x, y, z;
+};
+
+/* A textured, coloured, lit strip vertex. */
+struct TexLitVertex {
+    float u, v;
+    unsigned char c[4];
+    unsigned short n[3];
+    float x, y, z;
+};
+
+/* A textured, lit strip vertex. */
+struct TexNormVertex {
+    float u, v;
+    unsigned short n[3];
+    float x, y, z;
+};
+
+/* @draft 0x02a22c us f_02a22c
+   WHAT IT DOES: Clips a triangle strip of coloured, lit vertices against the enabled clip planes (bits 0 to 3 of
+   planes) and writes what is left as triangle fans. The strip is taken two triangles at a time
+   as a quad (one triangle when only one is left). Each polygon is cut against each enabled
+   plane in turn: vertices on the inner side are kept, and where an edge crosses the plane a
+   new vertex is interpolated along the edge (position and colour; the normal is taken from the edge's
+   first vertex). A polygon with something left is written as vertices to out and as base,
+   vertex address and fan commands to the display list; the ends of both outputs are returned
+   through outEnd and dlEnd. */
+void f_02a22c(unsigned int planes, LitVertex *out, const LitVertex *in, unsigned int *dl, int n,
+              LitVertex **outEnd, unsigned int **dlEnd)
+{
+    LitVertex buf[2][10];
+    int cnt[2];
+    float dist[12];
+    int k;
+
+    for (k = 0; k < n - 2; ) {
+        int cur;
+        int p;
+
+        cnt[1] = 0;
+        if (n - k - 2 < 2) {
+            buf[0][0] = in[0];
+            buf[0][1] = in[1];
+            buf[0][2] = in[2];
+            cnt[0] = 3;
+            k++;
+            in++;
+        } else {
+            buf[0][0] = in[1];
+            buf[0][1] = in[3];
+            buf[0][2] = in[2];
+            buf[0][3] = in[0];
+            cnt[0] = 4;
+            k += 2;
+            in += 2;
+        }
+        cur = 0;
+        for (p = 0; p < 4; p++) {
+            if (planes & (1 << p)) {
+                Plane *pl = &f_02b7e4()->p[p];
+                int i;
+                int m;
+
+                for (i = 0; i < cnt[cur]; i++)
+                    dist[i] = buf[cur][i].x * pl->x + buf[cur][i].y * pl->y
+                              + buf[cur][i].z * pl->z + pl->w;
+                m = 0;
+                for (i = 0; i < cnt[cur]; i++) {
+                    int j = (i + 1) % cnt[cur];
+                    float di = dist[i];
+                    LitVertex *a = &buf[cur][i];
+                    LitVertex *b = &buf[cur][j];
+                    float dj;
+
+                    if (di >= 0.0f) {
+                        buf[1 - cur][m] = *a;
+                        m++;
+                    }
+                    dj = dist[j];
+                    if (di * dj < 0.0f) {
+                        LitVertex *v = &buf[1 - cur][m];
+                        float ai = di;
+                        float aj = dj;
+                        float s;
+                        float t = 0.0f;
+
+                        if (di < 0.0f)
+                            ai = -di;
+                        if (dj < 0.0f)
+                            aj = -dj;
+                        s = ai + aj;
+                        if (s != 0.0f)
+                            t = ai / s;
+                        v->x = a->x * (1.0f - t) + t * b->x;
+                        v->y = a->y * (1.0f - t) + t * b->y;
+                        v->z = a->z * (1.0f - t) + t * b->z;
+                        v->n[0] = a->n[0];
+                        v->n[1] = a->n[1];
+                        v->n[2] = a->n[2];
+                        v->c[0] = (unsigned char)(a->c[0] * (1.0f - t) + t * b->c[0]);
+                        v->c[1] = (unsigned char)(a->c[1] * (1.0f - t) + t * b->c[1]);
+                        v->c[2] = (unsigned char)(a->c[2] * (1.0f - t) + t * b->c[2]);
+                        v->c[3] = (unsigned char)(a->c[3] * (1.0f - t) + t * b->c[3]);
+                        m++;
+                    }
+                }
+                if (m == 0)
+                    goto next;
+                cur = 1 - cur;
+                cnt[cur] = m;
+                cnt[1 - cur] = 0;
+            }
+        }
+        {
+            int c = cnt[cur];
+            int i;
+
+            *dl++ = ((((int)out >> 24) & 0xf) << 16) | 0x10000000;
+            *dl++ = ((unsigned int)out & 0xffffff) | 0x01000000;
+            *dl++ = c | 0x04050000;
+            for (i = 0; i < c; i++)
+                *out++ = buf[cur][i];
+        }
+    next:;
+    }
+    *outEnd = out;
+    *dlEnd = dl;
+}
+
+/* @draft 0x02a910 us f_02a910
+   WHAT IT DOES: Clips a triangle strip of textured, coloured, lit vertices against the enabled clip planes (bits 0 to 3 of
+   planes) and writes what is left as triangle fans. The strip is taken two triangles at a time
+   as a quad (one triangle when only one is left). Each polygon is cut against each enabled
+   plane in turn: vertices on the inner side are kept, and where an edge crosses the plane a
+   new vertex is interpolated along the edge (position, colour and texture coordinates; the normal is taken from the edge's
+   first vertex). A polygon with something left is written as vertices to out and as base,
+   vertex address and fan commands to the display list; the ends of both outputs are returned
+   through outEnd and dlEnd. */
+void f_02a910(unsigned int planes, TexLitVertex *out, const TexLitVertex *in, unsigned int *dl, int n,
+              TexLitVertex **outEnd, unsigned int **dlEnd)
+{
+    TexLitVertex buf[2][10];
+    int cnt[2];
+    float dist[12];
+    int k;
+
+    for (k = 0; k < n - 2; ) {
+        int cur;
+        int p;
+
+        cnt[1] = 0;
+        if (n - k - 2 < 2) {
+            buf[0][0] = in[0];
+            buf[0][1] = in[1];
+            buf[0][2] = in[2];
+            cnt[0] = 3;
+            k++;
+            in++;
+        } else {
+            buf[0][0] = in[1];
+            buf[0][1] = in[3];
+            buf[0][2] = in[2];
+            buf[0][3] = in[0];
+            cnt[0] = 4;
+            k += 2;
+            in += 2;
+        }
+        cur = 0;
+        for (p = 0; p < 4; p++) {
+            if (planes & (1 << p)) {
+                Plane *pl = &f_02b7e4()->p[p];
+                int i;
+                int m;
+
+                for (i = 0; i < cnt[cur]; i++)
+                    dist[i] = buf[cur][i].x * pl->x + buf[cur][i].y * pl->y
+                              + buf[cur][i].z * pl->z + pl->w;
+                m = 0;
+                for (i = 0; i < cnt[cur]; i++) {
+                    int j = (i + 1) % cnt[cur];
+                    float di = dist[i];
+                    TexLitVertex *a = &buf[cur][i];
+                    TexLitVertex *b = &buf[cur][j];
+                    float dj;
+
+                    if (di >= 0.0f) {
+                        buf[1 - cur][m] = *a;
+                        m++;
+                    }
+                    dj = dist[j];
+                    if (di * dj < 0.0f) {
+                        TexLitVertex *v = &buf[1 - cur][m];
+                        float ai = di;
+                        float aj = dj;
+                        float s;
+                        float t = 0.0f;
+
+                        if (di < 0.0f)
+                            ai = -di;
+                        if (dj < 0.0f)
+                            aj = -dj;
+                        s = ai + aj;
+                        if (s != 0.0f)
+                            t = ai / s;
+                        v->x = a->x * (1.0f - t) + t * b->x;
+                        v->y = a->y * (1.0f - t) + t * b->y;
+                        v->z = a->z * (1.0f - t) + t * b->z;
+                        v->n[0] = a->n[0];
+                        v->n[1] = a->n[1];
+                        v->n[2] = a->n[2];
+                        v->c[0] = (unsigned char)(a->c[0] * (1.0f - t) + t * b->c[0]);
+                        v->c[1] = (unsigned char)(a->c[1] * (1.0f - t) + t * b->c[1]);
+                        v->c[2] = (unsigned char)(a->c[2] * (1.0f - t) + t * b->c[2]);
+                        v->c[3] = (unsigned char)(a->c[3] * (1.0f - t) + t * b->c[3]);
+                        v->u = a->u * (1.0f - t) + t * b->u;
+                        v->v = a->v * (1.0f - t) + t * b->v;
+                        m++;
+                    }
+                }
+                if (m == 0)
+                    goto next;
+                cur = 1 - cur;
+                cnt[cur] = m;
+                cnt[1 - cur] = 0;
+            }
+        }
+        {
+            int c = cnt[cur];
+            int i;
+
+            *dl++ = ((((int)out >> 24) & 0xf) << 16) | 0x10000000;
+            *dl++ = ((unsigned int)out & 0xffffff) | 0x01000000;
+            *dl++ = c | 0x04050000;
+            for (i = 0; i < c; i++)
+                *out++ = buf[cur][i];
+        }
+    next:;
+    }
+    *outEnd = out;
+    *dlEnd = dl;
+}
+
+/* @draft 0x02b09c us f_02b09c
+   WHAT IT DOES: Clips a triangle strip of textured, lit vertices against the enabled clip planes (bits 0 to 3 of
+   planes) and writes what is left as triangle fans. The strip is taken two triangles at a time
+   as a quad (one triangle when only one is left). Each polygon is cut against each enabled
+   plane in turn: vertices on the inner side are kept, and where an edge crosses the plane a
+   new vertex is interpolated along the edge (position and texture coordinates; the normal is taken from the edge's
+   first vertex). A polygon with something left is written as vertices to out and as base,
+   vertex address and fan commands to the display list; the ends of both outputs are returned
+   through outEnd and dlEnd. */
+void f_02b09c(unsigned int planes, TexNormVertex *out, const TexNormVertex *in, unsigned int *dl, int n,
+              TexNormVertex **outEnd, unsigned int **dlEnd)
+{
+    TexNormVertex buf[2][10];
+    int cnt[2];
+    float dist[12];
+    int k;
+
+    for (k = 0; k < n - 2; ) {
+        int cur;
+        int p;
+
+        cnt[1] = 0;
+        if (n - k - 2 < 2) {
+            buf[0][0] = in[0];
+            buf[0][1] = in[1];
+            buf[0][2] = in[2];
+            cnt[0] = 3;
+            k++;
+            in++;
+        } else {
+            buf[0][0] = in[1];
+            buf[0][1] = in[3];
+            buf[0][2] = in[2];
+            buf[0][3] = in[0];
+            cnt[0] = 4;
+            k += 2;
+            in += 2;
+        }
+        cur = 0;
+        for (p = 0; p < 4; p++) {
+            if (planes & (1 << p)) {
+                Plane *pl = &f_02b7e4()->p[p];
+                int i;
+                int m;
+
+                for (i = 0; i < cnt[cur]; i++)
+                    dist[i] = buf[cur][i].x * pl->x + buf[cur][i].y * pl->y
+                              + buf[cur][i].z * pl->z + pl->w;
+                m = 0;
+                for (i = 0; i < cnt[cur]; i++) {
+                    int j = (i + 1) % cnt[cur];
+                    float di = dist[i];
+                    TexNormVertex *a = &buf[cur][i];
+                    TexNormVertex *b = &buf[cur][j];
+                    float dj;
+
+                    if (di >= 0.0f) {
+                        buf[1 - cur][m] = *a;
+                        m++;
+                    }
+                    dj = dist[j];
+                    if (di * dj < 0.0f) {
+                        TexNormVertex *v = &buf[1 - cur][m];
+                        float ai = di;
+                        float aj = dj;
+                        float s;
+                        float t = 0.0f;
+
+                        if (di < 0.0f)
+                            ai = -di;
+                        if (dj < 0.0f)
+                            aj = -dj;
+                        s = ai + aj;
+                        if (s != 0.0f)
+                            t = ai / s;
+                        v->x = a->x * (1.0f - t) + t * b->x;
+                        v->y = a->y * (1.0f - t) + t * b->y;
+                        v->z = a->z * (1.0f - t) + t * b->z;
+                        v->n[0] = a->n[0];
+                        v->n[1] = a->n[1];
+                        v->n[2] = a->n[2];
+                        v->u = a->u * (1.0f - t) + t * b->u;
+                        v->v = a->v * (1.0f - t) + t * b->v;
+                        m++;
+                    }
+                }
+                if (m == 0)
+                    goto next;
+                cur = 1 - cur;
+                cnt[cur] = m;
+                cnt[1 - cur] = 0;
+            }
+        }
+        {
+            int c = cnt[cur];
+            int i;
+
+            *dl++ = ((((int)out >> 24) & 0xf) << 16) | 0x10000000;
+            *dl++ = ((unsigned int)out & 0xffffff) | 0x01000000;
+            *dl++ = c | 0x04050000;
+            for (i = 0; i < c; i++)
+                *out++ = buf[cur][i];
+        }
+    next:;
+    }
+    *outEnd = out;
+    *dlEnd = dl;
+}
+
 /* @implements 0x02b67c us f_02b67c
    WHAT IT DOES: Sets the four clip planes from the given plane matrix. */
 void f_02b67c(const PlaneSet *m)
