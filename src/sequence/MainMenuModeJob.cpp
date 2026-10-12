@@ -108,9 +108,16 @@ public:
     virtual void v8();
     virtual void v9();
     virtual int v10(int what);
+    void Restart()
+    {
+        m453 = 1;
+        LayerSub *t = &m4;
+        if (t->p)
+            t->f_04b290();
+    }
     LayerSub m4;
     char m8[453 - 8];
-    unsigned char m453;
+    bool m453;
 };
 struct ScreenMgr {
     CLayer *layer;
@@ -283,8 +290,8 @@ struct ScreenMsg {
     ~ScreenMsg() { f_078734(this); }
     void *vt;
     int m4;
-    unsigned char m8;
-    unsigned char m9;
+    bool m8;
+    bool m9;
 };
 
 namespace System {
@@ -547,22 +554,19 @@ void Sequence::CMainMenuModeJob::f_0085ac()
     f_01a91c(&D_23ba90, 0);
 }
 
-/* @draft 0x0085d0 us f_0085d0
+/* @implements 0x0085d0 us f_0085d0
    WHAT IT DOES: State 6: when the save has finished, tells the screen whether it succeeded,
    restarts the screen layer and sends event 2. */
 void Sequence::CMainMenuModeJob::f_0085d0()
 {
-    if (!f_01abf4(&D_23ba90))
-        return;
-    ScreenMsg n;
-    n.m9 = !D_23ba90.m4;
-    n.m8 = 1;
-    D_2301b0.layer->v2(&n, 0);
-    CLayer *l = D_2301b0.layer;
-    l->m453 = 1;
-    if (l->m4.p)
-        l->m4.f_04b290();
-    queue.Push(2);
+    if (f_01abf4(&D_23ba90)) {
+        ScreenMsg n;
+        n.m9 = !D_23ba90.m4;
+        n.m8 = 1;
+        D_2301b0.layer->v2(&n, 0);
+        D_2301b0.layer->Restart();
+        queue.Push(2);
+    }
 }
 
 /* @implements 0x0086b8 us f_0086b8
