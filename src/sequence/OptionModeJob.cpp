@@ -454,7 +454,6 @@ void Sequence::COptionModeJob::Begin()
     m460 = D_233f70.m15712 != 0;
     for (int i = 0; i < 8; i++)
         m480[i] = D_233f70.m15716[i];
-    m60 = 1;
     m464 = D_233f70.m15728;
     m468 = D_233f70.m15724;
     m488 = D_233f70.m15732;
@@ -462,11 +461,12 @@ void Sequence::COptionModeJob::Begin()
     m496 = D_233f70.m15740;
     m504 = D_233f70.m12;
     m508 = D_233f70.m16;
-    m64 = 0;
     m512 = D_233f70.m20 != 0;
     m500 = D_233f70.m15676 != 0;
+    m64 = 0;
     m68 = 0;
     state = 0;
+    m60 = 1;
 }
 
 /* @implements 0x013540 us _ZN8Sequence14COptionModeJob4StepEv
@@ -532,8 +532,8 @@ void Sequence::COptionModeJob::f_0136dc()
     D_233f70.m15740 = m496;
     D_233f70.m12 = m504;
     D_233f70.m16 = m508;
-    D_233f70.m15676 = m500;
     D_233f70.m20 = m512;
+    D_233f70.m15676 = m500;
 }
 
 /* @implements 0x013794 us f_013794
