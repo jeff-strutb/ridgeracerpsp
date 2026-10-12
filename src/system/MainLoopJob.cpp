@@ -348,7 +348,7 @@ int f_001088(void)
     return (int)(f_000f7c() * 166.83f);
 }
 
-/* @draft 0x0010b8 us _ZN6System12CMainLoopJob4StepEv
+/* @implements 0x0010b8 us _ZN6System12CMainLoopJob4StepEv
    WHAT IT DOES: Runs one display frame of the game. It waits for the display, runs a normal
    frame, then, while the display has already moved past the frames done, runs up to two more
    frames without drawing to catch up. The main loop never ends from here. */
@@ -361,14 +361,14 @@ int System::CMainLoopJob::Step()
     n = 0;
     f_001154(true);
     D_1b8bfc = 1;
-    do {
+    while (n < 3) {
         sceKernelGetSystemTimeLow();
         n++;
-        if (!f_000fcc(D_1b8bfc))
+        if (f_000fcc(D_1b8bfc) == 0)
             break;
         f_001154(false);
-        D_1b8bfc++;
-    } while (n < 3);
+        D_1b8bfc = D_1b8bfc + 1;
+    }
     return 0;
 }
 
