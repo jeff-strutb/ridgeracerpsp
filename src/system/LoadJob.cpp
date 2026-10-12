@@ -15,7 +15,7 @@ int sceKernelDelayThread(int usec);
 unsigned int sceKernelGetSystemTimeLow(void);
 
 int f_027850(const char *name, int flags, int mode);
-void f_02793c(int fd);
+int f_02793c(int fd);
 int f_027958(int fd, void *buf, int size);
 int f_02799c(int fd);
 int f_027bac(int fd, int wait, long long *res);
@@ -194,13 +194,13 @@ System::CLoadJob D_1da468;
 
 extern "C" {
 
-/* @draft 0x001570 us f_001570
+/* @implements 0x001570 us f_001570
    WHAT IT DOES: Starts an asynchronous read of the open file, remembering the function to call
    when it completes and its argument, and counts the bytes asked for. */
 int f_001570(int fd, void *buf, int size, IoDone done, int arg)
 {
-    D_1d9c30 = done;
     D_1d9c38 += size;
+    D_1d9c30 = done;
     D_1d9c34 = arg;
     sceIoReadAsync(fd, buf, size);
     return 0;
@@ -262,7 +262,7 @@ int f_001698(void)
     return 1;
 }
 
-/* @draft 0x001744 us f_001744
+/* @implements 0x001744 us f_001744
    WHAT IT DOES: Completion of a plain file read: closes the file, makes the data visible to
    the hardware and marks the reader idle. */
 int f_001744(int unused, int result, int fd)
@@ -324,35 +324,35 @@ void *f_001860(const char *name, int *sizeOut)
     return buf;
 }
 
-/* @draft 0x0018dc us f_0018dc
+/* @implements 0x0018dc us f_0018dc
    WHAT IT DOES: Completion of a read from RRP.DAT: if fewer bytes arrived than asked for it
    reads again, otherwise the reader is idle and the data is made visible to the hardware. */
 int f_0018dc(int fd, int result, int arg)
 {
     D_1d9c30 = 0;
-    if (result != D_1d9c50) {
-        D_1d9c58 = 1;
-        D_1d9c48 = f_001570(D_1d9c3c, D_1d9c4c, D_1d9c50, f_0018dc, 0);
-    } else {
+    if (result == D_1d9c50) {
         D_1d9c44 = 0;
         D_1d9c58 = 0;
         sceKernelDcacheWritebackAll();
+    } else {
+        D_1d9c58 = 1;
+        D_1d9c48 = f_001570(D_1d9c3c, D_1d9c4c, D_1d9c50, f_0018dc, 0);
     }
     return 0;
 }
 
-/* @draft 0x00195c us f_00195c
+/* @implements 0x00195c us f_00195c
    WHAT IT DOES: Completion of a seek in RRP.DAT: if it did not reach the wanted position it
    seeks again, otherwise it starts reading the wanted bytes. */
 int f_00195c(int fd, int result, int arg)
 {
     D_1d9c30 = 0;
-    if (result != D_1d9c54) {
-        D_1d9c58 = 1;
-        D_1d9c48 = f_0015ac(D_1d9c3c, D_1d9c54, 0, f_00195c, 0);
-    } else {
+    if (result == D_1d9c54) {
         D_1d9c58 = 0;
         D_1d9c48 = f_001570(D_1d9c3c, D_1d9c4c, D_1d9c50, f_0018dc, 0);
+    } else {
+        D_1d9c58 = 1;
+        D_1d9c48 = f_0015ac(D_1d9c3c, D_1d9c54, 0, f_00195c, 0);
     }
     return 0;
 }
@@ -536,20 +536,20 @@ int f_002084(const char *name)
     return -1;
 }
 
-/* @draft 0x002108 us f_002108
+/* @implements 0x002108 us f_002108
    WHAT IT DOES: Returns the memory a package needs. From RRP.DAT that is its sectors, or for a
    compressed package the larger of its sectors and its unpacked size plus the packed data,
    with room for alignment; the result is remembered. */
 int f_002108(int i)
 {
     if (D_1b8c00 == 2) {
-        Package *p = &D_1b8c04[i];
-        if (p->packed == 0) {
-            p->bufSize = p->sectors << 11;
+        if (D_1b8c04[i].packed == 0) {
+            D_1b8c04[i].bufSize = D_1b8c04[i].sectors << 11;
         } else {
-            int a = p->size + p->extra;
-            int b = p->sectors << 11;
-            p->bufSize = (a > b ? a : b) + 127;
+            int a = D_1b8c04[i].size + D_1b8c04[i].extra;
+            if (a < D_1b8c04[i].sectors << 11)
+                a = D_1b8c04[i].sectors << 11;
+            D_1b8c04[i].bufSize = a + 127;
         }
     }
     return D_1b8c04[i].bufSize;
@@ -754,11 +754,12 @@ void f_002734(PackageLoader *l, unsigned char nowait)
         f_001e34(&D_1da468);
 }
 
-/* @draft 0x002a74 us f_002a74
+/* @implements 0x002a74 us f_002a74
    WHAT IT DOES: Records where one file of a loaded package lies in its buffer. */
 void f_002a74(PackageLoader *l, int file)
 {
-    l->files[file - D_1b8c04[l->package].first] = l->buf + D_1c0614[file].offset;
+    int off = D_1c0614[file].offset;
+    l->files[file - D_1b8c04[l->package].first] = l->buf + off;
 }
 
 /* @implements 0x002acc us f_002acc
