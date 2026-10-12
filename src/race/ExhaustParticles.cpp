@@ -37,6 +37,11 @@ char *f_021b38(unsigned int size);
 
 /* One particle. */
 struct Particle {
+    Particle *Next()
+    {
+        return next;
+    }
+
     Particle *next;      /* next in its depth bucket */
     int color;
     unsigned char type;  /* which age table */
@@ -66,7 +71,9 @@ template <class T> struct Ring {
     int Next(int i)
     {
         i++;
-        return i < size ? i : i - size;
+        if (i >= size)
+            return i - size;
+        return i;
     }
     int Count()
     {
@@ -74,6 +81,14 @@ template <class T> struct Ring {
         if (tail < head)
             n += size;
         return n;
+    }
+    T *At(int i)
+    {
+        return &buf[i];
+    }
+    void Pop()
+    {
+        head = Next(head);
     }
     T *Push()
     {
@@ -107,6 +122,10 @@ struct Buckets {
     {
         free(list);
         list = 0;
+    }
+    Particle *Get(int k)
+    {
+        return list[k];
     }
     void Add(int k, Particle *e)
     {
@@ -193,14 +212,14 @@ Particle *CParticles::f_032138(int type, const Vec4 *pos, const Vec4 *vel)
 {
     Particle *e = fire.Push();
     e->type = type;
+    e->pos = *pos;
     e->color = 0xffffff;
     e->age = 0;
-    e->pos = *pos;
     e->vel = *vel;
     return e;
 }
 
-/* @implements 0x0321ec us f_0321ec
+/* @draft 0x0321ec us f_0321ec
    WHAT IT DOES: Emits a still smoke puff of the given colour at a position. */
 void CParticles::f_0321ec(const Vec4 *pos, int color)
 {
@@ -209,10 +228,10 @@ void CParticles::f_0321ec(const Vec4 *pos, int color)
     e->color = color;
     e->pos = *pos;
     e->age = 0;
-    e->scale = 0xff;
     e->vel.x = 0;
     e->vel.y = 0;
     e->vel.z = 0;
+    e->scale = 0xff;
 }
 
 /* @implements 0x03228c us f_03228c
@@ -222,7 +241,7 @@ void CParticles::f_03228c()
     step = 1;
 }
 
-/* @implements 0x032298 us f_032298
+/* @draft 0x032298 us f_032298
    WHAT IT DOES: Draws the particles of one view: sets up the sprite render state, moves and
    ages every live particle (retiring the expired ones), sorts them by depth and draws them
    back to front. */
@@ -274,32 +293,37 @@ unsigned int *CParticles::f_032298(View *view, unsigned int *p)
     depth.Clear();
     if (smoke.Count() > 0) {
         for (int i = smoke.head; i != smoke.tail; i = smoke.Next(i)) {
-            Particle *e = &smoke.buf[i];
+            Particle *e = smoke.At(i);
             if (e->age < 59) {
                 f_032780(view, e);
                 if (step)
                     e->age++;
             } else if (i == smoke.head) {
-                smoke.head = smoke.Next(smoke.head);
+                smoke.Pop();
             }
         }
     }
     if (fire.Count() > 0) {
         *p++ = 0xe7000001;
         for (int i = fire.head; i != fire.tail; i = fire.Next(i)) {
-            Particle *e = &fire.buf[i];
+            Particle *e = fire.At(i);
             if (e->age < 39) {
                 f_032780(view, e);
                 if (step)
                     e->age++;
             } else if (i == fire.head) {
-                fire.head = fire.Next(fire.head);
+                fire.Pop();
             }
         }
     }
     for (int i = depth.count - 1; i > 0; i--) {
-        for (Particle *e = depth.list[i]; e; e = e->next)
+        Particle *e = depth.Get(i);
+        while (e) {
             p = f_032c20(e, p);
+            if (!e->next)
+                break;
+            e = e->next;
+        }
     }
     p = f_0cd528(p);
     f_028ca8();
@@ -349,7 +373,7 @@ void CParticles::f_0328b0()
     D_2403b0 = 0;
 }
 
-/* @implements 0x032918 us f_032918
+/* @draft 0x032918 us f_032918
    WHAT IT DOES: Tabulates the particles' looks over their lives: for the 40 frames of an exhaust
    particle, opacity and size from curve 0 and one of 20 cells of a 4 x 5 grid of 32 x 16
    texels; for the 60 frames of a smoke puff, curve 1 and one fixed cell. */
@@ -420,16 +444,18 @@ static inline unsigned int Bits(float f)
     return x.u;
 }
 
-/* @implements 0x032c20 us f_032c20
+/* @draft 0x032c20 us f_032c20
    WHAT IT DOES: Draws one particle as a sprite: places it at its view position, takes its look
    for its age, and writes a four vertex strip with its colour and opacity. */
 unsigned int *CParticles::f_032c20(Particle *e, unsigned int *p)
 {
     *p++ = 0x3a000009;
-    *p++ = (Bits(e->screen.x) >> 8) | 0x3b000000;
-    *p++ = (Bits(e->screen.y) >> 8) | 0x3b000000;
-    *p++ = (Bits(e->screen.z) >> 8) | 0x3b000000;
+    const Vec4 *w = &e->screen;
+    *p++ = (*(unsigned int *)&w->x >> 8) | 0x3b000000;
+    *p++ = (*(unsigned int *)&w->y >> 8) | 0x3b000000;
+    *p++ = (*(unsigned int *)&w->z >> 8) | 0x3b000000;
     Cell *c = &D_1d1b50[e->type][e->age];
+    volatile unsigned int mask = 0xffffff;
     int alpha = c->alpha * e->scale;
     signed char s = c->size;
     signed char ns = -c->size;
@@ -437,8 +463,8 @@ unsigned int *CParticles::f_032c20(Particle *e, unsigned int *p)
     unsigned char v0 = c->v0;
     unsigned char u1 = c->u1;
     unsigned char v1 = c->v1;
-    Vtx *v = (Vtx *)f_021b38(20);
-    Vtx *q = v;
+    Vtx *q = (Vtx *)f_021b38(20);
+    Vtx *v = q;
     q->u = u0;
     q->v = v0;
     q->x = s;
@@ -465,7 +491,7 @@ unsigned int *CParticles::f_032c20(Particle *e, unsigned int *p)
     *p++ = e->color | 0x55000000;
     *p++ = (alpha >> 8) | 0x58000000;
     *p++ = ((((unsigned int)v >> 24) & 0xf) << 16) | 0x10000000;
-    *p++ = ((unsigned int)v & 0xffffff) | 0x01000000;
+    *p++ = ((unsigned int)v & mask) | 0x01000000;
     *p++ = 0x04040004;
     return p;
 }
