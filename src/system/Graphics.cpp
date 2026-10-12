@@ -54,10 +54,10 @@ void f_118c80(int func);
 void f_118ca0(int mask);
 void f_118d04(int x, int y, int w, int h);
 void f_118e30(int op, int src, int dst, unsigned int srcfix, unsigned int dstfix);
-}
-
 unsigned int *f_022bc0(void *p);
 void f_022bd4(void);
+}
+
 unsigned int f_021d38(void);
 
 /* The two display list buffers, the size of each, which one is being filled this frame, the
