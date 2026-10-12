@@ -41,12 +41,12 @@ The link order, laid out by `tus.csv` `class`:
 
 | Range | Class | What |
 |---|---|---|
-| 0x000040 – 0x1158d8 | game | game objects, including Namco middleware (nuSound, the ATRAC/SAS players) |
-| 0x1158d8 – 0x131018 | lib:newlib | newlib libc + libm (one gap, 416 functions) |
-| 0x131018 – 0x15a498 | lib:libstdc++ (with unknown islands) | libstdc++ v3: streams, locale, `basic_string` |
-| 0x15a498 – 0x1634c0 | unknown | 13 objects, not yet identified (strings such as `_root`, `_CANTPRESSBUTTON`) |
-| 0x1634c0 – 0x168d44 | lib:libgcc (with unknown islands) | 64-bit division (0x163544/0x163a94 are 1.5.1 builds of `__udivdi3`/`__umoddi3`) and the DWARF unwinder |
-| 0x168d44 – 0x16e3fc | lib:libc | the time functions and the C library tail |
+| 0x000040 to 0x1158d8 | game | game objects, including Namco middleware (nuSound, the ATRAC/SAS players) |
+| 0x1158d8 to 0x131018 | lib:newlib | newlib libc + libm (one gap, 416 functions) |
+| 0x131018 to 0x15a498 | lib:libstdc++ (with unknown islands) | libstdc++ v3: streams, locale, `basic_string` |
+| 0x15a498 to 0x1634c0 | unknown | 13 objects, not yet identified (strings such as `_root`, `_CANTPRESSBUTTON`) |
+| 0x1634c0 to 0x168d44 | lib:libgcc (with unknown islands) | 64-bit division (0x163544/0x163a94 are 1.5.1 builds of `__udivdi3`/`__umoddi3`) and the DWARF unwinder |
+| 0x168d44 to 0x16e3fc | lib:libc | the time functions and the C library tail |
 
 ## Denominator
 

@@ -75,7 +75,7 @@ This is the symptom → source table for SCE `psp-gcc 3.3.3+allegrex`.
 
 ## Library code
 
-Newlib is statically linked (`ratio`, `_mprec_log10` at 0x12f1c4–0x12f2xx), so it can be matched from its own source.
+Newlib is statically linked (`ratio`, `_mprec_log10` at 0x12f1c4 to 0x12f2xx), so it can be matched from its own source.
 
 ## Tools
 

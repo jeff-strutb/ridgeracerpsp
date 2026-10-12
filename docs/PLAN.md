@@ -89,7 +89,7 @@ that were really literals.
 | `.data` | 131 KB |
 | `.bss` | 760 KB |
 
-There are about 7,800 `jr ra` instructions, so roughly 7–8k functions. That is
+There are about 7,800 `jr ra` instructions, so roughly 7 to 8k functions. That is
 far larger than Top Gear Rally's 572. The denominator will be fixed in Phase 0
 and quoted with every percentage.
 
@@ -176,7 +176,7 @@ by prose**, because "a rule nothing checks is a preference."
     - Every function gets a plain-English `WHAT IT DOES:` paragraph, enforced by a hook.
     - The RTTI and vtable skeleton seeds class and method names.
 
-### Process and agents
+### Process and parallel sessions
 
 28. **Lock before you target.** `tools/claim.py` takes fcntl-locked claims that go stale after 90 minutes. Parallel work splits by `.c` file only, and header edits are serialized.
 29. **Commit after every edit that survives a compile.**
@@ -197,7 +197,7 @@ The exit criterion is a green round-trip image with a fixed denominator.
 
 1. **Repo skeleton.**
    - `setup.sh`, which extracts each region from the user-supplied ISO and checks its MD5.
-   - `refcheck.py`, the RULES hub, and `CLAUDE.md`.
+   - `refcheck.py` and the RULES hub.
    - Hooks: provcheck, WHAT-IT-DOES, slice ban, and manifest ratchet.
    - Port the shared tooling from brally `tools/common/` rather than rewriting it.
 2. **EBOOT equals BOOT check** (lesson 2).
