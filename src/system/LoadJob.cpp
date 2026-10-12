@@ -132,23 +132,30 @@ public:
 };
 }
 
+/* The load job's queue of reads. */
+struct RequestRing {
+    Request e[256];
+    int head;
+    int tail;
+    RequestRing() { head = 0; tail = 0; }
+    void Push(Request r)
+    {
+        e[tail++] = r;
+        tail = (unsigned char)tail;
+    }
+};
+
 namespace System {
 class CLoadJob : public Ng::CJob {
 public:
-    CLoadJob() { busy = 0; head = 0; tail = 0; }
+    CLoadJob() { busy = 0; }
     virtual void Begin();
     virtual int Step();
     virtual void End();
-    void Push(Request r)
-    {
-        ring[tail] = r;
-        tail++;
-        tail = (unsigned char)tail;
-    }
+    void Push(Request r) { ring.Push(r); }
+    void Add(const Request &r) { ring.Push(r); }
     Request cur;
-    Request ring[256];
-    int head;
-    int tail;
+    RequestRing ring;
     unsigned char busy;
 };
 }
@@ -432,8 +439,8 @@ int System::CLoadJob::Step()
         if (f_001698())
             return 0;
         busy = 0;
-        if (tail != head)
-            head = (head + 1) & 0xff;
+        if (ring.tail != ring.head)
+            ring.head = (ring.head + 1) & 0xff;
         if (cur.type == 1) {
             f_002de4((FileLoader *)cur.owner);
         } else if (cur.type == 2) {
@@ -450,8 +457,8 @@ int System::CLoadJob::Step()
             }
         }
     }
-    if (tail != head) {
-        cur = ring[head];
+    if (ring.tail != ring.head) {
+        cur = ring.e[ring.head];
         busy = 1;
         if (D_1b8c00 == 2)
             f_0019f4(cur.buf, cur.sector, cur.sectors);
@@ -476,14 +483,14 @@ void f_001e34(System::CLoadJob *job)
 {
     UnpackQueue *q = &D_1d9c5c;
 
-    while (job->busy || job->tail != job->head || q->tail != q->head) {
+    while (job->busy || job->ring.tail != job->ring.head || q->tail != q->head) {
         job->Step();
         f_087f34(D_241810);
         sceKernelDelayThread(100);
     }
 }
 
-/* @draft 0x001ecc us f_001ecc
+/* @implements 0x001ecc us f_001ecc
    WHAT IT DOES: Allocates a buffer the size of a loose file and queues a read of the file into
    it; returns the buffer, and its size if asked. */
 void *f_001ecc(const char *name, int *sizeOut)
@@ -494,7 +501,7 @@ void *f_001ecc(const char *name, int *sizeOut)
     size = f_00177c(name);
     buf = malloc(size);
     Request r = { 0, 0, buf, name, 0, size };
-    D_1da468.Push(r);
+    D_1da468.Add(r);
     if (sizeOut)
         *sizeOut = size;
     return buf;
@@ -665,7 +672,7 @@ void f_002550(int i, const char **file, const char **package)
     *package = D_1dd4b0[i].package;
 }
 
-/* @draft 0x002574 us f_002574
+/* @implements 0x002574 us f_002574
    WHAT IT DOES: Adds up the memory every entry of the list of what to load needs, with room
    for each to be aligned. */
 int f_002574(void)
@@ -676,12 +683,12 @@ int f_002574(void)
 
     for (i = 0; i < 64; i++) {
         f_002550(i, &file, &package);
-        if (package == 0)
-            continue;
-        if (file == 0)
-            total += f_002108(f_002084(package)) + 127;
-        else
-            total += f_0022e4(f_00222c(file, package)) + 127;
+        if (package) {
+            if (file == 0)
+                total += f_002108(f_002084(package)) + 127;
+            else
+                total += f_0022e4(f_00222c(file, package)) + 127;
+        }
     }
     return total;
 }
@@ -809,7 +816,7 @@ void f_002be8(FileLoader *l)
     l->raw = 0;
 }
 
-/* @draft 0x002c50 us f_002c50
+/* @implements 0x002c50 us f_002c50
    WHAT IT DOES: Queues the read of a single file from RRP.DAT unless it is already loaded and,
    unless asked not to, waits for the loading to finish. */
 void f_002c50(FileLoader *l, unsigned char nowait)
@@ -818,8 +825,8 @@ void f_002c50(FileLoader *l, unsigned char nowait)
         return;
     if (D_1b8c00 == 2) {
         File *f = &D_1c0614[l->file];
-        Request r = { 1, l, l->buf, 0, 0, 0, f->sector, f->sectors, l->file, l->file + 1 };
-        D_1da468.Push(r);
+        Request r = { 1, l, l->buf, 0, 0, 0, f->sector, f->sectors, l->file, l->file + 1, 0, 0, 0 };
+        D_1da468.Add(r);
     }
     if (!nowait)
         f_001e34(&D_1da468);
