@@ -135,20 +135,22 @@ int f_024d24(TexHeader *h, unsigned int *clutPos, unsigned int *pos, unsigned in
         int shared = 0;
         unsigned int size = h->clutNum << 5;
         unsigned int e;
-        if (clutPos && size == 64) {
-            e = *clutPos + 1024;
-            if ((unsigned int)sceGeEdramGetAddr() + 0x883c0 >= e) {
-                dst = clutPos;
-                shared = 1;
-                goto copy;
+        if (clutPos) {
+            if (size == 64) {
+                e = *clutPos + 1024;
+                if (!((unsigned int)sceGeEdramGetAddr() + 0x883c0 < e)) {
+                    dst = clutPos;
+                    shared = 1;
+                    goto copy;
+                }
             }
         }
         e = *pos + size;
-        if (end >= e)
+        if (!(end < e))
             dst = pos;
-    copy:
         if (!dst)
             return 0;
+    copy:
         memcpy((void *)*dst, (void *)h->clutOfs, size);
         if (h->clut == h->clutOfs)
             h->clut = *dst;
