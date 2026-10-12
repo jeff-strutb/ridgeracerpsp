@@ -96,6 +96,8 @@ struct RingList {
 extern RingList D_23fbb0;
 
 /* @draft 0x02bbc0 us f_02bbc0
+   Remaining difference: scheduling only; retail stores cmd[0] after the radius and centre
+   constant loads and loads 33 and 32 before 1/32 and the pi constant (47 words).
    WHAT IT DOES: Builds the ring display list once per course: render state (blending on,
    depth test off, through mode 16 bit positions with 32 bit colour), then a triangle strip
    ring round the centre of a 64 x 64 texture, from radius 33 at the settings' alpha out to the
@@ -250,6 +252,8 @@ static inline unsigned int *TexMatrix(unsigned int *p, unsigned int sel, float *
 }
 
 /* @draft 0x02bdcc us f_02bdcc
+   Remaining difference: the two texture matrix uploads are cross-jumped into one tail here
+   (retail keeps both, 292 bytes more), plus register allocation in the mesh loop.
    WHAT IT DOES: Draws the reflective course part into the display list and returns the new
    end of the list. It moves the reflection texture matrix with the camera, sets the texture
    function and dither, then walks the part's command list: 0x8004 picks an object group,
@@ -366,6 +370,8 @@ extern "C" unsigned int *f_02bdcc(char *part, Vec4 *view, unsigned int *p)
 }
 
 /* @draft 0x02c650 us _ZN10MapReflectC2Ev
+   Remaining difference: store order from +0x94: retail stores m8, m104 and m140 to m164 after
+   the D_23ff70 store and m100 last (27 words); the first 37 words match in field order.
    WHAT IT DOES: Sets the reflection settings to their defaults (the base object constructor;
    the same body as the complete object constructor that follows). */
 MapReflect::MapReflect()

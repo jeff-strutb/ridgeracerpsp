@@ -104,6 +104,8 @@ static inline void EnvCopy(EnvVert *d, SrcVert *s)
 }
 
 /* @draft 0x02c984 us f_02c984
+   Remaining difference: retail interleaves the vector unit loads of the batched vertices and
+   allocates the source and output pointers differently (343 of 360 words).
    WHAT IT DOES: Converts a reflective mesh's display list for reflection mapping. It copies
    the list's first three commands, sets a vertex type of float texture coordinates, 32 bit
    colour and float positions, then for each triangle strip of the source (base, vertex
@@ -261,6 +263,8 @@ static inline Vec4 *White(Vec4 *c)
 }
 
 /* @draft 0x02cf3c us f_02cf3c
+   Remaining difference: one word, the green blend product (mul.s $f4,$f3,$f4 in retail,
+   operands swapped here); no spelling of the three blends tried gives both.
    WHAT IT DOES: Works out the light at a point on the course. Of the light polygons under the
    point it takes the lowest one that contains it (points just outside an edge count while
    nothing has been found yet), blends the polygon's corner colours at the point, and returns
@@ -399,6 +403,8 @@ static inline float Smooth(float x, float lo, float hi)
 }
 
 /* @draft 0x02d420 us f_02d420
+   Remaining difference: register allocation and scheduling of the vector copies and the
+   smooth steps throughout (control flow and calls match).
    WHAT IT DOES: Works out the light on a car at the given position for this frame. It looks
    up the light colour 3000 units below the position, takes its brightness along the light
    direction, and from that the specular and shadow strengths (smooth steps between the
@@ -413,10 +419,10 @@ extern "C" void f_02d420(MapLight *l, Vec4 *pos, int max, float dir)
     MapMgr *mm = &D_23c820;
     LightSetup *ls = &mm->light;
     Vec4 p = *pos;
-    Vec4 amb = ls->ambient;
-    Vec4 dif = ls->diffuse;
-    Vec4 spc = ls->specular;
-    Vec4 shd = ls->shadow;
+    Vec4 amb = mm->light.ambient;
+    Vec4 dif = mm->light.diffuse;
+    Vec4 spc = mm->light.specular;
+    Vec4 shd = mm->light.shadow;
     Vec4 r, q, d, t0, t1, t2, t3, t4, t5;
     float k, lit, spec, shadow, rate, rest;
 
@@ -424,7 +430,7 @@ extern "C" void f_02d420(MapLight *l, Vec4 *pos, int max, float dir)
     q.y = p.y - 3000.0f;
     q.z = p.z;
     f_02cf3c(l, &r, &q, max);
-    d = ls->dir;
+    d = mm->light.dir;
     k = ls->floor;
     lit = r.x * d.x + r.y * d.y + r.z * d.z;
     amb.x = amb.x * r.x;
