@@ -100,6 +100,10 @@ python3 tools/analysis/tumap.py                     # object spans, game/library
 python3 tools/rrdis.py 0xADDR                       # annotated retail listing of one function
 python3 tools/score.py src/control/batch1.c         # compile and grade every @implements in a file
 python3 tools/score.py FILE --cc 1.3.1 -v           # same, stock compiler, word-by-word
+python3 tools/image.py                              # M2 gate: rebuilt BOOT.BIN vs retail, must be 0 differing bytes
+python3 tools/image.py --control                    # gate self-test with the control set's EXACT functions
+python3 tools/progress.py                           # regenerate the progress block and treemap below
+python3 tools/precommit.py --all                    # filing rules over the whole tree
 ```
 
 T1 = a draft only; T2 = in the tree, not done; T3 = certified behaviour exact, not byte-exact; T4 = bytes diff clean, with every relocation resolving to the same target.
@@ -129,7 +133,18 @@ If the bytes agree but a reference does not, the result is BADREF.
 
 The checker is mutation-tested. A global moved by 4 bytes, a one-character change to a string literal, and a changed float constant were each planted in an EXACT function, and each was reported BADREF. The old byte-only scorer passed all three.
 
-The whole-image gate (the rebuilt `BOOT.BIN` equal to retail, relocation tables included) is a Phase 0 deliverable.
+**The image gate** (`tools/image.py`) builds what it grades. It:
+
+- compiles every filed source fresh;
+- places each claimed function at its address, refusing size changes and overlaps;
+- writes every relocated field from its resolved target;
+- regenerates those functions' entries in the relocation table;
+- fills everything else from the original;
+- compares the whole `BOOT.BIN`.
+
+It must report 0 differing bytes.
+
+Its self-test places the 49 EXACT control functions and produces a byte-identical file. A planted wrong global in a filed source fails it.
 
 ### Architecture
 

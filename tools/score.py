@@ -31,6 +31,7 @@ sys.path.insert(0, os.path.join(ROOT, 'tools'))
 from prx import Elf, relmask, R_26  # noqa: E402
 import rrdis as rdis  # noqa: E402
 
+DEFAULT_CC = '1.3.1-nocmov'
 TAG = re.compile(r'@implements\s+0x([0-9a-fA-F]+)\s+us\s+([A-Za-z_][\w:~]*)')
 
 
@@ -38,11 +39,6 @@ def compile_obj(src, cc, flags):
     rel = os.path.relpath(os.path.abspath(src), ROOT)
     out = os.path.join('build', 'score', f'{cc}', re.sub(r'[/.]', '_', rel))
     os.makedirs(os.path.join(ROOT, os.path.dirname(out)), exist_ok=True)
-    for ext in ('.s', '.o'):
-        try:
-            os.remove(os.path.join(ROOT, out + ext))
-        except FileNotFoundError:
-            pass
     tc = f'build/toolchains/psp-gcc-{cc}'
     cc1 = 'cc1plus' if src.endswith(('.cpp', '.cc')) else 'cc1'
     asm = 'build/toolchains/psp-gcc-1.3.1/bin/psp-as'  # 1.7.1 ships no assembler
@@ -52,7 +48,9 @@ def compile_obj(src, cc, flags):
         flags += ' ' + extra.group(1).strip()  # per-file flags, like the original per-TU build
     if cc1 == 'cc1plus' and '-fexceptions' not in flags:
         flags += ' -fexceptions'  # retail C++ has .eh_frame/.gcc_except_table; EH edges change scheduling
-    cmd = (f'cd {ROOT} && {tc}/lib/gcc-lib/psp/*/{cc1} -quiet {inc} {flags} {rel} -o {out}.s && '
+    # stale outputs are removed inside the VM, in the same command: deleting them from the host
+    # first left the VM's view of the shared folder briefly unable to recreate the path
+    cmd = (f'cd {ROOT} && rm -f {out}.s {out}.o && {tc}/lib/gcc-lib/psp/*/{cc1} -quiet {inc} {flags} {rel} -o {out}.s && '
            f'{asm} -G0 {out}.s -o {out}.o')
     p = subprocess.run([os.path.join(ROOT, 'tools/toolchains/lima.sh'), 'sh', '-c', cmd],
                        capture_output=True, text=True)
@@ -264,7 +262,7 @@ def score(src, cc, flags, verbose):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('src', nargs='+')
-    ap.add_argument('--cc', default='1.3.1-nocmov')
+    ap.add_argument('--cc', default=DEFAULT_CC)
     ap.add_argument('--flags', default='-O2 -G0')
     ap.add_argument('-v', action='store_true')
     a = ap.parse_args()
