@@ -173,13 +173,17 @@ struct Lz {
     void f_002fe8(unsigned char **dst, unsigned char **src);
 };
 
-/* @draft 0x002edc us f_002edc
+/* @implements 0x002edc us f_002edc
    WHAT IT DOES: Unpacks a compressed block, 100 steps at a time, until it is done or the time
    budget (in microseconds) runs out. Returns whether the block is finished. */
+static inline unsigned int Now()
+{
+    volatile unsigned int t = sceKernelGetSystemTimeLow();
+    return t;
+}
 static inline int f_002edc(Unpack *u, int budget)
 {
     Lz lz;
-    volatile unsigned int t;
     unsigned int start;
     int n;
 
@@ -187,12 +191,8 @@ static inline int f_002edc(Unpack *u, int budget)
         while (u->src < u->end)
             lz.f_002fe8(&u->dst, &u->src);
     } else {
-        t = sceKernelGetSystemTimeLow();
-        start = t;
-        for (;;) {
-            t = sceKernelGetSystemTimeLow();
-            if ((int)(t - start) > budget)
-                break;
+        start = Now();
+        while ((int)(Now() - start) <= budget) {
             for (n = 0; n < 100; n++) {
                 if (!(u->src < u->end))
                     goto done;
