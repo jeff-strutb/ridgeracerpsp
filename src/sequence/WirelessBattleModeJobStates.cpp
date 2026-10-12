@@ -127,6 +127,22 @@ struct LobbyReply {
     int m288[4];
 };
 
+void f_07a9d8(void *);
+void f_07aa54(void *);
+
+/* A request to the screen manager to open a screen. */
+struct ScreenReq {
+    ScreenReq() { f_07a9d8(this); }
+    ~ScreenReq() { f_07aa54(this); }
+    int m0[2];
+    unsigned char m8;
+    int m12;
+    unsigned char m16;
+    unsigned char m17;
+    unsigned char m18;
+    int m20[3];
+};
+
 /* A request to the lobby's message screen. */
 struct LobbyMsg {
     LobbyMsg() { f_07a88c(this); }
@@ -262,8 +278,8 @@ public:
     virtual void Begin();
     virtual int Step();
     virtual void End();
-    virtual void f_3(int);
-    virtual void f_4();
+    virtual void f_3(int i) { (this->*states[i])(); }
+    virtual void f_4() { queue.Push(3); }
 
     int f_00de58();
     void f_00e068();
@@ -911,19 +927,25 @@ void Sequence::CWirelessBattleModeJob::f_011668()
 {
 }
 
-/* @implements 0x01172c us _ZN8Sequence22CWirelessBattleModeJob3f_3Ei
+/* The static data of this object file: the lobby's screen request, built at startup. */
+ScreenReq D_1ee174;
+
+/* @implements 0x011670 us __static_initialization_and_destruction_0
+   WHAT IT DOES: At startup, constructs the lobby's screen request; at shutdown, destroys it. */
+
+/* @implements 0x0116ec us _GLOBAL__I_
+   WHAT IT DOES: The startup entry for this file's static data. */
+
+/* @implements 0x01170c us _GLOBAL__D_
+   WHAT IT DOES: The shutdown entry for this file's static data. */
+
+/* The class's inline virtual functions and destructors, emitted out of line here with the
+   vtable.
+   @implements 0x01172c us _ZN8Sequence22CWirelessBattleModeJob3f_3Ei
    WHAT IT DOES: Runs the state handler the script names. */
-void Sequence::CWirelessBattleModeJob::f_3(int i)
-{
-    (this->*states[i])();
-}
 
 /* @implements 0x011794 us _ZN8Sequence22CWirelessBattleModeJob3f_4Ev
    WHAT IT DOES: Sends the script event 3. */
-void Sequence::CWirelessBattleModeJob::f_4()
-{
-    queue.Push(3);
-}
 
 /* @implements 0x0117c4 us _ZN8Sequence22CWirelessBattleModeJobD1Ev
    WHAT IT DOES: The destructor, which has nothing to release. */
