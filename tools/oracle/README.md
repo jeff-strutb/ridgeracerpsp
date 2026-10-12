@@ -21,10 +21,11 @@ What it takes:
 
 ## Booting a candidate
 
-The executable boots from a host file with the retail disc mounted (`-m`). Two traps:
+The executable boots from a host file with the retail disc mounted (`-m`). Three traps:
 
 - **The extension.** PPSSPP treats a `.BIN` as a raw disc image and then boots nothing, so executables are staged as `.elf`.
 - **The path.** The launch path is written into emulated RAM, so retail and candidate are staged at the same path, one run after the other.
+- **Parallel runs.** Runs in parallel need separate memory sticks. Each run clears its own at start, so a shared one corrupts the others.
 
 The module loads at `0x08804000`; `.text` occupies RAM `0x08804040` to `0x089723fc`.
 
@@ -43,7 +44,9 @@ For each script in `scripts/`, retail and the candidate each record per frame th
 |---|---|---|
 | `boot_attract` | 1,800 | Boot, the Namco logo, the Rally-X loading game's attract mode. |
 | `fault_loader_*` | 300 each | Forced failures of `sceIoOpen`, `sceKernelLoadModuleByID` and `sceKernelStartModule`, which cover every path of the module loader. |
-| `race_seaside_start` | 7,800 | The new-game path to a race: Rally-X; the intro; the title; creating a driver profile (the system keyboard, where START accepts the default name); saving (system dialogs confirm with CIRCLE); World Tours, Basic Tour, Class 1, Seaside Route 765; car and transmission select; loading; the fly-by; the countdown; about 50 s of racing holding accelerate, with no steering. |
+| `race_seaside_start` | 9,000 | The new-game path from an empty memory stick to a race: Rally-X; the intro; the title; creating a driver profile (the system keyboard, where START accepts the default name); saving (system dialogs confirm with CIRCLE); the World Tours intro; World Tours, Basic Tour, Class 1, Seaside Route 765; car and transmission select; loading; the fly-by. GO comes at frame 5,880, followed by about 50 s holding accelerate with no steering. The first version was derived while a save sat in `~/.ppsspp`, and with an empty memory stick it stalled at a menu. It was re-derived. |
+
+`--rr-peek=FILE` appends the listed memory words to every trace line, for studying game state.
 
 `tools/oracle/explore.sh SCRIPT FRAMES EVERY OUTDIR [FIRST]` saves the emulated PSP's displayed frame every N frames and tiles them into a sheet (`sheet.py`). This is how scripts are written. These are the emulator's own output frames, never a capture of the host's screen.
 
@@ -110,5 +113,6 @@ A `@draft` is **T3** when its `config/us/t3_live.csv` row says PASS with full co
 
 - Driving the power-resume and shutdown paths, which still show as uncovered.
 - Display-list and audio comparison.
-- Scripts that steer, finish laps, and reach the other modes.
+- A steering driver. Notes so far are in `docs/decomp/RAM-NOTES.md`.
+- Scripts that finish laps and reach the other modes.
 - Per-instruction coverage.

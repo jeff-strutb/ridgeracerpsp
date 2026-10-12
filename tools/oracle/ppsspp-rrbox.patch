@@ -299,7 +299,7 @@ index 0000000..f217fee
 +void OnWrite(u32 addr, u64 value, int size);
 +}
 diff --git a/headless/Headless.cpp b/headless/Headless.cpp
-index 293878d..fd4b361 100644
+index 293878d..37df7a8 100644
 --- a/headless/Headless.cpp
 +++ b/headless/Headless.cpp
 @@ -51,6 +51,14 @@
@@ -317,7 +317,7 @@ index 293878d..fd4b361 100644
  #if defined(_WIN32)
  #include "WindowsHeadlessHost.h"
  #elif defined(SDL)
-@@ -171,6 +179,41 @@ static HeadlessHost *getHost(GPUCore gpuCore) {
+@@ -171,6 +179,42 @@ static HeadlessHost *getHost(GPUCore gpuCore) {
  	}
  }
  
@@ -331,6 +331,7 @@ index 293878d..fd4b361 100644
 +	int shotEvery = 0;           // save the displayed frame as PNG every N frames ...
 +	std::string shotDir;         // ... into this directory (frame_NNNNN.png)
 +	u32 skipStart = 0, skipEnd = 0; // address range left out of the RAM hash (the game's code, for M1 images)
++	std::vector<u32> peek;       // addresses whose words are appended to every trace line
 +	std::string ref;             // reference trace: at the first frame whose hash differs, dump RAM and stop
 +	int dumpFrame = -1;          // write user RAM at the end of this frame to dumpFile
 +	std::string dumpFile;
@@ -359,7 +360,7 @@ index 293878d..fd4b361 100644
  struct AutoTestOptions {
  	double timeout;
  	double maxScreenshotError;
-@@ -226,6 +269,40 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -226,6 +270,40 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		draw->BeginFrame(Draw::DebugFlags::NONE);
  	}
  
@@ -400,7 +401,7 @@ index 293878d..fd4b361 100644
  	bool passed = true;
  	double deadline = time_now_d() + opt.timeout;
  	coreState = coreParameter.startBreak ? CORE_STEPPING_CPU : CORE_RUNNING_CPU;
-@@ -238,6 +315,59 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -238,6 +316,68 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		if (coreState == CORE_NEXTFRAME) {
  			coreState = CORE_RUNNING_CPU;
  			headlessHost->SwapBuffers();
@@ -416,7 +417,10 @@ index 293878d..fd4b361 100644
 +				} else {
 +					h = XXH3_64bits(ram, PSP_GetUserMemoryEnd() - PSP_GetUserMemoryBase());
 +				}
-+				fprintf(rrTrace, "%d %lld %016llx\n", rrFrame, (long long)CoreTiming::GetTicks(), (unsigned long long)h);
++				fprintf(rrTrace, "%d %lld %016llx", rrFrame, (long long)CoreTiming::GetTicks(), (unsigned long long)h);
++				for (u32 a : g_rr.peek)
++					fprintf(rrTrace, " %08x", Memory::IsValidAddress(a) ? Memory::Read_U32(a) : 0);
++				fprintf(rrTrace, "\n");
 +				auto r = rrRef.find(rrFrame);
 +				if (r != rrRef.end() && r->second != h && !g_rr.dumpFile.empty()) {
 +					FILE *d = fopen(g_rr.dumpFile.c_str(), "wb");
@@ -448,6 +452,12 @@ index 293878d..fd4b361 100644
 +					fwrite(Memory::GetPointerUnchecked(PSP_GetUserMemoryBase()), 1, PSP_GetUserMemoryEnd() - PSP_GetUserMemoryBase(), d);
 +					fclose(d);
 +				}
++				// and the 16 KB scratch RAM at 0x00010000, which games use for hot data
++				d = fopen((g_rr.dumpFile + ".scratch").c_str(), "wb");
++				if (d) {
++					fwrite(Memory::GetPointerUnchecked(0x00010000), 1, 0x4000, d);
++					fclose(d);
++				}
 +			}
 +			rrFrame++;
 +			auto it = rrScript.find(rrFrame);
@@ -460,7 +470,7 @@ index 293878d..fd4b361 100644
  		}
  		if (coreState == CORE_STEPPING_CPU && !coreParameter.startBreak) {
  			break;
-@@ -261,6 +391,7 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -261,6 +401,7 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  			Core_Stop();
  		}
  	}
@@ -468,7 +478,7 @@ index 293878d..fd4b361 100644
  	if (gpu) {
  		gpu->EndHostFrame();
  	}
-@@ -445,6 +576,31 @@ int main(int argc, const char* argv[])
+@@ -445,6 +586,37 @@ int main(int argc, const char* argv[])
  			teamCityMode = true;
  		else if (!strncmp(argv[i], "--state=", strlen("--state=")) && strlen(argv[i]) > strlen("--state="))
  			stateToLoad = argv[i] + strlen("--state=");
@@ -489,6 +499,12 @@ index 293878d..fd4b361 100644
 +			g_rrCyclesRef = argv[i] + 16;
 +		else if (!strncmp(argv[i], "--rr-hash-skip=", 15))
 +			sscanf(argv[i] + 15, "%x:%x", &g_rr.skipStart, &g_rr.skipEnd);
++		else if (!strncmp(argv[i], "--rr-peek=", 10)) {
++			FILE *pf = fopen(argv[i] + 10, "r");
++			char pl[64];
++			while (pf && fgets(pl, sizeof(pl), pf)) { unsigned a; if (sscanf(pl, "%x", &a) == 1) g_rr.peek.push_back(a); }
++			if (pf) fclose(pf);
++		}
 +		else if (!strncmp(argv[i], "--rr-ref=", 9))
 +			g_rr.ref = argv[i] + 9;
 +		else if (!strncmp(argv[i], "--rr-dump-frame=", 16))
@@ -500,7 +516,7 @@ index 293878d..fd4b361 100644
  		else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
  			return printUsage(argv[0], NULL);
  		else if (!strcmp(argv[i], "--ignore")) {
-@@ -558,6 +714,13 @@ int main(int argc, const char* argv[])
+@@ -558,6 +730,13 @@ int main(int argc, const char* argv[])
  	g_Config.internalDataDirectory.clear();
  	g_Config.bUseOldAtrac = oldAtrac;
  	g_Config.iForceEnableHLE = 0xFFFFFFFF;  // Run all modules as HLE. We don't have anything to load in this context.
@@ -514,7 +530,7 @@ index 293878d..fd4b361 100644
  
  	// g_Config.bUseOldAtrac = true;
  
-@@ -572,6 +735,11 @@ int main(int argc, const char* argv[])
+@@ -572,6 +751,11 @@ int main(int argc, const char* argv[])
  #elif !PPSSPP_PLATFORM(ANDROID)
  	g_Config.memStickDirectory = Path(std::string(getenv("HOME"))) / ".ppsspp";
  #endif
