@@ -40,7 +40,92 @@ struct Vec4 {
 
 /* A 4x4 matrix. */
 struct Mat {
+    void Identity()
+    {
+        m[0] = 1.0f;
+        m[1] = 0;
+        m[2] = 0;
+        m[3] = 0;
+        m[4] = 0;
+        m[5] = 1.0f;
+        m[6] = 0;
+        m[7] = 0;
+        m[8] = 0;
+        m[9] = 0;
+        m[10] = 1.0f;
+        m[11] = 0;
+        m[12] = 0;
+        m[13] = 0;
+        m[14] = 0;
+        m[15] = 1.0f;
+    }
     float m[16];
+};
+
+/* Sets a matrix member to the identity, written out in place. */
+#define SET_IDENTITY(M)                                                                    \
+    do {                                                                                   \
+        M.m[0] = 1.0f;                                                                     \
+        M.m[1] = 0;                                                                        \
+        M.m[2] = 0;                                                                        \
+        M.m[3] = 0;                                                                        \
+        M.m[4] = 0;                                                                        \
+        M.m[5] = 1.0f;                                                                     \
+        M.m[6] = 0;                                                                        \
+        M.m[7] = 0;                                                                        \
+        M.m[8] = 0;                                                                        \
+        M.m[9] = 0;                                                                        \
+        M.m[10] = 1.0f;                                                                    \
+        M.m[11] = 0;                                                                       \
+        M.m[12] = 0;                                                                       \
+        M.m[13] = 0;                                                                       \
+        M.m[14] = 0;                                                                       \
+        M.m[15] = 1.0f;                                                                    \
+    } while (0)
+
+
+/* One row of the model's animation table (80 bytes); its sixteen values start at zero. */
+struct AnimRow {
+    void Clear()
+    {
+        v[0] = 0;
+        v[1] = 0;
+        v[2] = 0;
+        v[3] = 0;
+        v[4] = 0;
+        v[5] = 0;
+        v[6] = 0;
+        v[7] = 0;
+        v[8] = 0;
+        v[9] = 0;
+        v[10] = 0;
+        v[11] = 0;
+        v[12] = 0;
+        v[13] = 0;
+        v[14] = 0;
+        v[15] = 0;
+    }
+    int v[16];
+    int m64[4];
+};
+
+/* The resource the model draws with (16 bytes). */
+struct CResource {
+    CResource() : m0(0) {}
+    int m0;
+    int m4[3];
+};
+
+/* The model's animation table: whether it is on, and eight rows. */
+struct CAnimTable {
+    CAnimTable() : on(0)
+    {
+        for (int i = 0; i < 8; i++)
+            rows[i].Clear();
+    }
+    int on;
+    int m4[3];
+    AnimRow rows[8];
 };
 
 /* The car model header in the model data. */
@@ -71,7 +156,43 @@ struct CModelHeader {
 
 /* The model as the renderer sees it (1712 bytes). */
 struct CModel {
-    CModel();
+    CModel()
+    {
+        data = 0;
+        colour = 0;
+        m12 = 0;
+        SET_IDENTITY(world);
+        SET_IDENTITY(inverse);
+        for (int k = 0; k < 17; k++)
+            SET_IDENTITY(part[k]);
+        for (int i = 0; i < 15; i++)
+            for (int j = 0; j < 6; j++)
+                m1232[i][j] = 0;
+        for (int n = 0; n < 12; n++)
+            level[n] = 0;
+        int i;
+        level[0] = 255;
+        level[9] = 255;
+        m1604[0] = 0xffffff;
+        m1632 = 0xffffff;
+        level[11] = 128;
+        m1624 = 0x80000000;
+        m1620 = 255;
+        m1628 = 0x4746fffe;
+        m1604[2] = 0xffffff;
+        m1604[3] = 0xffffff;
+        m1604[1] = 0xffffff;
+        for (i = 0; i < 2; i++) {
+            m1648[i].x = 0;
+            m1648[i].y = 1.0f;
+            m1648[i].z = 0;
+            m1680[i] = 0;
+            m1688[i] = 0;
+            m1696[i] = 0;
+        }
+        m1706 = 1;
+        m1704 = 0;
+    }
     CModelHeader *data;
     int m4;
     int colour;
@@ -122,7 +243,29 @@ struct CCarState {
 
 class CCarModel {
 public:
-    CCarModel();
+    CCarModel()
+    {
+        rot.z = 0;
+        rot.y = 0;
+        rot.x = 0;
+        for (int i = 0; i < 4; i++) {
+            wheelRot[i].z = 0;
+            wheelRot[i].y = 0;
+            wheelRot[i].x = 0;
+        }
+        steer = 0;
+        m204 = 0;
+        m200 = 0;
+        m208 = 0;
+        m2723 = 0;
+        m2725 = 0;
+        m2708 = 0;
+        m2704 = 0;
+        m2712 = 0;
+        anim = 0;
+        m2727 = 0;
+        m2728 = 0;
+    }
     int f_01dbc4(CModelHeader *data, int a, int b, int colour);
     void f_01dee4();
     void f_01e14c(Mat *world, void *pos, void *vel, void *c);
@@ -154,8 +297,8 @@ public:
     int m212[3];
     Vec4 wheelRot[4];
     CModel model;
-    char res[16];
-    char m2016[656];
+    CResource res;
+    CAnimTable table;
     float m2672;
     float m2676;
     float m2680;
@@ -185,8 +328,8 @@ float f_01df34(float x);
 float f_01df48(float x);
 float f_01df78(float x);
 float f_01dfd8(float x);
-void f_01e028(Vec4 *pos, Vec4 *at, Vec4 *rot, Mat *a, Mat *b, Mat *c);
-void f_01e094(Vec4 *pos, Vec4 *at, Vec4 *rot, Mat *a, Mat *b, Mat *c);
+void f_01e028(Vec4 *pos, Vec4 *at, const void *rot, Mat *a, Mat *b, Mat *c);
+void f_01e094(Vec4 *pos, Vec4 *at, const void *rot, Mat *a, Mat *b, Mat *c);
 void f_01e0ec(Vec4 *pivot, Vec4 *at, Mat *out, float angle);
 void f_01edb8(float *out, Mat *m);
 
@@ -233,14 +376,14 @@ int CCarModel::f_01dbc4(CModelHeader *data, int a, int b, int colour)
 {
     CCarModel tmp;
 
-    if (!f_026ab0(res, a, b))
+    if (!f_026ab0(&res, a, b))
         return 0;
     model.data = data;
     if (!f_024fb4(&model))
         return 0;
     CModelHeader *h = model.data;
-    *(int *)m2016 = h->m40;
-    f_026efc(m2016);
+    table.on = h->m40;
+    f_026efc(&table);
     h = model.data;
     float hw = h->halfWidth;
     float fx = h->frontX;
@@ -293,8 +436,8 @@ int CCarModel::f_01dbc4(CModelHeader *data, int a, int b, int colour)
     }
     m2723 = h->flags & 1;
     mode = (h->flags >> 1) & 3;
-    f_026bc8(res, h->colour[colour][0], h->colour[colour][1], h->colour[colour][2]);
-    f_026e5c(res);
+    f_026bc8(&res, h->colour[colour][0], h->colour[colour][1], h->colour[colour][2]);
+    f_026e5c(&res);
     h = model.data;
     model.m1604[3] = model.m1604[2] = h->colour2[colour] & 0xffffff;
     unsigned int v = h->colour[colour][3];
@@ -310,9 +453,9 @@ int CCarModel::f_01dbc4(CModelHeader *data, int a, int b, int colour)
    WHAT IT DOES: Releases the model's resource and switches its animation table off. */
 void CCarModel::f_01dee4()
 {
-    f_026ed8(res);
-    *(int *)m2016 = 0;
-    f_026efc(m2016);
+    f_026ed8(&res);
+    table.on = 0;
+    f_026efc(&table);
 }
 
 /* @implements 0x01df1c us f_01df1c
@@ -376,7 +519,7 @@ float f_01dfd8(float x)
    WHAT IT DOES: Builds a front wheel's three matrices on the vector unit: its position (the
    physics wheel position scaled by the model scale), its steering and spin rotations, and the
    combined placement of the wheel at its mounting point. */
-void f_01e028(Vec4 *pos, Vec4 *at, Vec4 *rot, Mat *a, Mat *b, Mat *c)
+void f_01e028(Vec4 *pos, Vec4 *at, const void *rot, Mat *a, Mat *b, Mat *c)
 {
     __asm__ volatile(
         "lv.q C030.q, 0(%0)\n"
@@ -411,7 +554,7 @@ void f_01e028(Vec4 *pos, Vec4 *at, Vec4 *rot, Mat *a, Mat *b, Mat *c)
 /* @implements 0x01e094 us f_01e094
    WHAT IT DOES: Builds a rear wheel's three matrices on the vector unit: its position, its
    spin rotation, and its placement at the mounting point (rear wheels do not steer). */
-void f_01e094(Vec4 *pos, Vec4 *at, Vec4 *rot, Mat *a, Mat *b, Mat *c)
+void f_01e094(Vec4 *pos, Vec4 *at, const void *rot, Mat *a, Mat *b, Mat *c)
 {
     __asm__ volatile(
         "lv.q C030.q, 0(%0)\n"
@@ -472,6 +615,9 @@ void f_01e0ec(Vec4 *pivot, Vec4 *at, Mat *out, float angle)
 static const float kFlareSize = -0.5f;
 static const float kFlareDepth = 0.5f;
 static const float kModelScale = 0.00024414062f;
+
+/* The depth bias added before projecting a flare. */
+static const float kFlareDepthScale = 100.0f;
 
 /* How far ahead along the velocity the lights are placed. */
 static const float kLightLead = 25.0f;
@@ -919,6 +1065,81 @@ void CCarModel::f_01eebc(int arg)
     f_025154(&model, anim, arg);
 }
 
+/* @draft 0x01eee4 us f_01eee4
+   WHAT IT DOES: Steps the light levels each frame. While the lights are on, the head light
+   brightens and the pop-up lights rise (the other two lights brighten once they are fully
+   up); while off, everything dims and the pop-up lights fold away once dark. It then writes
+   the levels to the model (and keeps the scaled values), sets the indicator lamp, steps the
+   model's animation table and, for a rotating light, turns it towards its target speed. */
+void CCarModel::f_01eee4()
+{
+    float f;
+
+    if (m2725) {
+        m2704 = f_01df1c(m2704);
+        if (steerMax != 0.0f) {
+            steer = steer + 0.017453292f;
+            if (!(steerMax <= steer))
+                goto levels;
+            steer = steerMax;
+        }
+        m2708 = f_01df1c(m2708);
+        m2712 = f_01df78(m2712);
+    } else {
+        m2704 = f_01df34(m2704);
+        float g = m2708 = f_01df48(m2708);
+        f = m2712 = f_01dfd8(m2712);
+        if (!m2723)
+            f = g;
+        if (f == 0.0f && steerMax != 0.0f) {
+            steer = steer - 0.017453292f;
+            if (steer < 0.0f)
+                steer = 0.0f;
+        }
+    }
+levels:
+    f = m2704 * 255.0f;
+    model.level[5] = Level(f);
+    m2680 = f;
+    f = m2708 * 255.0f;
+    model.level[7] = Level(f);
+    m2688 = f;
+    f = m2712 * 255.0f;
+    model.level[8] = Level(f);
+    m2692 = f;
+    if (m2725) {
+        model.level[6] = 255;
+        m2684 = 255.0f;
+    } else {
+        model.level[6] = 0;
+        m2684 = 0;
+    }
+    f_026f70(&table);
+    if (mode == 2) {
+        float target = 0.06981317f;
+        if (!(m200 < target)) {
+            if (m200 < 0.34906587f)
+                target = m200;
+            else
+                target = (float)fmod(m200 - 0.34906587f, 0.34906587f) + 0.34906587f;
+        }
+        if (target < 0.34906587f) {
+            if (m204 < target)
+                m204 = m204 + 0.0034906587f;
+            else if (target < m204)
+                m204 = m204 - 0.0069813174f;
+        } else {
+            if (m204 < target)
+                m204 = m204 + 0.0034906587f;
+            else if (target < m204)
+                m204 = m204 - 0.0034906587f;
+        }
+        m208 = m208 + m204;
+        if (6.2831855f < m208)
+            m208 = m208 - 6.2831855f;
+    }
+}
+
 /* @implements 0x01f234 us f_01f234
    WHAT IT DOES: Sets the model's animation set from the given animation data. */
 void CCarModel::f_01f234(int a)
@@ -945,9 +1166,169 @@ void CCarModel::f_01f264(int a)
     int *raw = (int *)this;
     int w = raw[126] / 2;
     int h = raw[127] / 2;
-    D_23c0c4 = h;
     D_23c0c0 = w;
+    D_23c0c4 = h;
     f_02df08(a);
+}
+
+/* Builds one flare: a fan of fourteen vertices (the centre in full colour, the rim of
+   thirteen outline points in transparent colour) and the commands to draw it. */
+static inline unsigned int *DrawFlare(unsigned int *list, unsigned int c, const short *pt,
+                                      const FlarePoint *shape, float size)
+{
+    unsigned char *v = (unsigned char *)f_021b38(224);
+    unsigned int cc = c | 0xff000000;
+    v[0] = 0;
+    v[1] = 0;
+    v[2] = 0;
+    v[3] = 0;
+    v[4] = cc;
+    v[5] = cc >> 8;
+    v[6] = cc >> 16;
+    v[7] = cc >> 24;
+    v[8] = (unsigned short)pt[0];
+    v[9] = (unsigned short)pt[0] >> 8;
+    v[10] = (unsigned short)pt[1];
+    v[11] = (unsigned short)pt[1] >> 8;
+    v[12] = 0;
+    v[13] = 0;
+    unsigned char *w = v;
+    for (int i = 0; i < 13; i++) {
+        unsigned short x = (unsigned short)pt[0] + (int)(shape[i].x * size);
+        w[24] = x;
+        w[25] = x >> 8;
+        unsigned short y = (unsigned short)pt[1] + (int)(shape[i].y * size);
+        w[28] = 0;
+        w[29] = 0;
+        w[20] = c;
+        w[27] = y >> 8;
+        w[26] = y;
+        w[21] = c >> 8;
+        w[22] = c >> 16;
+        w[23] = c >> 24;
+        w[16] = 0;
+        w[17] = 0;
+        w[18] = 0;
+        w[19] = 0;
+        w += 16;
+    }
+    *list++ = 0x1e000001;
+    *list++ = 0x1280011e;
+    *list++ = (((unsigned int)v >> 24) & 0xf) << 16 | 0x10000000;
+    *list++ = ((unsigned int)v & 0xffffff) | 0x01000000;
+    *list++ = 0x0405000e;
+    return list;
+}
+
+/* Scales the car's light colour by a flare's strength (0 to 255). */
+static inline unsigned int FlareColour(const unsigned char *col, unsigned int s)
+{
+    return (s * col[0] / 255) | (s * col[1] / 255) << 8 | (s * col[2] / 255) << 16;
+}
+
+/* @draft 0x01f2f0 us f_01f2f0
+   WHAT IT DOES: Draws the head light flares into the display list. The flare strength is the
+   pop-up or the main light level; nothing is drawn when the car faces away or the lights are
+   off. On the vector unit it projects both lights to the screen, works out each light's
+   strength from how directly it faces the camera and its distance, and the flare sizes. Each
+   visible light gets a small flare (with the drawing state set up first) and a large one. */
+unsigned int *CCarModel::f_01f2f0(unsigned int *list)
+{
+    Vec4 scr[2];
+    float size[4];
+    unsigned char amt[4];
+    short pt[4];
+
+    D_1d17a0[2] = m2723 ? m2712 : m2708;
+    if (!(model.world.m[10] < 0.0f))
+        return list;
+    if (!(0.0f < D_1d17a0[2]))
+        return list;
+    D_1d17a0[3] = D_1d17a0[2] * 0.8f;
+    __asm__ volatile(
+        "lv.q C400.q, 0(%0)\n"
+        "\tlv.q C410.q, 16(%0)\n"
+        "\tlv.q C420.q, 32(%0)\n"
+        "\tlv.q C430.q, 48(%0)\n"
+        "\tlv.q C300.q, 0(%1)\n"
+        "\tlv.q C310.q, 16(%1)\n"
+        "\tvtfm3.t C320.t, E400.t, C300.t\n"
+        "\tvtfm3.t C330.t, E400.t, C310.t\n"
+        "\tvadd.t C320.t, C430.t, C320.t\n"
+        "\tvadd.t C330.t, C430.t, C330.t\n"
+        "\tvdot.t S303.s, C320.t, C320.t\n"
+        "\tvdot.t S313.s, C330.t, C330.t\n"
+        "\tvrsq.p R303.p, R303.p\n"
+        "\tvscl.t C300.t, C320.t, S303.s\n"
+        "\tvscl.t C310.t, C330.t, S313.s\n"
+        "\tvdot.t S303.s, C420.t, C300.t\n"
+        "\tvdot.t S313.s, C420.t, C310.t\n"
+        "\tlv.q C200.q, 0(%2)\n"
+        "\tvmul.s S303.s, S303.s, S202.s\n"
+        "\tvmul.s S313.s, S313.s, S202.s\n"
+        "\tvmul.p R323.p, R303.p, R303.p\n"
+        "\tvmul.p R323.p, R323.p, R323.p\n"
+        "\tvmul.p R323.p, R323.p, R323.p\n"
+        "\tvmul.p R303.p, R303.p, C200.p\n"
+        "\tvsat0.q R303.q, R303.q\n"
+        "\tvmul.s S303.s, S303.s, S203.s\n"
+        "\tvmul.s S313.s, S313.s, S203.s\n"
+        "\tvf2iz.q R303.q, R303.q, 31\n"
+        "\tvi2uc.q S203.s, R303.q\n"
+        "\tsv.s S203.s, 0(%3)\n"
+        "\tvone.p R323.p\n"
+        "\tlv.s S203.s, %4\n"
+        "\tvneg.p R200.p, R322.p\n"
+        "\tvadd.s S322.s, S322.s, S203.s\n"
+        "\tvadd.s S332.s, S332.s, S203.s\n"
+        "\tvtfm4.q C300.q, E700.q, C320.q\n"
+        "\tvtfm4.q C310.q, E700.q, C330.q\n"
+        "\tvrcp.p R200.p, R200.p\n"
+        "\tvrcp.p R303.p, R303.p\n"
+        "\tvscl.p C300.p, C300.p, S200.s\n"
+        "\tvscl.p C310.p, C310.p, S210.s\n"
+        "\tvmul.p R302.p, R302.p, R303.p\n"
+        "\tsv.q C300.q, 0(%5)\n"
+        "\tsv.q C310.q, 16(%5)\n"
+        "\tlv.s S103.s, %6\n"
+        "\tvmul.s S102.s, S711.s, S103.s\n"
+        "\tvmul.s S100.s, S102.s, S200.s\n"
+        "\tvmul.s S101.s, S102.s, S210.s\n"
+        "\tsv.q C100.q, 0(%7)"
+        : : "r"(&model.world), "r"(&light[0]), "r"(D_1d17a0), "r"(amt), "m"(kFlareDepthScale),
+            "r"(scr), "m"(m2716), "r"(size)
+        : "memory");
+    for (int k = 0; k < 2; k++) {
+        unsigned int s = amt[k];
+        if (s > 0) {
+            unsigned int c = FlareColour(col, s);
+            int cx = D_23c0c0;
+            float cy = D_23c0c4;
+            float fx = cx;
+            float ax = cx < 0 ? -cx : cx;
+            float z = scr[k].z * 65535.0f;
+            pt[0] = (int)(scr[k].x * fx + ax);
+            pt[2] = (int)z;
+            pt[1] = (int)(cy - scr[k].y * cy);
+            list = f_020cd4(pt, 0, list);
+            *list++ = 0xdf0000a6;
+            *list++ = 0xe1ffffff;
+            *list++ = 0x21000001;
+            *list++ = 0x23000000;
+            *list++ = 0xe7000001;
+            *list++ = 0xc6000000;
+            *list++ = 0xc7000101;
+            list = DrawFlare(list, c, pt, D_23c0c8, size[k]);
+        }
+        s = amt[k + 2];
+        if (s > 0) {
+            unsigned int c = FlareColour(col, s);
+            list = DrawFlare(list, c, pt, D_23c130, size[k]);
+        }
+    }
+    *list++ = 0x23000001;
+    *list++ = 0xe7000000;
+    return list;
 }
 
 /* @implements 0x01f9a0 us f_01f9a0
@@ -1065,6 +1446,17 @@ FlarePoint D_23c130[13] = {
     { cosf(5.759587f) * 0.5f * 9.0f / 15.0f, sinf(5.759587f) * 0.5f * 9.0f / 15.0f },
     { cosf(6.2831855f) * 0.5f * 9.0f / 15.0f, sinf(6.2831855f) * 0.5f * 9.0f / 15.0f },
 };
+
+/* @implements 0x0201d4 us CCarModelC1Ev
+   (the compiler emits it outside .text, in a link once section)
+   WHAT IT DOES: The car model's constructor: builds the model, clears the animation table
+   and the wheel rotations, and clears the light levels and flags. */
+
+/* @draft 0x0202b4 us CModelC1Ev
+   (the compiler emits it outside .text, in a link once section)
+   WHAT IT DOES: The model's constructor: identity matrices, cleared shadow vectors and light
+   levels, full colour and the default light settings.
+   Remaining difference: two stores of 0xffffff (to +1632 and +1608) swapped by sched2. */
 
 /* @draft 0x01fb68 us __static_initialization_and_destruction_0
    WHAT IT DOES: At startup, computes the two flare outlines. */
