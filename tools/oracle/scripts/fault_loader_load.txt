@@ -1,0 +1,4 @@
+# frames 300
+# Module loader: the second module fails to load (fd is closed, the error is returned).
+force sceKernelLoadModuleByID 1 80020001
+0 NONE

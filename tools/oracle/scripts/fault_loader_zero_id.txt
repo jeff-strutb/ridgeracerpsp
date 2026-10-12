@@ -1,0 +1,5 @@
+# frames 300
+# Module loader: a load returning id 0 whose start fails (no stop/unload).
+force sceKernelLoadModuleByID 3 0
+force sceKernelStartModule 3 80020001
+0 NONE

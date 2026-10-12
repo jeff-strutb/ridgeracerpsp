@@ -11,6 +11,31 @@ index 910f322..eb39b5b 100644
  	Core/MemMapHelpers.h
  	Core/PSPLoaders.cpp
  	Core/PSPLoaders.h
+diff --git a/Core/HLE/HLE.cpp b/Core/HLE/HLE.cpp
+index 944098f..c73bddb 100644
+--- a/Core/HLE/HLE.cpp
++++ b/Core/HLE/HLE.cpp
+@@ -1,3 +1,4 @@
++#include "Core/RRBox.h"
+ // Copyright (c) 2012- PPSSPP Project.
+ 
+ // This program is free software: you can redistribute it and/or modify
+@@ -862,6 +863,7 @@ static void CallSyscallWithFlags(const HLEFunction *info) {
+ 	} else {
+ 		info->func();
+ 	}
++	RRBox::OnSyscallReturn(info->name);
+ 
+ 	// Now, g_stackSize should be back to 0. Enable this for "pedantic mode", will find a lot of problems.
+ 	// Check g_stack[0] in the debugger.
+@@ -887,6 +889,7 @@ static void CallSyscallWithoutFlags(const HLEFunction *info) {
+ 	g_syscallPC = currentMIPS->pc;
+ 
+ 	info->func();
++	RRBox::OnSyscallReturn(info->name);
+ 
+ 	// Now, g_stackSize should be back to 0. Enable this for "pedantic mode", will find a lot of problems.
+ 	// Check g_stack[0] in the debugger.
 diff --git a/Core/HLE/sceKernelTime.cpp b/Core/HLE/sceKernelTime.cpp
 index a15c981..f001ebf 100644
 --- a/Core/HLE/sceKernelTime.cpp
@@ -98,10 +123,10 @@ index 6f39b1b..ff23447 100644
  
 diff --git a/Core/RRBox.cpp b/Core/RRBox.cpp
 new file mode 100644
-index 0000000..c3a6ded
+index 0000000..7572634
 --- /dev/null
 +++ b/Core/RRBox.cpp
-@@ -0,0 +1,131 @@
+@@ -0,0 +1,144 @@
 +#include "Core/RRBox.h"
 +#include <map>
 +#include <string>
@@ -118,6 +143,8 @@ index 0000000..c3a6ded
 +static std::vector<u8> g_exec;          // one byte per word over [g_clo, g_chi): executed
 +static u32 g_clo = 0, g_chi = 0;
 +static std::string g_covPath;
++static std::map<std::string, std::map<int, u32>> g_force;  // name -> call index -> forced v0
++static std::map<std::string, int> g_forceSeen;
 +static u32 g_base = 0, g_lo = 0, g_hi = 0;
 +static std::vector<Frame> g_frames;
 +static std::map<u32, u64> g_calls;      // calls seen per function
@@ -163,6 +190,17 @@ index 0000000..c3a6ded
 +			g_refCycles[{func, call}] = cyc;
 +	}
 +	if (f) fclose(f);
++}
++
++void AddForce(const char *name, int n, u32 value) { g_force[name][n] = value; }
++
++void OnSyscallReturn(const char *name) {
++	if (g_force.empty() || !name) return;
++	auto f = g_force.find(name);
++	if (f == g_force.end()) return;
++	int n = g_forceSeen[name]++;
++	auto v = f->second.find(n);
++	if (v != f->second.end()) currentMIPS->r[MIPS_REG_V0] = v->second;
 +}
 +
 +void Finish() {
@@ -235,10 +273,10 @@ index 0000000..c3a6ded
 +}
 diff --git a/Core/RRBox.h b/Core/RRBox.h
 new file mode 100644
-index 0000000..decfa5b
+index 0000000..f217fee
 --- /dev/null
 +++ b/Core/RRBox.h
-@@ -0,0 +1,18 @@
+@@ -0,0 +1,21 @@
 +// rrbox: per-function call tracing for the Ridge Racer decomp's A5 oracle.
 +// Watched functions log their arguments at entry and, at return, their return registers plus a
 +// hash of every memory write made during the call (callees included), on the calling thread only.
@@ -254,11 +292,14 @@ index 0000000..decfa5b
 +void LoadCycleRef(const char *retailCallLog);
 +// Write instruction coverage of the watched functions (lines: offset size executed-words).
 +void Finish();
++// Fault injection: the Nth call (0-based) of system function NAME returns VALUE instead.
++void AddForce(const char *name, int n, u32 value);
++void OnSyscallReturn(const char *name);   // after the HLE function ran, before any thread switch
 +void OnPC(u32 pc);                      // before each interpreted instruction
 +void OnWrite(u32 addr, u64 value, int size);
 +}
 diff --git a/headless/Headless.cpp b/headless/Headless.cpp
-index 293878d..b93db3e 100644
+index 293878d..fd4b361 100644
 --- a/headless/Headless.cpp
 +++ b/headless/Headless.cpp
 @@ -51,6 +51,14 @@
@@ -318,7 +359,7 @@ index 293878d..b93db3e 100644
  struct AutoTestOptions {
  	double timeout;
  	double maxScreenshotError;
-@@ -226,6 +269,38 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -226,6 +269,40 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		draw->BeginFrame(Draw::DebugFlags::NONE);
  	}
  
@@ -335,6 +376,8 @@ index 293878d..b93db3e 100644
 +		char line[256];
 +		while (fgets(line, sizeof(line), f)) {
 +			char btn[200]; int fr;
++			char fname[128]; int fn; unsigned fv;
++			if (sscanf(line, "force %127s %d %x", fname, &fn, &fv) == 3) { RRBox::AddForce(fname, fn, fv); continue; }
 +			if (line[0] == '#' || sscanf(line, "%d %199s", &fr, btn) != 2) continue;
 +			rrScript[fr] = RRButtons(btn);
 +		}
@@ -357,7 +400,7 @@ index 293878d..b93db3e 100644
  	bool passed = true;
  	double deadline = time_now_d() + opt.timeout;
  	coreState = coreParameter.startBreak ? CORE_STEPPING_CPU : CORE_RUNNING_CPU;
-@@ -238,6 +313,59 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -238,6 +315,59 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		if (coreState == CORE_NEXTFRAME) {
  			coreState = CORE_RUNNING_CPU;
  			headlessHost->SwapBuffers();
@@ -417,7 +460,7 @@ index 293878d..b93db3e 100644
  		}
  		if (coreState == CORE_STEPPING_CPU && !coreParameter.startBreak) {
  			break;
-@@ -261,6 +389,7 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -261,6 +391,7 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  			Core_Stop();
  		}
  	}
@@ -425,7 +468,7 @@ index 293878d..b93db3e 100644
  	if (gpu) {
  		gpu->EndHostFrame();
  	}
-@@ -445,6 +574,31 @@ int main(int argc, const char* argv[])
+@@ -445,6 +576,31 @@ int main(int argc, const char* argv[])
  			teamCityMode = true;
  		else if (!strncmp(argv[i], "--state=", strlen("--state=")) && strlen(argv[i]) > strlen("--state="))
  			stateToLoad = argv[i] + strlen("--state=");
@@ -457,7 +500,7 @@ index 293878d..b93db3e 100644
  		else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
  			return printUsage(argv[0], NULL);
  		else if (!strcmp(argv[i], "--ignore")) {
-@@ -558,6 +712,13 @@ int main(int argc, const char* argv[])
+@@ -558,6 +714,13 @@ int main(int argc, const char* argv[])
  	g_Config.internalDataDirectory.clear();
  	g_Config.bUseOldAtrac = oldAtrac;
  	g_Config.iForceEnableHLE = 0xFFFFFFFF;  // Run all modules as HLE. We don't have anything to load in this context.
@@ -471,7 +514,7 @@ index 293878d..b93db3e 100644
  
  	// g_Config.bUseOldAtrac = true;
  
-@@ -572,6 +733,11 @@ int main(int argc, const char* argv[])
+@@ -572,6 +735,11 @@ int main(int argc, const char* argv[])
  #elif !PPSSPP_PLATFORM(ANDROID)
  	g_Config.memStickDirectory = Path(std::string(getenv("HOME"))) / ".ppsspp";
  #endif

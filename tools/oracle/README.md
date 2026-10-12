@@ -42,6 +42,7 @@ For each script in `scripts/`, retail and the candidate each record per frame th
 | Script | Frames | What it covers |
 |---|---|---|
 | `boot_attract` | 1,800 | Boot, the Namco logo, the Rally-X loading game's attract mode. |
+| `fault_loader_*` | 300 each | Forced failures of `sceIoOpen`, `sceKernelLoadModuleByID` and `sceKernelStartModule`, which cover every path of the module loader. |
 | `race_seaside_start` | 7,800 | The new-game path to a race: Rally-X; the intro; the title; creating a driver profile (the system keyboard, where START accepts the default name); saving (system dialogs confirm with CIRCLE); World Tours, Basic Tour, Class 1, Seaside Route 765; car and transmission select; loading; the fly-by; the countdown; about 50 s of racing holding accelerate, with no steering. |
 
 `tools/oracle/explore.sh SCRIPT FRAMES EVERY OUTDIR [FIRST]` saves the emulated PSP's displayed frame every N frames and tiles them into a sheet (`sheet.py`). This is how scripts are written. These are the emulator's own output frames, never a capture of the host's screen.
@@ -95,9 +96,19 @@ Otherwise the function DIFFERS. A function no script reaches is UNCOVERED.
 - returning the module id + 1;
 - swapping the `sprintf` arguments.
 
+## Fault injection
+
+A script line `force NAME N VALUE` makes the Nth call (0-based) of system function NAME return VALUE (hex) instead of its real result. The function still runs and has its side effects, just as a real failure would. Both retail and the candidate get the same forcing, so error paths that normal play never takes run and are compared.
+
+The `fault_loader_*` scripts drive every path of the module loader: failed open, failed load, failed start, a module id of 0, and a file handle of 0. That took it from 56/72 to 72/72 instructions covered.
+
+## Tiers from the ledger
+
+A `@draft` is **T3** when its `config/us/t3_live.csv` row says PASS with full coverage and the source hash still matches (`tools/progress.py`). The module loader (0x0004a4) is the first: 91 calls over seven scripts, all 72 instructions executed, and A7 identical on every script.
+
 ## Not built yet
 
-- Forcing paths normal play never takes, such as error returns, resume from sleep and shutdown. Coverage shows them.
+- Driving the power-resume and shutdown paths, which still show as uncovered.
 - Display-list and audio comparison.
 - Scripts that steer, finish laps, and reach the other modes.
 - Per-instruction coverage.

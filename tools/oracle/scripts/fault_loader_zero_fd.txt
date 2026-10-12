@@ -1,0 +1,5 @@
+# frames 300
+# Module loader: an open returning fd 0 whose load fails (no close).
+force sceIoOpen 4 0
+force sceKernelLoadModuleByID 4 80020001
+0 NONE

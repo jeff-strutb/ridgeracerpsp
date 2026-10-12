@@ -1,0 +1,4 @@
+# frames 300
+# Module loader: the first sceIoOpen fails.
+force sceIoOpen 0 80010002
+0 NONE

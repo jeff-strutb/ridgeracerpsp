@@ -1,0 +1,4 @@
+# frames 300
+# Module loader: the third module loads but fails to start (stop, unload, close).
+force sceKernelStartModule 2 80020001
+0 NONE

@@ -3,7 +3,8 @@
 
 Tiers per retail function (config/us/funcs.csv):
   T4  tagged in a filed source (src/, outside src/control/) and EXACT under tools/score.py
-  T3  certified behaviour exact by the A5/A7 oracle (not built yet: none)
+  T3  a @draft whose row in config/us/t3_live.csv (tools/oracle/a5.py) says PASS with full
+      instruction coverage, recorded against the source file's current hash
   T2  tagged in a source but not T4: still differing, or EXACT but not yet filed into its
       translation unit (the compiler control set in src/control/)
   T1  not started
@@ -49,6 +50,16 @@ def tiers():
     tus = list(csv.DictReader(open(os.path.join(ROOT, 'config/us/tus.csv'))))
     starts = [int(t['start'], 16) for t in tus]
     graded = grade()
+    t3 = set()
+    ledger = os.path.join(ROOT, 'config/us/t3_live.csv')
+    if os.path.exists(ledger):
+        import hashlib
+        for r in csv.DictReader(open(ledger)):
+            done, total = (int(x) for x in r['coverage'].split('/'))
+            src = os.path.join(ROOT, r['source'])
+            fresh = os.path.exists(src) and hashlib.sha256(open(src, 'rb').read()).hexdigest()[:16] == r['source_sha']
+            if r['kind'] == 'draft' and r['verdict'] == 'PASS' and done == total and fresh:
+                t3.add(int(r['addr'], 16))
     claims = set()
     for path in glob.glob(os.path.join(ROOT, 'src/**/*.c*'), recursive=True):
         for m in re.finditer(r'@implements\s+0x([0-9a-fA-F]+)\s+us', open(path).read()):
@@ -67,6 +78,8 @@ def tiers():
                 tier = 'T1'
             elif st == 'EXACT' and not path.startswith('src/control/') and a in claims:
                 tier = 'T4'
+            elif a in t3:
+                tier = 'T3'
             else:
                 tier = 'T2'
         path = graded.get(a, (None, ''))[1] or ''
