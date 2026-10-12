@@ -128,7 +128,7 @@ struct LayerMsg {
     void *vt;
     int m4;
     int m8;
-    unsigned char m12;
+    bool m12;
 };
 
 /* A notice sent to the screen object. */
@@ -376,9 +376,10 @@ void Sequence::CTitleModeJob::f_0072b0()
     msg.m12 = D_233f70.m15708 != 0;
     D_2301b0.layer->v2(&msg, 0);
     CLayer *l = D_2301b0.layer;
+    LayerSub *sub = &l->m4;
     l->m453 = 1;
-    if (l->m4.p)
-        l->m4.f_04b290();
+    if (sub->p)
+        sub->f_04b290();
     D_233f70.m14808 = 1;
     ScreenMsg n;
     n.m8 = f_01a900(&D_23ba90);
@@ -393,7 +394,7 @@ void Sequence::CTitleModeJob::f_0074d0()
     f_099718(D_2451f4, D_23ba90.m0);
 }
 
-/* @draft 0x0074f8 us f_0074f8
+/* @implements 0x0074f8 us f_0074f8
    WHAT IT DOES: State 5: when the message dialog closes, starts the title layer normally,
    notifies the screen and queues event 2. */
 void Sequence::CTitleModeJob::f_0074f8()
@@ -405,9 +406,10 @@ void Sequence::CTitleModeJob::f_0074f8()
     msg.m12 = D_237ccc != 0;
     D_2301b0.layer->v2(&msg, 0);
     CLayer *l = D_2301b0.layer;
+    LayerSub *sub = &l->m4;
     l->m453 = 1;
-    if (l->m4.p)
-        l->m4.f_04b290();
+    if (sub->p)
+        sub->f_04b290();
     ScreenMsg n;
     n.m8 = f_01a900(&D_23ba90);
     n.m9 = 1;
