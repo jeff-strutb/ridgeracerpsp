@@ -401,7 +401,7 @@ struct ScreenReq {
     void Reset() { f_07aab4(this); }
     int m0[2];
     unsigned char m8;
-    int m12;
+    unsigned int m12;
     unsigned char m16;
     unsigned char m17;
     unsigned char m18;
@@ -1542,6 +1542,109 @@ void Sequence::CSingleRaceModeJob::f_00bb14()
    WHAT IT DOES: An idle state. */
 void Sequence::CSingleRaceModeJob::f_00bbb8()
 {
+}
+
+/* @draft 0x00bbc0 us f_00bbc0
+   WHAT IT DOES: State 27: runs the menu after the race result. Its first four choices go to
+   the replay, the result branch or the save branch. When the player confirms a choice, it
+   frees the race data buffer and acts on it: back to the menus (the race kind's mode), to the
+   series next race (moving on in the series, or preparing the next race of a time attack and
+   its course records) or to retrying the race. */
+void Sequence::CSingleRaceModeJob::f_00bbc0()
+{
+    switch (D_2301b0.layer->v10(3)) {
+    case 1:
+        queue.push(16);
+        break;
+    case 2:
+        queue.push(15);
+        break;
+    case 3:
+        queue.push(17);
+        break;
+    case 4:
+        queue.push(17);
+        break;
+    }
+    if (!D_2301b0.m24)
+        return;
+
+    ScreenReq req;
+    D_2301b0.layer->v3(&req, 0);
+    switch (req.m12) {
+    case 1:
+        if (m16016)
+            f_1521c8(m16016);
+        queue.push(13);
+        break;
+    case 4: {
+        if (m16016)
+            f_1521c8(m16016);
+        m15380++;
+        if (m16004) {
+            m15372 = (&m15380)[m15380];
+            f_014dd0(m15372, m15364);
+            if (m15380 < m15480)
+                D_1d1638[4] = m15380;
+            else
+                D_1d1638[4] = 0;
+        } else {
+            f_014cf8(m15376, m15380);
+        }
+        D_1ee198.event = -1;
+        Row carRow;
+        FIND_SELECT(&carRow, D_240740, m15364);
+        memcpy(D_24063c, D_240740.Field("Class", carRow.rec), D_1a211c[1]);
+        int k = D_24063c[0] - 1;
+        Param seq = D_1dd7c4;
+        char *r = D_2407d0.Field("CourseNumber", (char *)seq.a);
+        Row crs;
+        if (r)
+            crs.rec = f_036984(&D_2407a8, r, 0, D_2407a8.index, D_2407a8.count);
+        else
+            crs.rec = 0;
+        Row c = crs;
+        k = k * 24 + f_036a3c(&D_2407a8, c.rec, D_2407a8.index, D_2407a8.count);
+        if (m15788)
+            k += 168;
+        D_1ee198.m16 = m1924[k];
+        D_1ee198.m12 = m580[k];
+        queue.push(14);
+        break;
+    }
+    case 3:
+        if (m16016)
+            f_1521c8(m16016);
+        D_1d1108 = 2;
+        if (m16004 && !m16005)
+            m15376 = 1;
+        queue.push(9);
+        break;
+    case 2: {
+        if (m16016)
+            f_1521c8(m16016);
+        int mode;
+        switch (D_1d110c) {
+        case 2:
+            mode = 4;
+            break;
+        case 1:
+            mode = 5;
+            break;
+        case 3:
+            mode = 3;
+            break;
+        default:
+            mode = 4;
+            break;
+        }
+        D_1d1108 = mode;
+        if (m16004 && !m16005)
+            m15376 = 1;
+        queue.push(9);
+        break;
+    }
+    }
 }
 
 /* @implements 0x00c0bc us f_00c0bc
