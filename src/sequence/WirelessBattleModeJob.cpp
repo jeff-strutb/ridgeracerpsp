@@ -1,13 +1,12 @@
-/* The wireless battle mode job, from its Step (retail 0x00ddf8 to 0x0117c4, then the class's
-   inline methods emitted out of line at 0x0117c4 to 0x0117fc): the game mode that runs ad hoc
+/* The wireless battle mode job (retail 0x00d46c to 0x0117fc): the game mode that runs ad hoc
    races between consoles, with the lobby, the race entry, the result exchange and the memory
    stick checks around them. Like every mode job it is a state machine: a table of 41 member
    functions, one per state, a queue of state events and a small script interpreter (in the
-   base class) that decides the next state. The constructors and Begin come before this, at the
-   end of the previous object file (0x00d8e8 and 0x00dd64); Begin is defined here because it is
-   the class's key function, which makes this file emit the vtable and the destructors. The
-   vtable (_ZTVN8Sequence22CWirelessBattleModeJobE) names Begin, Step, End, the state runner and
-   the event sender at 0x01172c and 0x011794. */
+   base class) that decides the next state. The constructors and Begin come first, then Step,
+   the state handlers and the static data's initialisation, then the class's inline methods
+   emitted out of line (0x01172c to 0x0117fc). The vtable
+   (_ZTVN8Sequence22CWirelessBattleModeJobE) names Begin, Step, End, the state runner at
+   0x01172c and the event sender at 0x011794. */
 
 #include <string.h>
 
@@ -508,6 +507,8 @@ inline Rec ChosenCourse(Rec sel)
     return r;
 }
 
+extern short D_1d1310[];
+extern unsigned char D_1d1368[];
 extern int D_237cc8;
 extern unsigned char D_237cfc;
 
@@ -741,29 +742,83 @@ public:
 int f_00e2c8(void);
 void f_00e30c(void);
 
-/* Begin (retail 0x00dd64, object file 16, tagged with that object file's functions): starts
-   the mode from its first state, with a copy of the race settings it may change. */
+/* @implements 0x00d46c us _ZN8Sequence22CWirelessBattleModeJobC2Ev
+   WHAT IT DOES: Constructs the wireless battle mode job: an empty event queue, the table of
+   state handlers and the job's script. */
+/* @implements 0x00d8e8 us _ZN8Sequence22CWirelessBattleModeJobC1Ev
+   WHAT IT DOES: The same constructor, for a complete object. */
+Sequence::CWirelessBattleModeJob::CWirelessBattleModeJob()
+{
+    states[0] = &CWirelessBattleModeJob::f_00e0f4;
+    states[1] = &CWirelessBattleModeJob::f_00e0fc;
+    states[2] = &CWirelessBattleModeJob::f_00fcb4;
+    states[3] = &CWirelessBattleModeJob::f_00e21c;
+    states[4] = &CWirelessBattleModeJob::f_00e334;
+    states[5] = &CWirelessBattleModeJob::f_00fc68;
+    states[6] = &CWirelessBattleModeJob::f_00fc70;
+    states[7] = &CWirelessBattleModeJob::f_00fcd8;
+    states[8] = &CWirelessBattleModeJob::f_00fd98;
+    states[9] = &CWirelessBattleModeJob::f_00fe44;
+    states[10] = &CWirelessBattleModeJob::f_00fefc;
+    states[11] = &CWirelessBattleModeJob::f_00ff74;
+    states[12] = &CWirelessBattleModeJob::f_010100;
+    states[13] = &CWirelessBattleModeJob::f_010170;
+    states[14] = &CWirelessBattleModeJob::f_010284;
+    states[15] = &CWirelessBattleModeJob::f_01028c;
+    states[16] = &CWirelessBattleModeJob::f_01031c;
+    states[17] = &CWirelessBattleModeJob::f_010378;
+    states[18] = &CWirelessBattleModeJob::f_010ac4;
+    states[19] = &CWirelessBattleModeJob::f_010b44;
+    states[20] = &CWirelessBattleModeJob::f_010b4c;
+    states[21] = &CWirelessBattleModeJob::f_011184;
+    states[22] = &CWirelessBattleModeJob::f_01118c;
+    states[23] = &CWirelessBattleModeJob::f_0111d0;
+    states[24] = &CWirelessBattleModeJob::f_01122c;
+    states[25] = &CWirelessBattleModeJob::f_011234;
+    states[26] = &CWirelessBattleModeJob::f_011254;
+    states[27] = &CWirelessBattleModeJob::f_011308;
+    states[28] = &CWirelessBattleModeJob::f_011310;
+    states[29] = &CWirelessBattleModeJob::f_011334;
+    states[30] = &CWirelessBattleModeJob::f_0113cc;
+    states[31] = &CWirelessBattleModeJob::f_0113d4;
+    states[32] = &CWirelessBattleModeJob::f_011490;
+    states[33] = &CWirelessBattleModeJob::f_0114b4;
+    states[34] = &CWirelessBattleModeJob::f_01154c;
+    states[35] = &CWirelessBattleModeJob::f_011554;
+    states[36] = &CWirelessBattleModeJob::f_01157c;
+    states[37] = &CWirelessBattleModeJob::f_0115d8;
+    states[38] = &CWirelessBattleModeJob::f_0115e0;
+    states[39] = &CWirelessBattleModeJob::f_01160c;
+    states[40] = &CWirelessBattleModeJob::f_011668;
+    m52 = D_1d1310;
+    m56 = D_1d1368;
+}
+
+/* @implements 0x00dd64 us _ZN8Sequence22CWirelessBattleModeJob5BeginEv
+   WHAT IT DOES: Starts the mode from its first state, with a copy of the race settings it may
+   change. */
 void Sequence::CWirelessBattleModeJob::Begin()
 {
+    RaceSettings *g = &D_233f70;
     int i;
 
     m68 = 0;
     for (i = 0; i < 336; i++) {
-        m476[i] = D_233f70.m24[i];
-        m1820[i] = D_233f70.m1368[i];
+        m476[i] = g->m24[i];
+        m1820[i] = g->m1368[i];
     }
-    m3192 = D_233f70.m15716;
-    m3164 = D_233f70.m14848;
+    m3164 = g->m14848;
     m60 = 1;
-    m3168 = D_233f70.m14852;
-    m3172 = D_233f70.m14856;
-    m3176 = D_233f70.m15468;
-    m3180 = D_233f70.m15684;
-    m3184 = D_233f70.m15700;
-    m3188 = D_233f70.m15728;
-    m64 = 0;
+    m3192 = g->m15716;
+    m3168 = g->m14852;
+    m3172 = g->m14856;
+    m3176 = g->m15468;
+    m3180 = g->m15684;
+    m3184 = g->m15700;
+    m3188 = g->m15728;
     m68 = 0;
     state = 0;
+    m64 = 0;
 }
 
 /* @implements 0x00ddf8 us _ZN8Sequence22CWirelessBattleModeJob4StepEv
