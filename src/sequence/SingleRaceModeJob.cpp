@@ -142,7 +142,7 @@ struct MemoryStick {
     int m8[3];
     char *m20;
     int m24;
-    int m28;
+    char *m28;
     int m32;
 };
 extern MemoryStick D_23ba90;
@@ -419,6 +419,9 @@ struct RaceResult {
 };
 extern RaceResult D_240800;
 extern unsigned char D_1edf68;
+extern char D_1edf84[];
+extern const char *D_1d12d8[];
+extern const char *D_1d12f4[];
 
 /* The result screen's message: the player's place, car and times, the course records and
    whether a record was set. */
@@ -487,6 +490,9 @@ void f_014dd0(int a, int b);
 void f_014ec8(int a);
 int f_0151f4(void);
 int f_0151e8(void);
+int f_01c260(void);
+void f_01afa8(MemoryStick *);
+int sprintf(char *, const char *, ...);
 void f_01833c(ScreenMgr *, ScreenReq *);
 void f_018380(ScreenMgr *, ResultMsg *);
 void f_018abc(ScreenMgr *, int);
@@ -1560,8 +1566,6 @@ void Sequence::CSingleRaceModeJob::f_00bbc0()
         queue.push(15);
         break;
     case 3:
-        queue.push(17);
-        break;
     case 4:
         queue.push(17);
         break;
@@ -1651,6 +1655,48 @@ void Sequence::CSingleRaceModeJob::f_00bbc0()
    WHAT IT DOES: An idle state. */
 void Sequence::CSingleRaceModeJob::f_00c0bc()
 {
+}
+
+/* @draft 0x00c0c4 us f_00c0c4
+   WHAT IT DOES: State 29: starts saving the race's ghost to the memory stick, with a title
+   naming the course, the car (and its class, unless it is a special car) and the finishing
+   time in minutes, seconds and milliseconds, in the console's language. */
+void Sequence::CSingleRaceModeJob::f_00c0c4()
+{
+    Param seq = D_1dd7c4;
+    char *r = D_2407d0.Field("CourseNumber", (char *)seq.a);
+    Row crs;
+    if (r)
+        crs.rec = f_036984(&D_2407a8, r, 0, D_2407a8.index, D_2407a8.count);
+    else
+        crs.rec = 0;
+    Row course = crs;
+    Row carRow;
+    FIND_SELECT(&carRow, D_240740, m15364);
+    int time = D_240800.time[D_240800.me] / 3;
+    int secs = time / 1000;
+    int minutes = time / 60000;
+    int ms = time - secs * 1000;
+    int s = secs - secs / 60 * 60;
+    int size = D_1a211c[1];
+    memcpy(D_24063c, D_240740.Field("Class", carRow.rec), size);
+    if (D_24063c[0] == 7) {
+        int lang = f_01c260();
+        char *name = D_2407a8.Field("CourseName", course.rec);
+        sprintf(D_1edf84, D_1d12d8[lang], name, D_240740.Field("CarFullName", carRow.rec),
+                minutes, s, ms);
+    } else {
+        int lang = f_01c260();
+        char *name = D_2407a8.Field("CourseName", course.rec);
+        memcpy(D_24063c, D_240740.Field("Class", carRow.rec), size);
+        int cls = D_24063c[0];
+        sprintf(D_1edf84, D_1d12f4[lang], name, cls,
+                D_240740.Field("CarFullName", carRow.rec), minutes, s, ms);
+    }
+    D_23ba90.m20 = m16016;
+    D_23ba90.m24 = m16020;
+    D_23ba90.m28 = D_1edf84;
+    f_01afa8(&D_23ba90);
 }
 
 /* @implements 0x00c4b4 us f_00c4b4
