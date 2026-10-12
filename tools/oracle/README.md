@@ -56,9 +56,48 @@ FRAME BUTTONS
 - `BUTTONS` is `NONE`, or names joined by `+` (`CROSS`, `CIRCLE`, `SQUARE`, `TRIANGLE`, `START`, `SELECT`, `UP`, `DOWN`, `LEFT`, `RIGHT`, `L`, `R`), or a hex mask.
 - A `# frames N` line sets the run length.
 
+## A5: per function (`tools/oracle/a5.py`)
+
+Run `tools/oracle/m1image.py` first. It builds `build/image/BOOT.M1.BIN`: the M2 image with every `@draft` body that fits written into its own slot. Its addresses are pre-resolved for the oracle's fixed load base, and retail's relocation entries in that range are set to `R_MIPS_NONE`, so nothing else moves.
+
+A5 then runs retail and the M1 image on every script, watching every tagged function (`Core/RRBox.cpp` in the patch).
+
+**At entry,** it logs:
+
+- the call number and thread;
+- `a0` to `a3`, `t0` and `t1`;
+- `f12` to `f15`.
+
+**At return,** it logs:
+
+- `v0`, `v1` and `f0`;
+- the count and hash of every memory write the call made outside its own stack frame (callees included, on its own thread only);
+- which of `s0` to `s8` came back changed;
+- the cycles the call took.
+
+**Verdicts.** For each function, every call must agree with retail on:
+
+- the entry record;
+- the return registers its declared type uses;
+- the writes;
+- clobbering no callee-saved register.
+
+Otherwise the function DIFFERS. A function no script reaches is UNCOVERED.
+
+**Coverage.** Instruction coverage is measured on the candidate body, as the union over scripts.
+
+**The ledger.** Verdicts go to `config/us/t3_live.csv` with each source file's hash.
+
+**Time-equalised lockstep.** A T3 body takes a different number of cycles, and game code that reads the clock then stores different values (A7 drifted from frame 6 without this). So the candidate run reads retail's call log, and rrbox sets emulated time to retail's at every watched return. An interrupt that lands inside a T3 body at a different point still shows up as a difference.
+
+**Teeth.** Two bugs were planted in the module loader's draft, and both were caught at its first call, by A5 and by A7:
+
+- returning the module id + 1;
+- swapping the `sprintf` arguments.
+
 ## Not built yet
 
-- A5 per-function checking.
+- Forcing paths normal play never takes, such as error returns, resume from sleep and shutdown. Coverage shows them.
 - Display-list and audio comparison.
 - Scripts that steer, finish laps, and reach the other modes.
 - Per-instruction coverage.

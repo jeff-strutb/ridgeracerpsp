@@ -1,3 +1,16 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 910f322..eb39b5b 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -2526,6 +2526,8 @@ add_library(${CoreLibName} ${CoreLinkType}
+ 	Core/MemMap.cpp
+ 	Core/MemMap.h
+ 	Core/MemMapFunctions.cpp
++	Core/RRBox.cpp
++	Core/RRBox.h
+ 	Core/MemMapHelpers.h
+ 	Core/PSPLoaders.cpp
+ 	Core/PSPLoaders.h
 diff --git a/Core/HLE/sceKernelTime.cpp b/Core/HLE/sceKernelTime.cpp
 index a15c981..f001ebf 100644
 --- a/Core/HLE/sceKernelTime.cpp
@@ -26,11 +39,229 @@ index 12a2c0a..9f770bd 100644
  	rtcBaseTime.tv_sec = tv.tv_sec;
  	rtcBaseTime.tv_usec = 0;
  	// Precalculate the current time in microseconds (rtcMagicOffset is offset to 1970.)
+diff --git a/Core/MIPS/MIPSTables.cpp b/Core/MIPS/MIPSTables.cpp
+index 4e3e820..3fc1dfc 100644
+--- a/Core/MIPS/MIPSTables.cpp
++++ b/Core/MIPS/MIPSTables.cpp
+@@ -1,3 +1,4 @@
++#include "Core/RRBox.h"
+ // Copyright (c) 2012- PPSSPP Project.
+ 
+ // This program is free software: you can redistribute it and/or modify
+@@ -974,6 +975,7 @@ static inline void RunUntilFast() {
+ 	while (curMips->downcount >= 0 && coreState == CORE_RUNNING_CPU) {
+ 		do {
+ 			// Replacements and similar are processed here, intentionally.
++			RRBox::OnPC(curMips->pc);
+ 			MIPSOpcode op = MIPSOpcode(Memory::Read_U32(curMips->pc));
+ 
+ 			bool wasInDelaySlot = curMips->inDelaySlot;
+@@ -998,6 +1000,7 @@ static void RunUntilWithChecks(u64 globalTicks) {
+ 	while (curMips->downcount >= 0 && coreState == CORE_RUNNING_CPU) {
+ 		do {
+ 			// Replacements and similar are processed here, intentionally.
++			RRBox::OnPC(curMips->pc);
+ 			MIPSOpcode op = MIPSOpcode(Memory::Read_U32(curMips->pc));
+ 			const MIPSInstruction *instr = MIPSGetInstruction(op);
+ 
+diff --git a/Core/MemMapFunctions.cpp b/Core/MemMapFunctions.cpp
+index 6f39b1b..ff23447 100644
+--- a/Core/MemMapFunctions.cpp
++++ b/Core/MemMapFunctions.cpp
+@@ -1,3 +1,4 @@
++#include "Core/RRBox.h"
+ // Copyright (C) 2003 Dolphin Project / 2012 PPSSPP Project
+ 
+ // This program is free software: you can redistribute it and/or modify
+@@ -157,18 +158,22 @@ u32 Read_U16_ZX(const u32 address) {
+ }
+ 
+ void Write_U8(const u8 _Data, const u32 address) {
++	if (RRBox::g_tracing) RRBox::OnWrite(address, _Data, 1);
+ 	WriteToHardware<u8>(address, _Data);
+ }
+ 
+ void Write_U16(const u16 _Data, const u32 address) {
++	if (RRBox::g_tracing) RRBox::OnWrite(address, _Data, 2);
+ 	WriteToHardware<u16_le>(address, _Data);
+ }
+ 
+ void Write_U32(const u32 _Data, const u32 address) {
++	if (RRBox::g_tracing) RRBox::OnWrite(address, _Data, 4);
+ 	WriteToHardware<u32_le>(address, _Data);
+ }
+ 
+ void Write_U64(const u64 _Data, const u32 address) {
++	if (RRBox::g_tracing) RRBox::OnWrite(address, _Data, 8);
+ 	WriteToHardware<u64_le>(address, _Data);
+ }
+ 
+diff --git a/Core/RRBox.cpp b/Core/RRBox.cpp
+new file mode 100644
+index 0000000..c3a6ded
+--- /dev/null
++++ b/Core/RRBox.cpp
+@@ -0,0 +1,131 @@
++#include "Core/RRBox.h"
++#include <map>
++#include <string>
++#include "Core/MIPS/MIPS.h"
++#include "Core/HLE/sceKernelThread.h"
++#include "Core/CoreTiming.h"
++
++namespace RRBox {
++bool g_tracing = false;
++
++struct Frame { u32 func; u32 ra; u32 sp; int thread; u64 call; u64 hash; u64 writes; u32 saved[9]; s64 t0; };
++static std::vector<u8> g_watch;         // one byte per word of the module's .text: watched entry
++static std::vector<std::pair<u32, u32>> g_ranges;   // watched functions: (absolute start, size)
++static std::vector<u8> g_exec;          // one byte per word over [g_clo, g_chi): executed
++static u32 g_clo = 0, g_chi = 0;
++static std::string g_covPath;
++static u32 g_base = 0, g_lo = 0, g_hi = 0;
++static std::vector<Frame> g_frames;
++static std::map<u32, u64> g_calls;      // calls seen per function
++static FILE *g_log = nullptr;
++static std::map<std::pair<u32, u64>, s64> g_refCycles;  // (func offset, call) -> retail cycles
++
++static inline u64 Mix(u64 h, u64 v) { h ^= v + 0x9E3779B97F4A7C15ULL + (h << 6) + (h >> 2); return h * 0xFF51AFD7ED558CCDULL; }
++
++void Load(const char *watchFile, const char *logFile, u32 moduleBase) {
++	g_base = moduleBase;
++	FILE *f = fopen(watchFile, "r");
++	if (!f) { fprintf(stderr, "rrbox: cannot read %s\n", watchFile); return; }
++	std::vector<u32> addrs;
++	char line[128];
++	while (fgets(line, sizeof(line), f)) {
++		unsigned a, size = 0;
++		int n = line[0] != '#' ? sscanf(line, "%x %u", &a, &size) : 0;
++		if (n >= 1) addrs.push_back(moduleBase + a);
++		if (n == 2) g_ranges.push_back({moduleBase + a, size});
++	}
++	fclose(f);
++	if (!g_ranges.empty()) {
++		g_clo = 0xFFFFFFFF; g_chi = 0;
++		for (auto &r : g_ranges) { if (r.first < g_clo) g_clo = r.first; if (r.first + r.second > g_chi) g_chi = r.first + r.second; }
++		g_exec.assign((g_chi - g_clo) / 4, 0);
++		g_covPath = std::string(logFile) + ".cov";
++	}
++	if (addrs.empty()) return;
++	g_lo = 0xFFFFFFFF; g_hi = 0;
++	for (u32 a : addrs) { if (a < g_lo) g_lo = a; if (a > g_hi) g_hi = a; }
++	g_watch.assign((g_hi - g_lo) / 4 + 1, 0);
++	for (u32 a : addrs) g_watch[(a - g_lo) / 4] = 1;
++	g_log = fopen(logFile, "w");
++}
++
++void LoadCycleRef(const char *path) {
++	FILE *f = fopen(path, "r");
++	char line[512];
++	while (f && fgets(line, sizeof(line), f)) {
++		unsigned func; unsigned long long call; long long cyc;
++		const char *c = strstr(line, " cyc=");
++		if (line[0] == 'R' && c && sscanf(line + 2, "%x %llu", &func, &call) == 2 && sscanf(c + 5, "%lld", &cyc) == 1)
++			g_refCycles[{func, call}] = cyc;
++	}
++	if (f) fclose(f);
++}
++
++void Finish() {
++	if (g_covPath.empty()) return;
++	FILE *f = fopen(g_covPath.c_str(), "w");
++	if (!f) return;
++	for (auto &r : g_ranges) {
++		u32 n = 0;
++		std::string missed;
++		for (u32 a = r.first; a < r.first + r.second; a += 4) {
++			if (g_exec[(a - g_clo) / 4]) n++;
++			else { char b[16]; snprintf(b, sizeof(b), " %x", a - g_base); missed += b; }
++		}
++		fprintf(f, "%06x %u %u%s\n", r.first - g_base, r.second / 4, n, missed.c_str());
++	}
++	fclose(f);
++}
++
++void OnPC(u32 pc) {
++	if (!g_log) return;
++	if (pc >= g_clo && pc < g_chi) g_exec[(pc - g_clo) / 4] = 1;
++	int thread = __KernelGetCurThread();
++	// returns: the innermost frame of this thread whose return address and stack are back
++	for (int k = (int)g_frames.size() - 1; k >= 0; k--) {
++		Frame &fr = g_frames[k];
++		if (fr.thread != thread) continue;
++		if (pc == fr.ra && currentMIPS->r[MIPS_REG_SP] == fr.sp) {
++			// callee-saved registers s0..s7 and s8/fp must come back unchanged
++			int clobbered = 0;
++			for (int i = 0; i < 9; i++)
++				if (currentMIPS->r[i < 8 ? 16 + i : 30] != fr.saved[i]) clobbered |= 1 << i;
++			s64 cyc = (s64)CoreTiming::GetTicks() - fr.t0;
++			auto ref = g_refCycles.find({fr.func - g_base, fr.call});
++			if (ref != g_refCycles.end() && ref->second != cyc) {
++				// time-equalised lockstep: from here on the candidate is exactly as far along as retail
++				currentMIPS->downcount += (int)(cyc - ref->second);
++				cyc = ref->second;
++			}
++			fprintf(g_log, "R %06x %llu v0=%08x v1=%08x f0=%08x writes=%llu hash=%016llx clobbered=%03x cyc=%lld\n",
++				fr.func - g_base, (unsigned long long)fr.call, currentMIPS->r[MIPS_REG_V0], currentMIPS->r[MIPS_REG_V1],
++				currentMIPS->fi[0], (unsigned long long)fr.writes, (unsigned long long)fr.hash, clobbered, (long long)cyc);
++			g_frames.erase(g_frames.begin() + k);
++		}
++		break;
++	}
++	if (pc >= g_lo && pc <= g_hi && g_watch[(pc - g_lo) / 4] && !currentMIPS->inDelaySlot) {
++		u64 call = g_calls[pc]++;
++		const u32 *r = currentMIPS->r;
++		const u32 *fi = currentMIPS->fi;
++		fprintf(g_log, "E %06x %llu t=%d a0=%08x a1=%08x a2=%08x a3=%08x t0=%08x t1=%08x f12=%08x f13=%08x f14=%08x f15=%08x\n",
++			pc - g_base, (unsigned long long)call, thread, r[4], r[5], r[6], r[7], r[8], r[9], fi[12], fi[13], fi[14], fi[15]);
++		Frame fr{pc, r[MIPS_REG_RA], r[MIPS_REG_SP], thread, call, 0, 0, {}, (s64)CoreTiming::GetTicks()};
++		for (int i = 0; i < 9; i++) fr.saved[i] = r[i < 8 ? 16 + i : 30];
++		g_frames.push_back(fr);
++	}
++	g_tracing = !g_frames.empty();
++}
++
++void OnWrite(u32 addr, u64 value, int size) {
++	int thread = __KernelGetCurThread();
++	for (Frame &fr : g_frames) {
++		// a call's own stack frame (and its callees') lies just below the caller's sp: its layout
++		// is the compiler's business, so those writes are not behaviour
++		if (fr.thread == thread && !(addr < fr.sp && addr >= fr.sp - 0x40000)) {
++			fr.hash = Mix(Mix(Mix(fr.hash, addr), value), size);
++			fr.writes++;
++		}
++	}
++}
++}
+diff --git a/Core/RRBox.h b/Core/RRBox.h
+new file mode 100644
+index 0000000..decfa5b
+--- /dev/null
++++ b/Core/RRBox.h
+@@ -0,0 +1,18 @@
++// rrbox: per-function call tracing for the Ridge Racer decomp's A5 oracle.
++// Watched functions log their arguments at entry and, at return, their return registers plus a
++// hash of every memory write made during the call (callees included), on the calling thread only.
++#pragma once
++#include <cstdio>
++#include <vector>
++#include "Common/CommonTypes.h"
++
++namespace RRBox {
++extern bool g_tracing;                  // any watched call active: memory writes are hashed
++void Load(const char *watchFile, const char *logFile, u32 moduleBase);
++// Candidate runs: give each watched call exactly the emulated time it took in retail.
++void LoadCycleRef(const char *retailCallLog);
++// Write instruction coverage of the watched functions (lines: offset size executed-words).
++void Finish();
++void OnPC(u32 pc);                      // before each interpreted instruction
++void OnWrite(u32 addr, u64 value, int size);
++}
 diff --git a/headless/Headless.cpp b/headless/Headless.cpp
-index 293878d..e9c2703 100644
+index 293878d..b93db3e 100644
 --- a/headless/Headless.cpp
 +++ b/headless/Headless.cpp
-@@ -51,6 +51,13 @@
+@@ -51,6 +51,14 @@
  
  #include "Compare.h"
  #include "HeadlessHost.h"
@@ -40,11 +271,12 @@ index 293878d..e9c2703 100644
 +#include "Core/CoreTiming.h"
 +#include "Core/MemMap.h"
 +#include "Core/Screenshot.h"
++#include "Core/RRBox.h"
 +#include "GPU/Common/GPUDebugInterface.h"
  #if defined(_WIN32)
  #include "WindowsHeadlessHost.h"
  #elif defined(SDL)
-@@ -171,6 +178,39 @@ static HeadlessHost *getHost(GPUCore gpuCore) {
+@@ -171,6 +179,41 @@ static HeadlessHost *getHost(GPUCore gpuCore) {
  	}
  }
  
@@ -63,6 +295,8 @@ index 293878d..e9c2703 100644
 +	std::string dumpFile;
 +};
 +static RRBoxOptions g_rr;
++static std::string g_rrWatch, g_rrCalls;  // A5: watched function list and the call log
++static std::string g_rrCyclesRef;         // A5 candidate runs: retail's call log, for time-equalised lockstep
 +
 +static u32 RRButtons(const std::string &tok) {
 +	if (tok.rfind("0x", 0) == 0) return (u32)strtoul(tok.c_str(), nullptr, 16);
@@ -84,10 +318,15 @@ index 293878d..e9c2703 100644
  struct AutoTestOptions {
  	double timeout;
  	double maxScreenshotError;
-@@ -226,6 +266,33 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -226,6 +269,38 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		draw->BeginFrame(Draw::DebugFlags::NONE);
  	}
  
++	// rrbox: A5 call tracing of watched functions (module loads at 0x08804000).
++	if (!g_rrWatch.empty() && !g_rrCalls.empty())
++		RRBox::Load(g_rrWatch.c_str(), g_rrCalls.c_str(), 0x08804000);
++	if (!g_rrCyclesRef.empty())
++		RRBox::LoadCycleRef(g_rrCyclesRef.c_str());
 +	// rrbox: load the script (frame -> held buttons) and open the trace.
 +	std::map<int, u32> rrScript;
 +	if (!g_rr.script.empty()) {
@@ -118,7 +357,7 @@ index 293878d..e9c2703 100644
  	bool passed = true;
  	double deadline = time_now_d() + opt.timeout;
  	coreState = coreParameter.startBreak ? CORE_STEPPING_CPU : CORE_RUNNING_CPU;
-@@ -238,6 +305,59 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -238,6 +313,59 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		if (coreState == CORE_NEXTFRAME) {
  			coreState = CORE_RUNNING_CPU;
  			headlessHost->SwapBuffers();
@@ -178,7 +417,15 @@ index 293878d..e9c2703 100644
  		}
  		if (coreState == CORE_STEPPING_CPU && !coreParameter.startBreak) {
  			break;
-@@ -445,6 +565,25 @@ int main(int argc, const char* argv[])
+@@ -261,6 +389,7 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+ 			Core_Stop();
+ 		}
+ 	}
++	RRBox::Finish();
+ 	if (gpu) {
+ 		gpu->EndHostFrame();
+ 	}
+@@ -445,6 +574,31 @@ int main(int argc, const char* argv[])
  			teamCityMode = true;
  		else if (!strncmp(argv[i], "--state=", strlen("--state=")) && strlen(argv[i]) > strlen("--state="))
  			stateToLoad = argv[i] + strlen("--state=");
@@ -191,6 +438,12 @@ index 293878d..e9c2703 100644
 +			sscanf(argv[i] + 11, "%d:%1023s", &g_rr.shotEvery, dir);
 +			g_rr.shotDir = dir;
 +		}
++		else if (!strncmp(argv[i], "--rr-watch=", 11))
++			g_rrWatch = argv[i] + 11;
++		else if (!strncmp(argv[i], "--rr-calls=", 11))
++			g_rrCalls = argv[i] + 11;
++		else if (!strncmp(argv[i], "--rr-cycles-ref=", 16))
++			g_rrCyclesRef = argv[i] + 16;
 +		else if (!strncmp(argv[i], "--rr-hash-skip=", 15))
 +			sscanf(argv[i] + 15, "%x:%x", &g_rr.skipStart, &g_rr.skipEnd);
 +		else if (!strncmp(argv[i], "--rr-ref=", 9))
@@ -204,7 +457,7 @@ index 293878d..e9c2703 100644
  		else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
  			return printUsage(argv[0], NULL);
  		else if (!strcmp(argv[i], "--ignore")) {
-@@ -558,6 +697,13 @@ int main(int argc, const char* argv[])
+@@ -558,6 +712,13 @@ int main(int argc, const char* argv[])
  	g_Config.internalDataDirectory.clear();
  	g_Config.bUseOldAtrac = oldAtrac;
  	g_Config.iForceEnableHLE = 0xFFFFFFFF;  // Run all modules as HLE. We don't have anything to load in this context.
@@ -218,7 +471,7 @@ index 293878d..e9c2703 100644
  
  	// g_Config.bUseOldAtrac = true;
  
-@@ -572,6 +718,11 @@ int main(int argc, const char* argv[])
+@@ -572,6 +733,11 @@ int main(int argc, const char* argv[])
  #elif !PPSSPP_PLATFORM(ANDROID)
  	g_Config.memStickDirectory = Path(std::string(getenv("HOME"))) / ".ppsspp";
  #endif

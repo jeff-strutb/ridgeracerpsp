@@ -1,0 +1,7 @@
+addr,name,kind,verdict,calls,coverage,source,source_sha,date
+0x0003f0,f_0003f0,implements,UNCOVERED,0,0/16,src/system/main.cpp,b3cce2ffd603794b,2026-10-12
+0x000430,f_000430,implements,PASS,2,9/18,src/system/main.cpp,b3cce2ffd603794b,2026-10-12
+0x000478,f_000478,implements,PASS,2,11/11,src/system/main.cpp,b3cce2ffd603794b,2026-10-12
+0x0004a4,f_0004a4,draft,PASS,26,56/72,src/system/main.cpp,b3cce2ffd603794b,2026-10-12
+0x0005c8,f_0005c8,implements,PASS,2,60/60,src/system/main.cpp,b3cce2ffd603794b,2026-10-12
+0x0006b8,main,implements,PASS,2,75/86,src/system/main.cpp,b3cce2ffd603794b,2026-10-12
