@@ -102,7 +102,7 @@ extern SavedPair D_1d1a94;
 unsigned int f_01908c(const unsigned char *p, int n)
 {
     unsigned int table[256];
-    unsigned int i, j, c;
+    unsigned int i, j, c, crc;
 
     for (i = 0; i < 256; i++) {
         c = i;
@@ -114,10 +114,10 @@ unsigned int f_01908c(const unsigned char *p, int n)
         }
         table[i] = c;
     }
-    c = 0xffffffff;
+    crc = 0xffffffff;
     while (--n >= 0)
-        c = (c >> 8) ^ table[(c & 0xff) ^ *p++];
-    return ~c;
+        crc = (crc >> 8) ^ table[(crc & 0xff) ^ *p++];
+    return ~crc;
 }
 
 /* @implements 0x019128 us f_019128
@@ -146,7 +146,7 @@ int f_019158(unsigned char *a, unsigned char *b)
     f_019150(a);
     f_019150(b);
     for (i = 0; i < 4; i++) {
-        if (*b++ != *a++)
+        if (*a++ != *b++)
             return 0;
     }
     return 1;
