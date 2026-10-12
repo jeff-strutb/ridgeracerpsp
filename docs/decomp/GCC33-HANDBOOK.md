@@ -81,6 +81,13 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | `bnez` with `move a0,zero` in the slot, then `li a0,1`, then a shared `jal` | separate calls in if/else; a ternary folds to `sltiu` | f_001154 |
 | Branch on an `xori` result that is also stored to a field | `m14 = !first; if (!m14)` | f_001154 |
 | Multiply scheduled after a call in a comparison | write the call first: `Hcount() - D > frames*286 - 5` | f_000fcc |
+| `move v1,v0; move v0,zero; max v0,v1,v0` after a call | `int len = 0; ...; int r = f(); len = MAX(r, len); return len;` with a macro `MAX(a,b) ((a) > (b) ? (a) : (b))`. An inline function or `MAX(r, 0)` gives `move v1,zero; max v0,v0,v1` | f_003800 (and four siblings) |
+| A running maximum folded into the accumulator's register | `len = MAX(new_expr, len);`, the new value first | f_004864 |
+| `max v0,v0,s1` with the later call's result in v0 | `MAX(a, b)` with `a` the earlier result, held in a saved register | f_0039fc, f_003c58 |
+| Independent stores emitted as "last statement first, then the rest in source order" | put the store wanted first as the last statement | f_005470 |
+| The block after a table jump is not the first case, yet that case's constant is first in `.rodata` | the first case's body written twice (an early `case 9:` and an identical later case group); cross-jumping keeps the later copy | f_005554 |
+| `jr ra; nop` with v0 left holding a loop's last `slti` result | the function falls off the end with no `return` (C); `return 0` adds `move v0,zero` | f_005a38 |
+| A strength-reduced index giv `addu v0,v0,this` (this second) | index the array inside the loop (`m668[n]...; n++`), not a pointer set up before it | f_005c34 |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
