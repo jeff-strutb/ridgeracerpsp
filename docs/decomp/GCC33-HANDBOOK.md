@@ -166,6 +166,12 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | Many float fields read from a header pointer and stored without reloads | read the header fields into locals first (aliasing forces reloads otherwise) | f_01dbc4 |
 | A static string-pointer array whose strings follow a jump table in `.rodata` | a function-local static in its user; a file-scope array emits its strings last | f_01c1e4 |
 | A replacement block placed out of line inside a loop | `if (cond) continue;` followed by the block | f_01d4b8 |
+| Rows copied into a global, element 0 from the base and 1 to 3 through a row pointer, the source addressed flat | plain struct assignment per row: `D.p[i] = m->p[i];` | f_02b67c |
+| In a copy followed by float updates, only the last row's overwritten word dropped as dead | copy all rows first, then `D.p[i].w = -D.p[i].y * d;` through field access | f_02b714 |
+| A float temporary copied word by word, its fourth word stored as `sw zero` | an aggregate initialiser whose fourth member is `int`: `struct { float x, y, z; int w; } d = {-a, -b, -c, 0};` | 0x029524 |
+| `lb` on flag fields | plain `char` fields (but `unsigned char` where they feed a stored `\|\|`; `bool` gives `lb` there) | 0x0293e4, 0x0292fc |
+| The loop tail loads the next word, tests `>> 24`, copies it to the top register in the slot | `do { c = *p++; ... } while ((*p >> 24) != 11);` | 0x02b854 |
+| Inline asm ending in a store keeps `jr ra; nop` | wrap it in `.set push` / `.set noreorder` / ... / `.set pop` (or end with a local label, above) | 0x028b3c, 0x028d94 |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** This includes the v0 versus v1 choice for later temporaries (f_01c2cc, f_01c648). Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
