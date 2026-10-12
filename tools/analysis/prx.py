@@ -97,7 +97,7 @@ class Elf:
                 pending_hi.append(r)
                 hi = (w & 0xffff) << 16
             elif t == R_LO16:
-                lo = struct.unpack('<h', struct.pack('<H', w & 0xffff))[0]
+                lo = lo_imm(w)
                 for h in pending_hi:
                     h['target'] = base + (((self.word(h['at']) & 0xffff) << 16) + lo)
                 pending_hi = []
@@ -126,6 +126,16 @@ class Elf:
                     if t not in r['alts']:
                         r['alts'].append(t)
         return out
+
+
+VFPU_MEM = (0x32, 0x35, 0x36, 0x3a, 0x3d, 0x3e)  # lv.s, lvl/lvr.q, lv.q, sv.s, svl/svr.q, sv.q
+
+
+def lo_imm(word):
+    """The signed 16-bit offset of a LO16-relocated instruction. VFPU loads and stores keep two
+    register bits in the offset's low bits (the offset is a multiple of 4), so those are dropped."""
+    lo = struct.unpack('<h', struct.pack('<H', word & 0xffff))[0]
+    return lo & ~3 if word >> 26 in VFPU_MEM else lo
 
 
 def relmask(word, rtype):

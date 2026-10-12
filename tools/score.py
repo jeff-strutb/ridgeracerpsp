@@ -29,7 +29,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'analysis'))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
-from prx import Elf, relmask, R_26  # noqa: E402
+from prx import Elf, relmask, lo_imm, R_26  # noqa: E402
 import rrdis as rdis  # noqa: E402
 
 DEFAULT_CC = '1.3.1-nocmov'
@@ -163,7 +163,7 @@ class Resolver:
         rl = self.rels[sec]
         k = next(j for j, r in enumerate(rl) if r[0] == off)
         sym = rl[k][2]
-        lo16 = lambda x: struct.unpack('<h', struct.pack('<H', x & 0xffff))[0]  # noqa: E731
+        lo16 = lo_imm  # VFPU lv/sv keep register bits in the offset's low two bits
         if rtype == 5:  # HI16: pair with the next LO16 on the same symbol
             lo = next((r for r in rl[k + 1:] if r[1] == 6 and r[2] == sym), None)
             low = lo16(struct.unpack_from('<I', self.obj.data(sec), lo[0])[0]) if lo else 0

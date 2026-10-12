@@ -15,3 +15,5 @@ addr,name,evidence
 0x06c590,_ZN6Select9CBaseMenuD2Ev,base destructor called on the cleanup path of the static init at 0x018cac (byte exact)
 0x04a560,_ZN2An7CSwgSubC2Ev,constructor of the An::CSwgSub member called by the same two constructors after the base
 0x04a580,_ZN2An7CSwgSubD2Ev,its destructor on the same cleanup path
+0x164bc0,__ltdf2,libgcc double compare (byte identical to __ledf2, so named by call site): in f_01e648 the compiler's call for a double `<` comes where retail calls 0x164bc0, followed by __truncdfsf2 where retail calls 0x164f7c
+0x164f7c,__truncdfsf2,libgcc double to float, called right after 0x164bc0 in f_01e648 as the compiler's conversion is; follows __make_dp (0x164f48) in libgcc's link order

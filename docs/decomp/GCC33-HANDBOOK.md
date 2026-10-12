@@ -158,9 +158,17 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A 2D slot index with the -1 applied after the add | `int k = x - 1; int slot = c * 7 + k;`, before the arithmetic that follows | f_00c540 |
 | A remainder in a saved register that also holds its quotient | `secs % 60`, not `secs - secs/60*60` | f_00c540 |
 | A table entry's address formed right after a call, its load deferred past later calls | `const char **fmt = &T[f()]; ... sprintf(..., *fmt, ...)` | f_00c540 |
+| A VFPU-only leaf ending `jr ra; nop` | end the `__asm__` with a local label `"1:"`; otherwise the assembler (reorder mode) moves the last instruction into the delay slot | f_01e028, f_01edb8 |
+| An address computed right before each VFPU sequence | separate asm statements, each with its own address operand; one combined statement computes all addresses up front | f_01edfc, f_01ed64 |
+| A float constant loaded with `lui` + `lv.s %lo` inside VFPU asm | a file-scope `static const float` through an `"m"` operand (a float argument as `"m"` gives the stack-slot form) | f_01e0ec |
+| A constructor zeroing a 16-word element array with `bgez` and a biased pointer | an explicit loop in the body calling an inline `Clear()`; an element constructor gives a `bne -1` loop | 0x0201d4 |
+| Sub-object first words zeroed before the constructor body | mem-initializers on member structs (`CResource() : m0(0) {}`); identity-matrix stores straight off `this` come from a macro (an inline method keeps a base register) | 0x0201d4 |
+| Many float fields read from a header pointer and stored without reloads | read the header fields into locals first (aliasing forces reloads otherwise) | f_01dbc4 |
+| A static string-pointer array whose strings follow a jump table in `.rodata` | a function-local static in its user; a file-scope array emits its strings last | f_01c1e4 |
+| A replacement block placed out of line inside a loop | `if (cond) continue;` followed by the block | f_01d4b8 |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
-**Callee prototypes are behaviour.** Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
+**Callee prototypes are behaviour.** This includes the v0 versus v1 choice for later temporaries (f_01c2cc, f_01c648). Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
 
 ## Understood, not yet proven byte-exact
 
