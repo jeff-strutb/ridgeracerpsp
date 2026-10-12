@@ -232,7 +232,11 @@ void CRaceSound::f_01ca78()
    WHAT IT DOES: Works out the engine samples the race needs. For the player's car and then
    each rival it looks up the car's name and maximum revs in the car table (reporting both),
    reads the car's engine sample list from the engine sound package and adds every sample not
-   yet listed. It then sorts the list and reports it. */
+   yet listed. It then sorts the list and reports it.
+   Remaining difference: loop-invariant motion. Retail keeps the sequence manager's address
+   unhoisted (lui/addiu in each branch) and hoists the engine package's HI into s5; this build
+   hoists the sequence manager's full address into s5, which shifts every saved register.
+   The sort's inner guard is also tested once (slt/beqzl) here, twice (blez) in retail. */
 void CRaceSound::f_01ca80()
 {
     char name[48];
@@ -350,7 +354,10 @@ int CRaceSound::f_01d174()
    WHAT IT DOES: Starts the race sound: records the camera to follow (reporting a fatal error
    if there is none), gives each car its engine sample, holds the sound while the game is
    held, finds the idling and wall sound data, measures the sound processor's free voices and
-   sets the four effect volumes (lower in one race mode). */
+   sets the four effect volumes (lower in one race mode).
+   Remaining difference: register allocation. Retail keeps the engine pointer in s1 and the
+   index in s2 (this build the reverse), and counts the six idling slots down (li 5, bgez)
+   where this build counts up (slti 6). */
 void CRaceSound::f_01d17c(int a, int b, int *samples, CCamera *cam, int c)
 {
     int i;
@@ -411,7 +418,9 @@ void CRaceSound::f_01d17c(int a, int b, int *samples, CCamera *cam, int c)
    its velocity from the last frame), with the camera's facing. At the end of a race it fades
    the race volume out over a hundred frames and then holds the sound; otherwise it updates
    the hold state. With more than four cars it keeps only the three loudest rivals' engines
-   playing. It then steps every car's engine sound and measures the free voices again. */
+   playing. It then steps every car's engine sound and measures the free voices again.
+   Remaining difference: two words at the end, a sched2 tie: retail stores the listener's x
+   before loading the 1.0 for its w, this build loads first. */
 void CRaceSound::f_01d4b8(int flags)
 {
     int i, k;
@@ -496,8 +505,8 @@ void CRaceSound::f_01d4b8(int flags)
     listener.Set(pos.x, pos.y, pos.z, 1.0f);
 }
 
-/* WHAT IT DOES: Stops every car's engine sound.
-   (Transcribed byte-exact as C in src/control/batch2.c; the tag at 0x01d934 stays there for now.) */
+/* @implements 0x01d934 us f_01d934
+   WHAT IT DOES: Stops every car's engine sound. */
 void CRaceSound::f_01d934()
 {
     int i;
@@ -534,10 +543,10 @@ void CRaceSound::f_01d994()
     f_10c65c();
 }
 
-/* WHAT IT DOES: Updates the hold state: holds the race sound while the game is held or when
+/* @implements 0x01dac0 us f_01dac0
+   WHAT IT DOES: Updates the hold state: holds the race sound while the game is held or when
    asked, marks it released (2) the frame the hold ends, and keeps it held before the first
-   frame has run.
-   (Transcribed byte-exact as C in src/control/batch4.c; the tag at 0x01dac0 stays there for now.) */
+   frame has run. */
 void CRaceSound::f_01dac0(int f)
 {
     if (state == 0) {
