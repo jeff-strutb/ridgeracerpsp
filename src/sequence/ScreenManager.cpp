@@ -157,15 +157,17 @@ struct StartMenuData : MenuData {
     int m8;
     bool m12;
 };
-struct ResultMenuData : MenuData {
-    ResultMenuData() { f_07a314(this); }
-    ~ResultMenuData() { f_07a390(this); }
+struct ResultMenuHead : MenuData {
     int m8;
     int m12;
     int m16;
     int m20;
     int m24;
     int m28;
+};
+struct ResultMenuData : ResultMenuHead {
+    ResultMenuData() { f_07a314(this); }
+    ~ResultMenuData() { f_07a390(this); }
     int m32[24];
     int m128;
     int m132;
@@ -178,11 +180,7 @@ struct ResultMenuData : MenuData {
     int m260;
     int m264;
     unsigned short m268;
-    short m270;
-    short m272;
-    short m274;
-    short m276;
-    short m278;
+    short m270[5];
     int m280;
     int m284;
     bool m288;
@@ -252,9 +250,7 @@ struct Data233de8 : MenuData {
     bool m18;
     int m20;
 };
-struct Data233e00 : MenuData {
-    Data233e00() { f_0792a0(this); }
-    ~Data233e00() { f_07931c(this); }
+struct Data233e00Head : MenuData {
     int m8;
     int m12;
     int m16;
@@ -266,6 +262,10 @@ struct Data233e00 : MenuData {
     int m40;
     int m44;
     int m48;
+};
+struct Data233e00 : Data233e00Head {
+    Data233e00() { f_0792a0(this); }
+    ~Data233e00() { f_07931c(this); }
     int m52;
     int m56;
     int m60;
@@ -463,8 +463,11 @@ void ScreenMgr::f_017e1c(const StartMenuData &d)
     D_233aec = d;
 }
 
-/* @implements 0x017e40 us f_017e40
-   WHAT IT DOES: Stores the settings for the race result menu. */
+/* @draft 0x017e40 us f_017e40
+   WHAT IT DOES: Stores the settings for the race result menu.
+   Remaining difference: the copy after the arrays (offsets 244 to 291) is scheduled with every
+   load first and needs s1 to s4; retail interleaves the loads and stores and saves only s0.
+   As one flat class the copy is not inlined at all (more than 22 member statements). */
 void ScreenMgr::f_017e40(const ResultMenuData &d)
 {
     D_233afc = d;
@@ -519,8 +522,12 @@ void ScreenMgr::f_01833c(const Data233de8 &d)
     D_233de8 = d;
 }
 
-/* @implements 0x018380 us f_018380
-   WHAT IT DOES: Stores the second block of the result menus' settings. */
+/* @draft 0x018380 us f_018380
+   WHAT IT DOES: Stores the second block of the result menus' settings.
+   Remaining difference: retail copies the words 8 to 88 in one scattered schedule (8 to 20
+   loaded first and stored together last, the pairs 24/28, 36/40, 44/48, 52/56 stored
+   together); the member grouping that gives it is not found. As one flat class the copy is
+   not inlined (more than 22 member statements). */
 void ScreenMgr::f_018380(const Data233e00 &d)
 {
     D_233e00 = d;
