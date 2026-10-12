@@ -1,12 +1,11 @@
 addr,size,library,member,symbol,sdk
 0x036cb0,8,libstdc++.a,streambuf-inst.o,_ZNKSt15basic_streambufIcSt11char_traitsIcEE4pptrEv,1.3.1
+0x046c84,8,libstdc++.a,io-inst.o,_ZNKSt9basic_iosIcSt11char_traitsIcEE7rdstateEv,1.3.1
 0x04f230,8,libstdc++.a,streambuf-inst.o,_ZNKSt15basic_streambufIcSt11char_traitsIcEE5epptrEv,1.3.1
 0x059188,28,libc.a,gmtime_r.o,gmtime_r,1.3.1
 0x05fad4,8,libstdc++.a,streambuf-inst.o,_ZNKSt15basic_streambufIcSt11char_traitsIcEE4gptrEv,1.3.1
 0x062504,8,libstdc++.a,streambuf-inst.o,_ZNKSt15basic_streambufIcSt11char_traitsIcEE5pbaseEv,1.3.1
 0x088340,8,libstdc++.a,io-inst.o,_ZNKSt9basic_iosIcSt11char_traitsIcEE10exceptionsEv,1.3.1
-0x096ef0,60,libc.a,hcreate_r.o,hdestroy_r,1.3.1
-0x0fa28c,8,libstdc++.a,string-inst.o,_ZNSs4_Rep15_M_set_sharableEv,1.3.1
 0x11b514,1512,libm.a,s_atan.o,atan,1.3.1
 0x11bafc,492,libm.a,s_ceil.o,ceil,1.3.1
 0x11bce8,276,libm.a,s_cos.o,cos,1.3.1
@@ -66,6 +65,8 @@ addr,size,library,member,symbol,sdk
 0x126c00,184,libc.a,memset.o,memset,1.3.1
 0x126cb8,60,libc.a,mlock.o,__malloc_lock,1.3.1
 0x126cf4,60,libc.a,mlock.o,__malloc_unlock,1.3.1
+0x126d30,48,libc.a,mstats.o,mallinfo,1.3.1
+0x126db0,60,libc.a,mstats.o,_mstats_r,1.3.1
 0x126e14,64,libc.a,printf.o,_printf_r,1.3.1
 0x126e54,72,libc.a,iprintf.o,iprintf,1.3.1
 0x127818,24,libc.a,rand.o,srand,1.3.1
@@ -99,6 +100,7 @@ addr,size,library,member,symbol,sdk
 0x12d500,656,libc.a,freer.o,_free_r,1.3.1
 0x12d790,324,libc.a,freer.o,_malloc_trim_r,1.3.1
 0x12dcc0,264,libc.a,fwalk.o,_fwalk,1.3.1
+0x12ddc8,148,libc.a,locale.o,_setlocale_r,1.3.1
 0x12dec0,344,libc.a,makebuf.o,__smakebuf,1.3.1
 0x12e018,148,libc.a,mallinfor.o,__malloc_update_mallinfo,1.3.1
 0x12e0ac,220,libc.a,mallinfor.o,_mallinfo_r,1.3.1
@@ -131,7 +133,6 @@ addr,size,library,member,symbol,sdk
 0x12fc28,36,libc.a,stdio.o,__sclose,1.3.1
 0x130dc8,192,libc.a,callocr.o,_calloc_r,1.3.1
 0x1316ac,164,libstdc++.a,functexcept.o,_ZSt19__throw_ios_failurePKc,1.3.1
-0x1319f0,88,libstdc++.a,ios.o,_ZNSt8ios_base7failureC1ERKSs,1.3.1
 0x131b28,8,libstdc++.a,fstream-inst.o,_ZNKSt14basic_ofstreamIcSt11char_traitsIcEE5rdbufEv,1.3.1
 0x131ddc,56,libstdc++.a,ios.o,_ZNSt8ios_base4Init14_S_ios_destroyEv,1.3.1
 0x131f1c,100,libstdc++.a,ios.o,_ZNSt8ios_base6xallocEv,1.3.1
@@ -238,6 +239,7 @@ addr,size,library,member,symbol,sdk
 0x143a00,656,libstdc++.a,locale-inst.o,_ZNKSt8time_getIcSt19istreambuf_iteratorIcSt11char_traitsIcEEE14_M_extract_numERS3_S5_RiiijRKSt5ctypeIcERSt12_Ios_Iostate,1.3.1
 0x143fdc,1916,libstdc++.a,locale-inst.o,_ZNKSt8time_getIcSt19istreambuf_iteratorIcSt11char_traitsIcEEE21_M_extract_via_formatERS3_S5_RSt8ios_baseRSt12_Ios_IostateP2tmPKc,1.3.1
 0x1449b8,36,libstdc++.a,locale-inst.o,_ZNKSt8messagesIcE5closeEi,1.3.1
+0x144afc,32,libstdc++.a,locale-inst.o,_ZNKSt8messagesIcE18_M_convert_to_charERKSs,1.3.1
 0x14500c,36,libstdc++.a,locale-inst.o,_ZNKSt7collateIcE4hashEPKcS2_,1.3.1
 0x145140,1056,libstdc++.a,locale-inst.o,_ZNKSt7collateIcE10do_compareEPKcS2_S2_S2_,1.3.1
 0x145560,672,libstdc++.a,locale-inst.o,_ZNKSt7collateIcE12do_transformEPKcS2_,1.3.1
@@ -275,8 +277,9 @@ addr,size,library,member,symbol,sdk
 0x14b760,412,libstdc++.a,ostream-inst.o,_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_c,1.3.1
 0x14b934,464,libstdc++.a,ostream-inst.o,_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc,1.3.1
 0x14c4e8,64,libstdc++.a,streambuf-inst.o,_ZNSt15basic_streambufIcSt11char_traitsIcEE4setgEPcS3_S3_,1.3.1
+0x14c654,44,libstdc++.a,streambuf-inst.o,_ZNSt15basic_streambufIcSt11char_traitsIcEE14_M_in_cur_moveEl,1.3.1
 0x14c680,88,libstdc++.a,streambuf-inst.o,_ZNSt15basic_streambufIcSt11char_traitsIcEE15_M_out_cur_moveEl,1.3.1
-0x14c74c,60,libstdc++.a,streambuf-inst.o,_ZNSt15basic_streambufIcSt11char_traitsIcEED1Ev,1.3.1
+0x14c6d8,56,libstdc++.a,streambuf-inst.o,_ZNSt15basic_streambufIcSt11char_traitsIcEE15_M_out_buf_sizeEv,1.3.1
 0x14c788,76,libstdc++.a,streambuf-inst.o,_ZNSt15basic_streambufIcSt11char_traitsIcEED0Ev,1.3.1
 0x14c7d4,44,libstdc++.a,streambuf-inst.o,_ZNKSt15basic_streambufIcSt11char_traitsIcEE6getlocEv,1.3.1
 0x14c808,132,libstdc++.a,streambuf-inst.o,_ZNSt15basic_streambufIcSt11char_traitsIcEE8pubimbueERKSt6locale,1.3.1
@@ -293,8 +296,12 @@ addr,size,library,member,symbol,sdk
 0x14cd3c,100,libstdc++.a,streambuf-inst.o,_ZNSt15basic_streambufIcSt11char_traitsIcEE5sputcEc,1.3.1
 0x14cda0,36,libstdc++.a,streambuf-inst.o,_ZNSt15basic_streambufIcSt11char_traitsIcEE5sputnEPKci,1.3.1
 0x14d1f0,288,libstdc++.a,streambuf-inst.o,_ZSt17__copy_streambufsIcSt11char_traitsIcEEiRSt9basic_iosIT_T0_EPSt15basic_streambufIS3_S4_ES9_,1.3.1
+0x14d354,12,libstdc++.a,string-inst.o,_ZNKSs4_Rep12_M_is_leakedEv,1.3.1
 0x14d360,52,libstdc++.a,string-inst.o,_ZNSs7_M_leakEv,1.3.1
 0x14d394,96,libstdc++.a,string-inst.o,_ZNKSs8_M_checkEj,1.3.1
+0x14d4b8,12,libstdc++.a,string-inst.o,_ZNKSs8capacityEv,1.3.1
+0x14d4c4,12,libstdc++.a,string-inst.o,_ZNKSs4_Rep12_M_is_sharedEv,1.3.1
+0x14d4d8,8,libstdc++.a,fstream-inst.o,_ZNKSt13basic_fstreamIcSt11char_traitsIcEE5rdbufEv,1.3.1
 0x14d4e0,108,libstdc++.a,string-inst.o,_ZNSs4_Rep10_M_disposeERKSaIcE,1.3.1
 0x14d770,92,libstdc++.a,string-inst.o,_ZNSs4_Rep10_M_refcopyEv,1.3.1
 0x14d7cc,120,libstdc++.a,string-inst.o,_ZNSsC2Ev,1.3.1
@@ -303,7 +310,7 @@ addr,size,library,member,symbol,sdk
 0x14e034,104,libstdc++.a,string-inst.o,_ZNSs6assignEjc,1.3.1
 0x14e0f8,40,libstdc++.a,string-inst.o,_ZNSs5beginEv,1.3.1
 0x14e128,48,libstdc++.a,string-inst.o,_ZNSs3endEv,1.3.1
-0x14e158,16,libstdc++.a,string-inst.o,_ZNKSs3endEv,1.3.1
+0x14e234,12,libstdc++.a,string-inst.o,_ZNKSs8max_sizeEv,1.3.1
 0x14e2b8,136,libstdc++.a,string-inst.o,_ZNSs5eraseEjj,1.3.1
 0x14e340,248,libstdc++.a,string-inst.o,_ZNSs6resizeEjc,1.3.1
 0x14e548,40,libstdc++.a,string-inst.o,_ZNSs5clearEv,1.3.1
@@ -328,6 +335,8 @@ addr,size,library,member,symbol,sdk
 0x14f470,116,libstdc++.a,string-inst.o,_ZNSs7replaceEN9__gnu_cxx17__normal_iteratorIPcSsEES2_PKcj,1.3.1
 0x14f568,200,libstdc++.a,string-inst.o,_ZNSs7replaceEN9__gnu_cxx17__normal_iteratorIPcSsEES2_jc,1.3.1
 0x14f798,128,libstdc++.a,string-inst.o,_ZNSs12_S_constructEjcRKSaIcE,1.3.1
+0x14f954,60,libstdc++.a,string-inst.o,_ZNSs4swapERSs,1.3.1
+0x14f990,32,libstdc++.a,string-inst.o,_ZNKSs5c_strEv,1.3.1
 0x14f9b8,144,libstdc++.a,string-inst.o,_ZNKSs4findEPKcjj,1.3.1
 0x14fb44,160,libstdc++.a,string-inst.o,_ZNKSs5rfindEPKcjj,1.3.1
 0x14fcc4,160,libstdc++.a,string-inst.o,_ZNKSs13find_first_ofEPKcjj,1.3.1
@@ -403,6 +412,7 @@ addr,size,library,member,symbol,sdk
 0x156cb0,8,libstdc++.a,fstream-inst.o,_ZNSt13basic_filebufIcSt11char_traitsIcEE5imbueERKSt6locale,1.7.1
 0x156cb8,212,libstdc++.a,fstream-inst.o,_ZNSt13basic_filebufIcSt11char_traitsIcEE6xsgetnEPci,1.3.1
 0x156d8c,76,libstdc++.a,fstream-inst.o,_ZNSt13basic_filebufIcSt11char_traitsIcEE6xsputnEPKci,1.3.1
+0x156de0,108,libstdc++.a,fstream-inst.o,_ZNSt13basic_filebufIcSt11char_traitsIcEE18_M_set_determinateEl,1.7.1
 0x156ec0,240,libstdc++.a,fstream-inst.o,_ZNSt14basic_ifstreamIcSt11char_traitsIcEEC2Ev,1.3.1
 0x156fb0,284,libstdc++.a,fstream-inst.o,_ZNSt14basic_ifstreamIcSt11char_traitsIcEEC1Ev,1.7.1
 0x1570cc,80,libstdc++.a,fstream-inst.o,_ZNSt14basic_ifstreamIcSt11char_traitsIcEE4openEPKcSt13_Ios_Openmode,1.3.1
@@ -457,7 +467,7 @@ addr,size,library,member,symbol,sdk
 0x159ce4,36,libstdc++.a,stl-inst.o,_ZNSaIwE10deallocateEPwj,1.3.1
 0x159d28,148,libstdc++.a,stl-inst.o,_ZNSt24__default_alloc_templateILb1ELi0EE9_S_refillEj,1.3.1
 0x159dbc,416,libstdc++.a,stl-inst.o,_ZNSt24__default_alloc_templateILb1ELi0EE14_S_chunk_allocEjRi,1.3.1
-0x15a0dc,12,libstdc++.a,basic_file.o,_ZNSt12__basic_fileIcEC1EP15__gthread_mutex,1.3.1
+0x15a024,172,libstdc++.a,basic_file.o,_ZN14__gnu_internal10fopen_modeESt13_Ios_Openmode,1.3.1
 0x15a120,60,libstdc++.a,basic_file.o,_ZNSt12__basic_fileIcE12_M_open_modeESt13_Ios_OpenmodeRiS2_Pc,1.3.1
 0x15a15c,80,libstdc++.a,basic_file.o,_ZNSt12__basic_fileIcE8sys_openEP7__sFILESt13_Ios_Openmode,1.3.1
 0x15a1ac,180,libstdc++.a,basic_file.o,_ZNSt12__basic_fileIcE8sys_openEiSt13_Ios_Openmodeb,1.3.1
@@ -481,6 +491,7 @@ addr,size,library,member,symbol,sdk
 0x165334,8,libgcc.a,unwind-dw2.o,_Unwind_GetRegionStart,1.3.1
 0x16536c,8,libgcc.a,unwind-dw2.o,_Unwind_GetDataRelBase,1.3.1
 0x165374,8,libgcc.a,unwind-dw2.o,_Unwind_GetTextRelBase,1.3.1
+0x165558,1352,libgcc.a,unwind-dw2.o,execute_stack_op,1.3.1
 0x165aa0,1328,libgcc.a,unwind-dw2.o,execute_cfa_program,1.3.1
 0x166144,232,libgcc.a,unwind-dw2.o,__frame_state_for,1.3.1
 0x16622c,428,libgcc.a,unwind-dw2.o,uw_update_context_1,1.3.1
@@ -504,6 +515,7 @@ addr,size,library,member,symbol,sdk
 0x167988,248,libgcc.a,unwind-dw2-fde.o,__deregister_frame_info_bases,1.7.1
 0x167a9c,56,libgcc.a,unwind-dw2-fde.o,__deregister_frame,1.3.1
 0x167ad4,116,libgcc.a,unwind-dw2-fde.o,base_from_object,1.3.1
+0x167b48,224,libgcc.a,unwind-dw2-fde.o,get_cie_encoding,1.3.1
 0x167dd8,624,libgcc.a,unwind-dw2-fde.o,frame_heapsort,1.3.1
 0x168048,364,libgcc.a,unwind-dw2-fde.o,classify_object_over_fdes,1.3.1
 0x1681b4,360,libgcc.a,unwind-dw2-fde.o,add_fdes,1.3.1
@@ -524,6 +536,7 @@ addr,size,library,member,symbol,sdk
 0x169fb0,1148,libc.a,fseek.o,_fseek_r,1.3.1
 0x16a460,252,libc.a,ftell.o,_ftell_r,1.3.1
 0x16a580,140,libc.a,fwrite.o,fwrite,1.3.1
+0x16a60c,76,libc.a,fgetc.o,fgetc,1.3.1
 0x16a684,40,libc.a,getenv.o,getenv,1.3.1
 0x16a6ac,304,libc.a,getenv_r.o,_findenv_r,1.3.1
 0x16a7dc,28,libc.a,getenv_r.o,_getenv_r,1.3.1
@@ -534,6 +547,7 @@ addr,size,library,member,symbol,sdk
 0x16ace8,136,libc.a,sscanf.o,_sscanf_r,1.3.1
 0x16aeb0,108,libc.a,strdup_r.o,_strdup_r,1.3.1
 0x16bf70,88,libc.a,strxfrm.o,strxfrm,1.3.1
+0x16bfd8,1304,libc.a,tzset_r.o,_tzset_r,1.3.1
 0x16c4f0,232,libc.a,ungetc.o,__submore,1.3.1
 0x16c5d8,400,libc.a,ungetc.o,ungetc,1.3.1
 0x16d840,216,libc.a,vfscanf.o,__sccl,1.3.1

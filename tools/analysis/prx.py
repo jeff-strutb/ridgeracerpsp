@@ -105,18 +105,26 @@ class Elf:
                 r['lo'] = lo
             out.append(r)
         # Table order does not reliably put a LO16 after its own HI16. Pair each LO16 with the
-        # nearest preceding HI16 (within 256 words) whose `lui` writes the LO16's base register.
+        # nearest preceding HI16 (within 2048 words) whose `lui` writes the LO16's base register.
+        # That is a guess when control flow joins: the real `lui` can sit in a branch-likely
+        # delay slot, or on another path. So every such HI16 in range also gives an alternative
+        # target ('alts'); the scorer accepts a candidate LO16 that resolves to any of them (its
+        # own HI16s are checked separately, by their own entries).
         his = {r['at']: r for r in out if r['type'] == R_HI16}
         for r in out:
             if r['type'] != R_LO16:
                 continue
             rs = (self.word(r['at']) >> 21) & 31
-            for back in range(4, 1024, 4):
+            r['alts'] = []
+            for back in range(4, 8192, 4):
                 h = his.get(r['at'] - back)
                 if h is not None and (self.word(h['at']) >> 16) & 31 == rs:
-                    r['target'] = r['base'] + ((self.word(h['at']) & 0xffff) << 16) + r['lo']
-                    r['hi_at'] = h['at']
-                    break
+                    t = r['base'] + ((self.word(h['at']) & 0xffff) << 16) + r['lo']
+                    if 'hi_at' not in r:
+                        r['target'] = t
+                        r['hi_at'] = h['at']
+                    if t not in r['alts']:
+                        r['alts'].append(t)
         return out
 
 

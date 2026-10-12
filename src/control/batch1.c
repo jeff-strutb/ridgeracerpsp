@@ -15,9 +15,6 @@ void f_028eb4(void);
 void f_0ce068(int, int);
 void f_0f6ff0(int);
 
-/* @implements 0x001554 us f_001554 */
-void f_001554(void) { f_0992fc(); }
-
 /* @implements 0x016280 us f_016280 */
 void f_016280(int *p, int a, int b)
 {

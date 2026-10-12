@@ -72,12 +72,10 @@ public:
 };
 }
 
-/* @draft 0x006bbc us _ZN8Sequence13CTitleModeJobC2Ev
+/* @implements 0x006bbc us _ZN8Sequence13CTitleModeJobC2Ev
    WHAT IT DOES: Constructs the title mode job: an empty state queue, the table of state
-   handlers and the two layout tables the title screen draws from.
-   NOTE: bytes match; the scorer cannot yet resolve this class's own vtable, which the compiler
-   emits in a .gnu.linkonce.r section. */
-/* @draft 0x006d6c us _ZN8Sequence13CTitleModeJobC1Ev
+   handlers and the two layout tables the title screen draws from. */
+/* @implements 0x006d6c us _ZN8Sequence13CTitleModeJobC1Ev
    WHAT IT DOES: The same constructor, for a complete object. */
 Sequence::CTitleModeJob::CTitleModeJob()
 {

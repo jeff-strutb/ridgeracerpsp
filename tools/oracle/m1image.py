@@ -52,26 +52,16 @@ def main():
             continue
         obj = Elf(open(score.compile_obj(src, score.DEFAULT_CC, '-O2 -G0'), 'rb').read())
         syms = obj.symbols()
-        text = obj.index('.text')
-        tdata = obj.data(text)
-        fsyms = sorted([s for s in syms if s['shndx'] == text and s['type'] == 2], key=lambda s: s['value'])
-        n2a = {n: a for a, n in score.tags(src)}
-        plc = []
-        for addr, name in score.tags(src):
-            cand = [s for s in fsyms if s['name'] == name] or [s for s in fsyms if name in s['name']]
-            if cand:
-                k = fsyms.index(cand[0])
-                size = cand[0]['size'] or ((fsyms[k + 1]['value'] if k + 1 < len(fsyms) else len(tdata)) - cand[0]['value'])
-                plc.append((cand[0]['value'], size, addr))
-                n2a.setdefault(cand[0]['name'], addr)
+        plc, n2a, found = score.locate(obj, syms, score.tags(src))
         res = score.Resolver(obj, syms, n2a, plc, c['rel'], e)
-        orels = sorted(obj.object_rels(text))
         for addr, name in drafts:
-            p = next((x for x in plc if x[2] == addr), None)
+            p = next((x for x in plc if x[3] == addr), None)
             start, osize = rrdis.func_at(addr)
             if p is None or start != addr:
                 refused.append(f'0x{addr:06x} {name}: not found or not a function start'); continue
-            cstart, size, _ = p
+            text, cstart, size, _ = p
+            tdata = obj.data(text)
+            orels = sorted(obj.object_rels(text))
             if size > osize:
                 refused.append(f'0x{addr:06x} {name}: {size} B does not fit the {osize} B slot'); continue
             body = bytearray(tdata[cstart:cstart + size]) + bytes(osize - size)
@@ -82,9 +72,9 @@ def main():
                     t = tgt[1]
                 elif tgt[0] == 'data':
                     rr = c['rel'].get(addr + off - cstart)
-                    if rr is None or res.check(tgt, rr['target']) is not None:
+                    if res.match(tgt, rr)[0] is not None:
                         refused.append(f'0x{addr:06x} {name}: data reference at +0x{off - cstart:x} not provably retail\'s'); ok = False; break
-                    t = rr['target']
+                    t = res.match(tgt, rr)[1]
                     if obj.names[tgt[1]].startswith('.rodata') and any(r[1] == R_32 for r in obj.object_rels(tgt[1])):
                         refused.append(f'0x{addr:06x} {name}: has a jump table; not placeable in place'); ok = False; break
                 else:

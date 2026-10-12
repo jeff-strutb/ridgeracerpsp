@@ -56,11 +56,15 @@ def compile_obj(src, cc, flags):
     driver = f'{tc}/bin/psp-g++' if is_cpp else f'{tc}/bin/psp-gcc'
     if not os.path.exists(os.path.join(ROOT, driver)):  # the 1.7.1 tarball keeps it in psp/bin
         driver = f'{tc}/psp/bin/c++' if is_cpp else f'{tc}/psp/bin/gcc'
-    cmd = (f'cd {ROOT} && rm -f {out}.s {out}.o && {driver} -S -Iinclude {flags} {rel} -o {out}.s && '
-           f'{asm} -G0 {out}.s -o {out}.o')
+    # Several sessions may compile the same file at once: each writes its own temporaries and
+    # renames them into place (atomic), so no reader ever sees another run's half-written object.
+    tmp = f'{out}.{os.getpid()}'
+    cmd = (f'cd {ROOT} && rm -f {tmp}.s {tmp}.o && {driver} -S -Iinclude {flags} {rel} -o {tmp}.s && '
+           f'{asm} -G0 {tmp}.s -o {tmp}.o && mv -f {tmp}.s {out}.s && mv -f {tmp}.o {out}.o')
     p = subprocess.run([os.path.join(ROOT, 'tools/toolchains/lima.sh'), 'sh', '-c', cmd],
                        capture_output=True, text=True)
     if p.returncode != 0:
+        subprocess.run([os.path.join(ROOT, 'tools/toolchains/lima.sh'), 'sh', '-c', f'cd {ROOT} && rm -f {tmp}.s {tmp}.o'])
         sys.stderr.write(p.stdout + p.stderr)
         raise SystemExit('compile failed')
     return os.path.join(ROOT, out + '.o')
@@ -71,13 +75,40 @@ def tags(src, claims_only=False):
     return [(int(a, 16), n) for a, n in (CLAIM if claims_only else TAG).findall(open(src).read())]
 
 
+def locate(obj, syms, tg):
+    """Find each tagged function in the compiled object, in whichever executable section holds
+    it: .text, or a .gnu.linkonce.t.* section (inline methods emitted out of line, compiler
+    generated constructors and destructors). Returns (placed, name_to_addr, found) where placed
+    is [(sec, cstart, size, retail_addr)] and found maps retail_addr -> symbol."""
+    execs = {i for i, sh in enumerate(obj.sh) if sh[1] == 1 and sh[2] & 4}
+    fsyms = sorted([x for x in syms if x['shndx'] in execs and x['type'] == 2], key=lambda x: (x['shndx'], x['value']))
+    n2a = {n: a for a, n in tg}
+    placed, found = [], {}
+    for addr, name in tg:
+        cand = [x for x in fsyms if x['name'] == name] or [x for x in fsyms if name in x['name']]
+        if not cand:
+            continue
+        x = cand[0]
+        if not x['size']:
+            later = [y['value'] for y in fsyms if y['shndx'] == x['shndx'] and y['value'] > x['value']]
+            x = dict(x, size=(min(later) if later else len(obj.data(x['shndx']))) - x['value'])
+        placed.append((x['shndx'], x['value'], x['size'], addr))
+        found[addr] = x
+        n2a.setdefault(x['name'], addr)
+    return placed, n2a, found
+
+
+DATA_SECTIONS = ('.rodata', '.data', '.bss', '.sdata', '.sbss', '.gnu.linkonce.r', '.gnu.linkonce.d', '.gnu.linkonce.b')
+
 NAMED = re.compile(r'(?<![A-Za-z_])[fD]_([0-9a-f]{6})(?![0-9a-f])')  # also inside a C++ mangled name
 
 
 def _libsyms():
-    """Names with known retail addresses: identified library functions and imported system calls."""
+    """Names with known retail addresses: proven names, the C++ vtables, typeinfo and type names
+    (config/us/rtti.csv), identified library functions and imported system calls."""
     out = {}
-    for fn, key, col in (('symbols.csv', 'name', 'addr'), ('libfuncs.csv', 'symbol', 'addr'), ('imports.csv', 'name', 'stub')):
+    for fn, key, col in (('symbols.csv', 'name', 'addr'), ('rtti.csv', 'name', 'addr'), ('libfuncs.csv', 'symbol', 'addr'),
+                         ('imports.csv', 'name', 'stub')):
         path = os.path.join(ROOT, 'config/us', fn)
         if os.path.exists(path):
             for r in csv.DictReader(open(path)):
@@ -98,7 +129,8 @@ class Resolver:
       a library symbol (config/us/libfuncs.csv) or an imported system
       call (config/us/imports.csv, by its PPSSPP name)                 -> its retail address
       a label/function inside a tagged function of this object         -> mapped retail address
-      a local data section (.rodata*, .data, .bss)                      -> CONTENT: the bytes
+      a C++ vtable/typeinfo/type name (config/us/rtti.csv)              -> its retail address
+      a local data section (.rodata*, .data, .bss, .gnu.linkonce.r/d/b) -> CONTENT: the bytes
           the candidate refers to must equal the retail bytes at the retail target; words of
           that data carrying R_32 relocations (jump tables) must resolve the same, recursively.
       anything else                                                     -> UNRESOLVED (fails)
@@ -138,7 +170,7 @@ class Resolver:
         s = self.syms[symidx]
         add = self.addend(sec, off, rtype)
         m = NAMED.search(s['name'])
-        if s['name'] in LIBSYMS and not s['shndx']:
+        if s['name'] in LIBSYMS:
             return ('addr', LIBSYMS[s['name']] + add)
         if s['name'] in self.n2a:
             return ('addr', self.n2a[s['name']] + add)
@@ -147,14 +179,27 @@ class Resolver:
         if s['shndx'] and s['shndx'] < len(self.obj.sh):
             nm = self.obj.names[s['shndx']]
             val = s['value'] + add
-            if nm == '.text':
-                for cstart, csize, raddr in self.placed:
-                    if cstart <= val <= cstart + csize:
+            if self.obj.sh[s['shndx']][2] & 4:  # executable: .text or .gnu.linkonce.t.*
+                for psec, cstart, csize, raddr in self.placed:
+                    if psec == s['shndx'] and cstart <= val <= cstart + csize:
                         return ('addr', raddr + val - cstart)
-                return ('unresolved', f'.text+0x{val:x} is outside every tagged function')
-            if nm.startswith(('.rodata', '.data', '.bss', '.sdata', '.sbss')):
+                return ('unresolved', f'{nm}+0x{val:x} is outside every tagged function')
+            if nm.startswith(DATA_SECTIONS):
                 return ('data', s['shndx'], val)
         return ('unresolved', f'symbol {s["name"] or "?"}')
+
+    def match(self, tgt, rr):
+        """(None, retail target) if the candidate reference agrees with retail relocation rr
+        (a LO16 may agree through any of its alternative HI16s), else (reason, None)."""
+        if rr is None:
+            return ('relocation where retail has none', None)
+        why = self.check(tgt, rr['target'])
+        if why is None:
+            return (None, rr['target'])
+        for alt in rr.get('alts', [])[1:]:
+            if self.check(tgt, alt) is None:
+                return (None, alt)
+        return (why, None)
 
     def check(self, tgt, retail_target, depth=0):
         """None if the candidate reference matches the retail one, else a reason string."""
@@ -207,30 +252,19 @@ def score(src, cc, flags, verbose):
     obj = Elf(open(compile_obj(src, cc, flags), 'rb').read())
     syms = obj.symbols()
     tg = tags(src)
-    name_to_addr = {n: a for a, n in tg}
-    text = obj.index('.text')
-    tdata = obj.data(text)
-    orel = {o: (t, s) for o, t, s in obj.object_rels(text)}
-    fsyms = sorted([s for s in syms if s['shndx'] == text and s['type'] == 2], key=lambda s: s['value'])
     c = rdis.load()
     e = c['e']
-    placed = []
-    for addr, name in tg:
-        cand = [s for s in fsyms if s['name'] == name] or [s for s in fsyms if name in s['name']]
-        if cand:
-            k = fsyms.index(cand[0])
-            size = cand[0]['size'] or ((fsyms[k + 1]['value'] if k + 1 < len(fsyms) else len(tdata)) - cand[0]['value'])
-            placed.append((cand[0]['value'], size, addr))
-            name_to_addr.setdefault(cand[0]['name'], addr)
+    placed, name_to_addr, found = locate(obj, syms, tg)
     res = Resolver(obj, syms, name_to_addr, placed, c['rel'], e)
     results = []
     for addr, name in tg:
-        cand = [s for s in fsyms if s['name'] == name] or [s for s in fsyms if name in s['name']]
-        if not cand:
+        if addr not in found:
             results.append((addr, name, 'MISSING', '')); continue
-        s = cand[0]
-        k = fsyms.index(s)
-        size = s['size'] or ((fsyms[k + 1]['value'] if k + 1 < len(fsyms) else len(tdata)) - s['value'])
+        s = found[addr]
+        size = s['size']
+        text = s['shndx']
+        tdata = obj.data(text)
+        orel = {o: (t, si) for o, t, si in obj.object_rels(text)}
         start, osize = rdis.func_at(addr)
         if start != addr:
             results.append((addr, name, 'BADADDR', f'0x{addr:x} is inside f_{start:06x}')); continue
@@ -245,7 +279,7 @@ def score(src, cc, flags, verbose):
             ct, csym = orel.get(pc, (0, None))
             ok = ow is not None and cw is not None and ot == ct and relmask(ow, ot) == relmask(cw, ct)
             if ok and ct and csym is not None:
-                why = res.check(res.target(text, pc, ct, csym), orr['target'])
+                why = res.match(res.target(text, pc, ct, csym), orr)[0]
                 if why:
                     ok = False
                     refbad.append(f'+0x{4 * i:x}: {why}')

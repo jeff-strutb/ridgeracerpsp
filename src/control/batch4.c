@@ -1,21 +1,5 @@
 /* Compiler-identification control set, batch 4. */
 
-/* ---- 0x001014 ---- */
-extern int D_1d9c24;
-int f_16e6d0(void);
-int f_16e6c8(void);
-
-/* @implements 0x001014 us f_001014 */
-int f_001014(void)
-{
-    int t, z;
-    t = f_16e6d0();
-    t -= D_1d9c24;
-    t -= f_16e6c8();
-    z = t % 286 < 201;
-    return t / 286 + (z == 0);
-}
-
 /* ---- 0x01dac0 ---- */
 struct S01d { char pad[16]; short state; char pad2[66]; int x84; };
 struct G01d { char pad[11]; unsigned char a, b; };

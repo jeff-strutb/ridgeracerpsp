@@ -82,27 +82,18 @@ def main(argv):
         rel = os.path.relpath(src, ROOT)
         obj = Elf(open(score.compile_obj(src, score.DEFAULT_CC, '-O2 -G0'), 'rb').read())  # adds per-file @cflags
         syms = obj.symbols()
-        text = obj.index('.text')
-        tdata = obj.data(text)
-        orels = sorted(obj.object_rels(text))
-        fsyms = sorted([s for s in syms if s['shndx'] == text and s['type'] == 2], key=lambda s: s['value'])
         tg = score.tags(src, claims_only=True)
         if '/src/control/' in src:  # self-test: only what the grader rates EXACT
             exact = {a for a, _, st, _ in score.score(src, score.DEFAULT_CC, '-O2 -G0', False) if st == 'EXACT'}
             tg = [(a, n) for a, n in tg if a in exact]
-        n2a = {n: a for a, n in tg}
-        plc = []
+        plc, n2a, found = score.locate(obj, syms, tg)
         for addr, name in tg:
-            cand = [s for s in fsyms if s['name'] == name] or [s for s in fsyms if name in s['name']]
-            if not cand:
+            if addr not in found:
                 problems.append(f'{rel}: 0x{addr:06x} {name}: no such function in the object')
-                continue
-            k = fsyms.index(cand[0])
-            size = cand[0]['size'] or ((fsyms[k + 1]['value'] if k + 1 < len(fsyms) else len(tdata)) - cand[0]['value'])
-            plc.append((cand[0]['value'], size, addr))
-            n2a.setdefault(cand[0]['name'], addr)
         res = score.Resolver(obj, syms, n2a, plc, c['rel'], e)
-        for cstart, size, addr in plc:
+        for text, cstart, size, addr in plc:
+            tdata = obj.data(text)
+            orels = sorted(obj.object_rels(text))
             start, osize = rrdis.func_at(addr)
             if start != addr or size != osize:
                 problems.append(f'{rel}: 0x{addr:06x}: size {size} vs retail {osize}; cannot place for M2')
@@ -118,8 +109,8 @@ def main(argv):
                 rr = c['rel'].get(addr + off - cstart)
                 if tgt[0] == 'addr':
                     t = tgt[1]
-                elif tgt[0] == 'data' and rr is not None and res.check(tgt, rr['target']) is None:
-                    t = rr['target']  # contents proved equal: the retail literal is this literal
+                elif tgt[0] == 'data' and res.match(tgt, rr)[0] is None:
+                    t = res.match(tgt, rr)[1]  # contents proved equal: the retail literal is this literal
                 else:
                     problems.append(f'{rel}: 0x{addr + off - cstart:06x}: reference cannot be resolved ({tgt[-1]})')
                     continue

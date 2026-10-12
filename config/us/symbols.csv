@@ -4,3 +4,9 @@ addr,name,evidence
 0x125e14,malloc,called by operator new with the requested size; result null-checked
 0x125e38,free,called by operator delete with the pointer
 0x19b3a0,_ZTVN6System12CMainLoopJobE,vtable: slot 0 at 0x19b3a8 (stored as the vptr in main); 0x19b3a4 points to typeinfo 0x19b3b8 named N6System12CMainLoopJobE (base N2Ng4CJobE)
+0x006d6c,_ZN8Sequence13CTitleModeJobC1Ev,called by the static init at 0x006a58 for the object whose vptr is _ZTVN8Sequence13CTitleModeJobE+8 (config/us/rtti.csv); that function is byte exact in src/system/GameModeJob.cpp
+0x0079f4,_ZN8Sequence16CMainMenuModeJobC1Ev,as above for _ZTVN8Sequence16CMainMenuModeJobE
+0x008e04,_ZN8Sequence18CSingleRaceModeJobC1Ev,as above for _ZTVN8Sequence18CSingleRaceModeJobE
+0x00d8e8,_ZN8Sequence22CWirelessBattleModeJobC1Ev,as above for _ZTVN8Sequence22CWirelessBattleModeJobE
+0x013048,_ZN8Sequence14COptionModeJobC1Ev,as above for _ZTVN8Sequence14COptionModeJobE
+0x011b50,_ZN8Sequence16CSaveLoadModeJobC1Ev,as above for _ZTVN8Sequence16CSaveLoadModeJobE

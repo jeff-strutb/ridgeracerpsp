@@ -142,12 +142,10 @@ Sequence::CWirelessBattleModeJob D_1ecf4c;
 Sequence::COptionModeJob D_1edbe0;
 Sequence::CSaveLoadModeJob D_1edde4;
 
-/* @draft 0x0067b4 us _ZN6System12CGameModeJobC2Ev
+/* @implements 0x0067b4 us _ZN6System12CGameModeJobC2Ev
    WHAT IT DOES: Constructs the game mode job with no mode job running and seeds its random
-   number generator from the system clock.
-   NOTE: bytes match; the scorer cannot yet resolve this object's own vtable, which the
-   compiler emits in a .gnu.linkonce.r section. */
-/* @draft 0x0067fc us _ZN6System12CGameModeJobC1Ev
+   number generator from the system clock. */
+/* @implements 0x0067fc us _ZN6System12CGameModeJobC1Ev
    WHAT IT DOES: The same constructor, for a complete object. */
 System::CGameModeJob::CGameModeJob()
 {
@@ -197,12 +195,10 @@ void System::CGameModeJob::End()
     }
 }
 
-/* @draft 0x006978 us f_006978
+/* @implements 0x006978 us f_006978
    WHAT IT DOES: Makes the given mode the current and the requested one, and returns the job
    that runs it. Several mode numbers share a job (the single race job serves three of them,
-   and any unknown number).
-   NOTE: all 116 bytes match retail 0x006978 to 0x0069eb; config/us/funcs.csv splits the six
-   jump table targets (0x0069a4 to 0x0069e0) off as functions, so the scorer sees 44 bytes. */
+   and any unknown number). */
 Sequence::CModeJob *System::CGameModeJob::f_006978(int m)
 {
     mode = nextMode = m;
@@ -245,11 +241,9 @@ void System::CGameModeJob::f_0069f4()
     }
 }
 
-/* @draft 0x006a58 us __static_initialization_and_destruction_0
+/* @implements 0x006a58 us __static_initialization_and_destruction_0
    WHAT IT DOES: At startup, constructs the game mode job and every mode job; at shutdown,
-   destroys the mode jobs in the reverse order.
-   NOTE: bytes match; the references to the six mode jobs' constructors and vtables are
-   unresolved until their symbols are known by address. */
+   destroys the mode jobs in the reverse order. */
 
 /* @implements 0x006b7c us _GLOBAL__I_
    WHAT IT DOES: The startup entry for this file's static data. */
