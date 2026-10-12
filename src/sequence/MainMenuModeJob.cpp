@@ -221,8 +221,8 @@ struct Settings {
     int m132;
     unsigned char m136[48];
     unsigned char m184[60];
-    unsigned char m244[28];
-    unsigned char m272[10];
+    unsigned char m244[26];
+    unsigned char m270[10];
     int m280;
     int m284;
     unsigned char m288;
@@ -366,9 +366,9 @@ void Sequence::CMainMenuModeJob::f_007cf0()
     }
 }
 
-/* @draft 0x007d80 us f_007d80
-   WHAT IT DOES: Hands the screen every setting the main menu shows. When the screen is not
-   ready yet, it first takes the current settings from it and forgets the selected course. It
+/* @implements 0x007d80 us f_007d80
+   WHAT IT DOES: Hands the screen every setting the main menu shows. When the screen is already
+   up, it first takes the current settings back from it and forgets the selected course. It
    then fills in the race settings for the selected mode, the unlocked cars, courses and
    options, the records (distance in miles), the machine and display options and the last two
    values, sends each to the screen and selects page 10. */
@@ -376,7 +376,7 @@ void Sequence::CMainMenuModeJob::f_007d80()
 {
     Settings a;
 
-    if (!D_2301b0.Ready()) {
+    if (D_2301b0.Ready()) {
         D_2301b0.layer->v3(&a, 0);
         D_1d110c = a.m8;
         D_1d1108 = -1;
@@ -414,7 +414,7 @@ void Sequence::CMainMenuModeJob::f_007d80()
     for (unsigned int i = 0; i < 28; i++)
         a.m244[i] = D_233f70.m15304[i] != 0;
     for (unsigned int i = 0; i < 10; i++)
-        a.m272[i] = D_233f70.m15416[i] != 0;
+        a.m270[i] = D_233f70.m15416[i] != 0;
     switch (D_233f70.m14812) {
     case 1:
         a.m284 = D_233f70.m15456[0];
@@ -521,8 +521,11 @@ void Sequence::CMainMenuModeJob::f_008244()
         f_0182e4(&D_2301b0, &n);
         f_007d80();
     }
-    if (D_1d1110 == 1 || D_1d1110 == 2)
+    switch (D_1d1110) {
+    case 1:
+    case 2:
         return;
+    }
     Settings s;
     D_2301b0.layer->v3(&s, 0);
     D_1d110c = s.m8;
