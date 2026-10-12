@@ -225,7 +225,8 @@ struct Row {
         Row *o_ = (out);                                                               \
         int i_;                                                                        \
         for (i_ = 0; i_ < (table).count; i_++) {                                       \
-            memcpy(D_24063c, f_0368e8(&(table), "SelectNum", 0, 0, i_), D_1a211c[1]);  \
+            char *f_ = f_0368e8(&(table), "SelectNum", 0, 0, i_);                      \
+            memcpy(D_24063c, f_, D_1a211c[1]);                                         \
             if (key_ == D_24063c[0])                                                   \
                 break;                                                                 \
         }                                                                              \
@@ -1776,11 +1777,9 @@ void Sequence::CSingleRaceModeJob::f_00ca4c()
 {
 }
 
-/* @draft 0x00ca54 us f_00ca54
+/* @implements 0x00ca54 us f_00ca54
    WHAT IT DOES: Starts reading the ghost of the chosen course and car class from the memory
-   stick into a new half megabyte buffer.
-   Remaining difference: in the second lookup's loop entry retail puts move s1,a0 before
-   addiu s3,v0,%lo(D_1a211c) (+0x104); this build swaps the two. */
+   stick into a new half megabyte buffer. */
 void Sequence::CSingleRaceModeJob::f_00ca54()
 {
     Row course, car;
