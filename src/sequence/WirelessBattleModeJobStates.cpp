@@ -59,6 +59,9 @@ void f_088138(NetSession *);
 int f_088338(void *);
 int f_086324(NetSession *);
 int f_08651c(NetSession *);
+int f_08550c(NetSession *);
+int f_0865e8(NetSession *);
+void f_086470(NetSession *);
 void f_086440(NetSession *);
 
 /* The race settings shared with the race itself. */
@@ -144,6 +147,8 @@ void f_016138(void);
 void f_0161b8(void);
 void f_016220(void);
 int f_0194c4(void);
+int f_014a08(void);
+int f_014a28(void);
 }
 
 extern int D_237cc8;
@@ -177,6 +182,27 @@ Entry D_1ee140;
 int D_1ee168;
 int D_1ee16c;
 int D_1ee170;
+
+/* The pad: buttons held (with repeat) and buttons newly pressed. */
+namespace Controller {
+class CCustomController {
+public:
+    int Held(int mask) { return held & mask; }
+    int Trig(int mask) { return pressed & mask; }
+    int m0[2];
+    int held;
+    int m12;
+    int pressed;
+};
+}
+extern Controller::CCustomController D_1d8910[1];
+
+/* The network race's message display. */
+extern char D_242cb0[];
+void f_096408(char *);
+void f_096434(char *, int);
+int f_0968e0(char *);
+int f_096918(char *);
 
 namespace Ng {
 class CJob {
@@ -308,7 +334,7 @@ public:
     int m3188;
     char *m3192;
     int m3196[4];
-    char m3212;
+    signed char m3212;
     bool m3213;
     int m3216;
 };
@@ -587,6 +613,44 @@ void Sequence::CWirelessBattleModeJob::f_00fefc()
     queue.Push(2);
 }
 
+/* @implements 0x00ff74 us f_00ff74
+   WHAT IT DOES: State 11: waits in the lobby. When the lobby closes, it ends the session for
+   results 2 and 3 (remembering why, event 9) and goes on with event 5 otherwise. While the
+   lobby is open, holding cancel or the second button for six frames after pressing it asks
+   to leave (event 8). */
+void Sequence::CWirelessBattleModeJob::f_00ff74()
+{
+    int r = f_0160fc();
+    if (r) {
+        f_0161b8();
+        f_096408(D_242cb0);
+        if (r == 2 || r == 3) {
+            f_00e30c();
+            D_1ee170 = r;
+            queue.Push(9);
+        } else {
+            queue.Push(5);
+        }
+        return;
+    }
+    if (f_014a28() == 1)
+        f_096434(D_242cb0, -1);
+    if (D_1d8910[0].Trig(2) || D_1d8910[0].Trig(0x400000)) {
+        m3212 = 1;
+    } else if (m3212 > 0 && (D_1d8910[0].Held(2) || D_1d8910[0].Held(0x400000))) {
+        m3212++;
+        if (m3212 >= 6) {
+            m3212 = 0;
+            if (f_014a08()) {
+                f_0968e0(D_242cb0);
+                queue.Push(8);
+            }
+        }
+    } else {
+        m3212 = 0;
+    }
+}
+
 /* @implements 0x010100 us f_010100
    WHAT IT DOES: State 12: shows the lobby message for the session's role (1 when joining, 2
    when hosting). */
@@ -596,6 +660,39 @@ void Sequence::CWirelessBattleModeJob::f_010100()
     int hosting = D_1ee168 != 0;
     msg.m20 = hosting + 1;
     f_017970()->v2(&msg, 0);
+}
+
+/* @implements 0x010170 us f_010170
+   WHAT IT DOES: State 13: waits for the race entry screen. When the player enters, it starts
+   the session as host if it is not running; when the entry is cancelled it ends the session
+   and leaves (event 10); when the entry fails, or the session drops while waiting, it shows
+   the error and goes back (event 6). */
+void Sequence::CWirelessBattleModeJob::f_010170()
+{
+    switch (f_016168()) {
+    case 2:
+        if (!D_241810.m4 && f_0865e8(&D_241810)) {
+            f_096408(D_242cb0);
+            f_086470(&D_241810);
+        }
+        break;
+    case 4:
+    case 5:
+        f_00e30c();
+        f_096408(D_242cb0);
+        queue.Push(10);
+        break;
+    case 1:
+        f_096918(D_242cb0);
+        queue.Push(6);
+        break;
+    default:
+        if (f_08550c(&D_241810) != 7) {
+            f_096918(D_242cb0);
+            queue.Push(6);
+        }
+        break;
+    }
 }
 
 /* @implements 0x010284 us f_010284
