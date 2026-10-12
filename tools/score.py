@@ -8,7 +8,8 @@ Default compiler is the reconstructed 1.3.1-nocmov (tools/toolchains/mk_nocmov.p
 A file may add flags with a comment `/* @cflags: -fexceptions */` (per-TU flags differ in retail).
 
 A function is tagged with a comment on the line(s) above it:
-    /* @implements 0x01e000 us Name */
+    /* @implements 0x01e000 us Name */   a claim: the bytes diff clean (the image gate places it)
+    /* @draft 0x01e000 us Name */        a transcription still in progress (graded, never placed)
 where Name is the C symbol (or a substring of the C++ mangled symbol).
 
 Scoring (T4): words are compared with the relocated field masked on BOTH sides, the relocation
@@ -32,7 +33,8 @@ from prx import Elf, relmask, R_26  # noqa: E402
 import rrdis as rdis  # noqa: E402
 
 DEFAULT_CC = '1.3.1-nocmov'
-TAG = re.compile(r'@implements\s+0x([0-9a-fA-F]+)\s+us\s+([A-Za-z_][\w:~]*)')
+TAG = re.compile(r'@(?:implements|draft)\s+0x([0-9a-fA-F]+)\s+us\s+([A-Za-z_][\w:~]*)')
+CLAIM = re.compile(r'@implements\s+0x([0-9a-fA-F]+)\s+us\s+([A-Za-z_][\w:~]*)')
 
 
 def compile_obj(src, cc, flags):
@@ -40,17 +42,21 @@ def compile_obj(src, cc, flags):
     out = os.path.join('build', 'score', f'{cc}', re.sub(r'[/.]', '_', rel))
     os.makedirs(os.path.join(ROOT, os.path.dirname(out)), exist_ok=True)
     tc = f'build/toolchains/psp-gcc-{cc}'
-    cc1 = 'cc1plus' if src.endswith(('.cpp', '.cc')) else 'cc1'
+    is_cpp = src.endswith(('.cpp', '.cc'))
     asm = 'build/toolchains/psp-gcc-1.3.1/bin/psp-as'  # 1.7.1 ships no assembler
-    inc = f'-Iinclude -I{tc}/lib/gcc-lib/psp/*/include'
     extra = re.search(r'@cflags:([^*\n]*)', open(os.path.join(ROOT, rel)).read())
     if extra:
         flags += ' ' + extra.group(1).strip()  # per-file flags, like the original per-TU build
-    if cc1 == 'cc1plus' and '-fexceptions' not in flags:
+    if is_cpp and '-fexceptions' not in flags:
         flags += ' -fexceptions'  # retail C++ has .eh_frame/.gcc_except_table; EH edges change scheduling
-    # stale outputs are removed inside the VM, in the same command: deleting them from the host
-    # first left the VM's view of the shared folder briefly unable to recreate the path
-    cmd = (f'cd {ROOT} && rm -f {out}.s {out}.o && {tc}/lib/gcc-lib/psp/*/{cc1} -quiet {inc} {flags} {rel} -o {out}.s && '
+    # Compile through the toolchain's own driver, as the original build did: it supplies
+    # -march=allegrex -mtune=allegrex -mno-ulsw, the platform defines and the system include
+    # paths that a bare cc1 call lacks. Stale outputs are removed inside the VM in the same
+    # command (deleting them from the host first left the VM briefly unable to recreate them).
+    driver = f'{tc}/bin/psp-g++' if is_cpp else f'{tc}/bin/psp-gcc'
+    if not os.path.exists(os.path.join(ROOT, driver)):  # the 1.7.1 tarball keeps it in psp/bin
+        driver = f'{tc}/psp/bin/c++' if is_cpp else f'{tc}/psp/bin/gcc'
+    cmd = (f'cd {ROOT} && rm -f {out}.s {out}.o && {driver} -S -Iinclude {flags} {rel} -o {out}.s && '
            f'{asm} -G0 {out}.s -o {out}.o')
     p = subprocess.run([os.path.join(ROOT, 'tools/toolchains/lima.sh'), 'sh', '-c', cmd],
                        capture_output=True, text=True)
@@ -60,17 +66,18 @@ def compile_obj(src, cc, flags):
     return os.path.join(ROOT, out + '.o')
 
 
-def tags(src):
-    return [(int(a, 16), n) for a, n in TAG.findall(open(src).read())]
+def tags(src, claims_only=False):
+    """(addr, name) for every @implements and @draft tag; claims_only=True: @implements only."""
+    return [(int(a, 16), n) for a, n in (CLAIM if claims_only else TAG).findall(open(src).read())]
 
 
-NAMED = re.compile(r'[fD]_([0-9a-f]{6})$')
+NAMED = re.compile(r'(?<![A-Za-z_])[fD]_([0-9a-f]{6})(?![0-9a-f])')  # also inside a C++ mangled name
 
 
 def _libsyms():
     """Names with known retail addresses: identified library functions and imported system calls."""
     out = {}
-    for fn, key, col in (('libfuncs.csv', 'symbol', 'addr'), ('imports.csv', 'name', 'stub')):
+    for fn, key, col in (('symbols.csv', 'name', 'addr'), ('libfuncs.csv', 'symbol', 'addr'), ('imports.csv', 'name', 'stub')):
         path = os.path.join(ROOT, 'config/us', fn)
         if os.path.exists(path):
             for r in csv.DictReader(open(path)):
@@ -130,7 +137,7 @@ class Resolver:
         """('addr', a) | ('data', secidx, offset) | ('unresolved', why)."""
         s = self.syms[symidx]
         add = self.addend(sec, off, rtype)
-        m = NAMED.match(s['name'])
+        m = NAMED.search(s['name'])
         if s['name'] in LIBSYMS and not s['shndx']:
             return ('addr', LIBSYMS[s['name']] + add)
         if s['name'] in self.n2a:

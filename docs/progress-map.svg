@@ -6943,12 +6943,12 @@
 <rect x="1012.68" y="568.11" width="1.23" height="3.36" fill="#cfd3d8"><title>f_038a78 8 B T1</title></rect>
 <rect x="990.12" y="548.33" width="23.80" height="23.13" fill="none" stroke="#ffffff" stroke-width="1.2"/></g>
 <g><title>object 1 (game) 0x0003f0-0x000810, 6 fns</title>
-<rect x="990.12" y="571.46" width="14.33" height="12.42" fill="#cfd3d8"><title>f_0006b8 344 B T1</title></rect>
-<rect x="990.12" y="583.88" width="14.33" height="10.54" fill="#cfd3d8"><title>f_0004a4 292 B T1</title></rect>
-<rect x="1004.45" y="571.46" width="9.47" height="13.12" fill="#cfd3d8"><title>f_0005c8 240 B T1</title></rect>
-<rect x="1004.45" y="584.59" width="5.01" height="7.43" fill="#cfd3d8"><title>f_000430 72 B T1</title></rect>
-<rect x="1009.46" y="584.59" width="4.45" height="7.43" fill="#cfd3d8"><title>f_0003f0 64 B T1</title></rect>
-<rect x="1004.45" y="592.02" width="9.47" height="2.41" fill="#cfd3d8"><title>f_000478 44 B T1</title></rect>
+<rect x="990.12" y="571.46" width="14.33" height="12.42" fill="#2f9e55"><title>f_0006b8 344 B T4</title></rect>
+<rect x="990.12" y="583.88" width="14.33" height="10.54" fill="#e2a52b"><title>f_0004a4 292 B T2</title></rect>
+<rect x="1004.45" y="571.46" width="9.47" height="13.12" fill="#2f9e55"><title>f_0005c8 240 B T4</title></rect>
+<rect x="1004.45" y="584.59" width="5.01" height="7.43" fill="#2f9e55"><title>f_000430 72 B T4</title></rect>
+<rect x="1009.46" y="584.59" width="4.45" height="7.43" fill="#2f9e55"><title>f_0003f0 64 B T4</title></rect>
+<rect x="1004.45" y="592.02" width="9.47" height="2.41" fill="#2f9e55"><title>f_000478 44 B T4</title></rect>
 <rect x="990.12" y="571.46" width="23.80" height="22.96" fill="none" stroke="#ffffff" stroke-width="1.2"/></g>
 <g><title>object 30 (game) 0x01bdc4-0x01c1e4, 4 fns</title>
 <rect x="990.12" y="594.43" width="20.73" height="22.96" fill="#cfd3d8"><title>f_01be44 920 B T1</title></rect>

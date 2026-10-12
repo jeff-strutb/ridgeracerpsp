@@ -2,8 +2,8 @@
 """Filing rules for decompiled functions, checked on the staged tree (pre-commit hook).
 
 Refuses a commit that:
-  1. adds an `@implements 0xADDR us Name` in src/ (outside src/control/) without a
-     `WHAT IT DOES:` paragraph within the 40 lines above it;
+  1. adds an `@implements` or `@draft 0xADDR us Name` in src/ (outside src/control/) whose
+     own comment block (the /* ... */ holding the tag) has no `WHAT IT DOES:` paragraph;
   2. adds a source file under src/ (outside src/control/) named for an address or a batch
      (slice*, batch*, part*, f_XXXXXX*, 0x*): functions are filed into the translation unit
      they came from, at the moment they are matched;
@@ -11,7 +11,7 @@ Refuses a commit that:
 src/control/ is the compiler-identification control set and is exempt from 1 and 2.
 
     python3 tools/precommit.py          # staged tree (the hook)
-    python3 tools/precommit.py --all    # every tracked file
+    python3 tools/precommit.py --all    # the working tree: tracked and untracked sources
 """
 import os
 import re
@@ -19,7 +19,7 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TAG = re.compile(r'@implements\s+0x([0-9a-fA-F]+)\s+us\s+(\S+)')
+TAG = re.compile(r'@(?:implements|draft)\s+0x([0-9a-fA-F]+)\s+us\s+(\S+)')
 BATCH = re.compile(r'^(?:slice|batch|part|chunk|f_[0-9a-f]{6}|0x[0-9a-f]+|[0-9a-f]{6,})', re.I)
 SRC_EXT = ('.c', '.cpp', '.cc', '.h', '.hpp', '.s', '.S')
 
@@ -31,8 +31,8 @@ def git(*a):
 def main():
     every = '--all' in sys.argv
     if every:
-        paths = [p for p in git('ls-files', '-z').decode().split('\0') if p]
-        added = set()
+        paths = [p for p in (git('ls-files', '-z') + git('ls-files', '-z', '--others', '--exclude-standard')).decode().split('\0') if p]
+        added = set(paths)
         read = lambda p: open(os.path.join(ROOT, p), 'rb').read()  # noqa: E731
     else:
         paths = [p for p in git('ls-files', '-z', '--cached').decode().split('\0') if p]
@@ -52,8 +52,11 @@ def main():
                 continue
             addr = int(m.group(1), 16)
             claims.setdefault(addr, []).append(f'{p}:{i + 1}')
-            if p in changed and not control and not any('WHAT IT DOES:' in x for x in lines[max(0, i - 40):i + 1]):
-                problems.append(f'{p}:{i + 1}: @implements 0x{addr:06x} has no WHAT IT DOES: paragraph above it')
+            if p in changed and not control:
+                a = max((k for k in range(i + 1) if '/*' in lines[k]), default=i)
+                b = min((k for k in range(i, len(lines)) if '*/' in lines[k]), default=i)
+                if not any('WHAT IT DOES:' in x for x in lines[a:b + 1]):
+                    problems.append(f'{p}:{i + 1}: 0x{addr:06x}: its comment has no WHAT IT DOES: paragraph')
         if p in added and not control and BATCH.match(os.path.basename(p)):
             problems.append(f'{p}: new file named for an address or batch; file the function into its translation unit')
     for addr, where in sorted(claims.items()):

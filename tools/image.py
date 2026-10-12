@@ -86,7 +86,7 @@ def main(argv):
         tdata = obj.data(text)
         orels = sorted(obj.object_rels(text))
         fsyms = sorted([s for s in syms if s['shndx'] == text and s['type'] == 2], key=lambda s: s['value'])
-        tg = score.tags(src)
+        tg = score.tags(src, claims_only=True)
         if '/src/control/' in src:  # self-test: only what the grader rates EXACT
             exact = {a for a, _, st, _ in score.score(src, score.DEFAULT_CC, '-O2 -G0', False) if st == 'EXACT'}
             tg = [(a, n) for a, n in tg if a in exact]

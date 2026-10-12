@@ -32,6 +32,10 @@ This is the symptom → source table for SCE `psp-gcc 3.3.3+allegrex`.
 - **VFPU:** GCC never emits VFPU instructions; every VFPU sequence is `__asm__`. A function made entirely of VFPU instructions with `jr ra; nop` is probably a hand-written `.S` file (0x028b3c).
 - **Delay slots** are filled by GCC's `dbr` pass, not by the assembler.
 
+## Driver
+
+Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `score.py` does. The driver adds `-march=allegrex -mtune=allegrex -mno-ulsw`, `-D__psp__ -D__SCE__ ...`, and the newlib include path. Calling `cc1` directly lacks them; the control-set results were the same both ways.
+
 ## Symptom table
 
 | Retail shows | Source shape | Proven on |
@@ -56,6 +60,8 @@ This is the symptom → source table for SCE `psp-gcc 3.3.3+allegrex`.
 | `lui` after a call uses `v1` although `v0` is free; `v0` untouched until `jr ra` | the callee's result is returned: `int r = f(…); …; return r;` | f_0b20d8 |
 | Two independent stores at a block's end in the **reverse** of the listing order | write them in the opposite order (seen twice) | f_10dd2c, f_0f1aa0 |
 | `j L` with `addiu a1,a1,K` in its slot, into a shared call block | separate `return Ctor(x)` per branch, merged by cross-jumping | f_064454 |
+| A C++ `new T` with no landing pad, followed by a call on the new object | the constructor is inline and cannot throw; the call is a **separate statement** after `new` (`g = new T; g->Init();`). A call inside the constructor adds a cleanup that deletes the object. | main (0x0006b8) |
+| Small struct: words zeroed except the fields then assigned, plus a redundant byte store | `memset(&s, 0, sizeof s)` expanded inline. The stores the following field assignments overwrite are deleted as dead, and a later `s.char_field = 0` survives. | f_0004a4 |
 | `mov.s $f20,$f12` hoisted before a branch, with `f20` saved | the float is passed to a callee on the cold path | f_0fa640 |
 
 **Callee prototypes are behaviour.** Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
@@ -68,6 +74,11 @@ This is the symptom → source table for SCE `psp-gcc 3.3.3+allegrex`.
 - **f_0c644c.** Retail if-converts a `max` but keeps the branch for the upper clamp `if (i>3) i=3`. Eight spellings were tried under **stock** 1.3.1. Re-test under nocmov.
 - **f_14df20** (C++ refcount dispose in an EH region). With `-fexceptions` plus a cleanup, 8 of 28 words still differ, all in the `blez` delay-slot fill. Re-test as `.cpp` under the current scorer.
 - **f_07a838** (C++ constructor with a landing pad). Not yet transcribed as `.cpp`.
+
+- **f_0004a4** (module loader, `src/system/main.cpp`). The frame, the option struct's layout and its initialisation pattern are solved: `memset` + `size` + `mpidtext` + `position = 0` after the `sprintf`. The control flow matches.
+  - The remaining differences are three tie-breaks: the zero stores at +8/+12 swapped; `move s1,v0`/`move a0,v0` swapped; and after `sceKernelStartModule`, retail fills the `bltz` slot from the success path (`move a0,s1`), which leaves `sceIoClose`'s slot a `nop` (+4 B).
+  - Eight source spellings (goto, nested ifs, if-assign, value-init, field stores, declaration orders) compile to the same RTL.
+  - Next: diff the `sched2` and `dbr` dumps against retail's order.
 
 ## Map defects seen
 

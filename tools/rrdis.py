@@ -32,7 +32,7 @@ def load():
         if m:
             lines[int(m.group(1), 16)] = (int(m.group(2), 16), m.group(3).replace('\t', ' '))
     names = {}
-    for fn, key, col in (('imports.csv', 'name', 'stub'), ('libfuncs.csv', 'symbol', 'addr')):
+    for fn, key, col in (('symbols.csv', 'name', 'addr'), ('imports.csv', 'name', 'stub'), ('libfuncs.csv', 'symbol', 'addr')):
         path = os.path.join(ROOT, 'config/us', fn)
         if os.path.exists(path):
             for r in csv.DictReader(open(path)):

@@ -49,6 +49,10 @@ def tiers():
     tus = list(csv.DictReader(open(os.path.join(ROOT, 'config/us/tus.csv'))))
     starts = [int(t['start'], 16) for t in tus]
     graded = grade()
+    claims = set()
+    for path in glob.glob(os.path.join(ROOT, 'src/**/*.c*'), recursive=True):
+        for m in re.finditer(r'@implements\s+0x([0-9a-fA-F]+)\s+us', open(path).read()):
+            claims.add(int(m.group(1), 16))
     rows = []
     for a, z in funcs:
         t = tus[bisect.bisect_right(starts, a) - 1]
@@ -61,7 +65,7 @@ def tiers():
             st, path = graded.get(a, (None, None))
             if st is None:
                 tier = 'T1'
-            elif st == 'EXACT' and not path.startswith('src/control/'):
+            elif st == 'EXACT' and not path.startswith('src/control/') and a in claims:
                 tier = 'T4'
             else:
                 tier = 'T2'

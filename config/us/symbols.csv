@@ -1,0 +1,6 @@
+addr,name,evidence
+0x1534a4,_Znwj,operator new(unsigned): size 0 -> 1; loops malloc (0x125e14) through the new_handler at D_290bd0; throws bad_alloc via __cxa_allocate_exception/__cxa_throw
+0x1521a8,_ZdlPv,operator delete(void*): free (0x125e38) if non-null
+0x125e14,malloc,called by operator new with the requested size; result null-checked
+0x125e38,free,called by operator delete with the pointer
+0x19b3a0,_ZTVN6System12CMainLoopJobE,vtable: slot 0 at 0x19b3a8 (stored as the vptr in main); 0x19b3a4 points to typeinfo 0x19b3b8 named N6System12CMainLoopJobE (base N2Ng4CJobE)
