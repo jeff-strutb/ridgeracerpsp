@@ -1642,17 +1642,21 @@ Elem28 *CSequence::f_005b8c(const char *name)
    returns its answer, 0 if none does. */
 int CSequence::f_005c34(const char *name)
 {
-    int i;
-
-    for (i = 0; i < 80; i++) {
-        Elem280 *e = &m668[i];
-        if (e->idx != -1 && f_002184(name, e->idx) != -1)
-            return e->f_002acc(name);
+    for (int i = 0; i < 80; i++) {
+        int idx = m668[i].idx;
+        if (idx == -1)
+            continue;
+        if (f_002184(name, idx) == -1)
+            continue;
+        return m668[i].f_002acc(name);
     }
-    for (i = 0; i < 40; i++) {
-        Elem28 *e = &m23068[i];
-        if (e->idx != -1 && strcmp(D_1c0614[e->idx].name, name) == 0)
-            return e->f_002e5c();
+    for (int i = 0; i < 40; i++) {
+        int idx = m23068[i].idx;
+        if (idx == -1)
+            continue;
+        if (strcmp(D_1c0614[idx].name, name) != 0)
+            continue;
+        return m23068[i].f_002e5c();
     }
     return 0;
 }
