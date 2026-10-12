@@ -83,7 +83,8 @@ unsigned int D_23c210[3];
 /* @draft 0x022c30 us f_022c30
    WHAT IT DOES: Sets up texture memory for n textures: the start and fill point of the palette
    area and of texture areas 1 and 2 in video memory (area 1 from 0xcc000, area 2 from
-   0x154000, both ending at 0x1fe000), the info store and the id lists. Returns 1 on success. */
+   0x154000, both ending at 0x1fe000), the info store and the id lists. Returns 1 on success.
+   Remaining: the eight start, fill point and end stores come out in another order and with other registers; no order of the statements (all 1440 tried) gives retail's. */
 int f_022c30(int n)
 {
     unsigned int base = (unsigned int)sceGeEdramGetAddr();

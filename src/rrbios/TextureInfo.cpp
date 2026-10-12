@@ -269,7 +269,8 @@ CInfo *f_02347c(unsigned int id)
 /* @draft 0x0234a4 us f_0234a4
    WHAT IT DOES: Takes a record for a new texture id, at the front of the used list, and enters
    it in the table with its command lists cleared. If the id is already present the record goes
-   back to the free list and 0 is returned. */
+   back to the free list and 0 is returned.
+   Remaining: the block layout matches, but the id and the record pointer swap s1/s2, and the result goes through a2 instead of v0. */
 CInfo *f_0234a4(unsigned int id)
 {
     CInfo tmp;
@@ -304,7 +305,8 @@ int f_023588(unsigned int id)
    WHAT IT DOES: Builds a texture's GE command lists from its file header: the palette load list
    (mode, address, load) if it has a palette, and the select list (texture mode, pixel format,
    then the address, buffer width and size of every mipmap level), and flushes both from the
-   data cache so the GE sees them. */
+   data cache so the GE sees them.
+   Remaining: the mipmap command giv shape (0xa0 + lv) << 24 is right; the rest is register allocation (img in a3 copied to t8 in retail) and the place of the divide-by-zero check. */
 void f_0235ac(CInfo *info, TexHeader *h)
 {
     info->head = *h;

@@ -80,7 +80,8 @@ void f_024aec(CInfo *info)
 /* @draft 0x024b34 us f_024b34
    WHAT IT DOES: Sets the GE up for a texture straight from a texture file: palette mode and
    load if it has one, then the texture mode and the address, size and buffer width of every
-   mipmap level. */
+   mipmap level.
+   Remaining: only the three temporaries of the mipmap step (v1, t0, a3) and the w - 1 temporary come out in other registers. */
 void f_024b34(TexHeader *h)
 {
     if (h->clutOfs) {
@@ -127,7 +128,8 @@ void f_024b34(TexHeader *h)
    one is given (a 64 byte palette, while the area has room below 0x883c0) or else to the
    texture area's fill point; its pixels, every mipmap level, follow at the texture area's fill
    point, which then moves past them. The header's palette and pixel addresses are pointed at
-   the copies. Stops when the area has no room left. */
+   the copies. Stops when the area has no room left.
+   Remaining: retail keeps the null test of the palette destination (s4 starts at 0); here jump threading removes it, and the texture part differs in registers. */
 int f_024d24(TexHeader *h, unsigned int *clutPos, unsigned int *pos, unsigned int end)
 {
     if (h->clutOfs) {

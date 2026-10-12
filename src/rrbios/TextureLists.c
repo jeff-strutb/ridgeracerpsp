@@ -94,13 +94,13 @@ void f_0244e4(void)
 /* @draft 0x02452c us f_02452c
    WHAT IT DOES: Records a texture id at the end of an area's part of the id array, moving the
    later areas up by one. Returns 0 if there is no array, the area is out of range or the array
-   is full. */
+   is full.
+   Remaining: register allocation of the saved high halves (s4/s5 against id in s3) and the store order after the memmove. */
 int f_02452c(unsigned int area, int id)
 {
     struct Slot *p = D_23c780;
     struct Group *g;
-    unsigned int pos;
-    int i;
+    int pos, next;
     if (!p)
         return 0;
     if (area >= 3)
@@ -109,13 +109,14 @@ int f_02452c(unsigned int area, int id)
         return 0;
     g = &D_23c78c[area];
     pos = g->start + g->num;
-    memmove(&p[pos + 1], &p[pos], (D_23c784 - pos) * 8);
+    next = pos + 1;
+    memmove(&p[next], &p[pos], (D_23c784 - pos) * 8);
     p = &D_23c780[pos];
     p->area = area;
     p->id = id;
     D_23c784++;
     g->num++;
-    for (i = 2 - area; i != 0; i--) {
+    for (area = 2 - area; area != 0; area--) {
         g++;
         g->start++;
     }
@@ -124,13 +125,14 @@ int f_02452c(unsigned int area, int id)
 
 /* @draft 0x02463c us f_02463c
    WHAT IT DOES: Removes a texture id from an area's part of the id array, moving the later
-   areas down by one. */
+   areas down by one.
+   Remaining: retail keeps the index in a1 (id moved to t0) and computes next as a copy; three instructions short. */
 void f_02463c(unsigned int area, int id)
 {
     struct Slot *p = D_23c780;
     struct Group *g;
-    unsigned int n, i;
-    int k;
+    struct Slot *e;
+    unsigned int n, i, next;
     if (!p)
         return;
     if (area >= 3)
@@ -141,28 +143,34 @@ void f_02463c(unsigned int area, int id)
     n = g->num;
     if (n == 0)
         return;
-    for (i = g->start; n != 0; n--, i++)
-        if (p[i].id == id)
+    i = g->start;
+    e = &p[i];
+    for (; n != 0; n--) {
+        if (e->id == id)
             break;
+        e++;
+        i++;
+    }
     if (n == 0)
         return;
-    memmove(&D_23c780[i], &D_23c780[i + 1], (D_23c784 - (i + 1)) * 8);
+    next = i + 1;
+    memmove(&D_23c780[i], &D_23c780[next], (D_23c784 - next) * 8);
     g->num--;
     D_23c784--;
-    for (k = 2 - area; k != 0; k--) {
+    for (area = 2 - area; area != 0; area--) {
         g++;
         g->start--;
     }
 }
 
 /* @draft 0x024754 us f_024754
-   WHAT IT DOES: Removes every id of an area from the id array, moving the later areas down. */
+   WHAT IT DOES: Removes every id of an area from the id array, moving the later areas down.
+   Remaining: register and order differences after the memmove. */
 void f_024754(unsigned int area)
 {
     struct Slot *p = D_23c780;
     struct Group *g;
     unsigned int count, end, n;
-    int k;
     if (!p)
         return;
     if (area >= 3)
@@ -178,7 +186,7 @@ void f_024754(unsigned int area)
     n = g->num;
     D_23c784 -= n;
     g->num = 0;
-    for (k = 2 - area; k != 0; k--) {
+    for (area = 2 - area; area != 0; area--) {
         g++;
         g->start -= n;
     }
@@ -199,7 +207,8 @@ void f_02482c(void)
 }
 
 /* @draft 0x02486c us f_02486c
-   WHAT IT DOES: Returns the id of texture i of an area, or -1. */
+   WHAT IT DOES: Returns the id of texture i of an area, or -1.
+   Remaining: retail keeps the result in v1 (li v1,-1 in each slot) and the array in a2. */
 int f_02486c(unsigned int area, unsigned int i)
 {
     struct Slot *p = D_23c780;
@@ -211,9 +220,9 @@ int f_02486c(unsigned int area, unsigned int i)
     g = &D_23c78c[area];
     if (D_23c784 == 0)
         return -1;
-    if (i >= g->num)
-        return -1;
-    return p[g->start + i].id;
+    if (i < g->num)
+        return p[g->start + i].id;
+    return -1;
 }
 
 /* @implements 0x0248d0 us f_0248d0
@@ -278,7 +287,8 @@ void f_024930(struct H024 *h)
 
 /* @draft 0x0249a0 us f_0249a0
    WHAT IT DOES: Writes into a display list the GE calls of a texture's palette load list and
-   select list (base, then call, for each one it has). Returns the new end of the list. */
+   select list (base, then call, for each one it has). Returns the new end of the list.
+   Remaining: retail rematerialises 0x10000000 and 0x0a000000 per block (only the 0xffffff mask is shared); here both stay in registers. */
 unsigned int *f_0249a0(struct CInfo *info, unsigned int *p)
 {
     int a = info->clutCall;
@@ -308,7 +318,8 @@ void f_024a28(void)
 
 /* @draft 0x024a3c us f_024a3c
    WHAT IT DOES: Like f_0249a0, but skips the palette or select list call when it is the one
-   selected last. Returns the new end of the list. */
+   selected last. Returns the new end of the list.
+   Remaining: same constant sharing difference as f_0249a0, and the cache compare is scheduled earlier in retail. */
 unsigned int *f_024a3c(struct CInfo *info, unsigned int *p)
 {
     int a = info->clutCall;
