@@ -774,7 +774,7 @@ void Sequence::COptionModeJob::f_014014()
     f_017bfc(&D_2301b0);
 }
 
-/* @draft 0x0140c8 us f_0140c8
+/* @implements 0x0140c8 us f_0140c8
    WHAT IT DOES: State 16: on its first frame starts the sequence back to the menu; once it is
    ready it reopens the menu screens, restarts the race camera and sends event 2. */
 void Sequence::COptionModeJob::f_0140c8()
@@ -788,6 +788,9 @@ void Sequence::COptionModeJob::f_0140c8()
         f_0981fc(D_245074, m492);
         f_0983bc(D_245074);
         queue.Push(2);
+        return;
+    } else {
+        f_017bfc(&D_2301b0);
         return;
     }
     f_017bfc(&D_2301b0);
