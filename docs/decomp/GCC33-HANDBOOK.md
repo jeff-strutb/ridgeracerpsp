@@ -40,7 +40,7 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 
 | Retail shows | Source shape | Proven on |
 |---|---|---|
-| `xori vX,vX,K` + `beqz` for an equality test | an **inlined predicate** returning the comparison. A direct `if (x == K)` gives `li`+`beq`. | f_010ac4 |
+| `xori vX,vX,K` + `beqz` for an equality test | an **inlined predicate** returning the comparison. A direct `if (x == K)` gives `li`+`beq`. | f_010ac4 (now in `WirelessBattleModeJob.cpp`) |
 | A base register for a sub-struct, fields addressed from it, a field **reloaded** after an array store | an inlined method on the sub-object (`ring_push(&p->ring, v)`) | f_010ac4 |
 | A struct copy through two pointer bases, the first store from the parent | an `__inline__` copy helper on the sub-objects (`*d = *s`) | f_0ec8b8 |
 | `slti`+`sltiu x,x,1` (no `xori`) | the comparison **held in a variable**, then `(z == 0)`. Written inline, `fold` produces another form. | f_001014 |
@@ -116,6 +116,11 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A table lookup that rematerialises the table address on both loop exits | a macro naming the global table directly, with an output-pointer local; an inline function taking the table keeps one register (and is not inlined when used twice) | f_00ca54 |
 | Copy loops addressing a global from one base register reused across statements | a local pointer `T *g = &D_233f70;` | 0x00dd64 |
 | Separate tests for 2 and 0x400000 instead of one `& 0x400002` | an inline predicate: `Trig(2) \|\| Trig(0x400000)` | f_00ab18 |
+| The out-of-line target is a call block shared with another path, which falls through | `if (cond) goto update;` before the fall-through code; if/else, else-if and early return all give the opposite layout | f_00fe44 |
+| `(x != 0) + 1` as `sltu`+`addiu` | the comparison held in a variable: `int h = x != 0; m = h + 1;` | f_010100 |
+| A word updated in one read-modify-write (`lhu` low half, `addu` high, `and 0xffff8000`, `addu` low) | hand-packed arithmetic on a plain unsigned int: `w = (w & 0xffff) + (hi << 16); w = (w & 0xffff8000) + lo;` (bitfields give `or`/`sh` chains) | f_00e238 |
+| A store kept before a global load even though it is overwritten later | read the global through a local pointer: `int *p = &D; m68 = 0; m360 = *p;` | 0x011ea4 |
+| Adjacent words zeroed as base+`%lo` and `4(reg)` pairs | `memset` of each small array, defined in the file (word aligned) rather than `extern` | f_00e12c |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).

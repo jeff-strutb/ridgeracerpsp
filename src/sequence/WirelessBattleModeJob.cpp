@@ -1656,8 +1656,7 @@ void Sequence::CWirelessBattleModeJob::f_010378()
     f_018abc(&D_2301b0, 13);
 }
 
-/* State 18 (retail 0x010ac4). Byte-exact, but left untagged here: the compiler control set
-   (src/control/batch2.c) already holds that address's tag.
+/* @implements 0x010ac4 us f_010ac4
    WHAT IT DOES: State 18: updates the screen manager; once it is ready, finishes its step and
    sends event 2. */
 void Sequence::CWirelessBattleModeJob::f_010ac4()

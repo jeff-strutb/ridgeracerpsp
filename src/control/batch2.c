@@ -1,30 +1,5 @@
 /* Compiler-identification control set, batch 2: medium functions (loops, branches, float args, struct copy). */
 
-struct T010 { char pad[16]; int state; };
-struct Ring010 { int buf[17]; int cnt; };
-struct R010 { char pad[72]; struct Ring010 ring; };
-
-static __inline__ void ring_push(struct Ring010 *r, int v)
-{
-    r->buf[r->cnt++] = v;
-    r->cnt &= 0xf;
-}
-extern struct T010 D_2301b0;
-
-static __inline__ int t010_ready(struct T010 *t) { return t->state == 4; }
-void f_017bfc(struct T010 *);
-void f_017c88(struct T010 *);
-
-/* @implements 0x010ac4 us f_010ac4 */
-void f_010ac4(struct R010 *p)
-{
-    f_017bfc(&D_2301b0);
-    if (t010_ready(&D_2301b0)) {
-        f_017c88(&D_2301b0);
-        ring_push(&p->ring, 2);
-    }
-}
-
 struct E01d { char b[1904]; };
 struct Q01d { int a; int n; };
 extern struct E01d D_249330[];
