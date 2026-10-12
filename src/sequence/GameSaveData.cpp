@@ -182,11 +182,9 @@ public:
     int f_019280();
     void f_0192f8();
     int f_0193a8();
-    void Put8(unsigned char v)
+    void Put8(int v)
     {
-        unsigned char *p = cur;
-        *p = v;
-        cur = p + 1;
+        *cur++ = v;
     }
     void Put32(unsigned int v)
     {
@@ -278,7 +276,7 @@ public:
     int m15704;
     int m15708;
     int m15712;
-    char name[8];
+    unsigned char name[8];
     int m15724;
     int m15728;
     int m15732;
@@ -615,20 +613,18 @@ void Sequence::CGameSaveData::f_019994(const char *s)
    and pads it to its fixed size with zeros. */
 int Sequence::CGameSaveData::Save(CSaveStream *s)
 {
-    int i, j;
-
     start = s->cur;
     version = 105;
     s->Put8(105);
     s->Put32(m12);
     s->Put32(m16);
     s->Put8(m20);
-    for (i = 0; i < 336; i++) {
+    for (int i = 0; i < 336; i++) {
         s->Put32(m24[i]);
         s->Put32(m1368[i]);
     }
-    for (i = 0; i < 3; i++) {
-        for (j = 0; j < 336; j++) {
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 336; j++) {
             s->Put32(m2712[i][j].v[0]);
             s->Put32(m2712[i][j].v[1]);
             s->Put32(m2712[i][j].v[2]);
@@ -650,13 +646,13 @@ int Sequence::CGameSaveData::Save(CSaveStream *s)
     s->Put8(m14860);
     s->Put8(m14864);
     s->Put32(m14868);
-    for (i = 0; i < 48; i++)
+    for (int i = 0; i < 48; i++)
         s->Put8(m14872[i]);
-    for (i = 0; i < 60; i++)
+    for (int i = 0; i < 60; i++)
         s->Put8(m15064[i]);
-    for (i = 0; i < 28; i++)
+    for (int i = 0; i < 28; i++)
         s->Put8(m15304[i]);
-    for (i = 0; i < 10; i++)
+    for (int i = 0; i < 10; i++)
         s->Put8(m15416[i]);
     s->Put8(m15456);
     s->Put8(m15460);
@@ -665,7 +661,7 @@ int Sequence::CGameSaveData::Save(CSaveStream *s)
     s->Put8(m15472);
     s->Put8(m15476);
     s->Put8(m15480);
-    for (i = 0; i < 48; i++)
+    for (int i = 0; i < 48; i++)
         s->Put8(m15484[i]);
     s->Put8(m15676);
     s->Put32(m15680);
@@ -677,8 +673,8 @@ int Sequence::CGameSaveData::Save(CSaveStream *s)
     s->Put8(m15704);
     s->Put8(m15708);
     s->Put8(m15712);
-    for (i = 0; i < 8; i++)
-        s->Put8(name[i]);
+    for (int i = 0; i < 8; i++)
+        *s->cur++ = name[i];
     s->Put8(m15728);
     s->Put8(m15724);
     s->Put8(m15732);
@@ -687,7 +683,8 @@ int Sequence::CGameSaveData::Save(CSaveStream *s)
     s->Put32(m15744);
     s->Put32(m15748);
     s->Put32(m15752);
-    for (i = start - s->cur + 0x3f00; i > 0; i--)
+    int pad = start - s->cur + 0x3f00;
+    for (int i = 0; i < pad; i++)
         s->Put8(0);
     return 0;
 }
