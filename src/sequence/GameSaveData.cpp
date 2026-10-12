@@ -864,14 +864,16 @@ void MemoryStick::f_01a91c(bool automatic)
     stream->f_019264(&D_233f70);
     stream->f_0192f8();
     D_1e38f4.f_00612c();
-    D_1e38f4.f_0061a0(stream->buf, 0x4000, stream->f_019280());
+    unsigned char *buf = stream->buf;
+    D_1e38f4.f_0061a0(buf, 0x4000, stream->f_019280());
     D_1e38f4.f_0061b0(D_233f70.f_019494(), D_233f70.Text1(), detail);
-    void *icon0 = D_2301d4.f_002acc("Icon0");
-    D_1e38f4.f_006260(icon0, D_1c0614[f_00222c("Icon0", f_01c26c("MainMenuSwg"))].size);
-    void *icon1 = D_2301d4.f_002acc("Icon1");
-    D_1e38f4.f_006274(icon1, D_1c0614[f_00222c("Icon1", f_01c26c("MainMenuSwg"))].size);
-    void *pic = D_2301d4.f_002acc("Pic");
-    D_1e38f4.f_006288(pic, D_1c0614[f_00222c("Pic", f_01c26c("MainMenuSwg"))].size);
+    void *p, *q;
+    p = D_2301d4.f_002acc("Icon0");
+    D_1e38f4.f_006260(p, D_1c0614[f_00222c("Icon0", f_01c26c("MainMenuSwg"))].size);
+    p = D_2301d4.f_002acc("Icon1");
+    D_1e38f4.f_006274(p, D_1c0614[f_00222c("Icon1", f_01c26c("MainMenuSwg"))].size);
+    q = D_2301d4.f_002acc("Pic");
+    D_1e38f4.f_006288(q, D_1c0614[f_00222c("Pic", f_01c26c("MainMenuSwg"))].size);
     D_1e38f4.f_00629c();
     if (automatic)
         D_1e38f4.f_0063b4(0);
@@ -986,21 +988,24 @@ int MemoryStick::f_01ae50()
    on a list of 99 slots, with the replay's texts and the result menu's icons and picture. */
 void MemoryStick::f_01afa8()
 {
-    D_23bab4.size = replaySize;
+    char *ld = D_1dd6b0;
+    void *p, *q;
     D_23bab4.data = replayData;
+    D_23bab4.size = replaySize;
     stream = new CSaveStream;
     stream->f_0191c4(0x80000);
     stream->f_019264(&D_23bab4);
     stream->f_0192f8();
     D_1e38f4.f_00612c();
-    D_1e38f4.f_0061a0(stream->buf, 0x4000, stream->f_019280());
+    unsigned char *buf = stream->buf;
+    D_1e38f4.f_0061a0(buf, 0x4000, stream->f_019280());
     D_1e38f4.f_0061b0(D_23bab4.f_019494(), D_23bab4.Text1(), replayText);
-    void *icon0 = f_005c34(D_1dd6b0, "RIcon0");
-    D_1e38f4.f_006260(icon0, D_1c0614[f_00222c("RIcon0", f_01c26c("ResultMenu"))].size);
-    void *icon1 = f_005c34(D_1dd6b0, "RIcon1");
-    D_1e38f4.f_006274(icon1, D_1c0614[f_00222c("RIcon1", f_01c26c("ResultMenu"))].size);
-    void *pic = f_005c34(D_1dd6b0, "Pic");
-    D_1e38f4.f_006288(pic, D_1c0614[f_00222c("Pic", f_01c26c("ResultMenu"))].size);
+    p = f_005c34(ld, "RIcon0");
+    D_1e38f4.f_006260(p, D_1c0614[f_00222c("RIcon0", f_01c26c("ResultMenu"))].size);
+    p = f_005c34(ld, "RIcon1");
+    D_1e38f4.f_006274(p, D_1c0614[f_00222c("RIcon1", f_01c26c("ResultMenu"))].size);
+    q = f_005c34(ld, "Pic");
+    D_1e38f4.f_006288(q, D_1c0614[f_00222c("Pic", f_01c26c("ResultMenu"))].size);
     D_1e38f4.f_00629c();
     D_1e38f4.f_0064dc(100, 99);
     D_1e38f4.f_006664();
@@ -1040,8 +1045,8 @@ int MemoryStick::f_01b1ac()
 void MemoryStick::f_01b284()
 {
     replay = new Sequence::CReplaySaveData;
-    replay->size = replaySize;
     replay->data = replayData;
+    replay->size = replaySize;
     stream = new CSaveStream;
     stream->f_0191c4(0x80000);
     stream->f_019264(replay);
@@ -1102,22 +1107,25 @@ int MemoryStick::f_01b3b8()
    picture. */
 void MemoryStick::f_01b4e8(int slot)
 {
-    D_23bab4.size = replaySize;
+    char *ld = D_1dd6b0;
     D_23bab4.data = replayData;
+    D_23bab4.size = replaySize;
     stream = new CSaveStream;
     stream->f_0191c4(0x80000);
     stream->f_019264(&D_23bab4);
     stream->f_0192f8();
     D_1e38f4.f_00612c();
-    D_1e38f4.f_0061a0(stream->buf, 0x4000, stream->f_019280());
+    unsigned char *buf = stream->buf;
+    D_1e38f4.f_0061a0(buf, 0x4000, stream->f_019280());
     const char *title = D_23bab4.f_019494();
     D_1e38f4.f_0061b0(title, D_1d16a8[f_01c260()], replayText);
-    void *icon0 = f_005c34(D_1dd6b0, "GIcon0");
-    D_1e38f4.f_006260(icon0, D_1c0614[f_00222c("GIcon0", f_01c26c("ResultMenu"))].size);
-    void *icon1 = f_005c34(D_1dd6b0, "GIcon1");
-    D_1e38f4.f_006274(icon1, D_1c0614[f_00222c("GIcon1", f_01c26c("ResultMenu"))].size);
-    void *pic = f_005c34(D_1dd6b0, "Pic");
-    D_1e38f4.f_006288(pic, D_1c0614[f_00222c("Pic", f_01c26c("ResultMenu"))].size);
+    void *p, *q;
+    p = f_005c34(ld, "GIcon0");
+    D_1e38f4.f_006260(p, D_1c0614[f_00222c("GIcon0", f_01c26c("ResultMenu"))].size);
+    p = f_005c34(ld, "GIcon1");
+    D_1e38f4.f_006274(p, D_1c0614[f_00222c("GIcon1", f_01c26c("ResultMenu"))].size);
+    q = f_005c34(ld, "Pic");
+    D_1e38f4.f_006288(q, D_1c0614[f_00222c("Pic", f_01c26c("ResultMenu"))].size);
     D_1e38f4.f_0063fc(slot + 200);
     D_1e38f4.f_006664();
 }
@@ -1156,8 +1164,8 @@ int MemoryStick::f_01b6fc()
 void MemoryStick::f_01b7d4(int slot)
 {
     replay = new Sequence::CReplaySaveData;
-    replay->size = replaySize;
     replay->data = replayData;
+    replay->size = replaySize;
     stream = new CSaveStream;
     stream->f_0191c4(0x80000);
     stream->f_019264(replay);
@@ -1240,6 +1248,14 @@ int MemoryStick::f_01ba88()
         case (int)0x80110341:
         case (int)0x80110342:
             noStick = 1;
+            break;
+        case (int)0x80110343:
+            break;
+        case (int)0x80110344:
+            break;
+        case (int)0x80110345:
+            break;
+        case (int)0x80110346:
             break;
         case (int)0x80110347:
             missing = 1;
