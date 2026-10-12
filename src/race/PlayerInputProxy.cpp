@@ -244,7 +244,10 @@ void CPlayerInputProxy::f_037d6c(int m, int mirrored)
    as 0), the shift and side brake, the current gear and the button bits, and packs each
    input's change since the last frame into its channel (steering as two bytes). Playing back,
    it unpacks the changes, adds them to the last frame's inputs and splits the button bits
-   back into the shift and side brake. */
+   back into the shift and side brake.
+   REMAINING: retail keeps the per channel sums and deltas in s0/s1 (four saved registers, an
+   80 byte frame; this gives three and 64), and its raw == 255 test jumps straight to the
+   zero store, where this Kind() spelling jumps back into the switch with the kind set to 255. */
 void CPlayerInputProxy::Do()
 {
     switch (mode) {
