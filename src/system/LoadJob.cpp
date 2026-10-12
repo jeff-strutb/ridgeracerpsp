@@ -384,20 +384,22 @@ void f_0019f4(void *buf, int sector, int sectors)
     D_1d9c48 = f_0015ac(D_1d9c3c, sector << 11, 0, f_00195c, 0);
 }
 
-/* @draft 0x001a60 us f_001a60
+/* @implements 0x001a60 us f_001a60
    WHAT IT DOES: Adds a compressed block that has just been read to the unpack queue: where the
    packed bytes start and end and where the unpacked data goes. */
 void f_001a60(UnpackQueue *q, Request r)
 {
-    Unpack *u;
-
     q->req[q->tail] = r;
-    u = &q->work[q->tail];
-    u->dst = q->req[q->tail].dest;
-    q->tail = (q->tail + 1) & 31;
-    u->end = q->req[q->tail].packed + q->req[q->tail].packedSize;
-    u->src = q->req[q->tail].packed;
-    u->base = q->req[q->tail].dest;
+    int t = q->tail;
+    unsigned char *p = q->req[t].packed;
+    int n = q->req[t].packedSize;
+    unsigned char *d = q->req[t].dest;
+    Unpack *u = &q->work[t];
+    u->end = p + n;
+    u->src = p;
+    u->base = d;
+    u->dst = d;
+    q->tail = (t + 1) & 31;
 }
 
 /* @draft 0x001b3c us f_001b3c
