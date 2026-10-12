@@ -191,6 +191,29 @@ typedef CLinkList<CInfo>::Node InfoNode;
 extern signed char D_1d1a00[];
 CKeyLinkList<CInfo> D_23c240;
 
+/* The smallest power of two at least n (n up to 512). */
+static inline int Pow2(int n)
+{
+    int k;
+    for (k = 256; k > 0; k >>= 1)
+        if (k & (n - 1)) {
+            k <<= 1;
+            break;
+        }
+    return k;
+}
+
+/* The base 2 logarithm of a power of two. */
+static inline int Log2(int n)
+{
+    int i = 0;
+    while (n != 1) {
+        n >>= 1;
+        i++;
+    }
+    return i;
+}
+
 /* The palette load list: mode, address, buffer width, load, then return. */
 static inline void ClutList(unsigned int *c, unsigned int fmt, unsigned int num, int a)
 {
@@ -293,7 +316,7 @@ void f_0235ac(CInfo *info, TexHeader *h)
         info->clutList = 0;
         info->clutCall = 0;
     }
-    unsigned int img = h->image;
+    int img = h->image;
     if (img == 0) {
         info->texList = 0;
         return;
@@ -302,33 +325,17 @@ void f_0235ac(CInfo *info, TexHeader *h)
     int w = h->width;
     int levels = h->levels;
     int bw = (w + n - 1) / n * n;
-    unsigned int *start = info->tex;
-    start[0] = (h->tmode << 8) | (levels << 16) | 0xc2000001;
-    start[1] = h->format | 0xc3000000;
+    info->tex[0] = (h->tmode << 8 | levels << 16) | 0xc2000001;
+    info->tex[1] = h->format | 0xc3000000;
     int ht = h->height;
+    unsigned int *start = info->tex;
     unsigned int *p = &info->tex[2];
-    int tw, th;
-    for (tw = 256; tw > 0; tw >>= 1)
-        if (tw & (w - 1)) {
-            tw <<= 1;
-            break;
-        }
-    for (th = 256; th > 0; th >>= 1)
-        if (th & (ht - 1)) {
-            th <<= 1;
-            break;
-        }
+    int tw = Pow2(w);
+    int th = Pow2(ht);
     *p++ = (img & 0xffffff) | 0xa0000000;
-    *p++ = bw | 0xa8000000 | ((img >> 24) & 0xf) << 16;
+    *p++ = (bw | 0xa8000000) | ((img >> 24) & 0xf) << 16;
     int lv = 0;
-    int i, j, k;
-    i = 0;
-    for (k = tw; k != 1; k >>= 1)
-        i++;
-    j = 0;
-    for (k = th; k != 1; k >>= 1)
-        j++;
-    *p++ = (0xb8000000 | i) | (j << 8);
+    *p++ = (0xb8000000 | Log2(tw)) | Log2(th) << 8;
     while (lv < levels) {
         img += (w + n - 1) / n * ((ht + 7) / 8) * 128;
         bw = ((bw >> 1) + n - 1) / n * n;
@@ -337,15 +344,9 @@ void f_0235ac(CInfo *info, TexHeader *h)
         th >>= 1;
         w >>= 1;
         ht >>= 1;
-        *p++ = ((lv << 24) + 0xa0000000) | (img & 0xffffff);
-        *p++ = ((lv << 24) + 0xa8000000) | bw | ((img >> 24) & 0xf) << 16;
-        i = 0;
-        for (k = tw; k != 1; k >>= 1)
-            i++;
-        j = 0;
-        for (k = th; k != 1; k >>= 1)
-            j++;
-        *p++ = ((lv << 24) + 0xb8000000 | i) | (j << 8);
+        *p++ = ((0xa0 + lv) << 24) | (img & 0xffffff);
+        *p++ = (((0xa8 + lv) << 24) | bw) | ((img >> 24) & 0xf) << 16;
+        *p++ = (((0xb8 + lv) << 24) | Log2(tw)) | Log2(th) << 8;
     }
     p[1] = 0x0b000000;
     p[0] = 0xcb000000;
@@ -365,39 +366,23 @@ void f_023988(CInfo *info, unsigned int fmt, unsigned int num, int a)
     info->texList = 0;
 }
 
-/* @draft 0x023a20 us f_023a20
+/* @implements 0x023a20 us f_023a20
    WHAT IT DOES: Builds the select list of a texture given directly (pixel format, width, height
    and video memory address): no mipmaps, buffer width rounded up to 64, and flushes it. */
-void f_023a20(CInfo *info, unsigned int format, int w, int h, unsigned int a)
+void f_023a20(CInfo *info, unsigned int format, int w, int h, int a)
 {
     unsigned int *start = info->tex;
     int bw = (w + 63) / 64 * 64;
     unsigned int *p = &info->tex[2];
-    start[0] = 0xc2000000;
-    start[1] = format | 0xc3000000;
-    int tw, th;
-    for (tw = 256; tw > 0; tw >>= 1)
-        if (tw & (w - 1)) {
-            tw <<= 1;
-            break;
-        }
-    for (th = 256; th > 0; th >>= 1)
-        if (th & (h - 1)) {
-            th <<= 1;
-            break;
-        }
+    info->tex[0] = 0xc2000000;
+    info->tex[1] = format | 0xc3000000;
+    int tw = Pow2(w);
+    int th = Pow2(h);
     *p++ = (a & 0xffffff) | 0xa0000000;
     *p++ = bw | ((a >> 24) & 0xf) << 16 | 0xa8000000;
-    int i, j, k;
-    i = 0;
-    for (k = tw; k != 1; k >>= 1)
-        i++;
-    j = 0;
-    for (k = th; k != 1; k >>= 1)
-        j++;
-    *p++ = i | (j << 8) | 0xb8000000;
-    p[1] = 0x0b000000;
+    *p++ = Log2(tw) | Log2(th) << 8 | 0xb8000000;
     p[0] = 0xcb000000;
+    p[1] = 0x0b000000;
     sceKernelDcacheWritebackInvalidateRange(start, 152);
     info->texList = start;
 }
