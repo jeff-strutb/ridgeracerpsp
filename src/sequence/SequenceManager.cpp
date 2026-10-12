@@ -356,7 +356,9 @@ void f_00335c()
 /* @draft 0x003404 us f_003404
    WHAT IT DOES: Prepares the race scenes for the chosen car: looks up the car's course block
    and shows "Course<block>", copies the car's class record, and shows the engine sound scene
-   for a plane-type car or for a truck-type car. */
+   for a plane-type car or for a truck-type car.
+   Remaining difference: scheduling only; retail loads the address of D_240768 into s0
+   before the first call (in its delay slot), this build after it, shifting the prologue. */
 void f_003404()
 {
     char *block = f_036b6c(D_240740, "CarGetBlock", D_1dd6b0.f_0031dc(0).a, -1);
@@ -471,7 +473,10 @@ static inline bool IsWireless()
 
 /* @draft 0x0036a0 us f_0036a0
    WHAT IT DOES: Copies the record for the current sequence number and shows the pause menu,
-   the wireless pause menu when the record says the race is wireless. */
+   the wireless pause menu when the record says the race is wireless.
+   Remaining difference: retail keeps &D_1dd6b0.m276 in s1 across the calls and forms
+   &D_1dd6b0 as s1-276 for the last call; this build keeps &D_1dd6b0 in s1 (prologue order
+   and the final addiu differ). */
 void f_0036a0()
 {
     CSequence *seq = &D_1dd6b0;
@@ -867,7 +872,10 @@ void CSequence::f_004160()
    clears them; coming from the race setup it stops the old car scenes, from sequence 4 it
    resets. It starts the intro timer and, when a car is chosen, shows the result effects and
    the car's course and sound scenes with that car's parameter in force, then restores the
-   parameters and continues in f_0043c8. */
+   parameters and continues in f_0043c8.
+   Remaining difference: retail reloads saved[0].a for the second test and does not thread
+   the two tests together; this build threads them and shares the constants 2 and 24 in
+   s1/s4. With -fno-thread-jumps only the reload remains. */
 void CSequence::f_004198()
 {
     Param saved[14];
@@ -940,7 +948,9 @@ void CSequence::f_004410()
 
 /* @draft 0x004484 us f_004484
    WHAT IT DOES: Enters the time attack (sequence 4), like f_004198 but with only the result
-   effects scenes, and continues in f_004630. */
+   effects scenes, and continues in f_004630.
+   Remaining difference: the m156[0] test; retail uses beqz with the slot filled from the
+   fall-through (addiu a1), this build beqzl filled from the target (one word longer). */
 void CSequence::f_004484()
 {
     Param saved[14];
@@ -1362,7 +1372,9 @@ void CSequence::f_0052e8()
 /* @draft 0x005320 us f_005320
    WHAT IT DOES: Starts a slot: for each of the 64 requested scenes, takes the next free scene
    player (or sub-player, for a scene with a part) from the slot's ranges, starts it on the
-   slot's timer, and records where each range ends. */
+   slot's timer, and records where each range ends.
+   Remaining difference: register allocation only; retail has this in s4 and the sub-player
+   count in s3, this build the reverse. */
 void CSequence::f_005320(Slot *s)
 {
     int i;
@@ -1639,7 +1651,9 @@ Elem28 *CSequence::f_005b8c(const char *name)
 
 /* @draft 0x005c34 us f_005c34
    WHAT IT DOES: Sends a named event to the scene player or sub-player that knows it and
-   returns its answer, 0 if none does. */
+   returns its answer, 0 if none does.
+   Remaining difference: register allocation only; retail has name in s4, -1 in s3, the
+   table in s5 and this in s6, this build swaps each pair. */
 int CSequence::f_005c34(const char *name)
 {
     for (int i = 0; i < 80; i++) {
