@@ -129,7 +129,8 @@ extern "C" void f_034c2c(SkidPool *p, void *buf, int nvert, int nrec)
 
 /* @draft 0x034cfc us f_034cfc
    WHAT IT DOES: Takes a free strip from the pool, searching round from where the last search
-   stopped; returns 0 when every strip is in use. */
+   stopped; returns 0 when every strip is in use. 
+   Remaining: retail keeps the result in v1 (zeroed on both failure paths, moved to v0 at the single exit); this source holds it in a saved temporary, shifting registers. */
 extern "C" SkidRec *f_034cfc(SkidPool *p)
 {
     SkidRec *r = 0;
@@ -432,7 +433,8 @@ extern "C" unsigned int *f_035818(SkidMarks *m, char *car, unsigned int *dl, flo
    WHAT IT DOES: Draws every strip of the pool with at least three points as a triangle strip.
    A strip whose both ends are further from the camera than the fade distance is not drawn;
    if it is closed and the pool is running low, it is marked for recycling, and strips so
-   marked are returned to the pool. */
+   marked are returned to the pool. 
+   Remaining: retail keeps the pool pointer in s2 and a copy in a1 reset at the loop latch for the recycle call; register choice and the state 2 test branch direction differ. */
 extern "C" unsigned int *f_035aa0(SkidMarks *m, unsigned int *dl, float x, float y, float z)
 {
     SkidPool *pool = &m->pool;
