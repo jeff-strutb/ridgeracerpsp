@@ -85,12 +85,9 @@ struct Racer {
     signed char present;
     signed char color;
     char id[6];
-    unsigned char rank : 2;
-    unsigned char group : 3;
-    unsigned char m18c : 3;
+    unsigned char flags;
     unsigned char car;
-    unsigned int games : 24;
-    unsigned int pct : 8;
+    unsigned int record;
     int m24;
 };
 
@@ -104,11 +101,8 @@ struct NetEntry {
     char id[6];
     signed char active;
     unsigned char car;
-    unsigned int emblem : 15;
-    unsigned int noEmblem : 1;
-    unsigned int emblem2 : 16;
-    unsigned int games : 24;
-    unsigned int pct : 8;
+    unsigned int emblem;
+    unsigned int record;
     int time;
     int gap;
     float dist;
@@ -946,12 +940,9 @@ void Sequence::CWirelessBattleModeJob::f_00e21c()
     f_00e238();
 }
 
-/* @draft 0x00e238 us f_00e238
-   WHAT IT DOES: Ends any network session, clears the race data this mode exchanges and puts
-   the player's name into both name slots, marking the second slot's entry word.
-   Remaining difference: retail sets the entry word at +20 in one read-modify-write (lhu of
-   the low half, addu 0xfbe00000, and 0xffff8000, addiu 0x1ff); the bitfield stores here give
-   lw/and/ori/sw plus a separate sh of the high half. */
+/* @implements 0x00e238 us f_00e238
+   WHAT IT DOES: Ends any network session, clears the race data this mode exchanges, puts the
+   player's name into both name slots and sets the default emblem colours. */
 void Sequence::CWirelessBattleModeJob::f_00e238()
 {
     f_088138(&D_241810);
@@ -960,8 +951,8 @@ void Sequence::CWirelessBattleModeJob::f_00e238()
     f_00e12c();
     strncpy(D_1ee124.name, m3192, 9);
     strncpy(D_1ee140.name, m3192, 9);
-    D_1ee140.emblem = 511;
-    D_1ee140.emblem2 = 0xfbe0;
+    D_1ee140.emblem = (D_1ee140.emblem & 0xffff) + (0xfbe0 << 16);
+    D_1ee140.emblem = (D_1ee140.emblem & 0xffff8000) + 0x1ff;
 }
 
 /* @implements 0x00e2c8 us f_00e2c8
@@ -1027,8 +1018,8 @@ void Sequence::CWirelessBattleModeJob::f_00e334()
         for (i = 0; i < 8; i++, e++) {
             if (e->active && e->state == 1) {
                 sprintf(list.name[n], "%s", e->name);
-                list.games[n] = e->games;
-                list.pct[n] = e->pct;
+                list.games[n] = e->record & 0xffffff;
+                list.pct[n] = (e->record & 0xff000000) >> 24;
                 list.car[n] = e->car;
                 n++;
             }
@@ -1060,12 +1051,12 @@ void Sequence::CWirelessBattleModeJob::f_00e334()
                 D_1ee08c[i] = *r;
                 if (r->present) {
                     sprintf(D_1ee0c4[n], "%s", r->name);
-                    D_1ee0dc[n] = r->group;
+                    D_1ee0dc[n] = (r->flags & 0x1c) >> 2;
                     D_1ee0e4[n] = r->color;
                     D_1ee0ec[n] = r->car;
-                    D_1ee0f4[n] = r->pct;
-                    D_1ee0fc[n] = r->games;
-                    D_1ee104[n] = r->rank;
+                    D_1ee0f4[n] = r->record >> 24;
+                    D_1ee0fc[n] = r->record & 0xffffff;
+                    D_1ee104[n] = r->flags & 3;
                     n++;
                 }
             }
@@ -1080,12 +1071,12 @@ void Sequence::CWirelessBattleModeJob::f_00e334()
                 D_1ee08c[i] = *r;
                 if (r->present) {
                     sprintf(D_1ee0c4[n], "%s", r->name);
-                    D_1ee0dc[n] = r->group;
+                    D_1ee0dc[n] = (r->flags & 0x1c) >> 2;
                     D_1ee0e4[n] = r->color;
                     D_1ee0ec[n] = r->car;
-                    D_1ee0f4[n] = r->pct;
-                    D_1ee0fc[n] = r->games;
-                    D_1ee104[n] = r->rank;
+                    D_1ee0f4[n] = r->record >> 24;
+                    D_1ee0fc[n] = r->record & 0xffffff;
+                    D_1ee104[n] = r->flags & 3;
                     n++;
                 }
             }
@@ -1111,12 +1102,12 @@ void Sequence::CWirelessBattleModeJob::f_00e334()
                 D_1ee08c[i] = *r;
                 if (r->present) {
                     sprintf(D_1ee0c4[n], "%s", r->name);
-                    D_1ee0dc[n] = r->group;
+                    D_1ee0dc[n] = (r->flags & 0x1c) >> 2;
                     D_1ee0e4[n] = r->color;
                     D_1ee0ec[n] = r->car;
-                    D_1ee0f4[n] = r->pct;
-                    D_1ee0fc[n] = r->games;
-                    D_1ee104[n] = r->rank;
+                    D_1ee0f4[n] = r->record >> 24;
+                    D_1ee0fc[n] = r->record & 0xffffff;
+                    D_1ee104[n] = r->flags & 3;
                     n++;
                 }
             }
@@ -1133,12 +1124,12 @@ void Sequence::CWirelessBattleModeJob::f_00e334()
                 D_1ee08c[i] = *r;
                 if (r->present) {
                     sprintf(D_1ee0c4[n], "%s", r->name);
-                    D_1ee0dc[n] = r->group;
+                    D_1ee0dc[n] = (r->flags & 0x1c) >> 2;
                     D_1ee0e4[n] = r->color;
                     D_1ee0ec[n] = r->car;
-                    D_1ee0f4[n] = r->pct;
-                    D_1ee0fc[n] = r->games;
-                    D_1ee104[n] = r->rank;
+                    D_1ee0f4[n] = r->record >> 24;
+                    D_1ee0fc[n] = r->record & 0xffffff;
+                    D_1ee104[n] = r->flags & 3;
                     n++;
                 }
             }
@@ -1175,20 +1166,20 @@ void Sequence::CWirelessBattleModeJob::f_00e334()
         int pct = 0;
         if (m3180)
             pct = m3184 * 100 / m3180;
-        D_1ee140.pct = pct;
-        D_1ee140.games = m3180;
+        D_1ee140.record = (D_1ee140.record & 0xffffff) + (pct << 24);
+        D_1ee140.record = (D_1ee140.record & 0xff000000) + (m3180 & 0xffffff);
         HostReply h;
         D_2301b0.screen->v3(&h, 0);
         m3168 = h.color;
         m3196 = h.group;
         m3200 = h.rank;
         f_088138(&D_241810);
-        D_1ee124.pct = pct;
+        D_1ee124.record = (D_1ee124.record & 0xffffff) + (pct << 24);
         D_1ee124.color = m3168;
-        D_1ee124.games = m3180;
-        D_1ee124.rank = m3200;
+        D_1ee124.record = (D_1ee124.record & 0xff000000) + (m3180 & 0xffffff);
+        D_1ee124.flags = (D_1ee124.flags & 0x1c) + (m3200 & 3);
         D_1ee088 = 1;
-        D_1ee124.group = m3196;
+        D_1ee124.flags = (D_1ee124.flags & 3) + ((m3196 & 7) << 2);
         D_1ee168 = 0;
         f_087318(&D_241810, 0, &D_1ee124, &D_1ee140);
         D_1ee10c = 0;
@@ -1214,12 +1205,13 @@ void Sequence::CWirelessBattleModeJob::f_00e334()
             Racer *e = f_085928(&D_241810, D_1ee08c[j.index].id);
             if (e) {
                 m3168 = e->color;
-                m3200 = e->rank;
+                m3200 = e->flags & 3;
                 int pct = 0;
                 if (m3180)
                     pct = m3184 * 100 / m3180;
-                D_241810.entries[0].pct = pct;
-                D_241810.entries[0].games = m3180;
+                NetEntry *me = D_241810.entries;
+                me->record = (me->record & 0xffffff) + (pct << 24);
+                me->record = (me->record & 0xff000000) + (m3180 & 0xffffff);
                 f_085f90(&D_241810);
             } else {
                 D_1ee110 = 3;
@@ -1248,13 +1240,15 @@ void Sequence::CWirelessBattleModeJob::f_00e334()
         D_2301b0.screen->v3(&q, 0);
         int em = q.emblem[m3164];
         if (em) {
-            me->noEmblem = 0;
+            me->emblem &= ~0x8000;
             unsigned int c = f_01fa10(em - 1);
-            me->emblem2 = ((c >> 19) << 11) + (((c >> 10) & 0x3f) << 5) + ((c & 0xff) >> 3);
+            me->emblem = (me->emblem & 0xffff)
+                + ((((c >> 19) << 11) + (((c >> 10) & 0x3f) << 5) + ((c & 0xff) >> 3)) << 16);
             unsigned int d = f_01fad0(em - 1);
-            me->emblem = ((d >> 19) & 0x1f) * 1024 + ((d >> 11) & 0x1f) * 32 + ((d & 0xff) >> 3);
+            me->emblem = (me->emblem & 0xffff8000)
+                + (((d >> 19) & 0x1f) << 10) + (((d >> 11) & 0x1f) << 5) + ((d & 0xff) >> 3);
         } else {
-            me->noEmblem = 1;
+            me->emblem |= 0x8000;
         }
         if (me->car != m3164)
             me->car = m3164;
@@ -1264,8 +1258,8 @@ void Sequence::CWirelessBattleModeJob::f_00e334()
             NetEntry *e = f_085a1c(&D_241810, k);
             if (e) {
                 sprintf(list.name[n], "%s", e->name);
-                list.games[n] = e->games;
-                list.pct[n] = e->pct;
+                list.games[n] = e->record & 0xffffff;
+                list.pct[n] = (e->record & 0xff000000) >> 24;
                 list.car[n] = e->car;
                 n++;
             }
