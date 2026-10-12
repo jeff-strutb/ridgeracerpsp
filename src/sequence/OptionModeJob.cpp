@@ -561,15 +561,13 @@ void Sequence::COptionModeJob::f_0137e0()
 {
 }
 
-/* @draft 0x0137e8 us f_0137e8
+/* @implements 0x0137e8 us f_0137e8
    WHAT IT DOES: State 3: the options menu itself. When the player picks a demo replay or the
    sound test, it plays it (event 7 for a replay, 6 and 8 for the others). When the player
    leaves, or asks to save, it takes every setting from the screen, writes them into the game's
    settings and sends event 2; a save goes on with event 4, or with event 5 when the game
    saves automatically or the memory stick is not usable.
-   Remaining difference (2 words, plus the shifted branch offsets): retail loads the constant 1
-   once (li a2,1 next to the D_1d1a94 loads) and stores it to both m512 and m500, the second
-   store in a bnezl slot; this build materialises 1 separately in each conditional block. */
+   The two flag stores share one constant through a local, which retail loads once. */
 void Sequence::COptionModeJob::f_0137e8()
 {
     bool save = false;
@@ -614,14 +612,15 @@ void Sequence::COptionModeJob::f_0137e8()
     m488 = o.m80;
     PairMsg p;
     D_2301b0.layer->v3(&p, 0);
-    m496 = p.m12;
     m492 = p.m8;
+    m496 = p.m12;
     m504 = D_1d1a94.a;
     m508 = D_1d1a94.b;
+    bool one = 1;
     if (D_240100)
-        m512 = 1;
+        m512 = one;
     if (m512 && D_233f70.m15476)
-        m500 = 1;
+        m500 = one;
     f_0136dc();
     f_01959c(&D_233f70);
     if (!save)
