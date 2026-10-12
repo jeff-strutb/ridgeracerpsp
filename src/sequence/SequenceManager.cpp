@@ -450,13 +450,13 @@ void f_003674()
     f_037568();
 }
 
-/* @draft 0x003690 us f_003690
+/* @implements 0x003690 us f_003690
    WHAT IT DOES: Nothing (an empty hook of the race sequence). */
 void f_003690()
 {
 }
 
-/* @draft 0x003698 us f_003698
+/* @implements 0x003698 us f_003698
    WHAT IT DOES: Nothing (an empty hook). The function map merges it into f_003690. */
 void f_003698()
 {
@@ -874,23 +874,25 @@ void CSequence::f_004198()
         m24188[2].f_0995e0(f_0037f0(), 0);
     }
     if (saved[0].a) {
+        Slot *s = &m24572[5];
         m24572[5].timer = 2;
         m24572[5].first = 24;
         m24572[5].subFirst = 12;
         m24572[5].b = 0;
         f_003150(0, saved[0]);
         f_00352c();
-        f_005320(&m24572[5]);
+        f_005320(s);
         f_003150(0, Param(0));
     }
     if (saved[0].a) {
+        Slot *s = &m24572[4];
         m24572[4].timer = 2;
         m24572[4].first = 48;
         m24572[4].subFirst = 24;
         m24572[4].b = 0;
         f_003150(0, saved[0]);
         f_003404();
-        f_005320(&m24572[4]);
+        f_005320(s);
         f_003150(0, Param(0));
     }
     for (i = 0; i < 14; i++)
@@ -943,13 +945,14 @@ void CSequence::f_004484()
         m24188[2].f_0995e0(f_0037f8(), 0);
     }
     if (saved[0].a) {
+        Slot *s = &m24572[5];
         m24572[5].timer = 2;
         m24572[5].first = 24;
         m24572[5].subFirst = 12;
         m24572[5].b = 0;
         f_003150(0, saved[0]);
         f_00352c();
-        f_005320(&m24572[5]);
+        f_005320(s);
         f_003150(0, Param(0));
     }
     for (i = 0; i < 14; i++)
@@ -1349,29 +1352,25 @@ void CSequence::f_0052e8()
 void CSequence::f_005320(Slot *s)
 {
     int i;
-    int n = s->first;
-    int m = s->subFirst;
-    Elem280 *p = &m668[n];
-    Elem28 *q = &m23068[m];
-    Elem24 *t = &m24188[s->timer];
-    int b = s->b;
 
     f_002410();
+    int n = s->first;
+    int m = s->subFirst;
+    int timer = s->timer;
+    int b = s->b;
     for (i = 0; i < 64; i++) {
         int kind, id;
         f_002550(i, &kind, &id);
-        if (id) {
-            if (kind == 0) {
-                p->f_00260c(id, t, b, b);
-                n++;
-                p->f_002734(m0);
-                p++;
-            } else {
-                q->f_002b34(kind, id, t);
-                q->f_002c50(m0);
-                m++;
-                q++;
-            }
+        if (id == 0)
+            continue;
+        if (kind == 0) {
+            m668[n].f_00260c(id, &m24188[timer], b, b);
+            m668[n].f_002734(m0);
+            n++;
+        } else {
+            m23068[m].f_002b34(kind, id, &m24188[timer]);
+            m23068[m].f_002c50(m0);
+            m++;
         }
     }
     s->subLast = m;
@@ -1399,7 +1398,7 @@ void CSequence::f_005470(Slot *s)
     s->subLast = 0;
 }
 
-/* @draft 0x005554 us f_005554
+/* @implements 0x005554 us f_005554
    WHAT IT DOES: Starts the sequence the manager was asked for: picks the entry handler for its
    number. Unless told not to wait, it then steps the sequence until it has finished
    entering. */
@@ -1409,13 +1408,6 @@ void CSequence::f_005554(unsigned char nowait)
     m0 = nowait;
     switch (m8) {
     case 9:
-    case 13:
-    case 14:
-    case 15:
-    case 16:
-    case 17:
-    case 18:
-    case 19:
         m25020 = &CSequence::f_00391c;
         break;
     case 20:
@@ -1460,6 +1452,15 @@ void CSequence::f_005554(unsigned char nowait)
         break;
     case 2:
         m25020 = &CSequence::f_005264;
+        break;
+    case 13:
+    case 14:
+    case 15:
+    case 16:
+    case 17:
+    case 18:
+    case 19:
+        m25020 = &CSequence::f_00391c;
         break;
     }
     if (m0 == 0) {
