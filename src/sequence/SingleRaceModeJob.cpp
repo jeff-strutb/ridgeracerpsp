@@ -251,6 +251,10 @@ void f_07a314(void *);
 void f_07a390(void *);
 void f_07a9d8(void *);
 void f_07aa54(void *);
+void f_07aab4(void *);
+void f_0792a0(void *);
+void f_07937c(void *);
+void f_07931c(void *);
 }
 
 /* The race setup the front end edits (built and destroyed by the front end code). Its course
@@ -389,6 +393,61 @@ struct CourseModels {
     char p312[336 - 312];
 };
 
+/* A request to the screen manager to open a screen (built and destroyed by the screen
+   code). */
+struct ScreenReq {
+    ScreenReq() { f_07a9d8(this); }
+    ~ScreenReq() { f_07aa54(this); }
+    void Reset() { f_07aab4(this); }
+    int m0[2];
+    unsigned char m8;
+    int m12;
+    unsigned char m16;
+    unsigned char m17;
+    unsigned char m18;
+    int m20[3];
+};
+/* The result of the race just run: the finishing times by position, the player's lap times,
+   the player's position, the best lap times and the course records. */
+struct RaceResult {
+    char p0[120];
+    int time[14];
+    float lap[3];
+    int me;
+    int best[3];
+    Tri rec[3];
+};
+extern RaceResult D_240800;
+extern unsigned char D_1edf68;
+
+/* The result screen's message: the player's place, car and times, the course records and
+   whether a record was set. */
+struct ResultMsg {
+    ResultMsg() { f_0792a0(this); }
+    ~ResultMsg() { f_07931c(this); }
+    void Reset() { f_07937c(this); }
+    void *vt;
+    int m4;
+    int place;
+    int car;
+    int color;
+    int m20;
+    int m24;
+    int time;
+    int laps[6];
+    unsigned int avg;
+    unsigned int lapMs[6];
+    unsigned int record;
+    int bestLap;
+    bool newRecord;
+    bool m93;
+    char p94[112 - 94];
+    int m112;
+    int m116;
+    int m120;
+    int m124;
+};
+
 /* What the race needs to start: the chosen event, random seeds, the course's records, the
    car and the options. */
 struct RaceStart {
@@ -427,6 +486,10 @@ void f_014cf8(int a, int b);
 void f_014dd0(int a, int b);
 void f_014ec8(int a);
 int f_0151f4(void);
+int f_0151e8(void);
+void f_01833c(ScreenMgr *, ScreenReq *);
+void f_018380(ScreenMgr *, ResultMsg *);
+void f_018abc(ScreenMgr *, int);
 int f_036a3c(CTable *t, char *rec, int *index, int count);
 }
 
@@ -585,6 +648,7 @@ public:
     int m15996;
     unsigned char *m16000;
     unsigned char m16004;
+    bool m16005;
     int m16008;
     int m16012;
     char *m16016;
@@ -1301,6 +1365,164 @@ void Sequence::CSingleRaceModeJob::f_00b09c()
     queue.push(2);
 }
 
+/* @draft 0x00b100 us f_00b100
+   WHAT IT DOES: State 24: shows the race result. It finds the record slot of the chosen
+   course and car class, opens the result screen (marking a first win of a special event),
+   fills the result message with the player's place, finishing time, lap times and average,
+   updates the course's best lap and race time records and the record lap times when they
+   are beaten, and decides the outcome for the event kind: whether the player qualified in a
+   tour (and the tour's extra reward), or the series progress. It adds the course length to
+   the total distance driven when the race counts, hands the records to the race settings
+   and moves the screen on (to the special page when a tour was completed). */
+void Sequence::CSingleRaceModeJob::f_00b100()
+{
+    int me = D_240800.me;
+    Row carRow;
+    FIND_SELECT(&carRow, D_240740, m15364);
+    memcpy(D_24063c, D_240740.Field("Class", carRow.rec), D_1a211c[1]);
+    Param seq = D_1dd7c4;
+    int k = D_24063c[0] - 1;
+    char *r = D_2407d0.Field("CourseNumber", (char *)seq.a);
+    Row crs;
+    if (r)
+        crs.rec = f_036984(&D_2407a8, r, 0, D_2407a8.index, D_2407a8.count);
+    else
+        crs.rec = 0;
+    Row c = crs;
+    k = k * 24 + f_036a3c(&D_2407a8, c.rec, D_2407a8.index, D_2407a8.count);
+    if (m15788)
+        k += 168;
+
+    ScreenReq req;
+    req.Reset();
+    req.m12 = D_1d110c;
+    req.m16 = m15992;
+    req.m17 = 1;
+    if (D_240800.time[me] <= 0)
+        req.m17 = 0;
+    seq = D_1dd7c4;
+    req.m18 = 0;
+    memcpy(D_24063c, D_2407d0.Field("SequenceNumber", (char *)seq.a), D_1a211c[1]);
+    if (D_24063c[0] == 2 && f_0151e8() && !f_0151f4() && !m15788) {
+        D_1edf68 = 1;
+        req.m18 = 1;
+    }
+    f_01833c(&D_2301b0, &req);
+
+    ResultMsg m;
+    m.Reset();
+    m.time = D_240800.time[me] / 3;
+    m.car = m15364;
+    m.color = m15372;
+    m.m20 = m15376;
+    m.m24 = m15380;
+    m.place = me + 1;
+    for (int i = 0; i < 6; i++)
+        m.laps[i] = 0;
+    m.avg = 0;
+    for (int i = 0; i < 6; i++)
+        m.lapMs[i] = 0;
+    m.bestLap = -1;
+    for (int i = 0; i < 3; i++) {
+        int t = D_240800.best[i];
+        m.laps[i] = t / 3;
+        if (t > 0 && (unsigned int)t < (unsigned int)m1924[k]) {
+            m1924[k] = t;
+            m.bestLap = i + 1;
+        }
+    }
+    for (int i = 0; i < 3; i++)
+        m.lapMs[i] = (unsigned int)(D_240800.lap[i] * 1000.0f);
+    m.avg = (m.lapMs[0] + m.lapMs[1] + m.lapMs[2]) / 3;
+    if (D_240800.lap[2] <= 0.0f)
+        m.avg = 0;
+    m.newRecord = 0;
+    int t = D_240800.time[me];
+    if (t > 0 && (unsigned int)t < (unsigned int)m580[k]) {
+        m580[k] = t;
+        m.newRecord = 1;
+    }
+    m.record = (unsigned int)m580[k] / 3;
+    if (m.newRecord)
+        for (int i = 0; i < 3; i++)
+            m3268[i][k] = D_240800.rec[i];
+
+    m16005 = 0;
+    int tourDone = 0;
+    m.m93 = 0;
+    seq = D_1dd7c4;
+    memcpy(D_24063c, D_2407d0.Field("SequenceNumber", (char *)seq.a), D_1a211c[1]);
+    bool tour = D_24063c[0] == 4;
+    if (!tour) {
+        seq = D_1dd7c4;
+        memcpy(D_24063c, D_2407d0.Field("SequenceNumber", (char *)seq.a), D_1a211c[1]);
+        tour = D_24063c[0] == 5;
+    }
+    if (tour) {
+        seq = D_1dd7c4;
+        m.m112 = 0;
+        memcpy(D_24063c, D_2407d0.Field("QualifyPos", (char *)seq.a), D_1a211c[1]);
+        if (D_24063c[0] >= m.place) {
+            seq = D_1dd7c4;
+            memcpy(D_24063c, D_2407d0.Field("TourExtra", (char *)seq.a), D_1a211c[1]);
+            switch (D_24063c[0]) {
+            case 1:
+                m.m112 = 2;
+                if (m15792[m15376] < m15380)
+                    m15792[m15376] = m15380;
+                break;
+            case 3:
+                tourDone = 1;
+            case 2:
+                m.m112 = 1;
+                m15792[m15376] = 10;
+                break;
+            }
+        }
+    } else if (m15380 < m15480) {
+        m.m112 = 2;
+    } else {
+        m16005 = 1;
+        m.m112 = 1;
+    }
+
+    if (m.time) {
+        seq = D_1dd7c4;
+        memcpy(D_24063c, D_2407d0.Field("SequenceNumber", (char *)seq.a), D_1a211c[1]);
+        bool counts = D_24063c[0] == 4;
+        if (!counts) {
+            seq = D_1dd7c4;
+            memcpy(D_24063c, D_2407d0.Field("SequenceNumber", (char *)seq.a), D_1a211c[1]);
+            counts = D_24063c[0] == 5 || m16004;
+        }
+        if (counts) {
+            seq = D_1dd7c4;
+            char *r2 = D_2407d0.Field("CourseNumber", (char *)seq.a);
+            Row c2;
+            if (r2)
+                c2.rec = f_036984(&D_2407a8, r2, 0, D_2407a8.index, D_2407a8.count);
+            else
+                c2.rec = 0;
+            Row c3 = c2;
+            memcpy(D_24063c, D_2407a8.Field("SelectLength", c3.rec), D_1a211c[2]);
+            m15988 += *(short *)D_24063c * 3;
+        }
+    }
+    m.m116 = m15484;
+    m.m120 = m15480;
+    f_018380(&D_2301b0, &m);
+    for (int i = 0; i < 3; i++)
+        D_1ee198.m20[i] = m3268[i][k];
+    D_1ee198.m12 = m580[k];
+    D_1ee198.m16 = m1924[k];
+    if (tourDone) {
+        m15785 = 1;
+        f_018abc(&D_2301b0, 14);
+    } else {
+        f_018abc(&D_2301b0, 12);
+    }
+}
+
 /* @implements 0x00bb14 us f_00bb14
    WHAT IT DOES: Waits for the front end to finish its screen, then closes it, allocates a half
    megabyte buffer and builds the race data in it, and moves on. */
@@ -1561,11 +1783,6 @@ void Sequence::CSingleRaceModeJob::f_00d290()
 
 /* A screen request this file keeps for the whole game (built and destroyed by the screen
    code). */
-struct ScreenReq {
-    ScreenReq() { f_07a9d8(this); }
-    ~ScreenReq() { f_07aa54(this); }
-    char m0[20];
-};
 ScreenReq D_1edf6c;
 
 /* @implements 0x00d298 us __static_initialization_and_destruction_0
