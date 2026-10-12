@@ -120,13 +120,11 @@ void f_025eb8(CModel *m, ModelPart *part, int arg);
 unsigned int *f_026948(unsigned int *p, char *prim, int idx);
 unsigned int *f_026a6c(unsigned int *p, int addr);
 
-/* @draft 0x024fb4 us f_024fb4
+/* @implements 0x024fb4 us f_024fb4
    WHAT IT DOES: Sets a model up from its file the first time it is used: turns the offsets of
    its parts (and of the extra table at +40) into addresses, sets each part up, writes the
    data cache back so the GE sees the changes, and marks the file as set up. Returns the file,
-   or 0 if there is none.
-   Remaining difference: retail sets the part pointer register (move s0,s2) before the
-   set up test, leaving li s1,7 in the bltz slot; here the move fills the slot. */
+   or 0 if there is none. */
 int f_024fb4(CModel *m)
 {
     ModelHeader *h = f_025280(m->data);
@@ -134,18 +132,18 @@ int f_024fb4(CModel *m)
 
     if (h == 0)
         return 0;
-    if (h->done >= 0) {
-        for (i = 0; i < 8; i++) {
-            if (h->part[i]) {
-                h->part[i] = (ModelPart *)((char *)h->part[i] + (int)h);
-                f_025288(h->part[i]);
-            }
+    if (h->done < 0)
+        return (int)m->data;
+    for (i = 0; i < 8; i++) {
+        if (h->part[i]) {
+            h->part[i] = (ModelPart *)((char *)h->part[i] + (int)h);
+            f_025288(h->part[i]);
         }
-        if (h->m40)
-            h->m40 += (int)h;
-        sceKernelDcacheWritebackAll();
-        h->done |= 0x80;
     }
+    if (h->m40)
+        h->m40 += (int)h;
+    sceKernelDcacheWritebackAll();
+    h->done |= 0x80;
     return (int)m->data;
 }
 
