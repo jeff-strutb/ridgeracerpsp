@@ -71,6 +71,8 @@ struct f_0992fc_t {
 };
 
 struct CDisplayTiming : f_0992fc_t {
+    /* Inline: the store goes through this, so it is not moved past the stores to other globals. */
+    void Reset() { m60 = -1; }
     void f_099354(int a, int b);
     int m60;
 };
@@ -88,6 +90,8 @@ struct CMemoryStats {
     int m[11];
 };
 
+/* The game's pad controller. Its global is an array of one: the shutdown code destroys it with
+   an array loop through the virtual destructor. */
 namespace Controller {
 class CCustomController {
 public:
@@ -112,6 +116,7 @@ public:
     int m4[69];
 };
 
+/* The streamed music player. */
 struct CStream {
     void *m0;
     void *m4;
@@ -119,9 +124,12 @@ struct CStream {
 
 /* A table read from the database package. */
 struct CTable {
-    void f_03680c(void *data);
+    /* Returns a pointer (retail ends with move v0,a0); declaring it void changes the scheduling
+       of the argument setup around its calls. */
+    void *f_03680c(void *data);
 };
 
+/* Global state with a flag set once all startup data is loaded. */
 struct CFlags {
     char m0[2056];
     bool loaded;
@@ -225,7 +233,10 @@ void System::CMainLoopJob::f_000810()
    WHAT IT DOES: Starts the game. It clears the job's flags, starts the controller and the pad,
    then loads the sound data for the console's language and registers its banks, the engine
    sounds, the streamed music tables, the course, car, race and menu music databases, the
-   Rally-X data and the main menu package, and finally starts the first job. */
+   Rally-X data and the main menu package, and finally starts the first job.
+   Every byte matches retail. score.py reports BADREF only for references it cannot resolve: the
+   controller's vtable (_ZTVN10Controller17CCustomControllerE, retail 0x1a2a48, has no entry in
+   config/us/symbols.csv) and, at +0x47c, a retail LO16 the scorer pairs with the wrong HI16. */
 void System::CMainLoopJob::Begin()
 {
     m4 = 0;
@@ -240,7 +251,7 @@ void System::CMainLoopJob::Begin()
     D_1d8910[0].f_0425b0(0, 10, 5);
     D_24517c = -1;
     D_245178 = -1;
-    D_1d88a4.m60 = -1;
+    D_1d88a4.Reset();
     D_24518c.f_09936c(10, 5);
     D_1d88a4.f_099354(256, 8);
     f_006040();
@@ -414,7 +425,9 @@ int System::CMainLoopJob::f_001154(bool first)
 /* @draft 0x00127c us _ZN6System12CMainLoopJob3EndEv
    WHAT IT DOES: Shuts the game down. It ends the current job, then undoes each startup stage
    that was reached: the display, the sound, the streamed music and the sound banks. It lets
-   the system run its callbacks for 300 more frames and then exits the game. */
+   the system run its callbacks for 300 more frames and then exits the game.
+   Every byte matches retail. score.py reports BADREF because it pairs two retail LO16s (+0xc8,
+   +0xe4, whose HI16s sit in branch likely delay slots) with the wrong HI16. */
 void System::CMainLoopJob::End()
 {
     int i;
@@ -457,7 +470,10 @@ void System::CMainLoopJob::f_001380(Ng::CJob *job)
 /* @draft 0x0013d0 us __static_initialization_and_destruction_0
    WHAT IT DOES: At startup, builds the display timing block, the controller and the six data
    packages (each starting with no file); at shutdown, releases the packages and destroys the
-   controller. */
+   controller.
+   Every byte matches retail. score.py reports BADREF for the controller's vtable (no symbols.csv
+   entry) and for the call to CDisplayTiming's constructor, which the compiler emits in a link
+   once section that the scorer does not read. */
 
 /* @implements 0x001514 us _GLOBAL__I_
    WHAT IT DOES: The startup entry for this file's static data. */
