@@ -31,7 +31,14 @@ def load():
         m = pat.match(ln)
         if m:
             lines[int(m.group(1), 16)] = (int(m.group(2), 16), m.group(3).replace('\t', ' '))
-    _cache.update(e=e, rel=rel, funcs=funcs, starts=[a for a, _ in funcs], lines=lines)
+    names = {}
+    for fn, key, col in (('imports.csv', 'name', 'stub'), ('libfuncs.csv', 'symbol', 'addr')):
+        path = os.path.join(ROOT, 'config/us', fn)
+        if os.path.exists(path):
+            for r in csv.DictReader(open(path)):
+                if r[key]:
+                    names.setdefault(int(r[col], 16), r[key])
+    _cache.update(e=e, rel=rel, funcs=funcs, starts=[a for a, _ in funcs], lines=lines, names=names)
     return _cache
 
 
@@ -45,6 +52,8 @@ def section_of(e, a):
 def describe(a):
     c = load()
     e, starts = c['e'], c['starts']
+    if a in c['names']:
+        return c['names'][a]
     k = bisect.bisect_right(starts, a) - 1
     if k >= 0 and starts[k] == a:
         return f'f_{a:06x}'

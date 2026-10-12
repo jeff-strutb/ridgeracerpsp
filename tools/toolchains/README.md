@@ -38,3 +38,16 @@ python3 tools/toolchains/mk_nocmov.py
 This builds `build/toolchains/psp-gcc-1.3.1-nocmov` from the unpacked 1.3.1. Retail never uses conditional moves, and stock 1.3.1/1.7.1 do. The script patches cc1 and cc1plus so that conditional moves are never generated: 4 optab stores become NOPs, and 13 `recog` returns become -1. It locates each site by disassembly and checks the original bytes before patching.
 
 The script's docstring has the full rationale. `docs/decomp/GCC33-HANDBOOK.md` has the evidence. This is the scorer's default compiler.
+
+## External sources (cloned into build/ext/, not tracked)
+
+| Source | Pin | Used for |
+|---|---|---|
+| github.com/hrydgard/ppsspp | tag v1.20.4, commit `fa50bb1976065c4f8b1b47af227d367fe9771555` (shallow, with submodules) | Phase 1 behaviour oracle; its HLE NID tables name the imported system calls (`tools/analysis/imports.py`) |
+| github.com/John-K/pspdecrypt | commit `c156627db7634d395c380c0a9589130f603307fc` (GPL-3.0), built with `make` against Homebrew OpenSSL | `tools/refcheck.py --eboot`: decrypted EBOOT.BIN == BOOT.BIN for US, EU and JP |
+
+```bash
+git clone https://github.com/John-K/pspdecrypt.git build/ext/pspdecrypt && git -C build/ext/pspdecrypt checkout c156627db7634d395c380c0a9589130f603307fc
+make -C build/ext/pspdecrypt CFLAGS="-O2 -I/opt/homebrew/opt/openssl@3/include" CXXFLAGS="-O2 -I/opt/homebrew/opt/openssl@3/include -std=c++17" EXTRA_FLAG="-L/opt/homebrew/opt/openssl@3/lib"
+git clone --depth 1 --branch v1.20.4 --recurse-submodules --shallow-submodules https://github.com/hrydgard/ppsspp.git build/ext/ppsspp
+```

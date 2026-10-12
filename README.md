@@ -31,7 +31,7 @@ The binary keeps a great deal of its build:
 - **The code.** The game is C++ with RTTI and exceptions. It has 3,977 exception-frame records that give exact function extents, and 154 surviving class names such as `Fj::C2DAnalogMeter`, `Car::CCarBufferPSP` and `RRBios::TextureManager`.
 - **The libraries.** Sony's system libraries, newlib and GCC's runtime are linked in statically.
 
-The USA and Europe executables differ by 5 bytes. The Japanese release is a separate, earlier build.
+Each region's signed `EBOOT.BIN` decrypts to exactly its `BOOT.BIN`, which `tools/refcheck.py --eboot` checks. The reference is therefore the program the PSP actually runs. The USA and Europe executables differ by 5 bytes. The Japanese release is a separate, earlier build.
 
 ## The compiler
 
@@ -94,9 +94,11 @@ Query the tree. Do not trust a number in this file.
 
 ```bash
 ./setup.sh                                          # extract and MD5-check BOOT.BIN/EBOOT.BIN for US, EU, JP
+python3 tools/refcheck.py --eboot                   # rule 0: reference MD5s, and decrypted EBOOT.BIN == BOOT.BIN
 python3 tools/analysis/funcmap.py                   # function map -> config/us/funcs.csv
 python3 tools/analysis/libid.py                     # library functions by fingerprint -> config/us/libfuncs.csv
 python3 tools/analysis/tumap.py                     # object spans, game/library classes -> config/us/tus.csv
+python3 tools/analysis/imports.py                   # imported system calls, named from PPSSPP's NID tables
 python3 tools/rrdis.py 0xADDR                       # annotated retail listing of one function
 python3 tools/score.py src/control/batch1.c         # compile and grade every @implements in a file
 python3 tools/score.py FILE --cc 1.3.1 -v           # same, stock compiler, word-by-word

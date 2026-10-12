@@ -68,11 +68,14 @@ NAMED = re.compile(r'[fD]_([0-9a-f]{6})$')
 
 
 def _libsyms():
-    path = os.path.join(ROOT, 'config/us/libfuncs.csv')
+    """Names with known retail addresses: identified library functions and imported system calls."""
     out = {}
-    if os.path.exists(path):
-        for r in csv.DictReader(open(path)):
-            out.setdefault(r['symbol'], int(r['addr'], 16))
+    for fn, key, col in (('libfuncs.csv', 'symbol', 'addr'), ('imports.csv', 'name', 'stub')):
+        path = os.path.join(ROOT, 'config/us', fn)
+        if os.path.exists(path):
+            for r in csv.DictReader(open(path)):
+                if r[key]:
+                    out.setdefault(r[key], int(r[col], 16))
     return out
 
 
@@ -85,7 +88,8 @@ class Resolver:
 
     Object-side targets:
       f_XXXXXX / D_XXXXXX symbols (defined or not), or a tagged name  -> retail address + addend
-      a library symbol identified in config/us/libfuncs.csv           -> its retail address
+      a library symbol (config/us/libfuncs.csv) or an imported system
+      call (config/us/imports.csv, by its PPSSPP name)                 -> its retail address
       a label/function inside a tagged function of this object         -> mapped retail address
       a local data section (.rodata*, .data, .bss)                      -> CONTENT: the bytes
           the candidate refers to must equal the retail bytes at the retail target; words of
