@@ -193,11 +193,9 @@ public:
         Put8(v >> 16);
         Put8(v >> 24);
     }
-    unsigned char Get8()
+    int Get8()
     {
-        unsigned char v = *cur;
-        cur++;
-        return v;
+        return *cur++;
     }
     void Get32(int &v)
     {
@@ -696,7 +694,6 @@ int Sequence::CGameSaveData::Save(CSaveStream *s)
 int Sequence::CGameSaveData::Load(CSaveStream *s)
 {
     int i, j;
-
     start = s->cur;
     version = s->Get8();
     if (version != 105)
@@ -704,12 +701,12 @@ int Sequence::CGameSaveData::Load(CSaveStream *s)
     s->Get32(m12);
     s->Get32(m16);
     m20 = s->Get8();
-    for (i = 0; i < 336; i++) {
+    for (int i = 0; i < 336; i++) {
         s->Get32(m24[i]);
         s->Get32(m1368[i]);
     }
-    for (i = 0; i < 3; i++) {
-        for (j = 0; j < 336; j++) {
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 336; j++) {
             s->Get32(m2712[i][j].v[0]);
             s->Get32(m2712[i][j].v[1]);
             s->Get32(m2712[i][j].v[2]);
@@ -731,9 +728,9 @@ int Sequence::CGameSaveData::Load(CSaveStream *s)
     m14860 = s->Get8();
     m14864 = s->Get8();
     s->Get32(m14868);
-    for (i = 0; i < 48; i++)
+    for (int i = 0; i < 48; i++)
         m14872[i] = s->Get8();
-    for (i = 0; i < 60; i++)
+    for (int i = 0; i < 60; i++)
         m15064[i] = s->Get8();
     for (i = 0; i < 28; i++)
         m15304[i] = s->Get8();
@@ -746,7 +743,7 @@ int Sequence::CGameSaveData::Load(CSaveStream *s)
     m15472 = s->Get8();
     m15476 = s->Get8();
     m15480 = s->Get8();
-    for (i = 0; i < 48; i++)
+    for (int i = 0; i < 48; i++)
         m15484[i] = s->Get8();
     m15676 = s->Get8();
     s->Get32((int &)m15680);
