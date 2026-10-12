@@ -98,6 +98,11 @@ struct Buckets {
             list[i] = 0;
     }
 
+    void Init(int n)
+    {
+        count = n;
+        list = (Particle **)malloc(n * sizeof(Particle *));
+    }
     void Free()
     {
         free(list);
@@ -172,8 +177,7 @@ Curve D_1d1b5c[3] = {
 int CParticles::f_032070(int n)
 {
     fire.Init(n);
-    depth.count = 256;
-    depth.list = (Particle **)malloc(256 * sizeof(Particle *));
+    depth.Init(256);
     smoke.Init(64);
     step = 0;
     D_2403b0 = f_02347c(0xa000000);
@@ -351,9 +355,9 @@ void CParticles::f_0328b0()
    texels; for the 60 frames of a smoke puff, curve 1 and one fixed cell. */
 void f_032918(void)
 {
+    int alpha, size;
     Cell *c = D_2403b8;
     for (int i = 0; i < 40; i++, c++) {
-        int alpha, size;
         float t = (float)i / 39.0f;
         f_032ad0(0, &alpha, &size, t * 255.0f);
         int k = (int)(t * 19.0f);
@@ -361,24 +365,23 @@ void f_032918(void)
         int v = (k / 4) * 16;
         if (size > 128)
             size = 127;
+        c->alpha = alpha;
         c->u0 = u;
         c->v0 = v;
         c->u1 = u + 31;
         c->v1 = v + 15;
-        c->alpha = alpha;
         c->size = size;
     }
     c = D_2404a8;
     for (int i = 0; i < 60; i++, c++) {
-        int alpha, size;
         f_032ad0(1, &alpha, &size, (float)i / 59.0f * 255.0f);
         if (size > 128)
             size = 127;
+        c->alpha = alpha;
         c->u0 = 32;
         c->v0 = 80;
         c->u1 = 63;
         c->v1 = 103;
-        c->alpha = alpha;
         c->size = size;
     }
 }
