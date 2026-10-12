@@ -1,0 +1,38 @@
+# frames 7800
+# New game: Rally-X loader, intro, title, new driver profile (keyboard: START accepts the
+# default name), save (dialogs confirm with CIRCLE), World Tours > Basic Tour > Class 1 >
+# Seaside Route 765, SKYKID FERA Type-S, automatic; race start holding accelerate, no steering.
+0 NONE
+400 SELECT
+406 NONE
+600 START
+606 NONE
+900 START
+906 NONE
+1200 CROSS
+1206 NONE
+1300 CROSS
+1306 NONE
+1500 START
+1506 NONE
+1700 CROSS
+1706 NONE
+1900 CIRCLE
+1906 NONE
+2100 CIRCLE
+2106 NONE
+2300 CROSS
+2306 NONE
+2500 CROSS
+2506 NONE
+2800 CROSS
+2806 NONE
+3000 CROSS
+3006 NONE
+3200 CROSS
+3206 NONE
+3400 CROSS
+3406 NONE
+3600 CROSS
+3606 NONE
+4300 CROSS

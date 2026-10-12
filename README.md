@@ -117,11 +117,11 @@ T1 = a draft only; T2 = in the tree, not done; T3 = certified behaviour exact, n
 The oracle is `rrbox` ([tools/oracle/README.md](tools/oracle/README.md)): PPSSPP v1.20.4 headless with a small patch, running the original program deterministically. Ten one-minute runs give identical traces.
 
 - **A7, whole image (built).** `tools/oracle/a7.py` runs retail and the candidate image on every input script. Each frame's emulated time and the hash of all 24 MB of user RAM must agree. `--m1` leaves the code out of the hash, for images whose T3 bodies differ in bytes.
-  - The current T4 image is identical to retail for 1,800 frames.
+  - The current T4 image is identical to retail on both scripts: boot to attract mode (1,800 frames), and the full new-game path into a live race (7,800 frames).
   - A planted wrong store is caught at frame 0.
 - **A5, per function (not built yet).** At every real call, the original body and the candidate run from identical state. Their memory, registers, FPU and VFPU state, and return values must agree. An unreached function is UNCOVERED, never passed.
 
-So far there is one input script, covering boot and attract mode. A7 only sees what the scripts exercise: a changed main-thread priority went unnoticed in attract mode. Scripts that reach every mode and course come next.
+There are two input scripts so far. A7 only sees what the scripts exercise: a changed main-thread priority went unnoticed in attract mode. Scripts that steer through full races and reach every mode and course come next.
 
 ### How T4 is verified
 

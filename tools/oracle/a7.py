@@ -5,7 +5,8 @@ Both executables are booted the same way in rrbox (PPSSPP v1.20.4 headless with
 tools/oracle/ppsspp-rrbox.patch, built by tools/oracle/build.sh): from the host file, with the
 retail US disc mounted for data, on the pure interpreter (the JIT patches its own markers into
 emulated RAM), as the 32 MB launch hardware, Wi-Fi off, sound mixing and I/O on emulated time,
-and both clocks fixed (RRBOX_EPOCH, TZ=UTC). Ten one-minute runs of retail were identical.
+both clocks fixed (RRBOX_EPOCH, TZ=UTC), and an empty memory stick in the repo for every run
+(RRBOX_MEMSTICK; PPSSPP's default is the host's ~/.ppsspp, which must never be touched). Ten one-minute runs of retail were identical.
 
 For every input script in tools/oracle/scripts/ (or those named), each executable's per-frame
 trace (emulated cycles + hash of all 24 MB of user RAM) is recorded, and the traces must agree
@@ -17,6 +18,7 @@ Exit 0 = identical on every script; 1 = a script differs.
 import argparse
 import glob
 import os
+import shutil
 import subprocess
 import sys
 
@@ -52,7 +54,11 @@ def run(exe, script, trace, skip_code=False):
     os.makedirs(os.path.dirname(staged), exist_ok=True)
     with open(exe, 'rb') as src, open(staged, 'wb') as dst:
         dst.write(src.read())
-    env = dict(os.environ, RRBOX_EPOCH=EPOCH, TZ='UTC')
+    # every run starts from the same EMPTY memory stick inside the repo (never the host's ~/.ppsspp)
+    ms = os.path.join(OUT, 'stage', 'memstick')
+    shutil.rmtree(ms, ignore_errors=True)
+    os.makedirs(ms)
+    env = dict(os.environ, RRBOX_EPOCH=EPOCH, TZ='UTC', RRBOX_MEMSTICK=ms)
     cmd = [BOX, staged, '-m', ISO, '-i', '--graphics=software', f'--rr-frames={frames_of(script)}',
            f'--rr-script={script}', f'--rr-trace={trace}']
     if skip_code:

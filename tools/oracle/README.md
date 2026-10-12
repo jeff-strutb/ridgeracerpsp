@@ -17,6 +17,7 @@ What it takes:
 | 32 MB launch hardware | The headless default is a Slim with 64 MB, and the memory size changes the game's heap. |
 | Wi-Fi off | Removes network-dependent behaviour. |
 | SAS mixing on the emulation thread; `IOTIMING_FAST` | Nothing waits on host thread timing. |
+| An empty memory stick inside the repo for every run (`RRBOX_MEMSTICK`) | PPSSPP's default memory stick is the host's `~/.ppsspp`, which the oracle must never touch, and a save left over from an earlier run would change the game's path. |
 
 ## Booting a candidate
 
@@ -38,6 +39,13 @@ For each script in `scripts/`, retail and the candidate each record per frame th
 
 ## Scripts
 
+| Script | Frames | What it covers |
+|---|---|---|
+| `boot_attract` | 1,800 | Boot, the Namco logo, the Rally-X loading game's attract mode. |
+| `race_seaside_start` | 7,800 | The new-game path to a race: Rally-X; the intro; the title; creating a driver profile (the system keyboard, where START accepts the default name); saving (system dialogs confirm with CIRCLE); World Tours, Basic Tour, Class 1, Seaside Route 765; car and transmission select; loading; the fly-by; the countdown; about 50 s of racing holding accelerate, with no steering. |
+
+`tools/oracle/explore.sh SCRIPT FRAMES EVERY OUTDIR [FIRST]` saves the emulated PSP's displayed frame every N frames and tiles them into a sheet (`sheet.py`). This is how scripts are written. These are the emulator's own output frames, never a capture of the host's screen.
+
 A script file holds one entry per line:
 
 ```
@@ -52,5 +60,5 @@ FRAME BUTTONS
 
 - A5 per-function checking.
 - Display-list and audio comparison.
-- Scripts that reach races.
+- Scripts that steer, finish laps, and reach the other modes.
 - Per-instruction coverage.
