@@ -181,7 +181,7 @@ static inline unsigned int Now()
     volatile unsigned int t = sceKernelGetSystemTimeLow();
     return t;
 }
-static inline int f_002edc(Unpack *u, int budget)
+inline int f_002edc(Unpack *u, int budget)
 {
     Lz lz;
     unsigned int start;
