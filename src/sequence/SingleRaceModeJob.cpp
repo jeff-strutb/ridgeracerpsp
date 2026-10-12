@@ -1678,8 +1678,8 @@ void Sequence::CSingleRaceModeJob::f_00c0c4()
     int time = D_240800.time[D_240800.me] / 3;
     int secs = time / 1000;
     int minutes = time / 60000;
-    int ms = time - secs * 1000;
-    int s = secs - secs / 60 * 60;
+    int ms = time % 1000;
+    int s = secs % 60;
     int size = D_1a211c[1];
     memcpy(D_24063c, D_240740.Field("Class", carRow.rec), size);
     if (D_24063c[0] == 7) {
@@ -1688,11 +1688,11 @@ void Sequence::CSingleRaceModeJob::f_00c0c4()
         sprintf(D_1edf84, D_1d12d8[lang], name, D_240740.Field("CarFullName", carRow.rec),
                 minutes, s, ms);
     } else {
-        int lang = f_01c260();
+        const char **fmt = &D_1d12f4[f_01c260()];
         char *name = D_2407a8.Field("CourseName", course.rec);
         memcpy(D_24063c, D_240740.Field("Class", carRow.rec), size);
         int cls = D_24063c[0];
-        sprintf(D_1edf84, D_1d12f4[lang], name, cls,
+        sprintf(D_1edf84, *fmt, name, cls,
                 D_240740.Field("CarFullName", carRow.rec), minutes, s, ms);
     }
     D_23ba90.m20 = m16016;
@@ -1718,7 +1718,7 @@ void Sequence::CSingleRaceModeJob::f_00c538()
 {
 }
 
-/* @draft 0x00c540 us f_00c540
+/* @implements 0x00c540 us f_00c540
    WHAT IT DOES: State 32: starts saving the race's ghost into the memory stick slot of the
    course and car class, with a title naming the course, the car (and its class, unless it is
    a special car) and the winning time in minutes, seconds and milliseconds, in the console's
@@ -1734,24 +1734,25 @@ void Sequence::CSingleRaceModeJob::f_00c540()
     memcpy(D_24063c, p, size);
     int c = D_24063c[0] - 1;
     memcpy(D_24063c, D_240740.Field("Class", car.rec), size);
+    int k = D_24063c[0] - 1;
+    int slot = c * 7 + k;
     int time = D_240800.time[0] / 3;
     int secs = time / 1000;
     int minutes = time / 60000;
-    int ms = time - secs * 1000;
-    int s = secs - secs / 60 * 60;
-    int slot = c * 7 + (D_24063c[0] - 1);
+    int ms = time % 1000;
+    int s = secs % 60;
     memcpy(D_24063c, D_240740.Field("Class", car.rec), size);
     if (D_24063c[0] == 7) {
-        int lang = f_01c260();
+        const char **fmt = &D_1d12d8[f_01c260()];
         char *name = D_2407a8.Field("CourseName", course.rec);
-        sprintf(D_1edf84, D_1d12d8[lang], name, D_240740.Field("CarFullName", car.rec),
+        sprintf(D_1edf84, *fmt, name, D_240740.Field("CarFullName", car.rec),
                 minutes, s, ms);
     } else {
-        int lang = f_01c260();
+        const char **fmt = &D_1d12f4[f_01c260()];
         char *name = D_2407a8.Field("CourseName", course.rec);
         memcpy(D_24063c, D_240740.Field("Class", car.rec), size);
         int cls = D_24063c[0];
-        sprintf(D_1edf84, D_1d12f4[lang], name, cls,
+        sprintf(D_1edf84, *fmt, name, cls,
                 D_240740.Field("CarFullName", car.rec), minutes, s, ms);
     }
     D_23ba90.m20 = m16016;
