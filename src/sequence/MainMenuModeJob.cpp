@@ -474,7 +474,7 @@ void Sequence::CMainMenuModeJob::f_00823c()
 {
 }
 
-/* @draft 0x008244 us f_008244
+/* @implements 0x008244 us f_008244
    WHAT IT DOES: State 3: the main menu itself. When the player resets the settings, it clears
    the game's settings but keeps the machine and display options, takes the screen's options,
    shows everything again and sends event 4. It tracks the menu item the player chose; when
@@ -515,25 +515,26 @@ void Sequence::CMainMenuModeJob::f_008244()
         D_1d1110 = r;
     if (D_2301b0.layer->v10(9) == 1) {
         f_019628(&D_233f70);
-        ScreenMsg n;
-        n.m9 = 1;
-        n.m8 = 1;
-        f_0182e4(&D_2301b0, &n);
+        {
+            ScreenMsg n;
+            n.m8 = 1;
+            n.m9 = 1;
+            f_0182e4(&D_2301b0, &n);
+        }
         f_007d80();
     }
-    switch (D_1d1110) {
-    case 1:
-    case 2:
+    if (D_1d1110 == 1)
         return;
-    }
+    if (D_1d1110 == 2)
+        return;
     Settings s;
     D_2301b0.layer->v3(&s, 0);
     D_1d110c = s.m8;
     D_1d1108 = s.m280;
     {
         ScreenMsg n;
-        n.m9 = 1;
         n.m8 = 1;
+        n.m9 = 1;
         f_0182e4(&D_2301b0, &n);
     }
     {
