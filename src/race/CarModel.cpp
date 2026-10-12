@@ -1,0 +1,457 @@
+/* The car model (retail 0x01dbc4 to 0x02048c): a car's body as the race draws it. It reads the
+   car's model header (wheel positions, light positions, body colours), places the body and
+   its four wheels every frame from the car's physics state (steering, suspension, wheel spin),
+   keeps the brake, head and tail light levels, and draws the light flares. Most of the matrix
+   work runs on the vector unit, through the matrix stack helpers at 0x028188 to 0x028eb4.
+   The file's static data (two circles of flare offsets), its startup entry and the model's
+   inline constructors close the object file (0x0201b4 to 0x02048c). */
+
+#include <math.h>
+
+extern "C" {
+int f_026ab0(void *res, int a, int b);
+void f_026bc8(void *res, int r, int g, int b);
+void f_026e5c(void *res);
+void f_026ed8(void *res);
+void f_026efc(void *g);
+void f_026f70(void *res);
+int f_024fb4(void *model);
+void f_025118(void *model, int anim);
+void f_025154(void *model, int anim, int arg);
+int f_02347c(int);
+void f_028d94(void *m);
+void f_028e9c(void *m);
+void f_028188(void *out, void *pos, void *vel);
+void f_028a00(void *a, void *b);
+void f_028748(void *m);
+void f_02842c(void);
+void f_0287cc(float x, float y, float z);
+void f_0286fc(float x, float y, float z);
+void f_02df08(int);
+void f_02dba8(void);
+unsigned int *f_020cd4(short *pos, int a, unsigned int *list);
+void *f_021b38(int size);
+}
+
+/* A vector of four floats. */
+struct Vec4 {
+    float x, y, z, w;
+};
+
+/* A 4x4 matrix. */
+struct Mat {
+    float m[16];
+};
+
+/* The car model header in the model data. */
+struct CModelHeader {
+    char m0[6];
+    short angle;
+    char m8[32];
+    int m40;
+    float halfWidth;
+    float frontX;
+    float frontY;
+    float m56;
+    float rearX;
+    float rearY;
+    float m68;
+    float axle[3];
+    float m84[3];
+    char m96[32];
+    float light[3];
+    float m140;
+    unsigned char m144[3];
+    unsigned char m147;
+    unsigned char colour[3][4];
+    unsigned int colour2[3];
+    unsigned char m172[3];
+    signed char flags;
+};
+
+/* The model as the renderer sees it (1712 bytes). */
+struct CModel {
+    CModel();
+    CModelHeader *data;
+    int m4;
+    int colour;
+    int m12;
+    Mat world;
+    Mat inverse;
+    Mat part[17];
+    float m1232[15][6];
+    unsigned char level[12];
+    unsigned int m1604[4];
+    unsigned char m1620;
+    unsigned int m1624;
+    unsigned int m1628;
+    unsigned int m1632;
+    int m1636[3];
+    Vec4 m1648[2];
+    int m1680[2];
+    int m1688[2];
+    int m1696[2];
+    short m1704;
+    unsigned char m1706;
+    unsigned char m1707[5];
+};
+
+/* A car's physics state, as far as the model reads it. */
+struct CCarState {
+    char m0[128];
+    int m128;
+    char m132[124];
+    Vec4 wheelPos[4];
+    Vec4 wheelRot[4];
+    char m320[256];
+    Mat world;
+    char m640[1088];
+    float m1728;
+    float m1732;
+    float m1736;
+    float m1740;
+    char m1744[12];
+    float m1756;
+    char m1760[32];
+    float m1792;
+    int m1796;
+    char m1800[312];
+    int m2112;
+    float m2116;
+};
+
+class CCarModel {
+public:
+    CCarModel();
+    int f_01dbc4(CModelHeader *data, int a, int b, int colour);
+    void f_01dee4();
+    void f_01e14c(Mat *world, void *pos, void *vel, void *c);
+    void f_01e500(Mat *world);
+    void f_01e528(Vec4 *place, Mat *world, void *pos, void *vel, void *c);
+    void f_01e5d0(Vec4 *place, Mat *world);
+    void f_01e648(CCarState *s, Mat *world, Vec4 *pos, Vec4 *vel, void *c);
+    void f_01ed64(Mat *world);
+    void f_01edfc();
+    void f_01ee78();
+    void f_01ee98();
+    void f_01eebc(int arg);
+    void f_01eee4();
+    void f_01f234(int a);
+    void f_01f264(int a);
+    unsigned int *f_01f2f0(unsigned int *list);
+
+    int m0[4];
+    int m16;
+    int m20;
+    int m24;
+    int m28;
+    Vec4 wheel[4];
+    Vec4 light[2];
+    Vec4 pivot[2];
+    Vec4 knuckle[2];
+    float steerMax;
+    float steer;
+    float m200;
+    float m204;
+    float m208;
+    int m212[3];
+    Vec4 wheelRot[4];
+    CModel model;
+    char res[16];
+    char m2016[656];
+    float m2672;
+    float m2676;
+    float m2680;
+    float m2684;
+    float m2688;
+    float m2692;
+    float m2696;
+    float m2700;
+    float m2704;
+    float m2708;
+    float m2712;
+    float m2716;
+    unsigned char col[3];
+    unsigned char m2723;
+    signed char mode;
+    unsigned char m2725;
+    signed char anim;
+    unsigned char m2727;
+    unsigned char m2728;
+    char m2729[7];
+};
+typedef char CCarModelSize[sizeof(CCarModel) == 2736 ? 1 : -1];
+typedef char CModelSize[sizeof(CModel) == 1712 ? 1 : -1];
+
+float f_01df1c(float x);
+float f_01df34(float x);
+float f_01df48(float x);
+float f_01df78(float x);
+float f_01dfd8(float x);
+void f_01e028(Vec4 *pos, Vec4 *at, Vec4 *rot, Mat *a, Mat *b, Mat *c);
+void f_01e094(Vec4 *pos, Vec4 *at, Vec4 *rot, Mat *a, Mat *b, Mat *c);
+void f_01e0ec(Vec4 *pivot, Vec4 *at, Mat *out, float angle);
+void f_01edb8(float *out, Mat *m);
+
+extern Vec4 D_1d1750;
+extern Vec4 D_1d1760;
+extern float D_1d1770[];
+extern Vec4 D_1d1780;
+extern Vec4 D_1d1790;
+extern float D_1d17a0[];
+extern unsigned char D_1d17b0[][3];
+struct CColour12 {
+    unsigned char r;
+    char m1[3];
+    unsigned char g;
+    char m5[3];
+    unsigned char b;
+    char m9[3];
+};
+extern CColour12 D_1d1800[];
+int D_23c0c0;
+int D_23c0c4;
+
+/* @draft 0x01dbc4 us f_01dbc4
+   WHAT IT DOES: Sets the model up from its model data: the resource it draws with, the wheel,
+   light and axle positions (halved, mirrored left to right, then scaled from model units),
+   the steering limit, the body colour (one of the car's colour sets) and the light flags.
+   Returns 0 if the resource or the model data cannot be set up. */
+int CCarModel::f_01dbc4(CModelHeader *data, int a, int b, int colour)
+{
+    CCarModel tmp;
+
+    if (!f_026ab0(res, a, b))
+        return 0;
+    model.data = data;
+    if (!f_024fb4(&model))
+        return 0;
+    CModelHeader *h = model.data;
+    *(int *)m2016 = h->m40;
+    f_026efc(m2016);
+    h = model.data;
+    float hw = h->halfWidth;
+    float fx = h->frontX;
+    float rx = h->rearX;
+    wheel[0].x = -fx * 0.5f;
+    wheel[0].y = h->frontY;
+    wheel[0].z = -hw * 0.5f;
+    wheel[1].x = fx * 0.5f;
+    wheel[1].y = h->frontY;
+    wheel[1].z = -hw * 0.5f;
+    wheel[2].x = -rx * 0.5f;
+    wheel[2].y = h->rearY;
+    wheel[2].z = hw * 0.5f;
+    wheel[3].x = rx * 0.5f;
+    wheel[3].y = h->rearY;
+    wheel[3].z = hw * 0.5f;
+    light[0].x = h->light[0];
+    light[0].y = h->light[1];
+    light[0].z = h->light[2];
+    light[1].x = -h->light[0];
+    light[1].y = h->light[1];
+    light[1].z = h->light[2];
+    m2716 = h->m140 * 0.5f * 136.0f;
+    col[0] = h->m144[0];
+    col[1] = h->m144[1];
+    col[2] = h->m144[2];
+    pivot[0].x = h->axle[0];
+    pivot[0].y = h->axle[1];
+    pivot[0].z = h->axle[2];
+    pivot[1].x = -h->axle[0];
+    pivot[1].y = h->axle[1];
+    pivot[1].z = h->axle[2];
+    knuckle[0].x = h->m84[0];
+    knuckle[0].y = h->m84[1];
+    knuckle[0].z = h->m84[2];
+    knuckle[1].x = h->m84[0];
+    knuckle[1].y = -h->m84[1];
+    knuckle[1].z = -h->m84[2];
+    steerMax = h->angle * 3.1415927f / 180.0f;
+    steer = 0.0f;
+    for (int i = 0; i < 4; i++) {
+        wheel[i].x *= 0.00024414062f;
+        wheel[i].y *= 0.00024414062f;
+        wheel[i].z *= 0.00024414062f;
+    }
+    for (int i = 0; i < 2; i++) {
+        pivot[i].x *= 0.00024414062f;
+        pivot[i].y *= 0.00024414062f;
+        pivot[i].z *= 0.00024414062f;
+    }
+    m2723 = h->flags & 1;
+    mode = (h->flags >> 1) & 3;
+    f_026bc8(res, h->colour[colour][0], h->colour[colour][1], h->colour[colour][2]);
+    f_026e5c(res);
+    h = model.data;
+    model.m1604[3] = model.m1604[2] = h->colour2[colour] & 0xffffff;
+    unsigned int v = h->colour[colour][3];
+    model.m1604[0] = v | v << 8 | v << 16;
+    v = h->colour2[colour] >> 24;
+    model.m1604[1] = v | v << 8 | v << 16;
+    model.m1620 = h->m172[colour];
+    model.colour = colour;
+    return 1;
+}
+
+/* @draft 0x01dee4 us f_01dee4
+   WHAT IT DOES: Releases the model's resource and switches its animation table off. */
+void CCarModel::f_01dee4()
+{
+    f_026ed8(res);
+    *(int *)m2016 = 0;
+    f_026efc(m2016);
+}
+
+/* @implements 0x01df1c us f_01df1c
+   WHAT IT DOES: Moves a light level a fifth of the way up towards full. */
+float f_01df1c(float x)
+{
+    return x + 0.2f - x * 0.2f;
+}
+
+/* @implements 0x01df34 us f_01df34
+   WHAT IT DOES: Moves a light level a fifth of the way down towards off. */
+float f_01df34(float x)
+{
+    return x - x * 0.2f;
+}
+
+/* @implements 0x01df48 us f_01df48
+   WHAT IT DOES: Fades a light level down by a tenth (twice), switching it off once it drops
+   below a tenth. */
+float f_01df48(float x)
+{
+    x = x - x * 0.1f;
+    if (x < 0.1f)
+        x = 0.0f;
+    return x - x * 0.1f;
+}
+
+/* @implements 0x01df78 us f_01df78
+   WHAT IT DOES: Brightens a light level: slowly while below 0.8 (jumping to 0.8 once past
+   0.05), faster above it, up to full. */
+float f_01df78(float x)
+{
+    if (x < 0.8f) {
+        x += 0.01f;
+        if (0.05f < x)
+            x = 0.8f;
+    } else {
+        x += 0.02f;
+        if (1.0f < x)
+            x = 1.0f;
+    }
+    return x;
+}
+
+/* @implements 0x01dfd8 us f_01dfd8
+   WHAT IT DOES: Dims a light level: down to 0.2 at once, then by 0.02 a frame, off below a
+   tenth. */
+float f_01dfd8(float x)
+{
+    if (0.2f < x) {
+        x = 0.2f;
+    } else {
+        x -= 0.02f;
+        if (x < 0.1f)
+            x = 0.0f;
+    }
+    return x;
+}
+
+/* @implements 0x01e028 us f_01e028
+   WHAT IT DOES: Builds a front wheel's three matrices on the vector unit: its position (the
+   physics wheel position scaled by the model scale), its steering and spin rotations, and the
+   combined placement of the wheel at its mounting point. */
+void f_01e028(Vec4 *pos, Vec4 *at, Vec4 *rot, Mat *a, Mat *b, Mat *c)
+{
+    __asm__ volatile(
+        "lv.q C030.q, 0(%0)\n"
+        "\tvscl.t C430.t, C030.t, S000.s\n"
+        "\tlv.q C030.q, 0(%1)\n"
+        "\tlv.q C020.q, 0(%2)\n"
+        "\tvscl.t C020.t, C020.t, S001.s\n"
+        "\tvmidt.q M300.q\n"
+        "\tvrot.t C310.t, S020.s, [0, c, s]\n"
+        "\tvrot.t C320.t, S020.s, [0, -s, c]\n"
+        "\tvmidt.q M200.q\n"
+        "\tvrot.t C200.t, S021.s, [c, 0, -s]\n"
+        "\tvrot.t C220.t, S021.s, [s, 0, c]\n"
+        "\tvmmul.t M100.t, M200.t, M300.t\n"
+        "\tvzero.t R103.t\n"
+        "\tsv.q C200.q, 0(%3)\n"
+        "\tsv.q C210.q, 16(%3)\n"
+        "\tsv.q C220.q, 32(%3)\n"
+        "\tsv.q C430.q, 48(%3)\n"
+        "\tsv.q C100.q, 0(%4)\n"
+        "\tsv.q C110.q, 16(%4)\n"
+        "\tsv.q C120.q, 32(%4)\n"
+        "\tsv.q C430.q, 48(%4)\n"
+        "\tsv.q C300.q, 0(%5)\n"
+        "\tsv.q C310.q, 16(%5)\n"
+        "\tsv.q C320.q, 32(%5)\n"
+        "\tsv.q C030.q, 48(%5)\n"
+        "1:"
+        : : "r"(pos), "r"(at), "r"(rot), "r"(a), "r"(b), "r"(c) : "memory");
+}
+
+/* @implements 0x01e094 us f_01e094
+   WHAT IT DOES: Builds a rear wheel's three matrices on the vector unit: its position, its
+   spin rotation, and its placement at the mounting point (rear wheels do not steer). */
+void f_01e094(Vec4 *pos, Vec4 *at, Vec4 *rot, Mat *a, Mat *b, Mat *c)
+{
+    __asm__ volatile(
+        "lv.q C030.q, 0(%0)\n"
+        "\tvscl.t C430.t, C030.t, S000.s\n"
+        "\tlv.q C030.q, 0(%1)\n"
+        "\tlv.q C020.q, 0(%2)\n"
+        "\tvscl.t C020.t, C020.t, S001.s\n"
+        "\tvmidt.q M300.q\n"
+        "\tvrot.t C310.t, S020.s, [0, c, s]\n"
+        "\tvrot.t C320.t, S020.s, [0, -s, c]\n"
+        "\tsv.q C400.q, 0(%3)\n"
+        "\tsv.q C410.q, 16(%3)\n"
+        "\tsv.q C420.q, 32(%3)\n"
+        "\tsv.q C430.q, 48(%3)\n"
+        "\tsv.q C300.q, 0(%4)\n"
+        "\tsv.q C310.q, 16(%4)\n"
+        "\tsv.q C320.q, 32(%4)\n"
+        "\tsv.q C430.q, 48(%4)\n"
+        "\tsv.q C300.q, 0(%5)\n"
+        "\tsv.q C310.q, 16(%5)\n"
+        "\tsv.q C320.q, 32(%5)\n"
+        "\tsv.q C030.q, 48(%5)\n"
+        "1:"
+        : : "r"(pos), "r"(at), "r"(rot), "r"(a), "r"(b), "r"(c) : "memory");
+}
+
+/* @implements 0x01e0ec us f_01e0ec
+   WHAT IT DOES: Builds the matrix of a steering knuckle on the vector unit: the pivot's
+   rotations, then the steering angle (added to the knuckle's own angle), placed at the
+   pivot. */
+void f_01e0ec(Vec4 *pivot, Vec4 *at, Mat *out, float angle)
+{
+    __asm__ volatile(
+        "lv.q C430.q, 0(%0)\n"
+        "\tlv.q C020.q, 0(%1)\n"
+        "\tlv.s S030.s, %3\n"
+        "\tvadd.s S020.s, S020.s, S030.s\n"
+        "\tvscl.t C020.t, C020.t, S001.s\n"
+        "\tvmidt.q M300.q\n"
+        "\tvmidt.q M200.q\n"
+        "\tvrot.t C300.t, S022.s, [c, s, 0]\n"
+        "\tvrot.t C310.t, S022.s, [-s, c, 0]\n"
+        "\tvrot.t C200.t, S021.s, [c, 0, -s]\n"
+        "\tvrot.t C220.t, S021.s, [s, 0, c]\n"
+        "\tvmmul.t M100.t, M300.t, M200.t\n"
+        "\tvmidt.q M200.q\n"
+        "\tvrot.t C210.t, S020.s, [0, c, s]\n"
+        "\tvrot.t C220.t, S020.s, [0, -s, c]\n"
+        "\tvmmul.t M300.t, M100.t, M200.t\n"
+        "\tsv.q C300.q, 0(%2)\n"
+        "\tsv.q C310.q, 16(%2)\n"
+        "\tsv.q C320.q, 32(%2)\n"
+        "\tsv.q C430.q, 48(%2)"
+        : : "r"(pivot), "r"(at), "r"(out), "m"(angle) : "memory");
+}
