@@ -1,0 +1,194 @@
+diff --git a/Core/HLE/sceKernelTime.cpp b/Core/HLE/sceKernelTime.cpp
+index a15c981..f001ebf 100644
+--- a/Core/HLE/sceKernelTime.cpp
++++ b/Core/HLE/sceKernelTime.cpp
+@@ -41,6 +41,9 @@ static time_t start_time;
+ void __KernelTimeInit()
+ {
+ 	time(&start_time);
++	// rrbox: a fixed epoch makes every run of the oracle start at the same wall-clock time.
++	if (const char *epoch = getenv("RRBOX_EPOCH"))
++		start_time = (time_t)strtoll(epoch, nullptr, 10);
+ 	if (PSP_CoreParameter().compat.flags().DateLimited) {
+ 		// Car Jack Streets(NPUZ00043) requires that the date cannot exceed a certain time.
+ 		// 2011 year makes it work fine.
+diff --git a/Core/HLE/sceRtc.cpp b/Core/HLE/sceRtc.cpp
+index 12a2c0a..9f770bd 100644
+--- a/Core/HLE/sceRtc.cpp
++++ b/Core/HLE/sceRtc.cpp
+@@ -149,6 +149,9 @@ void __RtcInit()
+ 	// Everything else is relative to that, "virtual time."
+ 	timeval tv;
+ 	gettimeofday(&tv, NULL);
++	// rrbox: a fixed epoch makes every run of the oracle start at the same wall-clock time.
++	if (const char *epoch = getenv("RRBOX_EPOCH"))
++		tv.tv_sec = (long)strtoll(epoch, nullptr, 10);
+ 	rtcBaseTime.tv_sec = tv.tv_sec;
+ 	rtcBaseTime.tv_usec = 0;
+ 	// Precalculate the current time in microseconds (rtcMagicOffset is offset to 1970.)
+diff --git a/headless/Headless.cpp b/headless/Headless.cpp
+index 293878d..1af602c 100644
+--- a/headless/Headless.cpp
++++ b/headless/Headless.cpp
+@@ -51,6 +51,11 @@
+ 
+ #include "Compare.h"
+ #include "HeadlessHost.h"
++#include <map>
++#include "ext/xxhash.h"
++#include "Core/HLE/sceCtrl.h"
++#include "Core/CoreTiming.h"
++#include "Core/MemMap.h"
+ #if defined(_WIN32)
+ #include "WindowsHeadlessHost.h"
+ #elif defined(SDL)
+@@ -171,6 +176,37 @@ static HeadlessHost *getHost(GPUCore gpuCore) {
+ 	}
+ }
+ 
++// rrbox: the Ridge Racer decomp's behaviour oracle. A frame-indexed input script drives the
++// game; every frame logs the emulated cycle count and a hash of user RAM so two runs (original vs candidate image) can be
++// compared frame for frame. See tools/oracle/README.md in the decomp repository.
++struct RRBoxOptions {
++	int frames = 0;              // stop after this many frames (0 = until timeout)
++	std::string script;          // lines: FRAME BUTTONS  (BUTTONS = 0xMASK or NAME+NAME, or NONE)
++	std::string trace;           // output: one line per frame: frame cycles ramhash
++	u32 skipStart = 0, skipEnd = 0; // address range left out of the RAM hash (the game's code, for M1 images)
++	std::string ref;             // reference trace: at the first frame whose hash differs, dump RAM and stop
++	int dumpFrame = -1;          // write user RAM at the end of this frame to dumpFile
++	std::string dumpFile;
++};
++static RRBoxOptions g_rr;
++
++static u32 RRButtons(const std::string &tok) {
++	if (tok.rfind("0x", 0) == 0) return (u32)strtoul(tok.c_str(), nullptr, 16);
++	static const struct { const char *n; u32 v; } names[] = {
++		{"SELECT", 0x1}, {"START", 0x8}, {"UP", 0x10}, {"RIGHT", 0x20}, {"DOWN", 0x40}, {"LEFT", 0x80},
++		{"L", 0x100}, {"R", 0x200}, {"TRIANGLE", 0x1000}, {"CIRCLE", 0x2000}, {"CROSS", 0x4000},
++		{"SQUARE", 0x8000}, {"NONE", 0}};
++	u32 m = 0; size_t a = 0;
++	while (a <= tok.size()) {
++		size_t b = tok.find('+', a); if (b == std::string::npos) b = tok.size();
++		std::string n = tok.substr(a, b - a); bool ok = false;
++		for (auto &e : names) if (n == e.n) { m |= e.v; ok = true; }
++		if (!ok) { fprintf(stderr, "rrbox: unknown button '%s'\n", n.c_str()); exit(2); }
++		a = b + 1;
++	}
++	return m;
++}
++
+ struct AutoTestOptions {
+ 	double timeout;
+ 	double maxScreenshotError;
+@@ -226,6 +262,33 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+ 		draw->BeginFrame(Draw::DebugFlags::NONE);
+ 	}
+ 
++	// rrbox: load the script (frame -> held buttons) and open the trace.
++	std::map<int, u32> rrScript;
++	if (!g_rr.script.empty()) {
++		FILE *f = fopen(g_rr.script.c_str(), "r");
++		if (!f) { fprintf(stderr, "rrbox: cannot read %s\n", g_rr.script.c_str()); return false; }
++		char line[256];
++		while (fgets(line, sizeof(line), f)) {
++			char btn[200]; int fr;
++			if (line[0] == '#' || sscanf(line, "%d %199s", &fr, btn) != 2) continue;
++			rrScript[fr] = RRButtons(btn);
++		}
++		fclose(f);
++	}
++	FILE *rrTrace = g_rr.trace.empty() ? nullptr : fopen(g_rr.trace.c_str(), "w");
++	std::map<int, u64> rrRef;
++	if (!g_rr.ref.empty()) {
++		FILE *f = fopen(g_rr.ref.c_str(), "r");
++		char line[256];
++		while (f && fgets(line, sizeof(line), f)) {
++			int fr; long long cyc; unsigned long long h;
++			if (sscanf(line, "%d %lld %llx", &fr, &cyc, &h) == 3) rrRef[fr] = h;
++		}
++		if (f) fclose(f);
++	}
++	int rrFrame = 0;
++	u32 rrHeld = 0;
++
+ 	bool passed = true;
+ 	double deadline = time_now_d() + opt.timeout;
+ 	coreState = coreParameter.startBreak ? CORE_STEPPING_CPU : CORE_RUNNING_CPU;
+@@ -238,6 +301,42 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+ 		if (coreState == CORE_NEXTFRAME) {
+ 			coreState = CORE_RUNNING_CPU;
+ 			headlessHost->SwapBuffers();
++			// rrbox: end of frame rrFrame: log it, then apply the input held for the next frame.
++			if (rrTrace) {
++				const u8 *ram = Memory::GetPointerUnchecked(PSP_GetUserMemoryBase());
++				u64 h;
++				if (g_rr.skipEnd > g_rr.skipStart) {
++					const u32 b = PSP_GetUserMemoryBase(), e = PSP_GetUserMemoryEnd();
++					u64 h1 = XXH3_64bits(ram, g_rr.skipStart - b);
++					u64 h2 = XXH3_64bits(ram + (g_rr.skipEnd - b), e - g_rr.skipEnd);
++					h = h1 ^ (h2 * 0x9E3779B97F4A7C15ULL);
++				} else {
++					h = XXH3_64bits(ram, PSP_GetUserMemoryEnd() - PSP_GetUserMemoryBase());
++				}
++				fprintf(rrTrace, "%d %lld %016llx\n", rrFrame, (long long)CoreTiming::GetTicks(), (unsigned long long)h);
++				auto r = rrRef.find(rrFrame);
++				if (r != rrRef.end() && r->second != h && !g_rr.dumpFile.empty()) {
++					FILE *d = fopen(g_rr.dumpFile.c_str(), "wb");
++					if (d) { fwrite(ram, 1, PSP_GetUserMemoryEnd() - PSP_GetUserMemoryBase(), d); fclose(d); }
++					fprintf(stderr, "rrbox: frame %d differs from the reference; RAM dumped\n", rrFrame);
++					Core_Stop();
++				}
++			}
++			if (rrFrame == g_rr.dumpFrame && !g_rr.dumpFile.empty()) {
++				FILE *d = fopen(g_rr.dumpFile.c_str(), "wb");
++				if (d) {
++					fwrite(Memory::GetPointerUnchecked(PSP_GetUserMemoryBase()), 1, PSP_GetUserMemoryEnd() - PSP_GetUserMemoryBase(), d);
++					fclose(d);
++				}
++			}
++			rrFrame++;
++			auto it = rrScript.find(rrFrame);
++			if (it != rrScript.end()) {
++				__CtrlUpdateButtons(it->second & ~rrHeld, rrHeld & ~it->second);
++				rrHeld = it->second;
++			}
++			if (g_rr.frames && rrFrame >= g_rr.frames)
++				Core_Stop();
+ 		}
+ 		if (coreState == CORE_STEPPING_CPU && !coreParameter.startBreak) {
+ 			break;
+@@ -445,6 +544,20 @@ int main(int argc, const char* argv[])
+ 			teamCityMode = true;
+ 		else if (!strncmp(argv[i], "--state=", strlen("--state=")) && strlen(argv[i]) > strlen("--state="))
+ 			stateToLoad = argv[i] + strlen("--state=");
++		else if (!strncmp(argv[i], "--rr-frames=", 12))
++			g_rr.frames = atoi(argv[i] + 12);
++		else if (!strncmp(argv[i], "--rr-script=", 12))
++			g_rr.script = argv[i] + 12;
++		else if (!strncmp(argv[i], "--rr-hash-skip=", 15))
++			sscanf(argv[i] + 15, "%x:%x", &g_rr.skipStart, &g_rr.skipEnd);
++		else if (!strncmp(argv[i], "--rr-ref=", 9))
++			g_rr.ref = argv[i] + 9;
++		else if (!strncmp(argv[i], "--rr-dump-frame=", 16))
++			g_rr.dumpFrame = atoi(argv[i] + 16);
++		else if (!strncmp(argv[i], "--rr-dump=", 10))
++			g_rr.dumpFile = argv[i] + 10;
++		else if (!strncmp(argv[i], "--rr-trace=", 11))
++			g_rr.trace = argv[i] + 11;
+ 		else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
+ 			return printUsage(argv[0], NULL);
+ 		else if (!strcmp(argv[i], "--ignore")) {
+@@ -558,6 +671,13 @@ int main(int argc, const char* argv[])
+ 	g_Config.internalDataDirectory.clear();
+ 	g_Config.bUseOldAtrac = oldAtrac;
+ 	g_Config.iForceEnableHLE = 0xFFFFFFFF;  // Run all modules as HLE. We don't have anything to load in this context.
++	if (!g_rr.trace.empty() || !g_rr.script.empty() || g_rr.frames) {
++		// rrbox: the hardware the game shipped on, and nothing that depends on host thread timing.
++		g_Config.iPSPModel = PSP_MODEL_FAT;       // 2004/2005 launch hardware: 32 MB, 24 MB user memory
++		g_Config.bEnableWlan = false;
++		g_Config.bSeparateSASThread = false;      // sound mixing on the emulation thread
++		g_Config.iIOTimingMethod = IOTIMING_FAST; // I/O completes on emulated time only
++	}
+ 
+ 	// g_Config.bUseOldAtrac = true;
+ 

@@ -1,0 +1,56 @@
+# rrbox: the behaviour oracle
+
+`rrbox` is PPSSPP v1.20.4's headless runner with `ppsspp-rrbox.patch` applied. `build.sh` clones the pinned source into `build/ext/`, applies the patch and builds it.
+
+The oracle runs the original game, or a candidate built from this tree, and records what it does every frame.
+
+## Determinism
+
+Two runs of the same executable and script must be identical. Measured 2026-10-12: ten one-minute runs of retail had identical traces, and all 3,600 frame hashes were distinct, so the game state really changes.
+
+What it takes:
+
+| Setting | Why |
+|---|---|
+| `-i`, the pure interpreter | The JIT patches its own block markers (opcode `0x68…`) into emulated RAM, and their numbering differs between runs. |
+| `RRBOX_EPOCH` and `TZ=UTC` | They fix both wall-clock sources: the kernel start time and the RTC base. |
+| 32 MB launch hardware | The headless default is a Slim with 64 MB, and the memory size changes the game's heap. |
+| Wi-Fi off | Removes network-dependent behaviour. |
+| SAS mixing on the emulation thread; `IOTIMING_FAST` | Nothing waits on host thread timing. |
+
+## Booting a candidate
+
+The executable boots from a host file with the retail disc mounted (`-m`). Two traps:
+
+- **The extension.** PPSSPP treats a `.BIN` as a raw disc image and then boots nothing, so executables are staged as `.elf`.
+- **The path.** The launch path is written into emulated RAM, so retail and candidate are staged at the same path, one run after the other.
+
+The module loads at `0x08804000`; `.text` occupies RAM `0x08804040` to `0x089723fc`.
+
+## A7: whole image (`tools/oracle/a7.py`)
+
+For each script in `scripts/`, retail and the candidate each record per frame the emulated cycle count and an XXH3 hash of all 24 MB of user RAM. Every frame must agree.
+
+- `--m1` leaves `.text` out of the hash, for images whose T3 bodies differ in bytes. All data must still match.
+- **Teeth:**
+  - Retail's power-callback id stored 4 bytes off is caught at frame 0.
+  - Retail's main-thread priority changed from 111 to 110 is NOT caught in 30 s of attract mode. A7 sees only behaviour the scripts exercise, so coverage is the limit.
+
+## Scripts
+
+A script file holds one entry per line:
+
+```
+FRAME BUTTONS
+```
+
+- The buttons are held from that frame on.
+- `BUTTONS` is `NONE`, or names joined by `+` (`CROSS`, `CIRCLE`, `SQUARE`, `TRIANGLE`, `START`, `SELECT`, `UP`, `DOWN`, `LEFT`, `RIGHT`, `L`, `R`), or a hex mask.
+- A `# frames N` line sets the run length.
+
+## Not built yet
+
+- A5 per-function checking.
+- Display-list and audio comparison.
+- Scripts that reach races.
+- Per-instruction coverage.

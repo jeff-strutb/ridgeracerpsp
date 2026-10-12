@@ -105,21 +105,23 @@ python3 tools/score.py FILE --cc 1.3.1 -v           # same, stock compiler, word
 python3 tools/image.py                              # M2 gate: rebuilt BOOT.BIN vs retail, must be 0 differing bytes
 python3 tools/image.py --control                    # gate self-test with the control set's EXACT functions
 python3 tools/progress.py                           # regenerate the progress block and treemap below
+tools/oracle/build.sh                               # build rrbox (PPSSPP v1.20.4 headless + patch)
+python3 tools/oracle/a7.py [--m1]                   # A7: candidate image vs retail on every input script
 python3 tools/precommit.py --all                    # filing rules over the whole tree
 ```
 
 T1 = a draft only; T2 = in the tree, not done; T3 = certified behaviour exact, not byte-exact; T4 = bytes diff clean, with every relocation resolving to the same target.
 
-### How T3 will be verified
+### How T3 is verified
 
-This is **not built yet** (Phase 1 of the plan). It will follow the Boss Rally and Top Gear Rally oracles.
+The oracle is `rrbox` ([tools/oracle/README.md](tools/oracle/README.md)): PPSSPP v1.20.4 headless with a small patch, running the original program deterministically. Ten one-minute runs give identical traces.
 
-The original program will run headless and deterministic on a pinned PPSSPP core, driven by input scripts covering every mode and course. Unicorn has no Allegrex or VFPU support, which is why PPSSPP is used.
+- **A7, whole image (built).** `tools/oracle/a7.py` runs retail and the candidate image on every input script. Each frame's emulated time and the hash of all 24 MB of user RAM must agree. `--m1` leaves the code out of the hash, for images whose T3 bodies differ in bytes.
+  - The current T4 image is identical to retail for 1,800 frames.
+  - A planted wrong store is caught at frame 0.
+- **A5, per function (not built yet).** At every real call, the original body and the candidate run from identical state. Their memory, registers, FPU and VFPU state, and return values must agree. An unreached function is UNCOVERED, never passed.
 
-- **A5, per function.** At every real call, the original body and the candidate run from identical state. Their memory, registers, FPU and VFPU state, and return values must agree. An unreached function is UNCOVERED, never passed.
-- **A7, whole image.** The relinked program, with every certified body in place, runs every script in lockstep with the original. Every GE display list, every audio buffer and all of RAM must agree on every frame.
-
-A7 exists because A5 alone was not enough on Boss Rally, where whole-image runs found some 25 real bugs that A5 had certified. Both gates must catch a planted bug before any T3 counts.
+So far there is one input script, covering boot and attract mode. A7 only sees what the scripts exercise: a changed main-thread priority went unnoticed in attract mode. Scripts that reach every mode and course come next.
 
 ### How T4 is verified
 
