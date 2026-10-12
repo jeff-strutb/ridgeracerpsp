@@ -6,7 +6,7 @@
 
 /* The race settings shared with the race itself. */
 struct Tri {
-    int a, b, c;
+    int v[3];
 };
 struct RaceSettings {
     int m0[6];
@@ -174,12 +174,12 @@ public:
     unsigned char m15740[28];
     unsigned char m15768[10];
     int m15780;
-    unsigned char m15784;
-    unsigned char m15785;
-    unsigned char m15786;
+    bool m15784;
+    bool m15785;
+    bool m15786;
     int m15788;
     int m15792[48];
-    unsigned char m15984;
+    bool m15984;
     int m15988;
     int m15992;
     int m15996;
@@ -256,10 +256,11 @@ Sequence::CSingleRaceModeJob::CSingleRaceModeJob()
     code = D_1d118c;
 }
 
-/* @draft 0x0093d0 us _ZN8Sequence18CSingleRaceModeJob5BeginEv
-   WHAT IT DOES: Starts the single race mode: takes its own copy of the race settings (the
-   records, the per course tables, the race the main menu selected, the unlocked cars, courses
-   and options and the machine settings), then starts the script from its first state. */
+/* @implements 0x0093d0 us _ZN8Sequence18CSingleRaceModeJob5BeginEv
+   WHAT IT DOES: Starts the single race mode: takes its own copy of the game's race settings
+   (two tables of 336 values, three tables of 336 entries, the settings of the race kind the
+   main menu selected, the unlocked cars, courses and options, the records and the machine
+   settings), then starts the script from its first state. */
 void Sequence::CSingleRaceModeJob::Begin()
 {
     frames = 0;
@@ -269,7 +270,11 @@ void Sequence::CSingleRaceModeJob::Begin()
     }
     for (int j = 0; j < 3; j++)
         for (int k = 0; k < 336; k++)
-            m3268[j][k] = D_233f70.m2712[j][k];
+        {
+            m3268[j][k].v[0] = D_233f70.m2712[j][k].v[0];
+            m3268[j][k].v[1] = D_233f70.m2712[j][k].v[1];
+            m3268[j][k].v[2] = D_233f70.m2712[j][k].v[2];
+        }
     switch (D_1d110c) {
     case 1:
         m15364 = D_233f70.m14816[0];
