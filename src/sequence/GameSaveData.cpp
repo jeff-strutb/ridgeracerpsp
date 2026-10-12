@@ -465,10 +465,10 @@ const char *Sequence::CGameSaveData::Text2()
     return D_1d16c4[f_01c260()];
 }
 
+/* @implements 0x01957c us _ZN8Sequence13CGameSaveDataC2Ev
+   WHAT IT DOES: Constructs a saved game as the base part of a larger object. */
 /* @implements 0x01958c us _ZN8Sequence13CGameSaveDataC1Ev
-   WHAT IT DOES: Constructs a saved game. The base object constructor the compiler emits just
-   before it, at 0x01957c, is missing from the function map (it is counted as the end of the
-   previous function), so it carries no tag. */
+   WHAT IT DOES: Constructs a saved game. */
 Sequence::CGameSaveData::CGameSaveData()
 {
 }
@@ -804,8 +804,10 @@ int Sequence::CReplaySaveData::Save(CSaveStream *s)
     start = s->cur;
     s->Put8(104);
     s->Put32(size);
-    for (int i = 0; i < size; i++)
-        s->Put8(data[i]);
+    int n = size;
+    unsigned char *d = data;
+    for (int i = 0; i < n; i++)
+        *s->cur++ = *d++;
     return 0;
 }
 
