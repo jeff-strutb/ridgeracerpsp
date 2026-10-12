@@ -888,29 +888,29 @@ int MemoryStick::f_01abf4()
 {
     int r = D_1e38f4.f_006680();
 
-    if (!r)
-        return r;
-    D_1e38f4.f_006728();
-    noStick = 0;
-    full = 0;
-    missing = 0;
-    broken = 0;
-    result = D_1e38f4.result;
-    switch (result) {
-    case (int)0x80110381:
-    case (int)0x80110382:
-        noStick = 1;
-        break;
-    case (int)0x80110383:
-        full = 1;
-        break;
+    if (r) {
+        D_1e38f4.f_006728();
+        noStick = 0;
+        full = 0;
+        missing = 0;
+        broken = 0;
+        result = D_1e38f4.result;
+        switch (result) {
+        case (int)0x80110381:
+        case (int)0x80110382:
+            noStick = 1;
+            break;
+        case (int)0x80110383:
+            full = 1;
+            break;
+        }
+        if (f_01a900()) {
+            D_233f70.m15756 = 1;
+            D_237d00 = D_233f70;
+            f_00600c();
+        }
+        delete stream;
     }
-    if (f_01a900()) {
-        D_233f70.m15756 = 1;
-        D_237d00 = D_233f70;
-        f_00600c();
-    }
-    delete stream;
     return r;
 }
 
@@ -945,39 +945,39 @@ int MemoryStick::f_01ae50()
 {
     int r = D_1e38f4.f_006680();
 
-    if (!r)
-        return r;
-    D_1e38f4.f_006728();
-    noStick = 0;
-    full = 0;
-    missing = 0;
-    broken = 0;
-    result = D_1e38f4.result;
-    switch (result) {
-    case (int)0x80110301:
-    case (int)0x80110302:
-        noStick = 1;
-        break;
-    case (int)0x80110306:
-        break;
-    case (int)0x80110307:
-        missing = 1;
-        break;
-    }
-    if (f_01a900()) {
-        if (stream->f_0193a8()) {
-            broken = 1;
-            result = 0x80110306;
-        } else {
-            D_233f70 = *game;
-            D_233f70.m15756 = 1;
-            D_237d00 = D_233f70;
-            D_233f70.f_01959c();
-            f_00600c();
+    if (r) {
+        D_1e38f4.f_006728();
+        noStick = 0;
+        full = 0;
+        missing = 0;
+        broken = 0;
+        result = D_1e38f4.result;
+        switch (result) {
+        case (int)0x80110301:
+        case (int)0x80110302:
+            noStick = 1;
+            break;
+        case (int)0x80110306:
+            break;
+        case (int)0x80110307:
+            missing = 1;
+            break;
         }
+        if (f_01a900()) {
+            if (!stream->f_0193a8()) {
+                D_233f70 = *game;
+                D_233f70.m15756 = 1;
+                D_237d00 = D_233f70;
+                D_233f70.f_01959c();
+                f_00600c();
+            } else {
+                broken = 1;
+                result = 0x80110306;
+            }
+        }
+        delete game;
+        delete stream;
     }
-    delete game;
-    delete stream;
     return r;
 }
 
@@ -1013,24 +1013,24 @@ int MemoryStick::f_01b1ac()
 {
     int r = D_1e38f4.f_006680();
 
-    if (!r)
-        return r;
-    D_1e38f4.f_006728();
-    noStick = 0;
-    full = 0;
-    missing = 0;
-    broken = 0;
-    result = D_1e38f4.result;
-    switch (result) {
-    case (int)0x80110381:
-    case (int)0x80110382:
-        noStick = 1;
-        break;
-    case (int)0x80110383:
-        full = 1;
-        break;
+    if (r) {
+        D_1e38f4.f_006728();
+        noStick = 0;
+        full = 0;
+        missing = 0;
+        broken = 0;
+        result = D_1e38f4.result;
+        switch (result) {
+        case (int)0x80110381:
+        case (int)0x80110382:
+            noStick = 1;
+            break;
+        case (int)0x80110383:
+            full = 1;
+            break;
+        }
+        delete stream;
     }
-    delete stream;
     return r;
 }
 
@@ -1063,36 +1063,36 @@ int MemoryStick::f_01b3b8()
 {
     int r = D_1e38f4.f_006680();
 
-    if (!r)
-        return r;
-    D_1e38f4.f_006728();
-    noStick = 0;
-    full = 0;
-    missing = 0;
-    broken = 0;
-    result = D_1e38f4.result;
-    switch (result) {
-    case (int)0x80110301:
-    case (int)0x80110302:
-        noStick = 1;
-        break;
-    case (int)0x80110306:
-        broken = 1;
-        break;
-    case (int)0x80110307:
-        missing = 1;
-        break;
-    }
-    if (f_01a900()) {
-        if (stream->f_0193a8()) {
+    if (r) {
+        D_1e38f4.f_006728();
+        noStick = 0;
+        full = 0;
+        missing = 0;
+        broken = 0;
+        result = D_1e38f4.result;
+        switch (result) {
+        case (int)0x80110301:
+        case (int)0x80110302:
+            noStick = 1;
+            break;
+        case (int)0x80110306:
             broken = 1;
-            result = 0x80110306;
-        } else {
-            loadedSize = replay->size;
+            break;
+        case (int)0x80110307:
+            missing = 1;
+            break;
         }
+        if (f_01a900()) {
+            if (!stream->f_0193a8()) {
+                loadedSize = replay->size;
+            } else {
+                broken = 1;
+                result = 0x80110306;
+            }
+        }
+        delete replay;
+        delete stream;
     }
-    delete replay;
-    delete stream;
     return r;
 }
 
@@ -1129,24 +1129,24 @@ int MemoryStick::f_01b6fc()
 {
     int r = D_1e38f4.f_006680();
 
-    if (!r)
-        return r;
-    D_1e38f4.f_006728();
-    noStick = 0;
-    full = 0;
-    missing = 0;
-    broken = 0;
-    result = D_1e38f4.result;
-    switch (result) {
-    case (int)0x80110381:
-    case (int)0x80110382:
-        noStick = 1;
-        break;
-    case (int)0x80110383:
-        full = 1;
-        break;
+    if (r) {
+        D_1e38f4.f_006728();
+        noStick = 0;
+        full = 0;
+        missing = 0;
+        broken = 0;
+        result = D_1e38f4.result;
+        switch (result) {
+        case (int)0x80110381:
+        case (int)0x80110382:
+            noStick = 1;
+            break;
+        case (int)0x80110383:
+            full = 1;
+            break;
+        }
+        delete stream;
     }
-    delete stream;
     return r;
 }
 
@@ -1180,36 +1180,36 @@ int MemoryStick::f_01b91c()
 {
     int r = D_1e38f4.f_006680();
 
-    if (!r)
-        return r;
-    D_1e38f4.f_006728();
-    noStick = 0;
-    full = 0;
-    missing = 0;
-    broken = 0;
-    result = D_1e38f4.result;
-    switch (result) {
-    case (int)0x80110301:
-    case (int)0x80110302:
-        noStick = 1;
-        break;
-    case (int)0x80110306:
-        broken = 1;
-        break;
-    case (int)0x80110307:
-        missing = 1;
-        break;
-    }
-    if (f_01a900()) {
-        if (stream->f_0193a8()) {
+    if (r) {
+        D_1e38f4.f_006728();
+        noStick = 0;
+        full = 0;
+        missing = 0;
+        broken = 0;
+        result = D_1e38f4.result;
+        switch (result) {
+        case (int)0x80110301:
+        case (int)0x80110302:
+            noStick = 1;
+            break;
+        case (int)0x80110306:
             broken = 1;
-            result = 0x80110306;
-        } else {
-            loadedSize = replay->size;
+            break;
+        case (int)0x80110307:
+            missing = 1;
+            break;
         }
+        if (f_01a900()) {
+            if (!stream->f_0193a8()) {
+                loadedSize = replay->size;
+            } else {
+                broken = 1;
+                result = 0x80110306;
+            }
+        }
+        delete replay;
+        delete stream;
     }
-    delete replay;
-    delete stream;
     return r;
 }
 
@@ -1229,22 +1229,22 @@ int MemoryStick::f_01ba88()
 {
     int r = D_1e38f4.f_006680();
 
-    if (!r)
-        return r;
-    D_1e38f4.f_006728();
-    noStick = 0;
-    full = 0;
-    missing = 0;
-    broken = 0;
-    result = D_1e38f4.result;
-    switch (result) {
-    case (int)0x80110341:
-    case (int)0x80110342:
-        noStick = 1;
-        break;
-    case (int)0x80110347:
-        missing = 1;
-        break;
+    if (r) {
+        D_1e38f4.f_006728();
+        noStick = 0;
+        full = 0;
+        missing = 0;
+        broken = 0;
+        result = D_1e38f4.result;
+        switch (result) {
+        case (int)0x80110341:
+        case (int)0x80110342:
+            noStick = 1;
+            break;
+        case (int)0x80110347:
+            missing = 1;
+            break;
+        }
     }
     return r;
 }
@@ -1276,38 +1276,39 @@ int MemoryStick::f_01bc5c()
 {
     int r = D_1e38f4.f_006680();
 
-    if (!r)
-        return r;
-    D_1e38f4.f_006728();
-    noStick = 0;
-    full = 0;
-    missing = 0;
-    broken = 0;
-    result = D_1e38f4.result;
-    switch (result) {
-    case (int)0x80110301:
-    case (int)0x80110302:
-        noStick = 1;
-        break;
-    case (int)0x80110306:
-        break;
-    case (int)0x80110307:
-        missing = 1;
-        break;
-    }
-    if (f_01a900()) {
-        if (stream->f_0193a8()) {
-            broken = 1;
-            result = 0x80110306;
-        } else if (D_233f70.m15744 != game->m15744 || D_233f70.m15748 != game->m15748
-                   || D_233f70.m15752 != game->m15752) {
-            broken = 1;
-        } else {
-            f_00600c();
+    if (r) {
+        D_1e38f4.f_006728();
+        noStick = 0;
+        full = 0;
+        missing = 0;
+        broken = 0;
+        result = D_1e38f4.result;
+        switch (result) {
+        case (int)0x80110301:
+        case (int)0x80110302:
+            noStick = 1;
+            break;
+        case (int)0x80110306:
+            break;
+        case (int)0x80110307:
+            missing = 1;
+            break;
         }
+        if (f_01a900()) {
+            if (!stream->f_0193a8()) {
+                if (D_233f70.m15744 != game->m15744 || D_233f70.m15748 != game->m15748
+                    || D_233f70.m15752 != game->m15752)
+                    broken = 1;
+                else
+                    f_00600c();
+            } else {
+                broken = 1;
+                result = 0x80110306;
+            }
+        }
+        delete game;
+        delete stream;
     }
-    delete game;
-    delete stream;
     return r;
 }
 
