@@ -111,6 +111,11 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | `(x-1) < 6u`, then `beq 7`, then `beq 8` | an if-chain `if (x >= 1 && x <= 6) ... else if (x == 7) ... else if (x == 8)`; a switch gives `slti`/`blez` | 0x0137e8 |
 | `new` of N bytes then `jal` to another class's constructor, no vptr store, cleanup calling `operator delete` | allocate a plain block whose inline constructor calls it: `(CReplay *)new CReplayBlock` | 0x013bac |
 | String literals BADREF only by their order in `.rodata` | keep functions in retail address order even where a state table lists them otherwise | 0x013dc4, 0x013f34 |
+| An inline `if (p) call` kept in line, not moved to the function's end | load the pointer into a pointer-typed local first (`void *q = t->p; if (q) t->f();`) so GCC's pointer prediction fires | f_00c4b4, f_00c9c8, f_00cdd0 |
+| A queue push after a call uses v1, not v0 | the callee is declared to return `int` | f_00aee8, f_00ab18 |
+| A table lookup that rematerialises the table address on both loop exits | a macro naming the global table directly, with an output-pointer local; an inline function taking the table keeps one register (and is not inlined when used twice) | f_00ca54 |
+| Copy loops addressing a global from one base register reused across statements | a local pointer `T *g = &D_233f70;` | 0x00dd64 |
+| Separate tests for 2 and 0x400000 instead of one `& 0x400002` | an inline predicate: `Trig(2) \|\| Trig(0x400000)` | f_00ab18 |
 | A small function after `_GLOBAL__D_`, called from static init | the compiler-generated constructor of a class whose base has an out-of-line constructor (a `.gnu.linkonce.t` function; tag it at its retail address) | 0x001554 |
 
 **Callee prototypes are behaviour.** Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).

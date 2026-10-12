@@ -10,3 +10,4 @@ addr,name,evidence
 0x00d8e8,_ZN8Sequence22CWirelessBattleModeJobC1Ev,as above for _ZTVN8Sequence22CWirelessBattleModeJobE
 0x013048,_ZN8Sequence14COptionModeJobC1Ev,as above for _ZTVN8Sequence14COptionModeJobE
 0x011b50,_ZN8Sequence16CSaveLoadModeJobC1Ev,as above for _ZTVN8Sequence16CSaveLoadModeJobE
+0x1521c8,_ZdaPv,operator delete[](void*): calls operator delete (0x1521a8) and returns, as libstdc++ del_opv does

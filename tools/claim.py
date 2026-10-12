@@ -114,7 +114,12 @@ def main():
                 print('\n'.join(bad))
                 return 1
             rels = [os.path.relpath(os.path.abspath(p), ROOT) for p in paths]
-            subprocess.run(['git', '-C', ROOT, 'add', '--'] + rels, check=True)
+            here = [r for r in rels if os.path.exists(os.path.join(ROOT, r))]
+            gone = [r for r in rels if r not in here]
+            if here:
+                subprocess.run(['git', '-C', ROOT, 'add', '--'] + here, check=True)
+            if gone:  # removals, whether or not already removed from the index
+                subprocess.run(['git', '-C', ROOT, 'rm', '-q', '--cached', '--ignore-unmatch', '--'] + gone, check=True)
             r = subprocess.run(['git', '-C', ROOT, 'commit', '-q', '--only', '-m', a.msg, '--'] + rels)
             if r.returncode == 0:
                 for k in mine:  # a commit renews every claim its author holds
