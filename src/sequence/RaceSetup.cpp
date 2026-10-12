@@ -216,10 +216,84 @@ extern GhostData D_1ee480;
 extern GhostData D_20f0cc;
 
 /* The wireless session. */
+extern "C" {
+void f_083ac0(void *);
+void f_083aec(void *);
+}
+
+/* A player's name entry of the wireless link (made and destroyed by the link code). */
+struct NetName {
+    int m0[6];
+    unsigned char m24;
+    NetName() { f_083ac0(this); }
+    ~NetName() { f_083aec(this); }
+};
+
+/* The local player's name entry, with its state word. */
+struct NetSelf : NetName {
+    int m28;
+    NetSelf() { m28 = 0; }
+    void f_083af4(int n);
+    void f_083bd4(int id);
+    void f_083c18();
+};
+extern NetSelf D_22fd18;
+
+/* The wireless session: the players of a wireless race and their choices. */
 struct Session {
+    int m0[4];
+    int count;
+    Pair cars[13];
+    int m124[13];
+    int m176[13];
+    int m228[13];
+    int m280[13];
+    int m332;
+    int m336;
+    char name[20];
+    char names[13][20];
+
     void f_03fe1c();
+    void f_03fe80(const int &mode, const Name &seq, int c1, int c2);
+    void f_0408b8(NetName n);
 };
 extern Session D_240900;
+
+/* One player entry of the wireless link. */
+struct LinkEntry {
+    char m0[10];
+    signed char state;
+    signed char id;
+    char m12[6];
+    signed char used;
+    char m19;
+    unsigned int colours;
+    char m24[16];
+};
+
+/* The wireless link. */
+struct Link {
+    int m0;
+    int m4;
+    char m8[85];
+    signed char m93;
+    char m94[74];
+    LinkEntry entry[8];
+    int f_086324();
+    int f_0859b4();
+    void f_086b40();
+    void f_086cb4();
+};
+extern Link D_241810;
+
+/* The message queue of the wireless link. */
+struct LinkQueue {
+    void f_0840f4(NetSelf *n);
+    int f_084150(NetSelf *n);
+};
+extern LinkQueue D_241804;
+extern int D_1d164c;
+extern unsigned char D_22fdb8;
 
 extern int D_1ee198;
 extern int D_1ee19c;
@@ -345,6 +419,12 @@ static inline void Lookup(Name &out, const char *name)
     out = D_2407d0.Find((const char *)n.a);
 }
 
+/* Names the row of the course table given by another row. */
+static inline void Lookup2(Name &out, Name n)
+{
+    out.Set(D_2407a8, (const char *)n.a);
+}
+
 /* @implements 0x014cf8 us f_014cf8
    WHAT IT DOES: Selects the wireless time trial race sequence for the given two numbers
    ("wt_<a>_<b>"), forward direction. */
@@ -410,7 +490,7 @@ Pair f_0150a0()
     return course;
 }
 
-/* @draft 0x01515c us f_01515c
+/* @implements 0x01515c us f_01515c
    WHAT IT DOES: Returns the number of laps of the current race sequence. */
 int f_01515c()
 {
@@ -420,14 +500,14 @@ int f_01515c()
     return D_24063c[0];
 }
 
-/* @draft 0x0151e8 us f_0151e8
+/* @implements 0x0151e8 us f_0151e8
    WHAT IT DOES: Returns the ghost choice of the setup. */
 int f_0151e8()
 {
     return D_1ee1f0.m576;
 }
 
-/* @draft 0x0151f4 us f_0151f4
+/* @implements 0x0151f4 us f_0151f4
    WHAT IT DOES: Tells whether the course is run in reverse. */
 bool f_0151f4()
 {
@@ -521,4 +601,152 @@ void f_015204()
     }
     D_1dd6b0.f_0057d0();
     D_1dd6b0.f_0030c8(0);
+}
+
+/* A colour packed as 5, 6 and 5 bits (red, green, blue) in the top half of the word, made
+   into a 24 bit colour; -1 when the word's bit 15 says there is none. */
+static inline int Colour565(unsigned int c)
+{
+    if (c & 0x8000)
+        return -1;
+    unsigned int r = c >> 27;
+    unsigned int g = (c >> 21) & 0x3f;
+    unsigned int b = (c >> 16) & 0x1f;
+    return ((r * 255 / 31) << 16) + ((g * 255 / 63) << 8) + b * 255 / 31;
+}
+
+/* A colour packed as 5, 5 and 5 bits in the bottom half of the word, made into a 24 bit
+   colour; -1 when bit 15 says there is none. */
+static inline int Colour555(unsigned int c)
+{
+    if (c & 0x8000)
+        return -1;
+    unsigned int r = (c & 0x7c00) >> 10;
+    unsigned int g = (c & 0x3e0) >> 5;
+    unsigned int b = c & 0x1f;
+    return ((r * 255 / 31) << 16) + ((g * 255 / 31) << 8) + b * 255 / 31;
+}
+
+/* @draft 0x0156d4 us f_0156d4
+   WHAT IT DOES: Builds the setup of a wireless race. A two player link race sends the local
+   player's name entry to the session; other modes send the setup's choices. Every player of
+   the session becomes a rival (with its car, colours and options, and in link races its
+   name), the local player's own car, colours and name are taken from the link, and the
+   sequence manager is given the course, the sequence and the player's car. */
+void f_0156d4()
+{
+    int i;
+    int n;
+
+    Name seq = D_2407d0.Find((const char *)D_1ee1f0.seq.a);
+    int mode = D_1ee1f0.m20;
+    void *rec = D_2407d0.Get("SequenceNumber", (const char *)seq.a, 0);
+    memcpy(D_24063c, rec, D_1a211c[1]);
+    if (IsMode(3))
+        D_240900.f_0408b8(D_22fd18);
+    else
+        D_240900.f_03fe80(mode, seq, D_1ee1f0.m288[0], D_1ee1f0.m296[0]);
+    n = D_240900.count;
+    if (D_241810.f_086324() != 0)
+        n = D_241810.f_0859b4() - 1;
+    for (i = 0; i < n; i++) {
+        if (D_240900.count > 0)
+            D_1ee1f0.rival[i] = D_240900.cars[i % D_240900.count];
+        else
+            D_1ee1f0.rival[i] = D_240740.Find("fiera_0_s");
+        D_1ee1f0.m184[i] = D_240900.m228[i];
+        D_1ee1f0.m236[i] = D_240900.m280[i];
+        rec = D_2407d0.Get("SequenceNumber", (const char *)seq.a, 0);
+        memcpy(D_24063c, rec, D_1a211c[1]);
+        if (IsMode(3))
+            strcpy(D_1ee1f0.name[i + 1], D_240900.names[i]);
+        D_1ee1f0.m304[i] = D_240900.m124[i];
+        D_1ee1f0.m356[i] = D_240900.m176[i];
+        D_1dd6b0.f_003150(i, D_1ee1f0.rival[i]);
+    }
+    D_1ee1f0.m56[0] = D_240900.m336;
+    D_1ee1f0.m48[0] = D_240900.m332;
+    rec = D_2407d0.Get("SequenceNumber", (const char *)seq.a, 0);
+    memcpy(D_24063c, rec, D_1a211c[1]);
+    if (IsMode(3)) {
+        strcpy(D_1ee1f0.name[0], D_240900.name);
+        D_1ee1f0.m288[0] = Colour565(D_241810.entry[0].colours);
+        D_1ee1f0.m296[0] = Colour555(D_241810.entry[0].colours);
+    }
+    void *num = D_2407d0.Get("CourseNumber", (const char *)seq.a, 0);
+    Name course;
+    Lookup2(course, D_2407a8.Find((const char *)num));
+    D_1dd6b0.f_0030d0(course);
+    Pair cur = D_1ee1f0.seq;
+    D_1dd6b0.m276 = cur;
+    D_1dd6b0.m320 = D_1ee1f0.m16;
+    D_1dd6b0.f_0030c8(8);
+    D_1dd6b0.f_00317c(0, D_1ee1f0.car[0]);
+    D_1dd6b0.m292 = 0;
+}
+
+/* @draft 0x015ce4 us f_015ce4
+   WHAT IT DOES: One step of waiting for the players of a link race. When asked to (and the link
+   is idle) it first sends the list of the players taking part. While the link is idle and not
+   yet started it checks every other player: when all are ready the link is started; otherwise
+   the local player's entry is sent again every 16 steps. Once started (or stopped), it
+   answers whether waiting is over (1), or, while the link is busy, takes a message from it and
+   marks the local player ready when the message came. */
+int f_015ce4()
+{
+    int i;
+    LinkEntry *e = D_241810.entry;
+
+    if (D_241810.m4 == 0 && D_1d164c) {
+        D_22fd18.f_083af4(8);
+        for (i = 0; i < 8; i++) {
+            if (e[i].used)
+                D_22fd18.f_083bd4(e[i].id);
+        }
+        D_22fd18.f_083c18();
+        D_1d164c = 0;
+    }
+    if (D_241810.m93 != 6 && D_241810.m4 == 0) {
+        bool ready = 1;
+        for (i = 1; i < 8; i++) {
+            if (e[i].used && e[i].state != 6) {
+                ready = 0;
+                break;
+            }
+        }
+        if (ready) {
+            D_241810.m93 = 6;
+            D_241810.f_086cb4();
+            return 0;
+        }
+        if ((D_22fdb8 & 0xf) == 0)
+            D_241804.f_0840f4(&D_22fd18);
+        D_22fdb8++;
+        return 0;
+    }
+    if (D_241810.m93 != 6) {
+        if (D_241810.m93 != 5) {
+            if (D_241810.m4 == 1) {
+                if (D_241804.f_084150(&D_22fd18) != -1)
+                    e[0].state = 6;
+                D_241810.f_086b40();
+                return 0;
+            }
+        }
+    }
+    D_1d164c = 1;
+    return 1;
+}
+
+/* @implements 0x015ec0 us f_015ec0
+   WHAT IT DOES: Marks the setup as coming from a replay. */
+void f_015ec0()
+{
+    D_1ee1f0.m24 = 1;
+}
+
+/* @implements 0x015ed0 us f_015ed0
+   WHAT IT DOES: Nothing. */
+void f_015ed0()
+{
 }
