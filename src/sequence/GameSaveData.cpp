@@ -693,7 +693,6 @@ int Sequence::CGameSaveData::Save(CSaveStream *s)
    survive a load and sets miles for an English console. */
 int Sequence::CGameSaveData::Load(CSaveStream *s)
 {
-    int i, j;
     start = s->cur;
     version = s->Get8();
     if (version != 105)
@@ -732,9 +731,9 @@ int Sequence::CGameSaveData::Load(CSaveStream *s)
         m14872[i] = s->Get8();
     for (int i = 0; i < 60; i++)
         m15064[i] = s->Get8();
-    for (i = 0; i < 28; i++)
+    for (int i = 0; i < 28; i++)
         m15304[i] = s->Get8();
-    for (i = 0; i < 10; i++)
+    for (int i = 0; i < 10; i++)
         m15416[i] = s->Get8();
     m15456 = s->Get8();
     m15460 = s->Get8();
@@ -755,8 +754,8 @@ int Sequence::CGameSaveData::Load(CSaveStream *s)
     m15704 = s->Get8();
     m15708 = s->Get8();
     m15712 = s->Get8();
-    for (i = 0; i < 8; i++)
-        name[i] = s->Get8();
+    for (int i = 0; i < 8; i++)
+        name[i] = *s->cur++;
     m15728 = s->Get8();
     m15724 = s->Get8();
     m15732 = s->Get8();
