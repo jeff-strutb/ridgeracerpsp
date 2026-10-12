@@ -580,11 +580,12 @@ int f_096918(char *);
         char *f_ = f_0368e8(&D_240740, "Class", car_.rec, 0, 0);                        \
         memcpy(D_24063c, f_, D_1a211c[1]);                                               \
         int cls_ = D_24063c[0] - 1;                                                      \
-        Rec crs_ = ChosenCourse(D_1dd7c4);                                               \
-        int idx_ = CourseIndex(crs_);                                                    \
+        int idx_ = CourseIndex(ChosenCourse(D_1dd7c4));                                  \
         int n_ = cls_ * 24 + idx_;                                                       \
-        D_1ee198.lapRecord = m1820[n_];                                                  \
-        D_1ee198.record = m476[n_];                                                      \
+        int lap_ = m1820[n_];                                                            \
+        int rec_ = m476[n_];                                                             \
+        D_1ee198.record = rec_;                                                          \
+        D_1ee198.lapRecord = lap_;                                                       \
         f_018af8(&D_2301b0);                                                             \
         queue.Push(12);                                                                  \
     } while (0)
@@ -991,8 +992,8 @@ void f_00e30c(void)
    on (event 4).
    Remaining difference: control flow and every call match in order; the callee-saved
    registers are numbered one off from retail (this in s5, retail s4), the racer copy loops
-   and the console list constructor are scheduled differently and the car lookup's null branch
-   does not become retail's branch-likely store (see f_010b4c). 6420 bytes against 6452. */
+   and the console list constructor are scheduled differently (both car lookups' null
+   branches now match retail). 6412 bytes against 6452. */
 void Sequence::CWirelessBattleModeJob::f_00e334()
 {
     m3204 = D_1e8ec4.Rand();
@@ -1566,9 +1567,11 @@ void Sequence::CWirelessBattleModeJob::f_01031c()
    that finished (by gap to the winner; those that did not finish after them, by distance run)
    and shows the ranking with each player's car and gap. It counts a win when the player's
    time is the winner's and a loss otherwise.
-   Remaining difference: the car lookup's null branch (retail beqzl with the zero store in the
-   slot), the result message's store order and the sort's inner compare (retail beqzl that
-   assigns the best index in the slot) differ; 1856 bytes against 1868. */
+   Remaining difference: identical up to the course lookup (+0x160); from there retail keeps
+   the class in s0 and the course table's high half in s1 (here swapped), copies the chosen
+   course record with lw a1/lw v0 then both stores (here lw v0/lw v1, move a1), and the result
+   message's store order and the sort's inner compare (retail beqzl that assigns the best index
+   in the slot) differ; 1852 bytes against 1868. */
 void Sequence::CWirelessBattleModeJob::f_010378()
 {
     int me = D_240800.me;
@@ -1688,8 +1691,9 @@ void Sequence::CWirelessBattleModeJob::f_010b44()
    goes back to the menu (event 10), 4 enters the race (event 12) and 1 restarts the session as
    host when it is not running.
    Remaining difference: retail keeps the session's address in s3 and this in s2 (here s4 and
-   s3), takes the car lookup's zero store into a branch-likely slot, and computes the
-   SelectNum size address after the Class call; 1640 bytes against 1592. */
+   s3); in the course pick retail's chosen course record sits at 16(sp) and its copy at 48(sp)
+   (here 0 and 32), and retail stores the two course records through separate lui of
+   D_1ee198+16 and +12 where this build forms one base register; 1612 bytes against 1592. */
 void Sequence::CWirelessBattleModeJob::f_010b4c()
 {
     if (D_241810.m4 == 1) {
