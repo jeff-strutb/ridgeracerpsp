@@ -11,11 +11,14 @@ A function is tagged with a comment on the line(s) above it:
     /* @implements 0x01e000 us Name */
 where Name is the C symbol (or a substring of the C++ mangled symbol).
 
-Scoring: words are compared with the relocated field masked on BOTH sides, and the relocation
-TYPE at each word must agree. Call targets are compared when the callee is itself tagged
-or named f_<addr>. A function is EXACT only if every word, type and known target agrees.
+Scoring (T4): words are compared with the relocated field masked on BOTH sides, the relocation
+TYPE at each word must agree, and every relocation must resolve to the same thing as retail's
+(see Resolver: addresses for f_/D_/tagged symbols, contents for literals, constants and jump
+tables). EXACT = every word, type and reference agrees. BADREF = the bytes agree but some
+reference does not (wrong global, wrong string, unresolvable symbol).
 """
 import argparse
+import csv
 import os
 import re
 import struct
@@ -63,6 +66,134 @@ def tags(src):
     return [(int(a, 16), n) for a, n in TAG.findall(open(src).read())]
 
 
+NAMED = re.compile(r'[fD]_([0-9a-f]{6})$')
+
+
+def _libsyms():
+    path = os.path.join(ROOT, 'config/us/libfuncs.csv')
+    out = {}
+    if os.path.exists(path):
+        for r in csv.DictReader(open(path)):
+            out.setdefault(r['symbol'], int(r['addr'], 16))
+    return out
+
+
+LIBSYMS = _libsyms()
+
+
+class Resolver:
+    """Resolve each relocated word of the candidate object to what it refers to, and check it
+    against the retail relocation at the same word (T4: every relocation resolves the same).
+
+    Object-side targets:
+      f_XXXXXX / D_XXXXXX symbols (defined or not), or a tagged name  -> retail address + addend
+      a library symbol identified in config/us/libfuncs.csv           -> its retail address
+      a label/function inside a tagged function of this object         -> mapped retail address
+      a local data section (.rodata*, .data, .bss)                      -> CONTENT: the bytes
+          the candidate refers to must equal the retail bytes at the retail target; words of
+          that data carrying R_32 relocations (jump tables) must resolve the same, recursively.
+      anything else                                                     -> UNRESOLVED (fails)
+    """
+
+    def __init__(self, obj, syms, name_to_addr, placed, retail_rel, e):
+        self.obj, self.syms, self.n2a, self.placed, self.rrel, self.e = obj, syms, name_to_addr, placed, retail_rel, e
+        self.rels = {}
+        for i in range(len(obj.sh)):
+            r = obj.object_rels(i)
+            if r:
+                self.rels[i] = r
+
+    def addend(self, sec, off, rtype):
+        """Implicit addend of the REL entry at sec+off (HI16/LO16 combined as AHL)."""
+        w = struct.unpack_from('<I', self.obj.data(sec), off)[0]
+        if rtype == 2:
+            return w
+        if rtype == R_26:
+            return (w & 0x03ffffff) << 2
+        rl = self.rels[sec]
+        k = next(j for j, r in enumerate(rl) if r[0] == off)
+        sym = rl[k][2]
+        lo16 = lambda x: struct.unpack('<h', struct.pack('<H', x & 0xffff))[0]  # noqa: E731
+        if rtype == 5:  # HI16: pair with the next LO16 on the same symbol
+            lo = next((r for r in rl[k + 1:] if r[1] == 6 and r[2] == sym), None)
+            low = lo16(struct.unpack_from('<I', self.obj.data(sec), lo[0])[0]) if lo else 0
+            return ((w & 0xffff) << 16) + low
+        if rtype == 6:  # LO16: take the upper half from the preceding HI16 on the same symbol
+            hi = next((r for r in reversed(rl[:k]) if r[1] == 5 and r[2] == sym), None)
+            high = (struct.unpack_from('<I', self.obj.data(sec), hi[0])[0] & 0xffff) << 16 if hi else 0
+            return high + lo16(w)
+        return 0
+
+    def target(self, sec, off, rtype, symidx):
+        """('addr', a) | ('data', secidx, offset) | ('unresolved', why)."""
+        s = self.syms[symidx]
+        add = self.addend(sec, off, rtype)
+        m = NAMED.match(s['name'])
+        if s['name'] in LIBSYMS and not s['shndx']:
+            return ('addr', LIBSYMS[s['name']] + add)
+        if s['name'] in self.n2a:
+            return ('addr', self.n2a[s['name']] + add)
+        if m:
+            return ('addr', int(m.group(1), 16) + add)
+        if s['shndx'] and s['shndx'] < len(self.obj.sh):
+            nm = self.obj.names[s['shndx']]
+            val = s['value'] + add
+            if nm == '.text':
+                for cstart, csize, raddr in self.placed:
+                    if cstart <= val <= cstart + csize:
+                        return ('addr', raddr + val - cstart)
+                return ('unresolved', f'.text+0x{val:x} is outside every tagged function')
+            if nm.startswith(('.rodata', '.data', '.bss', '.sdata', '.sbss')):
+                return ('data', s['shndx'], val)
+        return ('unresolved', f'symbol {s["name"] or "?"}')
+
+    def check(self, tgt, retail_target, depth=0):
+        """None if the candidate reference matches the retail one, else a reason string."""
+        kind = tgt[0]
+        if kind == 'unresolved':
+            return tgt[1]
+        if retail_target is None:
+            return 'retail target unknown (unpaired LO16)'
+        if kind == 'addr':
+            return None if tgt[1] == retail_target else f'refers to 0x{tgt[1]:x}, retail 0x{retail_target:x}'
+        _, sec, val = tgt
+        nm = self.obj.names[sec]
+        sh = self.obj.sh[sec]
+        if sh[1] == 8:  # NOBITS: compare only that both are bss
+            bi = self.e.index('.bss')
+            ok = self.e.addr(bi) <= retail_target < self.e.addr(bi) + self.e.sh[bi][5]
+            return None if ok else 'candidate .bss, retail not .bss'
+        data = self.obj.data(sec)
+        if 'str' in nm:
+            n = data.index(b'\0', val) + 1 - val
+        elif 'cst' in nm:
+            n = int(re.search(r'cst(\d+)', nm).group(1))
+        else:
+            n = min(len(data) - val, 64)
+        relmap = {r[0]: r for r in self.rels.get(sec, [])}
+        for k in range(0, n, 4 if n % 4 == 0 and val % 4 == 0 else 1):
+            if (val + k) in relmap and depth < 2:
+                _, rt, si = relmap[val + k]
+                rr = self.rrel.get(retail_target + k)
+                why = self.check(self.target(sec, val + k, rt, si), rr['target'] if rr else None, depth + 1)
+                if why:
+                    return f'data word +{k}: {why}'
+            elif k % 4 == 0 and n - k >= 4 and n % 4 == 0 and val % 4 == 0:
+                cw = data[val + k:val + k + 4]
+                try:
+                    rw = struct.pack('<I', self.e.word(retail_target + k))
+                except KeyError:
+                    return f'retail 0x{retail_target + k:x} is not loaded data'
+                if cw != rw:
+                    return f'data at +{k} differs ({cw.hex()} vs {rw.hex()})'
+            else:
+                cb = data[val + k]
+                rb = struct.pack('<I', self.e.word((retail_target + k) & ~3))[(retail_target + k) & 3]
+                if cb != rb:
+                    return f'data byte +{k} differs'
+        return None
+
+
 def score(src, cc, flags, verbose):
     obj = Elf(open(compile_obj(src, cc, flags), 'rb').read())
     syms = obj.symbols()
@@ -74,6 +205,15 @@ def score(src, cc, flags, verbose):
     fsyms = sorted([s for s in syms if s['shndx'] == text and s['type'] == 2], key=lambda s: s['value'])
     c = rdis.load()
     e = c['e']
+    placed = []
+    for addr, name in tg:
+        cand = [s for s in fsyms if s['name'] == name] or [s for s in fsyms if name in s['name']]
+        if cand:
+            k = fsyms.index(cand[0])
+            size = cand[0]['size'] or ((fsyms[k + 1]['value'] if k + 1 < len(fsyms) else len(tdata)) - cand[0]['value'])
+            placed.append((cand[0]['value'], size, addr))
+            name_to_addr.setdefault(cand[0]['name'], addr)
+    res = Resolver(obj, syms, name_to_addr, placed, c['rel'], e)
     results = []
     for addr, name in tg:
         cand = [s for s in fsyms if s['name'] == name] or [s for s in fsyms if name in s['name']]
@@ -86,7 +226,7 @@ def score(src, cc, flags, verbose):
         if start != addr:
             results.append((addr, name, 'BADADDR', f'0x{addr:x} is inside f_{start:06x}')); continue
         n = max(size, osize) // 4
-        first, diffs = None, 0
+        first, diffs, refbad = None, 0, []
         for i in range(n):
             pa, pc = addr + 4 * i, s['value'] + 4 * i
             ow = e.word(pa) if i < osize // 4 else None
@@ -95,21 +235,22 @@ def score(src, cc, flags, verbose):
             ot = orr['type'] if orr else 0
             ct, csym = orel.get(pc, (0, None))
             ok = ow is not None and cw is not None and ot == ct and relmask(ow, ot) == relmask(cw, ct)
-            if ok and ot == R_26 and csym is not None:
-                callee = syms[csym]['name']
-                want = name_to_addr.get(callee)
-                if want is None and re.fullmatch(r'f_[0-9a-f]{6}', callee):
-                    want = int(callee[2:], 16)
-                if want is not None and orr['target'] != want:
+            if ok and ct and csym is not None:
+                why = res.check(res.target(text, pc, ct, csym), orr['target'])
+                if why:
                     ok = False
+                    refbad.append(f'+0x{4 * i:x}: {why}')
             if not ok:
                 diffs += 1
                 if first is None:
                     first = i
         if diffs == 0:
             results.append((addr, name, 'EXACT', f'{osize}B'))
+        elif refbad and diffs == len(refbad):
+            results.append((addr, name, 'BADREF', f'bytes match but {len(refbad)} reference(s) differ: ' + '; '.join(refbad[:3])))
         else:
-            results.append((addr, name, 'DIFF', f'{diffs}/{n} words differ, first at +0x{4 * first:x}; size {size} vs {osize}'))
+            results.append((addr, name, 'DIFF', f'{diffs}/{n} words differ, first at +0x{4 * first:x}; size {size} vs {osize}'
+                            + (f'; bad refs: ' + '; '.join(refbad[:2]) if refbad else '')))
         if verbose and diffs:
             for i in range(n):
                 pa, pc = addr + 4 * i, s['value'] + 4 * i

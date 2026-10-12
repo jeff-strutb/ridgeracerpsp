@@ -82,5 +82,5 @@ Newlib is statically linked (`ratio`, `_mprec_log10` at 0x12f1c4–0x12f2xx), so
 | Tool | Purpose |
 |---|---|
 | `python3 tools/rrdis.py 0xADDR` | Annotated retail listing. |
-| `python3 tools/score.py FILE [--cc 1.3.1-nocmov\|1.3.1\|1.7.1] [--flags …] [-v]` | Score every `@implements` tag. |
+| `python3 tools/score.py FILE [--cc 1.3.1-nocmov\|1.3.1\|1.7.1] [--flags …] [-v]` | Score every `@implements` tag. EXACT needs the bytes, the relocation types and every reference's target or contents to agree; BADREF means the bytes agree but a reference does not. |
 | `-da` | Per-pass RTL dumps: `tools/toolchains/lima.sh sh -c 'cd build/da && ../toolchains/psp-gcc-1.3.1-nocmov/lib/gcc-lib/psp/*/cc1 -quiet -O2 -G0 -da t.c'`. |
