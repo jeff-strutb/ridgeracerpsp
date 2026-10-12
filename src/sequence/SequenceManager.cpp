@@ -244,7 +244,7 @@ struct Loader {
         char m0[12288];
         int head;
         int tail;
-        bool Empty() { return head == tail; }
+        bool Empty() { return tail == head; }
     } queue;
     unsigned char m12348;
 };
@@ -253,7 +253,7 @@ struct Queue2 {
     char m0[2048];
     int head;
     int tail;
-    bool Empty() { return head == tail; }
+    bool Empty() { return tail == head; }
 };
 
 extern Loader D_1da468;
@@ -582,7 +582,7 @@ int f_0038f8()
     return f_0037bc();
 }
 
-/* @draft 0x00391c us f_00391c
+/* @implements 0x00391c us f_00391c
    WHAT IT DOES: Enters a menu sequence: resets everything, starts the menu scene of the
    sequence number on the main timer and runs its players, then waits in f_0039c4 to leave. */
 void CSequence::f_00391c()
@@ -590,16 +590,15 @@ void CSequence::f_00391c()
     f_0057d0();
     f_00322c();
     m24188[0].f_0995e0(f_0037bc() + m332, 0);
-    Slot *s = &m24572[1];
-    s->timer = 0;
-    s->b = 0;
-    s->first = 0;
-    s->subFirst = 0;
+    m24572[1].timer = 0;
+    m24572[1].b = 0;
+    m24572[1].first = 0;
+    m24572[1].subFirst = 0;
     f_00322c();
-    f_005320(s);
+    f_005320(&m24572[1]);
     m336 = m24188[0].f_099684(m332, 0);
-    m25028 = &CSequence::f_0039c4;
     m25020 = 0;
+    m25028 = &CSequence::f_0039c4;
 }
 
 /* @implements 0x0039c4 us f_0039c4
@@ -611,7 +610,7 @@ void CSequence::f_0039c4()
     m25028 = 0;
 }
 
-/* @draft 0x0039fc us f_0039fc
+/* @implements 0x0039fc us f_0039fc
    WHAT IT DOES: Enters the start menu: shows the main menu and then the start menu scenes,
    times them, and runs the start menu's players. */
 void CSequence::f_0039fc()
@@ -621,20 +620,19 @@ void CSequence::f_0039fc()
     int a = f_0037bc();
     D_1dd6b0.f_005d4c(f_01c26c("MainMenu"));
     int b = f_0037bc();
-    m24188[0].f_0995e0(MAX(b, a), 0);
+    m24188[0].f_0995e0(MAX(a, b), 0);
     D_1dd6b0.f_005d4c(f_01c26c("StartMenu"));
     m24188[1].f_0995e0(f_0037bc(), 0);
-    Slot *s = &m24572[0];
-    s->timer = 1;
-    s->b = 0;
-    s->first = 0;
-    s->subFirst = 0;
+    m24572[0].timer = 1;
+    m24572[0].b = 0;
+    m24572[0].first = 0;
+    m24572[0].subFirst = 0;
     D_1dd6b0.f_005d4c(f_01c26c("StartMenu"));
-    f_005320(s);
+    f_005320(&m24572[0]);
     m25020 = 0;
 }
 
-/* @draft 0x003af4 us f_003af4
+/* @implements 0x003af4 us f_003af4
    WHAT IT DOES: Enters sequence 11 (from the start menu into the main menu): unless already
    there, opens the menu controller, runs the players on the first timer and waits in
    f_003b70. */
@@ -644,30 +642,28 @@ void CSequence::f_003af4()
         m25020 = 0;
         return;
     }
-    Slot *s = &m24572[1];
-    s->first = 1;
-    s->timer = 0;
-    s->b = 0;
-    s->subFirst = 0;
+    m24572[1].first = 1;
+    m24572[1].timer = 0;
+    m24572[1].b = 0;
+    m24572[1].subFirst = 0;
     f_092398(D_242c4c);
-    f_005320(s);
+    f_005320(&m24572[1]);
     m25020 = &CSequence::f_003b70;
 }
 
-/* @draft 0x003b70 us f_003b70
+/* @implements 0x003b70 us f_003b70
    WHAT IT DOES: Switches the running menu to the main menu scene and its players, and waits
    in f_003c10 to leave. */
 void CSequence::f_003b70()
 {
-    Slot *s = &m24572[1];
     f_092488(D_242c4c);
-    f_005470(s);
-    s->first = 1;
-    s->timer = 0;
-    s->b = 0;
-    s->subFirst = 0;
+    f_005470(&m24572[1]);
+    m24572[1].first = 1;
+    m24572[1].timer = 0;
+    m24572[1].b = 0;
+    m24572[1].subFirst = 0;
     D_1dd6b0.f_005d4c(f_01c26c("MainMenu"));
-    f_005320(s);
+    f_005320(&m24572[1]);
     m25020 = 0;
     m25028 = &CSequence::f_003c10;
 }
@@ -683,7 +679,7 @@ void CSequence::f_003c10()
     m25028 = 0;
 }
 
-/* @draft 0x003c58 us f_003c58
+/* @implements 0x003c58 us f_003c58
    WHAT IT DOES: Enters the main menu (sequence 12). Coming from sequence 11 it only stops the
    start menu's players and timer. Otherwise it resets, opens the menu controller, times the
    menu scenes and runs the players, then continues in f_003d30. */
@@ -700,30 +696,28 @@ void CSequence::f_003c58()
     int a = f_0037bc();
     f_00322c();
     int b = f_0037bc();
-    m24188[0].f_0995e0(MAX(b, a), 0);
-    Slot *s = &m24572[1];
-    s->timer = 0;
-    s->b = 0;
-    s->first = 0;
-    s->subFirst = 0;
+    m24188[0].f_0995e0(MAX(a, b), 0);
+    m24572[1].timer = 0;
+    m24572[1].b = 0;
+    m24572[1].first = 0;
+    m24572[1].subFirst = 0;
     f_092398(D_242c4c);
-    f_005320(s);
+    f_005320(&m24572[1]);
     m25020 = &CSequence::f_003d30;
 }
 
-/* @draft 0x003d30 us f_003d30
+/* @implements 0x003d30 us f_003d30
    WHAT IT DOES: Restarts the menu's players once and waits in f_003db4 to leave. */
 void CSequence::f_003d30()
 {
-    Slot *s = &m24572[1];
     f_092488(D_242c4c);
-    f_005470(s);
-    s->timer = 0;
-    s->b = 0;
-    s->first = 0;
-    s->subFirst = 0;
+    f_005470(&m24572[1]);
+    m24572[1].timer = 0;
+    m24572[1].b = 0;
+    m24572[1].first = 0;
+    m24572[1].subFirst = 0;
     f_00322c();
-    f_005320(s);
+    f_005320(&m24572[1]);
     m25020 = 0;
     m25028 = &CSequence::f_003db4;
 }
@@ -739,7 +733,7 @@ void CSequence::f_003db4()
     m25028 = 0;
 }
 
-/* @draft 0x003dfc us f_003dfc
+/* @implements 0x003dfc us f_003dfc
    WHAT IT DOES: Enters a test sequence (20 to 24). Moving between test sequences only swaps
    the test mode's scene. Otherwise it resets, shows the common test scene on a long timer and
    then switches to the test mode's scene in f_003eb0. */
@@ -753,34 +747,32 @@ void CSequence::f_003dfc()
     }
     f_0057d0();
     t->f_0995e0(0x800000, 0);
-    Slot *s = &m24572[1];
-    s->timer = 0;
-    s->b = 0;
-    s->first = 0;
-    s->subFirst = 0;
+    m24572[1].timer = 0;
+    m24572[1].b = 0;
+    m24572[1].first = 0;
+    m24572[1].subFirst = 0;
     f_003308();
-    f_005320(s);
+    f_005320(&m24572[1]);
     m336 = t->f_099684(m332, 0);
     m25020 = &CSequence::f_003eb0;
 }
 
-/* @draft 0x003eb0 us f_003eb0
+/* @implements 0x003eb0 us f_003eb0
    WHAT IT DOES: Shows the scene of the chosen test mode on the second timer, synchronised to
    the main timer, runs its players and waits in f_003fd0 to leave. */
 void CSequence::f_003eb0()
 {
-    Slot *s = &m24572[2];
-    s->timer = 1;
-    s->b = 0;
+    m24572[2].timer = 1;
+    m24572[2].b = 0;
     Elem24 *t = &m24188[0];
-    s->saved = t->f_0996b0(0);
+    m24572[2].saved = t->f_0996b0(0);
     f_00335c();
     int len = f_0037bc();
     m24188[1].f_0995e0(len, t->f_099684(len, 0));
     f_00335c();
-    s->first = 8;
-    s->subFirst = 4;
-    f_005320(s);
+    m24572[2].first = 8;
+    m24572[2].subFirst = 4;
+    f_005320(&m24572[2]);
     m25020 = 0;
     m25028 = &CSequence::f_003fd0;
 }
@@ -804,23 +796,22 @@ void CSequence::f_003fd0()
     m25028 = 0;
 }
 
-/* @draft 0x004010 us f_004010
+/* @implements 0x004010 us f_004010
    WHAT IT DOES: Enters a menu sequence like f_00391c, leaving through f_0040b8. */
 void CSequence::f_004010()
 {
     f_0057d0();
     f_00322c();
     m24188[0].f_0995e0(f_0037bc() + m332, 0);
-    Slot *s = &m24572[1];
-    s->timer = 0;
-    s->b = 0;
-    s->first = 0;
-    s->subFirst = 0;
+    m24572[1].timer = 0;
+    m24572[1].b = 0;
+    m24572[1].first = 0;
+    m24572[1].subFirst = 0;
     f_00322c();
-    f_005320(s);
+    f_005320(&m24572[1]);
     m336 = m24188[0].f_099684(m332, 0);
-    m25028 = &CSequence::f_0040b8;
     m25020 = 0;
+    m25028 = &CSequence::f_0040b8;
 }
 
 /* @implements 0x0040b8 us f_0040b8
@@ -832,20 +823,19 @@ void CSequence::f_0040b8()
     m25028 = 0;
 }
 
-/* @draft 0x0040f0 us f_0040f0
+/* @implements 0x0040f0 us f_0040f0
    WHAT IT DOES: Enters sequence 3: shows the menu scene of the sequence on the second timer
    and runs its players. */
 void CSequence::f_0040f0()
 {
     f_00322c();
     m24188[1].f_0995e0(f_0037bc(), 0);
-    Slot *s = &m24572[3];
-    s->timer = 1;
-    s->first = 8;
-    s->subFirst = 4;
-    s->b = 0;
+    m24572[3].timer = 1;
+    m24572[3].first = 8;
+    m24572[3].subFirst = 4;
+    m24572[3].b = 0;
     f_00322c();
-    f_005320(s);
+    f_005320(&m24572[3]);
     m25020 = 0;
 }
 
@@ -884,25 +874,23 @@ void CSequence::f_004198()
         m24188[2].f_0995e0(f_0037f0(), 0);
     }
     if (saved[0].a) {
-        Slot *s = &m24572[5];
-        s->timer = 2;
-        s->first = 24;
-        s->subFirst = 12;
-        s->b = 0;
+        m24572[5].timer = 2;
+        m24572[5].first = 24;
+        m24572[5].subFirst = 12;
+        m24572[5].b = 0;
         f_003150(0, saved[0]);
         f_00352c();
-        f_005320(s);
+        f_005320(&m24572[5]);
         f_003150(0, Param(0));
     }
     if (saved[0].a) {
-        Slot *s = &m24572[4];
-        s->timer = 2;
-        s->first = 48;
-        s->subFirst = 24;
-        s->b = 0;
+        m24572[4].timer = 2;
+        m24572[4].first = 48;
+        m24572[4].subFirst = 24;
+        m24572[4].b = 0;
         f_003150(0, saved[0]);
         f_003404();
-        f_005320(s);
+        f_005320(&m24572[4]);
         f_003150(0, Param(0));
     }
     for (i = 0; i < 14; i++)
@@ -955,14 +943,13 @@ void CSequence::f_004484()
         m24188[2].f_0995e0(f_0037f8(), 0);
     }
     if (saved[0].a) {
-        Slot *s = &m24572[5];
-        s->timer = 2;
-        s->first = 24;
-        s->subFirst = 12;
-        s->b = 0;
+        m24572[5].timer = 2;
+        m24572[5].first = 24;
+        m24572[5].subFirst = 12;
+        m24572[5].b = 0;
         f_003150(0, saved[0]);
         f_00352c();
-        f_005320(s);
+        f_005320(&m24572[5]);
         f_003150(0, Param(0));
     }
     for (i = 0; i < 14; i++)
@@ -981,19 +968,20 @@ void CSequence::f_004630()
     m25028 = &CSequence::f_004678;
 }
 
-/* @draft 0x004678 us f_004678
+/* @implements 0x004678 us f_004678
    WHAT IT DOES: Leaves the time attack: stops the scenes and the intro timer, forgets the
    remembered parameters and leaves through f_003db4. */
 void CSequence::f_004678()
 {
+    Elem24 *t = &m24188[2];
     f_005470(&m24572[5]);
-    m24188[2].f_099640();
+    t->f_099640();
     for (int i = 0; i < 14; i++)
         m156[i] = Param(0);
     m25028 = &CSequence::f_003db4;
 }
 
-/* @draft 0x0046ec us f_0046ec
+/* @implements 0x0046ec us f_0046ec
    WHAT IT DOES: Enters sequence 6: resets, starts an effect set timed on the main timer and
    runs its players, then waits in f_004770 to leave. */
 void CSequence::f_0046ec()
@@ -1001,13 +989,12 @@ void CSequence::f_0046ec()
     f_0057d0();
     f_003550();
     m24188[0].f_0995e0(f_0037bc(), 0);
-    Slot *s = &m24572[10];
-    s->timer = 0;
-    s->b = 0;
-    s->first = 0;
-    s->subFirst = 0;
+    m24572[10].timer = 0;
+    m24572[10].b = 0;
+    m24572[10].first = 0;
+    m24572[10].subFirst = 0;
     f_003550();
-    f_005320(s);
+    f_005320(&m24572[10]);
     m25020 = 0;
     m25028 = &CSequence::f_004770;
 }
@@ -1021,7 +1008,7 @@ void CSequence::f_004770()
     m25028 = 0;
 }
 
-/* @draft 0x0047a8 us f_0047a8
+/* @implements 0x0047a8 us f_0047a8
    WHAT IT DOES: Enters sequence 7, like f_0046ec with another effect set, then waits in
    f_00482c to leave. */
 void CSequence::f_0047a8()
@@ -1029,13 +1016,12 @@ void CSequence::f_0047a8()
     f_0057d0();
     f_00356c();
     m24188[0].f_0995e0(f_0037bc(), 0);
-    Slot *s = &m24572[10];
-    s->timer = 0;
-    s->b = 0;
-    s->first = 0;
-    s->subFirst = 0;
+    m24572[10].timer = 0;
+    m24572[10].b = 0;
+    m24572[10].first = 0;
+    m24572[10].subFirst = 0;
     f_00356c();
-    f_005320(s);
+    f_005320(&m24572[10]);
     m25020 = 0;
     m25028 = &CSequence::f_00482c;
 }
@@ -1049,7 +1035,7 @@ void CSequence::f_00482c()
     m25028 = 0;
 }
 
-/* @draft 0x004864 us f_004864
+/* @implements 0x004864 us f_004864
    WHAT IT DOES: Measures the race's opening: lets the race world prepare, then times each
    stage of the opening (effects, next stage, race start, two more effect sets and the pause
    menu) and starts the main timer on the longest path through them. */
@@ -1062,8 +1048,9 @@ void CSequence::f_004864()
     D_1e38e8 = f_0038c8();
     D_1e38ec = f_003800();
     D_1e38f0 = f_0038f8();
-    int len = MAX(D_1e38dc, D_1e38e0 + D_1e38e4);
-    len = MAX(len, D_1e38e0 + D_1e38e8 + D_1e38ec + D_1e38f0);
+    int len = D_1e38dc;
+    len = MAX(D_1e38e0 + D_1e38e4, len);
+    len = MAX(D_1e38e0 + D_1e38e8 + D_1e38ec + D_1e38f0, len);
     m24188[0].f_0995e0(len, 0);
 }
 
@@ -1074,16 +1061,15 @@ void CSequence::f_00493c()
     m24188[0].f_099640();
 }
 
-/* @draft 0x004958 us f_004958
+/* @implements 0x004958 us f_004958
    WHAT IT DOES: Starts the first stage of the race opening on the second timer,
    synchronised to the main timer, saving the main timer's state. */
 void CSequence::f_004958()
 {
-    Slot *s = &m24572[6];
-    s->timer = 1;
-    s->b = 0;
+    m24572[6].timer = 1;
+    m24572[6].b = 0;
     Elem24 *t = &m24188[0];
-    s->saved = t->f_0996b0(0);
+    m24572[6].saved = t->f_0996b0(0);
     int len = D_1e38dc;
     m24188[1].f_0995e0(len, t->f_099684(len, 0));
 }
@@ -1096,15 +1082,14 @@ void CSequence::f_0049e0()
     m24188[0].f_0996dc(m24572[6].saved);
 }
 
-/* @draft 0x004a28 us f_004a28
+/* @implements 0x004a28 us f_004a28
    WHAT IT DOES: Starts the second stage of the race opening on the second timer. */
 void CSequence::f_004a28()
 {
-    Slot *s = &m24572[7];
-    s->timer = 1;
-    s->b = 0;
+    m24572[7].timer = 1;
+    m24572[7].b = 0;
     Elem24 *t = &m24188[0];
-    s->saved = t->f_0996b0(0);
+    m24572[7].saved = t->f_0996b0(0);
     int len = D_1e38e0;
     m24188[1].f_0995e0(len, t->f_099684(len, 0));
 }
@@ -1117,15 +1102,14 @@ void CSequence::f_004ab0()
     m24188[0].f_0996dc(m24572[7].saved);
 }
 
-/* @draft 0x004af8 us f_004af8
+/* @implements 0x004af8 us f_004af8
    WHAT IT DOES: Starts the third stage of the race opening on the third timer. */
 void CSequence::f_004af8()
 {
-    Slot *s = &m24572[8];
-    s->timer = 2;
-    s->b = 0;
+    m24572[8].timer = 2;
+    m24572[8].b = 0;
     Elem24 *t = &m24188[0];
-    s->saved = t->f_0996b0(0);
+    m24572[8].saved = t->f_0996b0(0);
     int len = D_1e38e4;
     m24188[2].f_0995e0(len, t->f_099684(len, 0));
 }
@@ -1138,28 +1122,25 @@ void CSequence::f_004b80()
     m24188[0].f_0996dc(m24572[8].saved);
 }
 
-/* @draft 0x004bc8 us f_004bc8
+/* @implements 0x004bc8 us f_004bc8
    WHAT IT DOES: Starts the last three stages of the race opening on the third, fourth and
    fifth timers. */
 void CSequence::f_004bc8()
 {
     Elem24 *t = &m24188[0];
-    Slot *s = &m24572[9];
-    s->timer = 2;
-    s->b = 0;
-    s->saved = t->f_0996b0(0);
+    m24572[9].timer = 2;
+    m24572[9].b = 0;
+    m24572[9].saved = t->f_0996b0(0);
     int len = D_1e38e8;
     m24188[2].f_0995e0(len, t->f_099684(len, 0));
-    s = &m24572[10];
-    s->timer = 3;
-    s->b = 0;
-    s->saved = t->f_0996b0(0);
+    m24572[10].timer = 3;
+    m24572[10].b = 0;
+    m24572[10].saved = t->f_0996b0(0);
     len = D_1e38ec;
     m24188[3].f_0995e0(len, t->f_099684(len, 0));
-    s = &m24572[12];
-    s->timer = 4;
-    s->b = 0;
-    s->saved = t->f_0996b0(0);
+    m24572[12].timer = 4;
+    m24572[12].b = 0;
+    m24572[12].saved = t->f_0996b0(0);
     len = D_1e38f0;
     m24188[4].f_0995e0(len, t->f_099684(len, 0));
 }
@@ -1176,7 +1157,7 @@ void CSequence::f_004cf0()
     m24188[0].f_0996dc(m24572[9].saved);
 }
 
-/* @draft 0x004d88 us f_004d88
+/* @implements 0x004d88 us f_004d88
    WHAT IT DOES: Enters the race (sequence 8): resets, measures the opening, starts its first
    stage with the common effects and runs its players, then continues in f_004df8. */
 void CSequence::f_004d88()
@@ -1186,14 +1167,13 @@ void CSequence::f_004d88()
     f_004958();
     f_003604();
     f_003550();
-    Slot *s = &m24572[6];
-    s->first = 0;
-    s->subFirst = 0;
-    f_005320(s);
+    m24572[6].first = 0;
+    m24572[6].subFirst = 0;
+    f_005320(&m24572[6]);
     m25020 = &CSequence::f_004df8;
 }
 
-/* @draft 0x004df8 us f_004df8
+/* @implements 0x004df8 us f_004df8
    WHAT IT DOES: Moves the race opening on: ends the first stage, runs the second (the next
    race stage) and the third (the race start), then waits for the race in f_004ea0. */
 void CSequence::f_004df8()
@@ -1204,16 +1184,14 @@ void CSequence::f_004df8()
     f_0049e0();
     f_004a28();
     f_0035e4();
-    Slot *s = &m24572[7];
-    s->first = 0;
-    s->subFirst = 0;
-    f_005320(s);
+    m24572[7].first = 0;
+    m24572[7].subFirst = 0;
+    f_005320(&m24572[7]);
     f_004af8();
     f_0035ac();
-    s = &m24572[8];
-    s->first = 16;
-    s->subFirst = 8;
-    f_005320(s);
+    m24572[8].first = 16;
+    m24572[8].subFirst = 8;
+    f_005320(&m24572[8]);
     m25020 = &CSequence::f_004ea0;
 }
 
@@ -1228,7 +1206,7 @@ void CSequence::f_004ea0()
     m25020 = &CSequence::f_004efc;
 }
 
-/* @draft 0x004efc us f_004efc
+/* @implements 0x004efc us f_004efc
    WHAT IT DOES: Once the race world, controller and race object are all ready, ends the
    third opening stage and runs the last three (two effect sets and the pause menu), then
    continues in f_005000. */
@@ -1239,20 +1217,17 @@ void CSequence::f_004efc()
         f_004b80();
         f_004bc8();
         f_003634();
-        Slot *s = &m24572[9];
-        s->first = 16;
-        s->subFirst = 8;
-        f_005320(s);
+        m24572[9].first = 16;
+        m24572[9].subFirst = 8;
+        f_005320(&m24572[9]);
         f_00356c();
-        s = &m24572[10];
-        s->first = 24;
-        s->subFirst = 12;
-        f_005320(s);
+        m24572[10].first = 24;
+        m24572[10].subFirst = 12;
+        f_005320(&m24572[10]);
         f_0036a0();
-        s = &m24572[12];
-        s->first = 76;
-        s->subFirst = 38;
-        f_005320(s);
+        m24572[12].first = 76;
+        m24572[12].subFirst = 38;
+        f_005320(&m24572[12]);
         m25020 = &CSequence::f_005000;
     }
 }
@@ -1286,7 +1261,7 @@ void CSequence::f_005044()
     m25028 = 0;
 }
 
-/* @draft 0x0050ec us f_0050ec
+/* @implements 0x0050ec us f_0050ec
    WHAT IT DOES: Enters the title (sequence 0): resets, shows the title scene on the main
    timer, runs its players and waits in f_005170 to leave. */
 void CSequence::f_0050ec()
@@ -1294,13 +1269,12 @@ void CSequence::f_0050ec()
     f_0057d0();
     f_003744();
     m24188[0].f_0995e0(f_0037bc(), 0);
-    Slot *s = &m24572[1];
-    s->timer = 0;
-    s->b = 0;
-    s->first = 0;
-    s->subFirst = 0;
+    m24572[1].timer = 0;
+    m24572[1].b = 0;
+    m24572[1].first = 0;
+    m24572[1].subFirst = 0;
     f_003744();
-    f_005320(s);
+    f_005320(&m24572[1]);
     m25020 = 0;
     m25028 = &CSequence::f_005170;
 }
@@ -1314,7 +1288,7 @@ void CSequence::f_005170()
     m25028 = 0;
 }
 
-/* @draft 0x0051a8 us f_0051a8
+/* @implements 0x0051a8 us f_0051a8
    WHAT IT DOES: Enters the demo (sequence 1): resets, shows the demo's scene on the main
    timer, runs its players and waits in f_00522c to leave. */
 void CSequence::f_0051a8()
@@ -1322,13 +1296,12 @@ void CSequence::f_0051a8()
     f_0057d0();
     f_003760();
     m24188[0].f_0995e0(f_0037bc(), 0);
-    Slot *s = &m24572[1];
-    s->timer = 0;
-    s->b = 0;
-    s->first = 0;
-    s->subFirst = 0;
+    m24572[1].timer = 0;
+    m24572[1].b = 0;
+    m24572[1].first = 0;
+    m24572[1].subFirst = 0;
     f_003760();
-    f_005320(s);
+    f_005320(&m24572[1]);
     m25020 = 0;
     m25028 = &CSequence::f_00522c;
 }
@@ -1342,7 +1315,7 @@ void CSequence::f_00522c()
     m25028 = 0;
 }
 
-/* @draft 0x005264 us f_005264
+/* @implements 0x005264 us f_005264
    WHAT IT DOES: Enters sequence 2: resets, starts its (empty) scene on the main timer, runs
    its players and waits in f_0052e8 to leave. */
 void CSequence::f_005264()
@@ -1350,13 +1323,12 @@ void CSequence::f_005264()
     f_0057d0();
     f_0037b4();
     m24188[0].f_0995e0(f_0037bc(), 0);
-    Slot *s = &m24572[13];
-    s->timer = 0;
-    s->b = 0;
-    s->first = 0;
-    s->subFirst = 0;
+    m24572[13].timer = 0;
+    m24572[13].b = 0;
+    m24572[13].first = 0;
+    m24572[13].subFirst = 0;
     f_0037b4();
-    f_005320(s);
+    f_005320(&m24572[13]);
     m25020 = 0;
     m25028 = &CSequence::f_0052e8;
 }
@@ -1407,7 +1379,7 @@ void CSequence::f_005320(Slot *s)
     f_002304();
 }
 
-/* @draft 0x005470 us f_005470
+/* @implements 0x005470 us f_005470
    WHAT IT DOES: Stops a slot: releases its scene players and sub-players, last first, and
    empties its ranges. */
 void CSequence::f_005470(Slot *s)
@@ -1421,10 +1393,10 @@ void CSequence::f_005470(Slot *s)
         m668[i].f_0026cc();
     for (i = subLast - 1; i >= subFirst; i--)
         m23068[i].f_002be8();
-    s->subLast = 0;
     s->first = 0;
     s->subFirst = 0;
     s->last = 0;
+    s->subLast = 0;
 }
 
 /* @draft 0x005554 us f_005554
@@ -1503,7 +1475,7 @@ void CSequence::f_0056c4()
     m144 = m8;
 }
 
-/* @draft 0x0056d0 us f_0056d0
+/* @implements 0x0056d0 us f_0056d0
    WHAT IT DOES: Returns whether the sequence is still busy: the loader is working or has
    queued requests, or a handler is still pending. */
 int CSequence::f_0056d0()
@@ -1559,7 +1531,7 @@ void CSequence::f_0057d0()
     }
 }
 
-/* @draft 0x0058b4 us f_0058b4
+/* @implements 0x0058b4 us f_0058b4
    WHAT IT DOES: Initialises the manager's environment: clears the extra length, sets up the
    scene tables and the loader, and clears all 15 game parameters and their remembered
    copies. */
@@ -1568,14 +1540,13 @@ void CSequence::f_0058b4()
     m332 = 0;
     f_001ff4(0);
     f_001c1c(&D_1da468);
-    Param p(0);
     for (int i = 0; i < 15; i++) {
-        m24[i] = p;
-        m156[i] = p;
+        m24[i] = Param(0);
+        m156[i] = Param(0);
     }
 }
 
-/* @draft 0x005910 us f_005910
+/* @implements 0x005910 us f_005910
    WHAT IT DOES: One step of the sequence: when the loaders are idle, runs the pending
    handler; when that finishes the transition, makes the requested sequence current and
    performs a reset that was asked for meanwhile. Then lets the loader run. */
