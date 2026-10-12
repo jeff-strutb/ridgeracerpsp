@@ -41,7 +41,10 @@ def grade():
         for line in p.stdout.splitlines():
             m = re.match(r'(\w+)\s+0x([0-9a-f]+)\s', line)
             if m:
-                out[int(m.group(2), 16)] = (m.group(1), os.path.relpath(path, ROOT))
+                a, rel = int(m.group(2), 16), os.path.relpath(path, ROOT)
+                if a in out and rel.startswith('src/control/') and not out[a][1].startswith('src/control/'):
+                    continue  # a filed source's tag takes precedence over the control set's copy
+                out[a] = (m.group(1), rel)
     return out
 
 

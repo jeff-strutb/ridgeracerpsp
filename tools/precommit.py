@@ -7,7 +7,9 @@ Refuses a commit that:
   2. adds a source file under src/ (outside src/control/) named for an address or a batch
      (slice*, batch*, part*, f_XXXXXX*, 0x*): functions are filed into the translation unit
      they came from, at the moment they are matched;
-  3. leaves any retail address claimed by two @implements anywhere in src/.
+  3. leaves any retail address claimed twice in src/, except once in a filed source plus copies
+     in src/control/ (a function filed into its object file takes over from the control set,
+     whose copy stays as compiler-identification evidence and is ignored by the image tools).
 src/control/ is the compiler-identification control set and is exempt from 1 and 2.
 
     python3 tools/precommit.py          # staged tree (the hook)
@@ -60,7 +62,8 @@ def main():
         if p in added and not control and BATCH.match(os.path.basename(p)):
             problems.append(f'{p}: new file named for an address or batch; file the function into its translation unit')
     for addr, where in sorted(claims.items()):
-        if len(where) > 1:
+        filed = [w for w in where if not w.startswith('src/control/')]
+        if len(where) > 1 and len(filed) != 1:
             problems.append(f'0x{addr:06x} is claimed {len(where)} times: ' + ', '.join(where))
     for x in problems:
         print(x)

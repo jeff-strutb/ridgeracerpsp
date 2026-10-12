@@ -77,15 +77,16 @@ def main(argv):
         off, info = struct.unpack_from('<II', e.d, o)
         positions.setdefault(seg[(info >> 8) & 0xff] + off, []).append(k)
 
+    filed = {a for p in srcs if '/src/control/' not in p for a, _ in score.tags(p, claims_only=True)}
     claimed, problems, placed_n = [], [], 0
     for src in srcs:
         rel = os.path.relpath(src, ROOT)
         obj = Elf(open(score.compile_obj(src, score.DEFAULT_CC, '-O2 -G0'), 'rb').read())  # adds per-file @cflags
         syms = obj.symbols()
         tg = score.tags(src, claims_only=True)
-        if '/src/control/' in src:  # self-test: only what the grader rates EXACT
+        if '/src/control/' in src:  # self-test: only what the grader rates EXACT, and not filed elsewhere
             exact = {a for a, _, st, _ in score.score(src, score.DEFAULT_CC, '-O2 -G0', False) if st == 'EXACT'}
-            tg = [(a, n) for a, n in tg if a in exact]
+            tg = [(a, n) for a, n in tg if a in exact and a not in filed]
         plc, n2a, found = score.locate(obj, syms, tg)
         for addr, name in tg:
             if addr not in found:
