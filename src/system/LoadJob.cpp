@@ -74,7 +74,7 @@ struct Request {
     void *owner;
     void *buf;
     const char *name;
-    int unused16;
+    int file;
     int size;
     int sector;
     int sectors;
@@ -140,6 +140,12 @@ struct RequestRing {
     int tail;
     RequestRing() { head = 0; tail = 0; }
     bool Empty() { return tail == head; }
+    Request &Front() { return e[head]; }
+    void Pop()
+    {
+        if (tail != head)
+            head = (head + 1) & 0xff;
+    }
     void Push(Request r)
     {
         e[tail++] = r;
@@ -435,14 +441,15 @@ void System::CLoadJob::Begin()
    read, from RRP.DAT or from a loose file. Never reports itself finished. */
 int System::CLoadJob::Step()
 {
+    Request *r;
+
     sceKernelCheckCallback();
     f_001b3c(&D_1d9c5c);
     if (busy == 1) {
         if (f_001698())
             return 0;
         busy = 0;
-        if (ring.tail != ring.head)
-            ring.head = (ring.head + 1) & 0xff;
+        ring.Pop();
         if (cur.type == 1) {
             f_002de4((FileLoader *)cur.owner);
         } else if (cur.type == 2) {
@@ -455,17 +462,18 @@ int System::CLoadJob::Step()
                         f_002a74((PackageLoader *)cur.owner, i);
                 }
             } else {
-                f_002a74((PackageLoader *)cur.owner, cur.size);
+                f_002a74((PackageLoader *)cur.owner, cur.file);
             }
         }
     }
-    if (ring.tail != ring.head) {
-        cur = ring.e[ring.head];
+    r = &cur;
+    if (!ring.Empty()) {
         busy = 1;
+        *r = ring.Front();
         if (D_1b8c00 == 2)
             f_0019f4(cur.buf, cur.sector, cur.sectors);
         else
-            f_0017d4(cur.buf, cur.name, cur.unused16);
+            f_0017d4(cur.buf, cur.name, cur.size);
     }
     return 0;
 }
