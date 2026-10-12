@@ -359,10 +359,12 @@ void f_00335c()
    for a plane-type car or for a truck-type car. */
 void f_003404()
 {
-    strcpy(D_240768, f_036b6c(D_240740, "CarGetBlock", D_1dd6b0.f_0031dc(0).a, -1));
+    char *block = f_036b6c(D_240740, "CarGetBlock", D_1dd6b0.f_0031dc(0).a, -1);
+    strcpy(D_240768, block);
     sprintf(D_1e387c, "Course%s", D_240768);
     D_1dd6b0.f_005d4c(D_1e387c);
-    memcpy(D_24063c, f_0368e8(D_240740, "Class", D_1dd6b0.f_0031dc(0).a, 0, 0), D_1a2120);
+    void *cls = f_0368e8(D_240740, "Class", D_1dd6b0.f_0031dc(0).a, 0, 0);
+    memcpy(D_24063c, cls, D_1a2120);
     if (D_24063c[0] == 7)
         D_1dd6b0.f_005d4c("SoundCarGetPlane");
     else
@@ -462,14 +464,26 @@ void f_003698()
 {
 }
 
+static inline bool IsWireless()
+{
+    return D_24063c[0] == 3;
+}
+
 /* @draft 0x0036a0 us f_0036a0
    WHAT IT DOES: Copies the record for the current sequence number and shows the pause menu,
    the wireless pause menu when the record says the race is wireless. */
 void f_0036a0()
 {
-    Param p = D_1dd6b0.m276;
-    memcpy(D_24063c, f_0368e8(D_2407d0, "SequenceNumber", p.a, 0, 0), D_1a2120);
-    D_1dd6b0.f_005d4c(f_01c26c(D_24063c[0] == 3 ? "WirelessPauseMenu" : "PauseMenu"));
+    CSequence *seq = &D_1dd6b0;
+    Param p = seq->m276;
+    void *rec = f_0368e8(D_2407d0, "SequenceNumber", p.a, 0, 0);
+    memcpy(D_24063c, rec, D_1a2120);
+    const char *name;
+    if (IsWireless())
+        name = "WirelessPauseMenu";
+    else
+        name = "PauseMenu";
+    seq->f_005d4c(f_01c26c(name));
 }
 
 /* @implements 0x003744 us f_003744
@@ -1583,16 +1597,17 @@ void CSequence::f_005a1c(Elem280 *e)
 
 static inline bool Match(const char *s, const char *name)
 {
-    while (*name && *s == *name) {
-        s++;
-        name++;
-    }
+    for (; *name; s++, name++)
+        if (*s != *name)
+            break;
     return *name == 0;
 }
 
-/* @draft 0x005a38 us f_005a38
+/* @implements 0x005a38 us f_005a38
    WHAT IT DOES: Finds the scene player showing the named scene: first among the manager's
-   own players, then among the outside players added to its list. Returns 0 if none. */
+   own players, then among the outside players added to its list. When none matches, the
+   original falls off the end without a return; the value left in the result register is
+   then the loop's final bound test, 0. */
 Elem280 *CSequence::f_005a38(const char *name)
 {
     int i;
@@ -1607,10 +1622,9 @@ Elem280 *CSequence::f_005a38(const char *name)
             break;
     if (i < 80)
         return m348[i];
-    return 0;
 }
 
-/* @draft 0x005b8c us f_005b8c
+/* @implements 0x005b8c us f_005b8c
    WHAT IT DOES: Finds the sub-player showing the named part. The function map merges it into
    f_005a38. */
 Elem28 *CSequence::f_005b8c(const char *name)
@@ -1666,6 +1680,6 @@ void CSequence::f_005d68(int a, int b)
 /* @implements 0x005ec4 us _GLOBAL__D_D_1dd6b0
    WHAT IT DOES: The program-exit hook that tears the sequence manager down. */
 
-/* @draft 0x005ee4 us _ZN9CSequenceC1Ev
+/* @implements 0x005ee4 us _ZN9CSequenceC1Ev
    WHAT IT DOES: Builds the manager: marks every player free, clears the timers and the
    handlers, and resets. (Defined in the class.) */
