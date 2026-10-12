@@ -69,7 +69,7 @@ public:
     CSwgSub();
     virtual ~CSwgSub();
     virtual void s2();
-    int m4[14];
+    int m4[3];
 };
 }
 
@@ -99,11 +99,11 @@ public:
     class CSub : public An::CSwgSub {
     public:
         virtual void s2();
-        int m60;
     };
     virtual void v2(void *msg, int arg);
     int m456;
     CSub sub;
+    char m476[524 - 476];
 };
 
 class CLoading : public CBaseMenu {
@@ -116,6 +116,8 @@ public:
     void f_076328(void *swg, void *tex);
     void f_07649c();
     CSub sub;
+    bool m472;
+    char m473[516 - 473];
 };
 }
 
@@ -143,20 +145,21 @@ struct VtPtr {
     VtPtr &operator=(const VtPtr &) { return *this; }
 };
 
-/* The settings objects the game fills in and the screen manager hands to a menu. */
-struct StartMenuData {
-    StartMenuData() { f_07ab2c(this); }
-    ~StartMenuData() { f_07aba8(this); }
+/* The settings objects the game fills in and the screen manager hands to a menu. They share
+   a base whose only field is a word every one of them carries. */
+struct MenuData {
     VtPtr vt;
     int m4;
+};
+struct StartMenuData : MenuData {
+    StartMenuData() { f_07ab2c(this); }
+    ~StartMenuData() { f_07aba8(this); }
     int m8;
     bool m12;
 };
-struct ResultMenuData {
+struct ResultMenuData : MenuData {
     ResultMenuData() { f_07a314(this); }
     ~ResultMenuData() { f_07a390(this); }
-    VtPtr vt;
-    int m4;
     int m8;
     int m12;
     int m16;
@@ -187,28 +190,22 @@ struct ResultMenuData {
     bool m290;
     bool m291;
 };
-struct Data233c20 {
+struct Data233c20 : MenuData {
     Data233c20() { f_078bf8(this); }
     ~Data233c20() { f_078c74(this); }
-    VtPtr vt;
-    int m4;
     int m8[12];
     bool m56;
     float m60;
     int m64;
 };
-struct Data233c64 {
+struct Data233c64 : MenuData {
     Data233c64() { f_079478(this); }
     ~Data233c64() { f_0794f4(this); }
-    VtPtr vt;
-    int m4;
     bool m8;
 };
-struct Options {
+struct Options : MenuData {
     Options() { f_07a558(this); }
     ~Options() { f_07a5d4(this); }
-    VtPtr vt;
-    int m4;
     int m8;
     int m12;
     int m16;
@@ -217,14 +214,7 @@ struct Options {
     bool m28;
     bool m29;
     bool m30;
-    char m31;
-    char m32;
-    char m33;
-    char m34;
-    char m35;
-    char m36;
-    char m37;
-    char m38;
+    char m31[8];
     char m39[18];
     char m57[18];
     bool m75;
@@ -232,37 +222,29 @@ struct Options {
     int m80;
     int m84[60];
 };
-struct Data233db4 {
+struct Data233db4 : MenuData {
     Data233db4() { f_07a744(this); }
     ~Data233db4() { f_07a7c0(this); }
-    VtPtr vt;
-    int m4;
     int m8;
     int m12;
 };
-struct ScreenMsg {
+struct ScreenMsg : MenuData {
     ScreenMsg() { f_0786b8(this); }
     ~ScreenMsg() { f_078734(this); }
-    VtPtr vt;
-    int m4;
     bool m8;
     bool m9;
 };
-struct Data233dd0 {
+struct Data233dd0 : MenuData {
     Data233dd0() { f_07a88c(this); }
     ~Data233dd0() { f_07a908(this); }
-    VtPtr vt;
-    int m4;
     int m8;
     int m12;
     bool m16;
     int m20;
 };
-struct Data233de8 {
+struct Data233de8 : MenuData {
     Data233de8() { f_07a9d8(this); }
     ~Data233de8() { f_07aa54(this); }
-    VtPtr vt;
-    int m4;
     bool m8;
     int m12;
     bool m16;
@@ -270,11 +252,9 @@ struct Data233de8 {
     bool m18;
     int m20;
 };
-struct Data233e00 {
+struct Data233e00 : MenuData {
     Data233e00() { f_0792a0(this); }
     ~Data233e00() { f_07931c(this); }
-    VtPtr vt;
-    int m4;
     int m8;
     int m12;
     int m16;
@@ -303,11 +283,9 @@ struct Data233e00 {
     int m120;
     int m124;
 };
-struct Data233e80 {
+struct Data233e80 : MenuData {
     Data233e80() { f_07a08c(this); }
     ~Data233e80() { f_07a108(this); }
-    VtPtr vt;
-    int m4;
     int m8;
     int m12[56];
 };
@@ -418,7 +396,7 @@ void ScreenMgr::f_017bfc()
 void ScreenMgr::f_017c88()
 {
     m5 = 1;
-    D_2337c8.sub.m4[3] = 1;
+    D_2337c8.m472 = 1;
     D_2337c8.f_07649c();
 }
 
