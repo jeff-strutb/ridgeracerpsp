@@ -71,6 +71,15 @@ struct CTable {
     const char *Row(int i) { return f_036984(0, i, rowNames, nRows); }
     int Index(const char *name) { return f_036a3c(name, rowNames, nRows); }
     void *Get(const char *col, const char *row, int i) { return f_0368e8(col, row, 0, i); }
+    Pair FindRow(const char *name)
+    {
+        Pair r;
+        if (name)
+            r.a = (int)f_036984(name, 0, rowNames, nRows);
+        else
+            r.a = 0;
+        return r;
+    }
     Name Find(const char *name)
     {
         Name r;
@@ -135,7 +144,6 @@ struct Cars {
     Slot e[2];
     Cars() { f_017968(); }
     void f_017968();
-    Slot &operator[](int i) { return e[i]; }
 };
 
 /* Three options kept together. */
@@ -508,7 +516,7 @@ void f_014950()
     D_2407f8 = 0;
     for (int i = 1; i < 2; i++) {
         D_1dd6b0.f_00317c(i, Pair(0));
-        D_1ee1f0.car[i] = Pair(0);
+        D_1ee1f0.car.e[i] = Pair(0);
         D_1ee1f0.ClearPlayer(i);
     }
 }
@@ -599,7 +607,7 @@ static inline void Lookup(Name &out, const char *name)
 }
 
 /* Names the row of the course table given by another row. */
-static inline void Lookup2(Name &out, Name n)
+static inline void Lookup2(Name &out, Pair n)
 {
     out.Set(D_2407a8, (const char *)n.a);
 }
@@ -734,7 +742,7 @@ void f_015204()
     if (!IsMode(2)) {
         for (i = 1; i < 2; i++) {
             D_1dd6b0.f_00317c(i, Pair(0));
-            D_1ee1f0.car[i] = Pair(0);
+            D_1ee1f0.car.e[i] = Pair(0);
             D_1ee1f0.ClearPlayer(i);
         }
     }
@@ -766,7 +774,7 @@ void f_015204()
             if (num == D_24063c[0])
                 break;
         }
-        D_1ee1f0.car[i] = D_240740.Find(D_240740.Row(k));
+        D_1ee1f0.car.e[i] = D_240740.Find(D_240740.Row(k));
         if (D_1d1638[i] < 0) {
             D_1ee1f0.m288[i] = -1;
             D_1ee1f0.m296[i] = -1;
@@ -854,13 +862,13 @@ void f_0156d4()
     }
     void *num = D_2407d0.Get("CourseNumber", (const char *)seq.a, 0);
     Name course;
-    Lookup2(course, D_2407a8.Find((const char *)num));
+    Lookup2(course, D_2407a8.FindRow((const char *)num));
     D_1dd6b0.f_0030d0(course);
     Pair cur = D_1ee1f0.seq;
     D_1dd6b0.m276 = cur;
     D_1dd6b0.m320 = D_1ee1f0.m16;
     D_1dd6b0.f_0030c8(8);
-    D_1dd6b0.f_00317c(0, D_1ee1f0.car[0]);
+    D_1dd6b0.f_00317c(0, D_1ee1f0.car.e[0]);
     D_1dd6b0.m292 = 0;
 }
 
@@ -933,7 +941,7 @@ void f_015ed0()
 void f_01614c(int unused);
 void f_01619c();
 
-/* @draft 0x015ed8 us f_015ed8
+/* @implements 0x015ed8 us f_015ed8
    WHAT IT DOES: Starts the rules of the race about to be run. It looks up the course, starts the
    effects, picks the background music (the fixed one in the attract demo, otherwise the one the
    course view chooses for the course), loads the sequence and makes the rules object for the
@@ -943,7 +951,7 @@ void f_015ed8()
     Name seq = D_2407d0.Find((const char *)D_1ee1f0.seq.a);
     void *num = D_2407d0.Get("CourseNumber", (const char *)seq.a, 0);
     Name course;
-    Lookup2(course, D_2407a8.Find((const char *)num));
+    Lookup2(course, D_2407a8.FindRow((const char *)num));
     f_01614c(0);
     if (D_1ee198 == -1) {
         if (f_0967c4(D_242cb0) == 1) {
@@ -1127,8 +1135,8 @@ int f_016348(unsigned char *data, int *firstEnd, int *size)
     }
     D_1ee1f0.seq.b = D_2407d0.Index((const char *)D_1ee1f0.seq.a);
     for (i = 0; i < 2; i++) {
-        if (D_1ee1f0.car[i].a)
-            D_1ee1f0.car[i].b = D_240740.Index((const char *)D_1ee1f0.car[i].a);
+        if (D_1ee1f0.car.e[i].a)
+            D_1ee1f0.car.e[i].b = D_240740.Index((const char *)D_1ee1f0.car.e[i].a);
     }
     for (i = 0; i < 13; i++) {
         if (D_1ee1f0.rival[i].a)
@@ -1299,8 +1307,8 @@ int f_016b28(unsigned char *data, unsigned int size)
     D_2407f8 = 0;
     D_1ee1f0.seq.a = (int)D_2407d0.Row(D_1ee1f0.seq.b);
     for (i = 0; i < 2; i++) {
-        if (D_1ee1f0.car[i].a)
-            D_1ee1f0.car[i].a = (int)D_240740.Row(D_1ee1f0.car[i].b);
+        if (D_1ee1f0.car.e[i].a)
+            D_1ee1f0.car.e[i].a = (int)D_240740.Row(D_1ee1f0.car.e[i].b);
     }
     for (i = 0; i < 13; i++) {
         if (D_1ee1f0.rival[i].a)
@@ -1383,14 +1391,14 @@ void f_0170a8()
     memcpy(D_24063c, rec, D_1a211c[1]);
     void *num = D_2407d0.Get("CourseNumber", (const char *)seq2.a, 0);
     Name course;
-    Lookup2(course, D_2407a8.Find((const char *)num));
+    Lookup2(course, D_2407a8.FindRow((const char *)num));
     D_1dd6b0.f_0030d0(course);
     Pair cur = D_1ee1f0.seq;
     D_1dd6b0.m276 = cur;
     D_1dd6b0.m320 = D_1ee1f0.m16;
     D_1dd6b0.f_0030c8(8);
-    D_1dd6b0.f_00317c(0, D_1ee1f0.car[0]);
-    D_1dd6b0.f_00317c(1, D_1ee1f0.car[1]);
+    D_1dd6b0.f_00317c(0, D_1ee1f0.car.e[0]);
+    D_1dd6b0.f_00317c(1, D_1ee1f0.car.e[1]);
     D_1dd6b0.m292 = 0;
 }
 
@@ -1446,8 +1454,8 @@ int f_01730c(unsigned char *data, unsigned int size)
     D_2407f8 = 0;
     rs.seq.a = (int)D_2407d0.Row(rs.seq.b);
     for (i = 0; i < 2; i++) {
-        if (rs.car[i].a)
-            rs.car[i].a = (int)D_240740.Row(rs.car[i].b);
+        if (rs.car.e[i].a)
+            rs.car.e[i].a = (int)D_240740.Row(rs.car.e[i].b);
     }
     for (i = 0; i < 13; i++) {
         if (rs.rival[i].a)
@@ -1478,8 +1486,8 @@ int f_01730c(unsigned char *data, unsigned int size)
     D_1ee1f0.m64[1] = rs.m64[0];
     D_1ee1f0.m72[1] = rs.m72[0];
     D_1ee1f0.m288[1] = rs.m288[0];
-    D_1dd6b0.f_00317c(1, rs.car[0]);
-    D_1ee1f0.car[1] = rs.car[0];
+    D_1dd6b0.f_00317c(1, rs.car.e[0]);
+    D_1ee1f0.car.e[1] = rs.car.e[0];
 done:
     codec.f_044d98();
     delete[] work;
@@ -1509,7 +1517,7 @@ template <class T> inline void Swap(T &a, T &b)
 void f_0177b0()
 {
     D_2407f8 = 1 - D_2407f8;
-    Swap(D_1ee1f0.car[0], D_1ee1f0.car[1]);
+    Swap(D_1ee1f0.car.e[1], D_1ee1f0.car.e[0]);
     Swap(D_1ee1f0.m64[0], D_1ee1f0.m64[1]);
     Swap(D_1ee1f0.m72[0], D_1ee1f0.m72[1]);
     Swap(D_1ee1f0.m288[0], D_1ee1f0.m288[1]);
