@@ -213,29 +213,34 @@ void f_021750(void)
     EndList();
 }
 
-/* @draft 0x021798 us f_021798
+/* Rounds a width up to a multiple of 64 pixels. */
+static inline unsigned int Align64(unsigned int w)
+{
+    return (w + 63) >> 6 << 6;
+}
+
+/* @implements 0x021798 us f_021798
    WHAT IT DOES: writes the graphics engine commands that point drawing at another target
    (pixel format, colour buffer and width, and the depth buffer, or depth writes and depth test
    off when there is none) and set the scissor to the target's size. Returns the end of the
    commands written. */
-unsigned int *f_021798(int psm, int width, int height, unsigned int fbp, unsigned int zbp)
+unsigned int *f_021798(int psm, unsigned int width, int height, unsigned int fbp, void *zbp)
 {
-    unsigned int *p = D_23c1b8;
-    unsigned int bw = (width + 63) >> 6 << 6;
+    unsigned int *p = D_23c1b8 + 1;
+    unsigned int bw = Align64(width);
 
-    p[1] = 0xd2000000 | psm;
-    p[2] = 0x9c000000 | (fbp & 0xffffff);
-    p[3] = 0x9d000000 | ((fbp >> 24) << 16) | bw;
-    if (zbp) {
-        p[4] = 0x9e000000 | (zbp & 0xffffff);
-        p[5] = 0x9f000000 | ((zbp >> 24) << 16) | bw;
-        D_23c1e0 = 0;
-    } else {
-        p[5] = 0x23000000;
-        p[4] = 0xe7000001;
+    *p++ = 0xd2000000 | psm;
+    *p++ = 0x9c000000 | (fbp & 0xffffff);
+    *p++ = 0x9d000000 | (bw | ((fbp >> 24) << 16));
+    if (zbp == 0) {
+        *p++ = 0xe7000001;
+        *p++ = 0x23000000;
         D_23c1e0 = 1;
+    } else {
+        *p++ = 0x9e000000 | ((unsigned int)zbp & 0xffffff);
+        *p++ = 0x9f000000 | (bw | (((unsigned int)zbp >> 24) << 16));
+        D_23c1e0 = 0;
     }
-    p += 6;
     *p++ = 0xd4000000;
     *p++ = 0xd5000000 | (width - 1) | ((height - 1) << 10);
     return p;
