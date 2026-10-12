@@ -1,9 +1,10 @@
-/* The main menu mode job (retail from 0x0079f4; this file holds 0x007b60 to 0x008838): the game
+/* The main menu mode job (retail 0x0078a0 to 0x008838): the game
    mode behind the main menu. Like the title job it is a small state machine driven by a
    script: a table of member functions, one per state, and a queue of events for the script.
-   The constructors and Begin come first in the object file (from 0x0078a0); Begin is defined
-   here because it is the class's key function, which makes this file emit the vtable and the
-   destructors. */
+   The object file runs from the constructors at 0x0078a0 to the destructors at 0x008810. */
+
+extern short D_1d10cc[];
+extern unsigned char D_1d10e0[];
 
 namespace Ng {
 class CJob {
@@ -302,8 +303,28 @@ public:
 }
 extern System::CGameModeJob D_1e8ec4;
 
-/* Begin (retail 0x007b48, object file 12, tagged with that object file's functions): starts
-   the main menu from its first state. */
+/* @implements 0x0078a0 us _ZN8Sequence16CMainMenuModeJobC2Ev
+   WHAT IT DOES: Constructs the main menu mode job: an empty event queue, the table of state
+   handlers and the two script tables the main menu runs from. */
+/* @implements 0x0079f4 us _ZN8Sequence16CMainMenuModeJobC1Ev
+   WHAT IT DOES: The same constructor, for a complete object. */
+Sequence::CMainMenuModeJob::CMainMenuModeJob()
+{
+    states[0] = &CMainMenuModeJob::f_007cd4;
+    states[1] = &CMainMenuModeJob::f_007cf0;
+    states[2] = &CMainMenuModeJob::f_00823c;
+    states[3] = &CMainMenuModeJob::f_008244;
+    states[4] = &CMainMenuModeJob::f_0085a4;
+    states[5] = &CMainMenuModeJob::f_0085ac;
+    states[6] = &CMainMenuModeJob::f_0085d0;
+    states[7] = &CMainMenuModeJob::f_0086b8;
+    states[8] = &CMainMenuModeJob::f_0086c0;
+    m52 = D_1d10cc;
+    m56 = D_1d10e0;
+}
+
+/* @implements 0x007b48 us _ZN8Sequence16CMainMenuModeJob5BeginEv
+   WHAT IT DOES: Starts the main menu from its first state. */
 void Sequence::CMainMenuModeJob::Begin()
 {
     m64 = 0;
@@ -475,12 +496,12 @@ void Sequence::CMainMenuModeJob::f_00823c()
 }
 
 /* @implements 0x008244 us f_008244
-   WHAT IT DOES: State 3: the main menu itself. When the player resets the settings, it clears
-   the game's settings but keeps the machine and display options, takes the screen's options,
-   shows everything again and sends event 4. It tracks the menu item the player chose; when
-   the player asks to reload the save data it does so and shows everything again. Unless the
-   choice is 1 or 2, it then takes the race settings and options the player picked, tells the
-   screen to close and sends event 2. */
+   WHAT IT DOES: State 3: the main menu itself. When the screen reports request 3, it resets the
+   game's settings but keeps the machine and display options, takes the screen's options back,
+   shows everything again and sends event 4. It records the menu item the screen reports
+   (request 6); on request 9 it reloads part of the game state and shows everything again.
+   Unless the item is 1 or 2, it then takes the race settings and options from the screen,
+   sends the screen a closing notice and sends event 2. */
 void Sequence::CMainMenuModeJob::f_008244()
 {
     if (D_2301b0.layer->v10(3) == 1) {
