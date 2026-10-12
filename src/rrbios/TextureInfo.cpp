@@ -179,7 +179,7 @@ CKeyLinkList<CInfo> D_23c240;
 
 void f_023d38(CLinkList<CInfo> *l);
 
-/* @draft 0x023340 us f_023340
+/* @implements 0x023340 us f_023340
    WHAT IT DOES: Makes room for n textures: the keyed table and the pool of n records, all on
    the free list. Returns 0 if the table cannot be made. */
 int f_023340(unsigned int n)
@@ -190,7 +190,7 @@ int f_023340(unsigned int n)
     return g->Alloc(n);
 }
 
-/* @draft 0x0233dc us f_0233dc
+/* @implements 0x0233dc us f_0233dc
    WHAT IT DOES: Frees the keyed table and the record pool. */
 void f_0233dc(void)
 {
@@ -199,7 +199,7 @@ void f_0233dc(void)
     g->Free();
 }
 
-/* @draft 0x023444 us f_023444
+/* @implements 0x023444 us f_023444
    WHAT IT DOES: Forgets every texture: empties the keyed table and puts every record back on
    the free list. */
 void f_023444(void)
@@ -209,7 +209,7 @@ void f_023444(void)
     g->Reset();
 }
 
-/* @draft 0x02347c us f_02347c
+/* @implements 0x02347c us f_02347c
    WHAT IT DOES: Finds the record of the texture with the given id, or 0. */
 CInfo *f_02347c(unsigned int id)
 {
@@ -241,7 +241,7 @@ CInfo *f_0234a4(unsigned int id)
     return p;
 }
 
-/* @draft 0x023588 us f_023588
+/* @implements 0x023588 us f_023588
    WHAT IT DOES: Drops the texture with the given id. Returns 1 if it was present. */
 int f_023588(unsigned int id)
 {
@@ -394,13 +394,13 @@ void f_023a20(CInfo *info, unsigned int format, int w, int h, unsigned int a)
    WHAT IT DOES: At startup, builds the texture info store empty; at shutdown, frees its table
    and pool. */
 
-/* @draft 0x023cf8 us _GLOBAL__I_
+/* @implements 0x023cf8 us _GLOBAL__I_
    WHAT IT DOES: The startup entry for this file's static data. */
 
-/* @draft 0x023d18 us _GLOBAL__D_
+/* @implements 0x023d18 us _GLOBAL__D_
    WHAT IT DOES: The shutdown entry for this file's static data. */
 
-/* @draft 0x023d38 us _ZN9CLinkListIN6RRBios14TextureManager5CInfoEE5ResetEv
+/* @implements 0x023d38 us _ZN9CLinkListIN6RRBios14TextureManager5CInfoEE5ResetEv
    WHAT IT DOES: Puts every node of the pool on the free list, in order, and empties the used
    list. */
 template <class T> void CLinkList<T>::Reset()
@@ -422,7 +422,7 @@ template <class T> void CLinkList<T>::Reset()
     m_num = 0;
 }
 
-/* @draft 0x023d80 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE5AllocEj
+/* @implements 0x023d80 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE5AllocEj
    WHAT IT DOES: Makes a table of n nodes and puts them all on its free list. */
 template <class T> int CKeyTable<T>::Alloc(unsigned int n)
 {
@@ -433,7 +433,7 @@ template <class T> int CKeyTable<T>::Alloc(unsigned int n)
     return 1;
 }
 
-/* @draft 0x023e54 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE4FreeEv
+/* @implements 0x023e54 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE4FreeEv
    WHAT IT DOES: Frees the table's nodes. */
 template <class T> void CKeyTable<T>::Free()
 {
@@ -463,7 +463,7 @@ template <class T> void CKeyTable<T>::Reset()
     }
 }
 
-/* @draft 0x023f04 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE4FindEj
+/* @implements 0x023f04 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE4FindEj
    WHAT IT DOES: Returns the value stored under a key, or 0. */
 template <class T> T *CKeyTable<T>::Find(unsigned int key)
 {
@@ -473,7 +473,7 @@ template <class T> T *CKeyTable<T>::Find(unsigned int key)
     return 0;
 }
 
-/* @draft 0x023f30 us _ZN9CLinkListIN6RRBios14TextureManager5CInfoEE6Insert
+/* @implements 0x023f30 us _ZN9CLinkListIN6RRBios14TextureManager5CInfoEE6Insert
    WHAT IT DOES: Takes a node (from the free list, or the first used one when the pool is full),
    copies the value into it and links it before the given node. */
 template <class T> typename CLinkList<T>::Node *CLinkList<T>::Insert(Node *pos, const T &v)
@@ -486,7 +486,7 @@ template <class T> typename CLinkList<T>::Node *CLinkList<T>::Insert(Node *pos, 
     return n;
 }
 
-/* @draft 0x023fe8 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE6InsertEj
+/* @implements 0x023fe8 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE6InsertEj
    WHAT IT DOES: Enters a value under a key. Returns 0 if the table is over full, the key is
    already present, or no node is free. */
 template <class T> int CKeyTable<T>::Insert(unsigned int key, T *value)
@@ -537,7 +537,7 @@ template <class T> int CKeyLinkList<T>::Remove(unsigned int key)
     return 0;
 }
 
-/* @draft 0x0241a0 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE6RemoveEj
+/* @implements 0x0241a0 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE6RemoveEj
    WHAT IT DOES: Takes a key out of its bucket's search tree (replacing a node with two children
    by the leftmost node of its right subtree) and returns the node to the free list. */
 template <class T> int CKeyTable<T>::Remove(unsigned int key)
@@ -574,14 +574,14 @@ template <class T> int CKeyTable<T>::Remove(unsigned int key)
     return 1;
 }
 
-/* @draft 0x0242a8 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE4HashEj
+/* @implements 0x0242a8 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE4HashEj
    WHAT IT DOES: The bucket of a key: the key modulo 101. */
 template <class T> unsigned int CKeyTable<T>::Hash(unsigned int key)
 {
     return key % 101;
 }
 
-/* @draft 0x0242e0 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE8FindNodeEj
+/* @implements 0x0242e0 us _ZN9CKeyTableIN6RRBios14TextureManager5CInfoEE8FindNodeEj
    WHAT IT DOES: Searches a key's bucket tree; returns its node, or 0. */
 template <class T> typename CKeyTable<T>::Node *CKeyTable<T>::FindNode(unsigned int key)
 {
@@ -599,8 +599,8 @@ template <class T> typename CKeyTable<T>::Node *CKeyTable<T>::FindNode(unsigned 
     return n;
 }
 
-/* @draft 0x02435c us _ZN12CKeyLinkListIN6RRBios14TextureManager5CInfoEED1Ev
+/* @implements 0x02435c us _ZN12CKeyLinkListIN6RRBios14TextureManager5CInfoEED1Ev
    WHAT IT DOES: Destroys the store: frees the table and the pool. */
 
-/* @draft 0x0243e0 us _ZN12CKeyLinkListIN6RRBios14TextureManager5CInfoEED0Ev
+/* @implements 0x0243e0 us _ZN12CKeyLinkListIN6RRBios14TextureManager5CInfoEED0Ev
    WHAT IT DOES: Destroys the store and frees it. */
