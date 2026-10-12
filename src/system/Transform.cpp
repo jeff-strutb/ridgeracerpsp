@@ -17,6 +17,11 @@ struct Matrix {
     float m[4][4];
 } __attribute__((aligned(16)));
 
+/* A matrix seen as four rows of vectors. */
+struct VMatrix {
+    Vec4 r[4];
+};
+
 extern "C" {
 void f_028d94(Matrix *m);
 void f_028e9c(const Matrix *m);
@@ -49,7 +54,7 @@ void f_02853c(float a);
 void f_028748(const Matrix *m);
 void f_0287a0(void);
 void f_028840(const Vec4 *v);
-void f_02889c(Matrix *m, Vec4 plane, const float *light);
+void f_02889c(Matrix *m, const Vec4 *plane, const float *light);
 
 /* @implements 0x0281d8 us f_0281d8
    WHAT IT DOES: Rotates a vector by the inverse of the current transform's rotation (its
@@ -66,61 +71,68 @@ Vec4 *f_0281d8(Vec4 *d, const Vec4 *a)
 }
 
 /* @draft 0x02822c us f_02822c
-   WHAT IT DOES: Builds the matrix of a rotation by an angle about an axis (a unit vector). */
+   WHAT IT DOES: Builds the matrix of a rotation by an angle about an axis (a unit vector).
+   Remaining difference: two instruction pairs in the multiply block are swapped (retail
+   computes s*z before s*x and stores the m[1][0] difference before the m[2][1] one); the
+   register use is otherwise identical. */
 Matrix *f_02822c(Matrix *m, const float *axis, float angle)
 {
+    VMatrix *r = (VMatrix *)m;
     float a = angle * 0.636619772f;
     float c = VCos(a);
     float s = VSin(a);
     float x = axis[0], y = axis[1], z = axis[2];
     float t = 1.0f - c;
+    float xy = x * y * t;
+    float xz = x * z * t;
+    float yz = y * z * t;
+    float sz = s * z;
+    float sy = s * y;
+    float sx = s * x;
 
-    m->m[0][0] = c + x * x * t;
-    m->m[0][1] = x * y * t + s * z;
-    m->m[0][2] = x * z * t - s * y;
-    m->m[1][0] = x * y * t - s * z;
-    m->m[1][1] = c + y * y * t;
-    m->m[1][2] = y * z * t + s * x;
-    m->m[2][0] = x * z * t + s * y;
-    m->m[2][1] = y * z * t - s * x;
-    m->m[2][2] = c + z * z * t;
-    m->m[3][2] = 0.0f;
-    m->m[3][3] = 1.0f;
-    m->m[0][3] = 0.0f;
-    m->m[1][3] = 0.0f;
-    m->m[2][3] = 0.0f;
-    m->m[3][0] = 0.0f;
-    m->m[3][1] = 0.0f;
+    r->r[0].x = c + x * x * t;
+    r->r[0].y = xy + sz;
+    r->r[0].z = xz - sy;
+    r->r[1].x = xy - sz;
+    r->r[1].y = c + y * y * t;
+    r->r[1].z = yz + sx;
+    r->r[2].x = xz + sy;
+    r->r[2].y = yz - sx;
+    r->r[2].z = c + z * z * t;
+    r->r[3].z = r->r[3].y = r->r[3].x = r->r[2].w = r->r[1].w = r->r[0].w = 0.0f;
+    r->r[3].w = 1.0f;
     return m;
 }
 
 /* @draft 0x02832c us f_02832c
    WHAT IT DOES: Builds the matrix of a rotation by an angle about an axis, in the opposite
-   direction to f_02822c (its transpose). */
+   direction to f_02822c (its transpose). Same remaining difference as f_02822c. */
 Matrix *f_02832c(Matrix *m, const float *axis, float angle)
 {
+    VMatrix *r = (VMatrix *)m;
     float a = angle * 0.636619772f;
     float c = VCos(a);
     float s = VSin(a);
     float x = axis[0], y = axis[1], z = axis[2];
     float t = 1.0f - c;
+    float xy = x * y * t;
+    float xz = x * z * t;
+    float yz = y * z * t;
+    float sz = s * z;
+    float sy = s * y;
+    float sx = s * x;
 
-    m->m[0][0] = c + x * x * t;
-    m->m[0][1] = x * y * t - s * z;
-    m->m[0][2] = x * z * t + s * y;
-    m->m[1][0] = x * y * t + s * z;
-    m->m[1][1] = c + y * y * t;
-    m->m[1][2] = y * z * t - s * x;
-    m->m[2][0] = x * z * t - s * y;
-    m->m[2][1] = y * z * t + s * x;
-    m->m[2][2] = c + z * z * t;
-    m->m[3][2] = 0.0f;
-    m->m[3][3] = 1.0f;
-    m->m[0][3] = 0.0f;
-    m->m[1][3] = 0.0f;
-    m->m[2][3] = 0.0f;
-    m->m[3][0] = 0.0f;
-    m->m[3][1] = 0.0f;
+    r->r[0].x = c + x * x * t;
+    r->r[0].y = xy - sz;
+    r->r[0].z = xz + sy;
+    r->r[1].x = xy + sz;
+    r->r[1].y = c + y * y * t;
+    r->r[1].z = yz - sx;
+    r->r[2].x = xz - sy;
+    r->r[2].y = yz + sx;
+    r->r[2].z = c + z * z * t;
+    r->r[3].z = r->r[3].y = r->r[3].x = r->r[2].w = r->r[1].w = r->r[0].w = 0.0f;
+    r->r[3].w = 1.0f;
     return m;
 }
 
@@ -358,30 +370,31 @@ void f_028880(const Vec4 *v)
                      : : "r"(v) : "memory");
 }
 
-/* @draft 0x02889c us f_02889c
+/* @implements 0x02889c us f_02889c
    WHAT IT DOES: Builds the matrix that projects points onto a plane along the line from a
    point light, for drawing a shadow flattened on the ground. */
-void f_02889c(Matrix *m, Vec4 p, const float *l)
+void f_02889c(Matrix *m, const Vec4 *p, const float *l)
 {
-    float d = p.x * l[0] + p.y * l[1] + p.z * l[2] + p.w;
-    float k = 1.0f / (d - ((-p.x - p.y - p.z) + (d - p.w)));
+    VMatrix *r = (VMatrix *)m;
+    float d = p->x * l[0] + p->y * l[1] + p->z * l[2] + p->w;
+    float k = 1.0f / (d - ((-p->x - p->y - p->z) + (d - p->w)));
 
-    m->m[0][0] = (d - l[0] * p.x) * k;
-    m->m[1][0] = -l[0] * p.y * k;
-    m->m[2][0] = -l[0] * p.z * k;
-    m->m[3][0] = -l[0] * p.w * k;
-    m->m[0][1] = -l[1] * p.x * k;
-    m->m[1][1] = (d - l[1] * p.y) * k;
-    m->m[2][1] = -l[1] * p.z * k;
-    m->m[3][1] = -l[1] * p.w * k;
-    m->m[0][2] = -l[2] * p.x * k;
-    m->m[1][2] = -l[2] * p.y * k;
-    m->m[2][2] = (d - l[2] * p.z) * k;
-    m->m[3][2] = -l[2] * p.w * k;
-    m->m[3][3] = 1.0f;
-    m->m[0][3] = 0.0f;
-    m->m[1][3] = 0.0f;
-    m->m[2][3] = 0.0f;
+    r->r[0].x = (d - l[0] * p->x) * k;
+    r->r[1].x = -l[0] * p->y * k;
+    r->r[2].x = -l[0] * p->z * k;
+    r->r[3].x = -l[0] * p->w * k;
+    r->r[0].y = -l[1] * p->x * k;
+    r->r[1].y = (d - l[1] * p->y) * k;
+    r->r[2].y = -l[1] * p->z * k;
+    r->r[3].y = -l[1] * p->w * k;
+    r->r[0].z = -l[2] * p->x * k;
+    r->r[1].z = -l[2] * p->y * k;
+    r->r[2].z = (d - l[2] * p->z) * k;
+    r->r[3].z = -l[2] * p->w * k;
+    r->r[3].w = 1.0f;
+    r->r[1].w = 0.0f;
+    r->r[2].w = 0.0f;
+    r->r[0].w = 0.0f;
 }
 
 /* @implements 0x028a00 us f_028a00
@@ -412,9 +425,9 @@ void f_028a00(const Vec4 *p, const float *l)
     f_028748(&m);
 }
 
-/* @draft 0x028b04 us f_028b04
+/* @implements 0x028b04 us f_028b04
    WHAT IT DOES: Sets the current transform to the point light shadow matrix of f_02889c. */
-void f_028b04(Vec4 p, const float *l)
+void f_028b04(const Vec4 *p, const float *l)
 {
     Matrix m;
 
