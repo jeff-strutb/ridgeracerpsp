@@ -299,14 +299,16 @@ index 0000000..f217fee
 +void OnWrite(u32 addr, u64 value, int size);
 +}
 diff --git a/headless/Headless.cpp b/headless/Headless.cpp
-index 293878d..8ca543e 100644
+index 293878d..7219acb 100644
 --- a/headless/Headless.cpp
 +++ b/headless/Headless.cpp
-@@ -51,6 +51,15 @@
+@@ -51,6 +51,17 @@
  
  #include "Compare.h"
  #include "HeadlessHost.h"
 +#include <map>
++#include <array>
++#include <cmath>
 +#include "ext/xxhash.h"
 +#include "Core/HLE/sceCtrl.h"
 +#include "Core/CoreTiming.h"
@@ -318,7 +320,7 @@ index 293878d..8ca543e 100644
  #if defined(_WIN32)
  #include "WindowsHeadlessHost.h"
  #elif defined(SDL)
-@@ -171,6 +180,74 @@ static HeadlessHost *getHost(GPUCore gpuCore) {
+@@ -171,6 +182,78 @@ static HeadlessHost *getHost(GPUCore gpuCore) {
  	}
  }
  
@@ -342,8 +344,10 @@ index 293878d..8ca543e 100644
 +// rrbox driver: from frame `start` on, the inputs are chosen by search instead of read from the
 +// script. At every `step` frames the machine is snapshotted (savestate in memory); each option
 +// (an input held for `step` frames, then a second input up to `horizon` frames) is played out
-+// from the snapshot, and the one whose car ends furthest (straight line) from where it began
-+// is kept: hitting a wall or spinning costs distance. Chosen inputs are written as script lines
++// from the snapshot, and the one whose car gets furthest along its recent direction of travel
++// (from where it was `back` decisions ago to where it is now) is kept: hitting a wall or
++// spinning costs distance, and turning round scores negative. Straight-line distance alone
++// let a spun car drive the course backwards. Chosen inputs are written as script lines
 +// (FRAME 0xMASK), so the drive can be replayed by any rrbox run without search.
 +struct RRDrive {
 +	int start = -1, step = 20, horizon = 80;
@@ -354,6 +358,8 @@ index 293878d..8ca543e 100644
 +	std::vector<u8> state;
 +	float p0[3] = {};
 +	std::vector<float> score;
++	std::vector<std::array<float, 3>> hist;  // car position at each decision
++	int back = 6;
 +};
 +static RRDrive g_drv;
 +static const u32 RR_GAS = 0x4000, RR_L = 0x80, RR_R = 0x20;  // CROSS accelerates; d-pad steers
@@ -393,7 +399,7 @@ index 293878d..8ca543e 100644
  struct AutoTestOptions {
  	double timeout;
  	double maxScreenshotError;
-@@ -226,6 +303,40 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -226,6 +309,40 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		draw->BeginFrame(Draw::DebugFlags::NONE);
  	}
  
@@ -434,7 +440,7 @@ index 293878d..8ca543e 100644
  	bool passed = true;
  	double deadline = time_now_d() + opt.timeout;
  	coreState = coreParameter.startBreak ? CORE_STEPPING_CPU : CORE_RUNNING_CPU;
-@@ -238,6 +349,115 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -238,6 +355,124 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		if (coreState == CORE_NEXTFRAME) {
  			coreState = CORE_RUNNING_CPU;
  			headlessHost->SwapBuffers();
@@ -507,6 +513,7 @@ index 293878d..8ca543e 100644
 +					g_drv.base = rrFrame;
 +					g_drv.baseHeld = rrHeld;
 +					RRCar(g_drv.p0);
++					g_drv.hist.push_back({g_drv.p0[0], g_drv.p0[1], g_drv.p0[2]});
 +					g_drv.opt = 0;
 +					g_drv.score.assign(g_drvN, 0.0f);
 +					g_drv.rolling = true;
@@ -519,8 +526,16 @@ index 293878d..8ca543e 100644
 +				if (t >= g_drv.horizon) {
 +					float p[3];
 +					RRCar(p);
-+					float d = 0;
-+					for (int k = 0; k < 3; k++) d += (p[k] - g_drv.p0[k]) * (p[k] - g_drv.p0[k]);
++					float dir[3], n = 0, d = 0;
++					const auto &old = g_drv.hist[g_drv.hist.size() > (size_t)g_drv.back ? g_drv.hist.size() - 1 - g_drv.back : 0];
++					for (int k = 0; k < 3; k++) { dir[k] = g_drv.p0[k] - old[k]; n += dir[k] * dir[k]; }
++					if (n > 1.0f) {  // moving: progress along the recent direction of travel
++						n = sqrtf(n);
++						for (int k = 0; k < 3; k++) d += (p[k] - g_drv.p0[k]) * dir[k] / n;
++					} else {         // standing (the start): plain distance
++						for (int k = 0; k < 3; k++) d += (p[k] - g_drv.p0[k]) * (p[k] - g_drv.p0[k]);
++						d = sqrtf(d);
++					}
 +					g_drv.score[g_drv.opt++] = d;
 +					std::string err;
 +					if (SaveState::LoadFromRam(g_drv.state, &err) != CChunkFileReader::ERROR_NONE) {
@@ -550,7 +565,7 @@ index 293878d..8ca543e 100644
  		}
  		if (coreState == CORE_STEPPING_CPU && !coreParameter.startBreak) {
  			break;
-@@ -261,6 +481,7 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -261,6 +496,7 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  			Core_Stop();
  		}
  	}
@@ -558,7 +573,7 @@ index 293878d..8ca543e 100644
  	if (gpu) {
  		gpu->EndHostFrame();
  	}
-@@ -445,6 +666,44 @@ int main(int argc, const char* argv[])
+@@ -445,6 +681,44 @@ int main(int argc, const char* argv[])
  			teamCityMode = true;
  		else if (!strncmp(argv[i], "--state=", strlen("--state=")) && strlen(argv[i]) > strlen("--state="))
  			stateToLoad = argv[i] + strlen("--state=");
@@ -603,7 +618,7 @@ index 293878d..8ca543e 100644
  		else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
  			return printUsage(argv[0], NULL);
  		else if (!strcmp(argv[i], "--ignore")) {
-@@ -558,6 +817,13 @@ int main(int argc, const char* argv[])
+@@ -558,6 +832,13 @@ int main(int argc, const char* argv[])
  	g_Config.internalDataDirectory.clear();
  	g_Config.bUseOldAtrac = oldAtrac;
  	g_Config.iForceEnableHLE = 0xFFFFFFFF;  // Run all modules as HLE. We don't have anything to load in this context.
@@ -617,7 +632,7 @@ index 293878d..8ca543e 100644
  
  	// g_Config.bUseOldAtrac = true;
  
-@@ -572,6 +838,11 @@ int main(int argc, const char* argv[])
+@@ -572,6 +853,11 @@ int main(int argc, const char* argv[])
  #elif !PPSSPP_PLATFORM(ANDROID)
  	g_Config.memStickDirectory = Path(std::string(getenv("HOME"))) / ".ppsspp";
  #endif
