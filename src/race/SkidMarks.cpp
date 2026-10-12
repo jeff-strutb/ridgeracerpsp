@@ -77,6 +77,10 @@ struct SkidTrack {
     bool Drawable() { return count > 1; }
 };
 
+struct SkidCar {
+    SkidTrack t[4];
+};
+
 struct SkidMarks {
     CInfo *tex;
     int m4;
@@ -85,7 +89,7 @@ struct SkidMarks {
     int keep;
     int ncars;
     SkidPool pool;
-    SkidTrack (*tracks)[4];
+    SkidCar *cars;
     void *buf;
 };
 
@@ -227,12 +231,12 @@ extern "C" void f_0350bc(SkidTrack *t)
     t->cur = 0;
 }
 
-static inline void SetPoint(SkidPoint *s, const Vec4 *p, const Vec4 &d, float mark, float alpha)
+static inline void SetPoint(SkidPoint *s, const Vec4 *p, const Vec4 &d, float mark, unsigned int alpha)
 {
     s->p = *p;
     s->d = d;
-    s->alpha = (unsigned int)(alpha * 255.0f);
     s->mark = mark;
+    s->alpha = alpha;
 }
 
 static inline Vec4 Sub(const Vec4 *a, const Vec4 *b)
@@ -245,23 +249,17 @@ static inline Vec4 Sub(const Vec4 *a, const Vec4 *b)
     return r;
 }
 
-/* @draft 0x0351a8 us f_0351a8
+/* @implements 0x0351a8 us f_0351a8
    WHAT IT DOES: Starts a track at a point: both remembered points at the tyre's position with
    no width, the older one transparent. */
 extern "C" void f_0351a8(SkidTrack *t, const Vec4 *pos, const Vec4 *dir, float mark, float alpha)
 {
-    Vec4 zero;
-    zero.x = 0;
-    zero.y = 0;
-    zero.z = 0;
-    zero.w = 0;
-    t->pt[0].p = *pos;
-    t->pt[0].d = zero;
-    t->pt[0].mark = mark;
-    t->pt[0].alpha = 0;
-    SetPoint(&t->pt[1], pos, zero, mark, alpha);
-    t->count = 1;
+    Vec4 zero = {0, 0, 0, 0};
+
+    SetPoint(&t->pt[0], pos, zero, mark, 0);
+    SetPoint(&t->pt[1], pos, zero, mark, (unsigned int)(alpha * 255.0f));
     t->cur = 1;
+    t->count = 1;
 }
 
 /* @draft 0x03529c us f_03529c
@@ -280,7 +278,7 @@ extern "C" int f_03529c(SkidTrack *t, SkidPool *pool, const Vec4 *pos, const Vec
     f_027f18(&v, &v);
     f_027edc(&v, &v, up);
     f_027e6c(&v, &v, D_1d1bd8);
-    SetPoint(&t->pt[t->cur], pos, v, mark, alpha);
+    SetPoint(&t->pt[t->cur], pos, v, mark, (unsigned int)(alpha * 255.0f));
     if (D_1d1bd4 < len) {
         if (t->count == 1) {
             t->pt[0].d = t->pt[1].d;
@@ -290,7 +288,7 @@ extern "C" int f_03529c(SkidTrack *t, SkidPool *pool, const Vec4 *pos, const Vec
             if (!f_034fd0(pool, t->rec, &t->pt[t->cur])) {
                 t->count++;
                 t->cur = (t->cur + 1) & 1;
-                SetPoint(&t->pt[t->cur], pos, v, mark, alpha);
+                SetPoint(&t->pt[t->cur], pos, v, mark, (unsigned int)(alpha * 255.0f));
                 f_03505c(pool, t->rec, &t->pt[t->cur]);
                 f_0350bc(t);
                 return 0;
@@ -298,7 +296,7 @@ extern "C" int f_03529c(SkidTrack *t, SkidPool *pool, const Vec4 *pos, const Vec
         }
         t->count++;
         t->cur = (t->cur + 1) & 1;
-        SetPoint(&t->pt[t->cur], pos, v, mark, alpha);
+        SetPoint(&t->pt[t->cur], pos, v, mark, (unsigned int)(alpha * 255.0f));
     }
     return 1;
 }
@@ -333,7 +331,7 @@ extern "C" void f_035660(SkidTrack *t, SkidPool *pool)
     }
 }
 
-/* @draft 0x0356b0 us f_0356b0
+/* @implements 0x0356b0 us f_0356b0
    WHAT IT DOES: Sets up the skid marks for the given number of cars: four empty tracks per car,
    a pool of strips in one 64 byte aligned buffer, and the Blackmark texture. Returns the
    pool's size in bytes. */
@@ -347,10 +345,12 @@ extern "C" unsigned int f_0356b0(SkidMarks *m, int ncars, int nrec, int nvert, i
     m->nrec = nrec;
     m->nvert = nvert;
     m->ncars = ncars;
-    m->tracks = new SkidTrack[ncars][4];
+    m->cars = new SkidCar[ncars];
     for (i = 0; i < m->ncars; i++)
-        for (j = 0; j < 4; j++)
-            f_0350bc(&m->tracks[i][j]);
+        for (j = 0; j < 4; j++) {
+            SkidCar *c = &m->cars[i];
+            f_0350bc(&c->t[j]);
+        }
     size = f_034c0c(&m->pool, nvert, nrec);
     f_034c2c(&m->pool, m->buf = f_125c4c(64, size), nvert, nrec);
     m->tex = f_02347c(0xa000004);
@@ -361,9 +361,9 @@ extern "C" unsigned int f_0356b0(SkidMarks *m, int ncars, int nrec, int nvert, i
    WHAT IT DOES: Frees the tracks and the strip pool. */
 extern "C" void f_0357cc(SkidMarks *m)
 {
-    if (m->tracks)
-        delete[] m->tracks;
-    m->tracks = 0;
+    if (m->cars)
+        delete[] m->cars;
+    m->cars = 0;
     free(m->buf);
     m->buf = 0;
 }
@@ -371,7 +371,7 @@ extern "C" void f_0357cc(SkidMarks *m)
 extern "C" unsigned int *f_035aa0(SkidMarks *m, unsigned int *dl, float x, float y, float z);
 extern "C" unsigned int *f_035d1c(SkidMarks *m, SkidTrack *t, unsigned int *dl);
 
-/* @draft 0x035818 us f_035818
+/* @implements 0x035818 us f_035818
    WHAT IT DOES: Draws the skid marks in the car's frame: selects the Blackmark texture, sets
    blending, an identity world matrix and the vertex format, draws the pool's strips, then the
    piece between each track's two remembered points, and restores the state. */
@@ -410,8 +410,11 @@ extern "C" unsigned int *f_035818(SkidMarks *m, char *car, unsigned int *dl, flo
     dl = f_035aa0(m, dl, x, y, z);
     for (i = 0; i < m->ncars; i++)
         for (j = 0; j < 4; j++)
-            if (m->tracks[i][j].Drawable())
-                dl = f_035d1c(m, &m->tracks[i][j], dl);
+        {
+            SkidCar *c = &m->cars[i];
+            if (c->t[j].Drawable())
+                dl = f_035d1c(m, &c->t[j], dl);
+        }
     f_028ca8();
     *dl++ = 0xdbff0006;
     *dl++ = 0xe7000000;
