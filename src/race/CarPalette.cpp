@@ -66,7 +66,10 @@ extern int D_1d1a18;
    WHAT IT DOES: Sets up a car's palettes from its palette file in the given texture area: on
    first use it turns the file's offsets into pointers, reserves a new palette id for each
    entry (counting up from a global id), and looks up each entry's body texture. Marks the
-   file as set up and returns 1. */
+   file as set up and returns 1.
+   Remaining difference: retail keeps the offset loop's index counting up (slt against the
+   count held in a2); this source compiles it to a down counter in s0, which shifts the
+   register use of the rest. */
 int f_026ab0(CPalette *p, int area, PalFile *f)
 {
     int i;
@@ -226,7 +229,10 @@ void f_026efc(LightTable *t)
 
 /* @draft 0x026f70 us f_026f70
    WHAT IT DOES: Fades the lamps one frame: every level drops by 21 and stops at zero; a lamp is
-   marked faded only if all eight of its levels reached zero. The fade phase counts 0 to 15. */
+   marked faded only if all eight of its levels reached zero. The fade phase counts 0 to 15.
+   Remaining difference: retail recomputes the column address (sll/addu from the lamp index)
+   every outer pass and steps the faded flag by a byte pointer; this source strength reduces
+   both, which adds one register and shifts the rest. */
 void f_026f70(LightTable *t)
 {
     int i, j;
