@@ -2,6 +2,7 @@
 """Annotated listing of one retail function.
 
   python3 tools/rrdis.py 0x1e000            # by address (any address inside the function)
+  python3 tools/rrdis.py --tu 3             # every function of object file 3 (config/us/tus.csv)
 Needs build/asm/us.objdump (psp-objdump -d of orig/us/BOOT.BIN) and config/us/funcs.csv.
 Relocated operands are annotated with their resolved target: f_<addr> (function),
 D_<addr> (data, with section) and a string preview for .rodata strings.
@@ -94,6 +95,17 @@ def listing(a):
     return '\n'.join(out)
 
 
+def tu_listing(n):
+    """Every mapped function of object file n (config/us/tus.csv), in address order."""
+    row = next(r for r in csv.DictReader(open(os.path.join(ROOT, 'config/us/tus.csv'))) if int(r['tu']) == n)
+    lo, hi = int(row['start'], 16), int(row['end'], 16)
+    return '\n\n'.join(listing(a) for a, z in load()['funcs'] if lo <= a < hi)
+
+
 if __name__ == '__main__':
-    for arg in sys.argv[1:]:
-        print(listing(int(arg, 16)))
+    args = sys.argv[1:]
+    if args[:1] == ['--tu']:
+        print(tu_listing(int(args[1], 0)))
+    else:
+        for arg in args:
+            print(listing(int(arg, 16)))
