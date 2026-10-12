@@ -247,7 +247,7 @@ struct Data233de8 : MenuData {
     ~Data233de8() { f_07aa54(this); }
     bool m8;
     int m12;
-    bool m16;
+    unsigned char m16;
     bool m17;
     bool m18;
     int m20;
@@ -292,10 +292,10 @@ struct Data233e80 : MenuData {
 
 /* The wireless result screen's player list, created while that menu is open. */
 struct WirelessResult {
-    void f_088b58(Select::CBaseMenu *menu);
-    void f_088bc8();
-    void f_088bd4();
-    void f_088bdc();
+    int f_088b58(Select::CBaseMenu *menu);
+    int f_088bc8();
+    int f_088bd4();
+    int f_088bdc();
     int m0;
     bool done;
     char m5[32 - 5];
@@ -639,8 +639,9 @@ void ScreenMgr::f_018784()
         break;
     case 14:
         f_096408(D_242cb0);
-        D_2337c4 = new WirelessResult;
-        D_2337c4->f_088b58(layer);
+        WirelessResult *w = new WirelessResult;
+        D_2337c4 = w;
+        w->f_088b58(layer);
         f_08a71c(12, 1);
         m33 = 0;
         break;
@@ -664,9 +665,7 @@ int ScreenMgr::f_01896c()
             if (D_2337c4->done || (D_1d8920 & 2) || D_2413b8)
                 m33 = 1;
         }
-        if (!m33)
-            return 0;
-        if (!D_1d46f0)
+        if (!m33 || !D_1d46f0)
             return 0;
         D_2337c4->f_088bc8();
         delete D_2337c4;
