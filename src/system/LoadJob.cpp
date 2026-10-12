@@ -693,7 +693,7 @@ int f_002574(void)
     return total;
 }
 
-/* @draft 0x00260c us f_00260c
+/* @implements 0x00260c us f_00260c
    WHAT IT DOES: Prepares to load a package: finds it and allocates its buffer, from the given
    heap or with malloc, aligned to 128 bytes; no file of it is placed yet. */
 void f_00260c(PackageLoader *l, const char *name, void *heap, int fromTop)
@@ -705,7 +705,7 @@ void f_00260c(PackageLoader *l, const char *name, void *heap, int fromTop)
     l->package = f_002084(name);
     size = f_002108(l->package);
     if (l->heap) {
-        Mark m = f_0996b0(heap, 0);
+        Mark m = f_0996b0(l->heap, 0);
         l->mark = m;
         l->raw = f_099684(l->heap, size + 127, fromTop);
     } else {
@@ -736,8 +736,7 @@ void f_0026cc(PackageLoader *l)
    Unless asked not to, it waits for the loading to finish. */
 void f_002734(PackageLoader *l, unsigned char nowait)
 {
-    Package *p = &D_1b8c04[l->package];
-    int n = p->last - p->first;
+    int n = -(D_1b8c04[l->package].first - D_1b8c04[l->package].last);
     int i;
 
     for (i = 0; i < n; i++)
@@ -746,15 +745,15 @@ void f_002734(PackageLoader *l, unsigned char nowait)
     if (i >= n)
         return;
     if (D_1b8c00 == 2) {
-        p = &D_1b8c04[l->package];
+        Package *p = &D_1b8c04[l->package];
         if (p->packed == 0) {
             Request r = { D_1b8c00, l, l->buf, 0, 0, 0, p->sector, p->sectors, p->first, p->last };
-            D_1da468.Push(r);
+            D_1da468.Add(r);
         } else {
             unsigned char *at = (unsigned char *)(((int)(l->buf + p->size + p->extra - (p->sectors << 11)) + 127) & -128);
             Request r = { D_1b8c00, l, at, 0, 0, 0, p->sector, p->sectors, p->first, p->last,
                           p->packedSize, at + (p->sectors << 11) - p->packedSize, l->buf };
-            D_1da468.Push(r);
+            D_1da468.Add(r);
         }
     }
     if (!nowait)
