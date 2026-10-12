@@ -32,11 +32,32 @@ public:
     virtual void v1();
     virtual void v2(void *msg, int arg);
     virtual void v3(void *msg, int arg);
+    virtual void v4();
+    virtual void v5();
+    virtual void v6();
+    virtual void v7();
+    virtual void v8();
+    virtual void v9();
+    virtual int v10(int what);
+    virtual int v11();
+    virtual void v12();
+    virtual void v13();
+    virtual void v14();
+    virtual void v15();
+    virtual void v16();
+    virtual void v17();
+    virtual void v18();
+    virtual void v19();
+    virtual void v20();
+    virtual void SetTeam(int team);
+    virtual int Team();
 };
 struct ScreenMgr {
     CScreen *screen;
     int m4[3];
     int phase;
+    int m20;
+    int m24;
     bool Ready() { return phase == 4; }
 };
 extern ScreenMgr D_2301b0;
@@ -44,11 +65,25 @@ void f_017bfc(ScreenMgr *);
 void f_017c88(ScreenMgr *);
 void f_018b48(ScreenMgr *);
 CScreen *f_017970(void);
+void f_018af8(ScreenMgr *);
 
 /* The ad hoc network session. */
+struct NetInfo {
+    char m0[11];
+    signed char team;
+    bool SetTeam(signed char t)
+    {
+        if (team == t)
+            return false;
+        team = t;
+        return true;
+    }
+};
 struct NetSession {
     int state;
     int m4;
+    char m8[76];
+    NetInfo info;
 };
 extern NetSession D_241810;
 extern char D_241e98[];
@@ -62,6 +97,11 @@ int f_08651c(NetSession *);
 int f_08550c(NetSession *);
 int f_0865e8(NetSession *);
 void f_086470(NetSession *);
+int f_086598(NetSession *, int, int);
+int f_0859b4(NetSession *);
+int f_0864c8(NetSession *);
+void f_0864ec(NetSession *);
+void f_086cb4(NetSession *);
 void f_086440(NetSession *);
 
 /* The race settings shared with the race itself. */
@@ -136,7 +176,7 @@ struct ScreenReq {
     ~ScreenReq() { f_07aa54(this); }
     int m0[2];
     unsigned char m8;
-    int m12;
+    unsigned int m12;
     unsigned char m16;
     unsigned char m17;
     unsigned char m18;
@@ -165,6 +205,67 @@ void f_016220(void);
 int f_0194c4(void);
 int f_014a08(void);
 int f_014a28(void);
+void f_014fb0(int team, int car);
+}
+
+/* The game database's tables: records found by index or by name. */
+struct CTable {
+    int m0;
+    int m4;
+    int count;
+    int m12[3];
+    int *index;
+};
+extern CTable D_240740;
+extern CTable D_2407a8;
+extern CTable D_2407d0;
+extern unsigned char D_24063c[];
+extern const int D_1a211c[];
+char *f_0368e8(CTable *t, const char *field, char *rec, int a, int i);
+char *f_036984(CTable *t, char *key, int i, int *index, int count);
+int f_036a3c(CTable *t, char *rec, int *index, int count);
+
+/* A record found in a database table. */
+struct Rec {
+    char *rec;
+    int m4;
+};
+extern Rec D_1dd7c4;
+extern int D_1d1108;
+
+/* Finds the car whose SelectNum is the given number. */
+#define FIND_CAR(out, num)                                                               \
+    do {                                                                                 \
+        int key_ = (num);                                                                \
+        int i_;                                                                          \
+        for (i_ = 0; i_ < D_240740.count; i_++) {                                        \
+            memcpy(D_24063c, f_0368e8(&D_240740, "SelectNum", 0, 0, i_), D_1a211c[1]);   \
+            if (key_ == D_24063c[0])                                                     \
+                break;                                                                   \
+        }                                                                                \
+        char *p_ = f_036984(&D_240740, 0, i_, D_240740.index, D_240740.count);           \
+        if (p_)                                                                          \
+            (out).rec = f_036984(&D_240740, p_, 0, D_240740.index, D_240740.count);      \
+        else                                                                             \
+            (out).rec = 0;                                                               \
+    } while (0)
+
+/* The course's index in its table. */
+inline int CourseIndex(Rec c)
+{
+    return f_036a3c(&D_2407a8, c.rec, D_2407a8.index, D_2407a8.count);
+}
+
+/* The record of the course the player chose. */
+inline Rec ChosenCourse(Rec sel)
+{
+    Rec r;
+    char *n = f_0368e8(&D_2407d0, "CourseNumber", sel.rec, 0, 0);
+    if (n)
+        r.rec = f_036984(&D_2407a8, n, 0, D_2407a8.index, D_2407a8.count);
+    else
+        r.rec = 0;
+    return r;
 }
 
 extern int D_237cc8;
@@ -198,6 +299,8 @@ Entry D_1ee140;
 int D_1ee168;
 int D_1ee16c;
 int D_1ee170;
+int D_1ee1a4;
+int D_1ee1a8;
 
 /* The pad: buttons held (with repeat) and buttons newly pressed. */
 namespace Controller {
@@ -219,6 +322,23 @@ void f_096408(char *);
 void f_096434(char *, int);
 int f_0968e0(char *);
 int f_096918(char *);
+
+/* Sets the player's team and car, finds the course chosen in the lobby and takes its
+   settings, then shows the race entry (event 12). */
+#define PICK_COURSE(team)                                                                \
+    do {                                                                                 \
+        f_014fb0((team), m3164);                                                         \
+        Rec car_;                                                                        \
+        FIND_CAR(car_, m3164);                                                           \
+        memcpy(D_24063c, f_0368e8(&D_240740, "Class", car_.rec, 0, 0), D_1a211c[1]);     \
+        int cls_ = D_24063c[0] - 1;                                                      \
+        Rec crs_ = ChosenCourse(D_1dd7c4);                                               \
+        int n_ = cls_ * 24 + CourseIndex(crs_);                                          \
+        D_1ee1a8 = m1820[n_];                                                            \
+        D_1ee1a4 = m476[n_];                                                             \
+        f_018af8(&D_2301b0);                                                             \
+        queue.Push(12);                                                                  \
+    } while (0)
 
 namespace Ng {
 class CJob {
@@ -757,6 +877,71 @@ void Sequence::CWirelessBattleModeJob::f_010ac4()
    WHAT IT DOES: State 19: nothing to do. */
 void Sequence::CWirelessBattleModeJob::f_010b44()
 {
+}
+
+/* @draft 0x010b4c us f_010b4c
+   WHAT IT DOES: State 20: the lobby. As a guest it keeps the screen's team choice and the
+   session's in step; as host it follows the host's choice. When the session is ready the race
+   course is picked (event 12); when the session is lost it ends it and goes back (event 7).
+   Otherwise, once the screen has an answer: leaving with 3 or 0 and 2 ends the session and
+   goes back to the menu (event 10), 4 enters the race (event 12) and 1 restarts the session as
+   host when it is not running. */
+void Sequence::CWirelessBattleModeJob::f_010b4c()
+{
+    if (D_241810.m4 == 1) {
+        D_2301b0.screen->SetTeam(D_241810.info.team);
+        m3168 = D_2301b0.screen->Team();
+        if (f_0864c8(&D_241810)) {
+            f_0864ec(&D_241810);
+            PICK_COURSE(m3168);
+            return;
+        }
+    } else {
+        signed char team = D_2301b0.screen->Team();
+        if (D_241810.info.SetTeam(team)) {
+            f_086cb4(&D_241810);
+            m3168 = team;
+        }
+        if (f_08550c(&D_241810) == 4) {
+            if (D_241810.state != 8 || f_0859b4(&D_241810) < 2) {
+                f_088138(&D_241810);
+                queue.Push(7);
+                return;
+            }
+        }
+        if (f_086598(&D_241810, 4, 1)) {
+            if (D_241810.state != 8) {
+                queue.Push(7);
+                return;
+            }
+            PICK_COURSE(team);
+            return;
+        }
+    }
+    if (!D_2301b0.m24)
+        return;
+    ScreenReq req;
+    D_2301b0.screen->v3(&req, 0);
+    switch (req.m12) {
+    case 1:
+        if (!D_241810.m4 && f_08550c(&D_241810) != 4)
+            f_086470(&D_241810);
+        break;
+    case 3:
+        f_00e30c();
+        D_1d1108 = 2;
+        queue.Push(10);
+        break;
+    case 4:
+        queue.Push(12);
+        break;
+    case 2:
+    default:
+        f_00e30c();
+        D_1d1108 = 6;
+        queue.Push(10);
+        break;
+    }
 }
 
 /* @implements 0x011184 us f_011184
