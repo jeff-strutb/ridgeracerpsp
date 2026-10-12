@@ -670,6 +670,13 @@ void f_014fb0(int course)
     D_1dd6b0.m276.Set(D_1ee1f0.seq);
 }
 
+/* @implements 0x015094 us f_015094
+   WHAT IT DOES: Returns the name of the current race sequence. */
+const char *f_015094()
+{
+    return (const char *)D_1ee1f0.seq.a;
+}
+
 /* @implements 0x0150a0 us f_0150a0
    WHAT IT DOES: Returns the course of the current race sequence: the course table row named by
    the sequence's course number. */
@@ -893,7 +900,7 @@ void f_0156d4()
    marks the local player ready when the message came.
    Remaining difference: retail keeps &entry[0] in a saved register computed from the link's
    address at entry and a register holding 6 for the state tests and store; this build folds
-   the entry address into constants (116 of 119 words, 32 bytes shorter). */
+   the entry address into constants (103 of 119 words, 24 bytes shorter). */
 int f_015ce4()
 {
     int i;
@@ -911,10 +918,12 @@ int f_015ce4()
     if (D_241810.m93 != 6 && D_241810.m4 == 0) {
         bool ready = 1;
         for (i = 1; i < 8; i++) {
-            if (e[i].used && e[i].state != 6) {
-                ready = 0;
-                break;
-            }
+            if (!e[i].used)
+                continue;
+            if (e[i].state == 6)
+                continue;
+            ready = 0;
+            break;
         }
         if (ready) {
             D_241810.m93 = 6;
