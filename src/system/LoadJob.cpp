@@ -99,7 +99,7 @@ struct UnpackQueue {
     Request req[32];
     int head;
     int tail;
-    char timed;
+    unsigned char timed;
     UnpackQueue() { head = 0; tail = 0; timed = 0; }
     bool Empty() { return tail == head; }
 };
@@ -173,7 +173,37 @@ struct Lz {
     void f_002fe8(unsigned char **dst, unsigned char **src);
 };
 
-static inline int f_002edc(Unpack *u, int budget);
+/* @draft 0x002edc us f_002edc
+   WHAT IT DOES: Unpacks a compressed block, 100 steps at a time, until it is done or the time
+   budget (in microseconds) runs out. Returns whether the block is finished. */
+static inline int f_002edc(Unpack *u, int budget)
+{
+    Lz lz;
+    volatile unsigned int t;
+    unsigned int start;
+    int n;
+
+    if (budget == 0x7fffffff) {
+        while (u->src < u->end)
+            lz.f_002fe8(&u->dst, &u->src);
+    } else {
+        t = sceKernelGetSystemTimeLow();
+        start = t;
+        for (;;) {
+            t = sceKernelGetSystemTimeLow();
+            if ((int)(t - start) > budget)
+                break;
+            for (n = 0; n < 100; n++) {
+                if (!(u->src < u->end))
+                    goto done;
+                lz.f_002fe8(&u->dst, &u->src);
+            }
+        }
+    }
+done:
+    return u->src == u->end;
+}
+
 
 extern "C" {
 int f_001088(void *job);
@@ -402,7 +432,7 @@ void f_001a60(UnpackQueue *q, Request r)
     q->tail = (t + 1) & 31;
 }
 
-/* @draft 0x001b3c us f_001b3c
+/* @implements 0x001b3c us f_001b3c
    WHAT IT DOES: Unpacks the block at the head of the queue for whatever time is left in this
    frame (or without limit when the queue is not timed). When the block is done it records where
    each file of its package now lies and moves to the next block. */
@@ -412,19 +442,19 @@ void f_001b3c(UnpackQueue *q)
     Request *r;
     int i;
 
-    if (q->tail == q->head)
-        return;
-    budget = 15800 - f_001088(D_1d88a0);
-    if (budget < 0)
-        budget = 15800;
-    if (q->timed == 0)
-        budget = 0x7fffffff;
-    if (!f_002edc(&q->work[q->head], budget))
-        return;
-    r = &q->req[q->head];
-    for (i = r->first; i < r->last; i++)
-        f_002a74((PackageLoader *)r->owner, i);
-    q->head = (q->head + 1) & 31;
+    if (!q->Empty()) {
+        budget = 15800 - f_001088(D_1d88a0);
+        if (budget < 0)
+            budget = 15800;
+        if (q->timed == 0)
+            budget = 0x7fffffff;
+        if (f_002edc(&q->work[q->head], budget)) {
+            r = &q->req[q->head];
+            for (i = r->first; i < r->last; i++)
+                f_002a74((PackageLoader *)r->owner, i);
+            q->head = (q->head + 1) & 31;
+        }
+    }
 }
 
 }
@@ -871,34 +901,3 @@ void *f_002e5c(FileLoader *l)
 
 /* @implements 0x002ebc us _GLOBAL__I
    WHAT IT DOES: Runs the constructors of this object file's globals at startup. */
-
-/* @draft 0x002edc us f_002edc
-   WHAT IT DOES: Unpacks a compressed block, 100 steps at a time, until it is done or the time
-   budget (in microseconds) runs out. Returns whether the block is finished. */
-static inline int f_002edc(Unpack *u, int budget)
-{
-    Lz lz;
-    volatile unsigned int t;
-    unsigned int start;
-    int n;
-
-    if (budget == 0x7fffffff) {
-        while (u->src < u->end)
-            lz.f_002fe8(&u->dst, &u->src);
-    } else {
-        t = sceKernelGetSystemTimeLow();
-        start = t;
-        for (;;) {
-            t = sceKernelGetSystemTimeLow();
-            if ((int)(t - start) > budget)
-                break;
-            for (n = 0; n < 100; n++) {
-                if (!(u->src < u->end))
-                    goto done;
-                lz.f_002fe8(&u->dst, &u->src);
-            }
-        }
-    }
-done:
-    return u->src == u->end;
-}
