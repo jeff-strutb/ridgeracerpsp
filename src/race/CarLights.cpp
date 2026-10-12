@@ -73,7 +73,9 @@ static inline void PutColour(unsigned char *d, unsigned int c)
    otherwise the lamps' levels are their brightness scaled by how far the car is in front of
    the viewer (full up to 10000 units, fading out from 10000 to 100000, off when behind or when
    the car is hidden) and by which way it faces (front lamps when facing the viewer, rear lamps
-   when facing away), and the matrix is kept. Returns the end of the GE list. */
+   when facing away), and the matrix is kept. Returns the end of the GE list.
+   Draft: the control flow follows retail; this source needs one more saved register (s7)
+   for the lamp loop, which shifts the allocation throughout. */
 unsigned int *f_026ffc(LightTable *t, const Mat *m, signed char visible, unsigned int *p)
 {
     LightStep *s;

@@ -616,7 +616,8 @@ void f_025590(CModel *m, ModelPart *part)
    WHAT IT DOES: Draws one part of a model faded: like f_025590, but in two passes. The first
    writes the meshes at full alpha into the stencil only (colour writes masked); the second
    draws them with every material alpha scaled by the fade level (0 to 255) where the stencil
-   was set, and only this pass adds the environment mapped layer of kind 256 meshes. */
+   was set, and only this pass adds the environment mapped layer of kind 256 meshes.
+   Draft: same state as f_025590 (behaviour follows retail, layout and registers do not). */
 void f_025eb8(CModel *m, ModelPart *part, int fade)
 {
     unsigned int *p = m->list;
