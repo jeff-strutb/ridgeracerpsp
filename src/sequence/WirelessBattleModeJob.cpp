@@ -39,7 +39,7 @@ public:
     virtual void v8();
     virtual void v9();
     virtual int v10(int what);
-    virtual int v11();
+    virtual void v11();
     virtual void v12();
     virtual void v13();
     virtual void v14();
@@ -79,13 +79,37 @@ struct NetInfo {
         return true;
     }
 };
-/* One console in the session: its player's name, whether it is present, its car, its
-   finishing time, its gap to the winner (-1 when it did not finish) and its distance run. */
+/* A player taking part in a race: name, presence, colour, console id, two small settings,
+   car, the player's games played and win percentage. */
+struct Racer {
+    char name[10];
+    signed char present;
+    signed char color;
+    char id[6];
+    unsigned char rank : 2;
+    unsigned char group : 3;
+    unsigned char m18c : 3;
+    unsigned char car;
+    unsigned int games : 24;
+    unsigned int pct : 8;
+    int m24;
+};
+
+/* One console in the session: its player's name, state, colour, whether it is present, its
+   car, its emblem colours, games and win percentage, its finishing time, its gap to the winner
+   (-1 when it did not finish) and its distance run. */
 struct NetEntry {
-    char name[18];
+    char name[10];
+    signed char state;
+    signed char color;
+    char id[6];
     signed char active;
     unsigned char car;
-    int m20[2];
+    unsigned int emblem : 15;
+    unsigned int noEmblem : 1;
+    unsigned int emblem2 : 16;
+    unsigned int games : 24;
+    unsigned int pct : 8;
     int time;
     int gap;
     float dist;
@@ -95,7 +119,8 @@ struct NetSession {
     int m4;
     char m8[76];
     NetInfo info;
-    char m96[72];
+    char m96[16];
+    Racer racers[2];
     NetEntry entries[8];
 };
 extern NetSession D_241810;
@@ -115,6 +140,14 @@ int f_0859b4(NetSession *);
 int f_0864c8(NetSession *);
 void f_0864ec(NetSession *);
 void f_086cb4(NetSession *);
+int f_08640c(NetSession *);
+void f_087318(NetSession *, int join, Racer *me, NetEntry *entry);
+Racer *f_085928(NetSession *, char *id);
+void f_085f90(NetSession *);
+void f_087ac4(NetSession *, int);
+void f_086afc(NetSession *);
+NetEntry *f_085a1c(NetSession *, int i);
+void f_086528(NetSession *, int);
 void f_086440(NetSession *);
 
 /* The race settings shared with the race itself. */
@@ -173,7 +206,10 @@ void f_07a908(void *);
 struct LobbyReply {
     LobbyReply() { f_07a314(this); }
     ~LobbyReply() { f_07a390(this); }
-    int m0[5];
+    int m0[2];
+    int m8;
+    int m12;
+    int m16;
     int m20;
     int m24[65];
     int m284;
@@ -190,7 +226,128 @@ struct LobbyMsg {
     int m24[2];
 };
 
+void f_079478(void *);
+void f_0794f4(void *);
+void f_079854(void *);
+void f_0798d0(void *);
+void f_079a20(void *);
+void f_079a9c(void *);
+void f_079b78(void *);
+void f_079bf4(void *);
+void f_079cb8(void *);
+void f_079d34(void *);
+void f_0795bc(void *);
+void f_079638(void *);
+void f_079df8(void *);
+void f_079e74(void *);
+void f_07a558(void *);
+void f_07a5d4(void *);
+void f_07827c(void *);
+void f_0782f8(void *);
+void f_078358(void *);
+
+/* Tells the lobby screen whether the link is usable. */
+struct LinkMsg {
+    LinkMsg() { f_079478(this); }
+    ~LinkMsg() { f_0794f4(this); }
+    int m0[2];
+    bool ok;
+};
+
+/* The list of consoles found: names, games played, win percentages and cars. */
+struct ConsoleList {
+    ConsoleList() { f_079854(this); }
+    ~ConsoleList() { f_0798d0(this); }
+    int m0[2];
+    int count;
+    char name[8][8];
+    int games[8];
+    int pct[8];
+    int car[8];
+};
+
+/* The two racers of the agreed race, as tables the screen reads. */
+struct RacerList {
+    RacerList() { f_079a20(this); }
+    ~RacerList() { f_079a9c(this); }
+    int m0[2];
+    int count;
+    char **names;
+    int *car;
+    int *pct;
+    int *games;
+    int *rank;
+    int *group;
+    int *color;
+};
+
+/* Tells the lobby screen the other console refused or dropped the race. */
+struct RefusedMsg {
+    RefusedMsg() { f_079b78(this); }
+    ~RefusedMsg() { f_079bf4(this); }
+    int m0[2];
+    bool m8;
+};
+
+/* Tells the lobby screen the connection was lost. */
+struct LostMsg {
+    LostMsg() { f_079cb8(this); }
+    ~LostMsg() { f_079d34(this); }
+    int m0[2];
+    bool m8;
+};
+
+/* The settings the player chose to host with. */
+struct HostReply {
+    HostReply() { f_0795bc(this); }
+    ~HostReply() { f_079638(this); }
+    int m0[2];
+    int rank;
+    int group;
+    int color;
+};
+
+/* The session the player chose to join. */
+struct JoinReply {
+    JoinReply() { f_079df8(this); }
+    ~JoinReply() { f_079e74(this); }
+    int m0[2];
+    int index;
+};
+
+/* The emblem chosen for each car. */
+struct EmblemReply {
+    EmblemReply() { f_07a558(this); }
+    ~EmblemReply() { f_07a5d4(this); }
+    int m0[21];
+    int emblem[63];
+};
+
+/* The car model to preview: its model, texture, palette and reflection data. */
+struct ModelMsg {
+    ModelMsg() { f_07827c(this); }
+    ~ModelMsg() { f_0782f8(this); }
+    void Reset() { f_078358(this); }
+    int m0[2];
+    int mdl;
+    int clut;
+    int tex;
+    int m20;
+    int ref;
+};
+
+extern unsigned char D_1d1469;
+extern int D_1d1638;
+extern char D_241e98[];
+
 extern "C" {
+unsigned int f_01fa10(int);
+unsigned int f_01fad0(int);
+void f_003150(char *seq, int i, struct Rec *r);
+void f_0030c8(char *seq, int n);
+void f_0030f4(char *seq);
+void f_00578c(char *seq);
+int f_005c34(char *seq, const char *name);
 int sprintf(char *, const char *, ...);
 int f_006018(void);
 int f_0160bc(void);
@@ -357,6 +514,7 @@ extern unsigned char D_237cfc;
 /* This object file's own data: the two racers of a wireless battle (names, name pointers and
    per racer values) and the state of the session. */
 unsigned char D_1ee088;
+Racer D_1ee08c[2];
 char D_1ee0c4[2][8];
 char *D_1ee0d4[2];
 int D_1ee0dc[2];
@@ -371,14 +529,8 @@ unsigned char D_1ee114;
 int D_1ee118;
 int D_1ee11c;
 unsigned char D_1ee120;
-char D_1ee124[28];
-struct Entry {
-    char name[20];
-    unsigned int m20a : 15;
-    unsigned int m20b : 1;
-    unsigned int m20c : 16;
-};
-Entry D_1ee140;
+Racer D_1ee124;
+NetEntry D_1ee140;
 int D_1ee168;
 int D_1ee16c;
 int D_1ee170;
@@ -453,6 +605,13 @@ namespace System {
 class CGameModeJob {
 public:
     void f_0069ec(int mode);
+    unsigned int Rand()
+    {
+        seed = seed * 0x19660d + 0x3c6ef35f;
+        return seed;
+    }
+    int m0[4];
+    unsigned int seed;
 };
 }
 extern System::CGameModeJob D_1e8ec4;
@@ -569,7 +728,10 @@ public:
     int m3184;
     int m3188;
     char *m3192;
-    int m3196[4];
+    int m3196;
+    int m3200;
+    unsigned int m3204;
+    unsigned int m3208;
     signed char m3212;
     bool m3213;
     int m3216;
@@ -741,10 +903,10 @@ void Sequence::CWirelessBattleModeJob::f_00e238()
     m3216 = 0;
     D_1ee088 = 0;
     f_00e12c();
-    strncpy(D_1ee124, m3192, 9);
+    strncpy(D_1ee124.name, m3192, 9);
     strncpy(D_1ee140.name, m3192, 9);
-    D_1ee140.m20a = 511;
-    D_1ee140.m20c = 0xfbe0;
+    D_1ee140.emblem = 511;
+    D_1ee140.emblem2 = 0xfbe0;
 }
 
 /* @implements 0x00e2c8 us f_00e2c8
@@ -765,6 +927,386 @@ void f_00e30c(void)
 {
     D_1ee088 = 0;
     f_088138(&D_241810);
+}
+
+/* @draft 0x00e334 us f_00e334
+   WHAT IT DOES: State 4: the wireless lobby itself, run every frame. It draws two random
+   numbers for the session, tells the lobby screen how the link is (and whether this console
+   hosts), and follows the session's state: it lists the consoles found while searching (state
+   8), collects the two racers' names, cars, colours and records once a race is agreed (states
+   12 and 2, after three seconds), and reports a lost or refused connection (states 6 and 4).
+   It then acts on the lobby screen's request: host a race (1), join one (2), pick a session
+   to join (5), cancel the search (6), leave (7), show the consoles in the chosen session (8)
+   or end the session (9). It previews the car the player points at, and when the player
+   leaves the screen it ends the session (event 6); when the screen is done it takes the race
+   settings, the random seeds, the course records and the player's car for the race and moves
+   on (event 4). */
+void Sequence::CWirelessBattleModeJob::f_00e334()
+{
+    m3204 = D_1e8ec4.Rand();
+    m3208 = D_1e8ec4.Rand();
+    int link = f_088338(D_241e98);
+    int st = D_241810.state;
+    if (st == 8) {
+        LinkMsg msg;
+        msg.ok = f_00e2c8();
+        D_2301b0.screen->v2(&msg, 0);
+    } else if (D_241810.m4 == 1 && !m3213) {
+        LinkMsg msg;
+        msg.ok = f_00e2c8();
+        D_2301b0.screen->v2(&msg, 0);
+        m3213 = 1;
+    }
+    if (st == 11)
+        D_2301b0.screen->v13();
+    else if (D_1ee088 && (link == 11 || st == 4 || st == 10 || st == 9))
+        D_2301b0.screen->v11();
+    else if (!f_00e2c8())
+        D_2301b0.screen->v12();
+
+    int i, n;
+    if (st == 8) {
+        ConsoleList list;
+        NetEntry *e = D_241810.entries;
+        n = 0;
+        for (i = 0; i < 8; i++, e++) {
+            if (e->active && e->state == 1) {
+                sprintf(list.name[n], "%s", e->name);
+                list.games[n] = e->games;
+                list.pct[n] = e->pct;
+                list.car[n] = e->car;
+                n++;
+            }
+        }
+        list.count = n;
+        if (n == 8)
+            f_087ac4(&D_241810, 1);
+        for (; n < 8; n++)
+            ;
+        D_2301b0.screen->v2(&list, 0);
+    }
+    if (st == 12) {
+        D_1ee10c++;
+        if (D_1ee110 == 0 && D_1ee10c > 180) {
+            D_1ee110 = 1;
+            for (i = 0; i < 2; i++)
+                D_1ee0d4[i] = D_1ee0c4[i];
+            RacerList rl;
+            rl.names = D_1ee0d4;
+            rl.car = D_1ee0ec;
+            rl.pct = D_1ee0f4;
+            rl.games = D_1ee0fc;
+            rl.rank = D_1ee104;
+            rl.group = D_1ee0dc;
+            rl.color = D_1ee0e4;
+            n = 0;
+            for (i = 0; i < 2; i++) {
+                Racer *r = &D_241810.racers[i];
+                D_1ee08c[i] = *r;
+                if (r->present) {
+                    sprintf(D_1ee0c4[n], "%s", r->name);
+                    D_1ee0dc[n] = r->group;
+                    D_1ee0e4[n] = r->color;
+                    D_1ee0ec[n] = r->car;
+                    D_1ee0f4[n] = r->pct;
+                    D_1ee0fc[n] = r->games;
+                    D_1ee104[n] = r->rank;
+                    n++;
+                }
+            }
+            rl.count = n;
+            for (; n < 2; n++)
+                D_1ee0c4[n][0] = 0;
+            D_2301b0.screen->v2(&rl, 0);
+        } else if (D_1ee110 == 1) {
+            n = 0;
+            for (i = 0; i < 2; i++) {
+                Racer *r = &D_241810.racers[i];
+                D_1ee08c[i] = *r;
+                if (r->present) {
+                    sprintf(D_1ee0c4[n], "%s", r->name);
+                    D_1ee0dc[n] = r->group;
+                    D_1ee0e4[n] = r->color;
+                    D_1ee0ec[n] = r->car;
+                    D_1ee0f4[n] = r->pct;
+                    D_1ee0fc[n] = r->games;
+                    D_1ee104[n] = r->rank;
+                    n++;
+                }
+            }
+        }
+    }
+    if (st == 2) {
+        D_1ee10c++;
+        if (D_1ee110 == 0 && D_1ee10c > 180) {
+            D_1ee110 = 1;
+            for (i = 0; i < 2; i++)
+                D_1ee0d4[i] = D_1ee0c4[i];
+            RacerList rl;
+            rl.names = D_1ee0d4;
+            rl.car = D_1ee0ec;
+            rl.pct = D_1ee0f4;
+            rl.games = D_1ee0fc;
+            rl.rank = D_1ee104;
+            rl.group = D_1ee0dc;
+            rl.color = D_1ee0e4;
+            n = 0;
+            for (i = 0; i < 2; i++) {
+                Racer *r = &D_241810.racers[i];
+                D_1ee08c[i] = *r;
+                if (r->present) {
+                    sprintf(D_1ee0c4[n], "%s", r->name);
+                    D_1ee0dc[n] = r->group;
+                    D_1ee0e4[n] = r->color;
+                    D_1ee0ec[n] = r->car;
+                    D_1ee0f4[n] = r->pct;
+                    D_1ee0fc[n] = r->games;
+                    D_1ee104[n] = r->rank;
+                    n++;
+                }
+            }
+            rl.count = n;
+            for (; n < 2; n++)
+                D_1ee0c4[n][0] = 0;
+            if (rl.count == 0 && f_088338(D_241e98) == 5)
+                f_088138(&D_241810);
+            D_2301b0.screen->v2(&rl, 0);
+        } else if (D_1ee110 == 1) {
+            n = 0;
+            for (i = 0; i < 2; i++) {
+                Racer *r = &D_241810.racers[i];
+                D_1ee08c[i] = *r;
+                if (r->present) {
+                    sprintf(D_1ee0c4[n], "%s", r->name);
+                    D_1ee0dc[n] = r->group;
+                    D_1ee0e4[n] = r->color;
+                    D_1ee0ec[n] = r->car;
+                    D_1ee0f4[n] = r->pct;
+                    D_1ee0fc[n] = r->games;
+                    D_1ee104[n] = r->rank;
+                    n++;
+                }
+            }
+        }
+    }
+    if (st == 6 && D_1ee110 == 2) {
+        D_1ee110 = 3;
+        RefusedMsg m;
+        m.m8 = 1;
+        D_2301b0.screen->v2(&m, 0);
+        if (!f_08651c(&D_241810)) {
+            f_0057d0(D_1dd6b0);
+            queue.Push(7);
+        }
+    } else if (st == 4) {
+        if (D_1ee110 == 2) {
+            D_1ee110 = 3;
+            if (f_088338(D_241e98) == 5)
+                f_088138(&D_241810);
+            RefusedMsg m;
+            m.m8 = 0;
+            D_2301b0.screen->v2(&m, 0);
+        }
+    } else if (!f_08640c(&D_241810) && D_1ee110 == 3) {
+        D_1ee110 = 4;
+        LostMsg m;
+        m.m8 = 1;
+        D_2301b0.screen->v2(&m, 0);
+    }
+
+    switch (D_2301b0.screen->v10(2)) {
+    case 1: {
+        f_00e12c();
+        int pct = 0;
+        if (m3180)
+            pct = m3184 * 100 / m3180;
+        D_1ee140.pct = pct;
+        D_1ee140.games = m3180;
+        HostReply h;
+        D_2301b0.screen->v3(&h, 0);
+        m3168 = h.color;
+        m3196 = h.group;
+        m3200 = h.rank;
+        f_088138(&D_241810);
+        D_1ee124.pct = pct;
+        D_1ee124.color = m3168;
+        D_1ee124.games = m3180;
+        D_1ee124.rank = m3200;
+        D_1ee088 = 1;
+        D_1ee124.group = m3196;
+        D_1ee168 = 0;
+        f_087318(&D_241810, 0, &D_1ee124, &D_1ee140);
+        D_1ee10c = 0;
+        D_1ee110 = 0;
+        break;
+    }
+    case 2:
+        f_00e12c();
+        f_088138(&D_241810);
+        D_1ee088 = 1;
+        D_1ee168 = 1;
+        f_087318(&D_241810, 1, &D_1ee124, &D_1ee140);
+        D_1ee10c = 0;
+        D_1ee110 = 0;
+        break;
+    case 5: {
+        JoinReply j;
+        D_2301b0.screen->v3(&j, 0);
+        D_1ee10c = 0;
+        D_1ee16c = j.index;
+        D_1ee110 = 2;
+        if (st == 2) {
+            Racer *e = f_085928(&D_241810, D_1ee08c[j.index].id);
+            if (e) {
+                m3168 = e->color;
+                m3200 = e->rank;
+                int pct = 0;
+                if (m3180)
+                    pct = m3184 * 100 / m3180;
+                D_241810.entries[0].pct = pct;
+                D_241810.entries[0].games = m3180;
+                f_085f90(&D_241810);
+            } else {
+                D_1ee110 = 3;
+                RefusedMsg m;
+                m.m8 = 0;
+                D_2301b0.screen->v2(&m, 0);
+            }
+        }
+        break;
+    }
+    case 6:
+        f_087ac4(&D_241810, 1);
+        break;
+    case 7:
+        f_00e30c();
+        break;
+    case 8: {
+        if (D_1d1469)
+            D_1d1469 = 0;
+        ConsoleList list;
+        LobbyReply r;
+        D_2301b0.screen->v3(&r, 0);
+        m3164 = r.m12;
+        NetEntry *me = &D_241810.entries[0];
+        EmblemReply q;
+        D_2301b0.screen->v3(&q, 0);
+        int em = q.emblem[m3164];
+        if (em) {
+            me->noEmblem = 0;
+            unsigned int c = f_01fa10(em - 1);
+            me->emblem2 = ((c >> 19) << 11) + (((c >> 10) & 0x3f) << 5) + ((c & 0xff) >> 3);
+            unsigned int d = f_01fad0(em - 1);
+            me->emblem = ((d >> 19) & 0x1f) * 1024 + ((d >> 11) & 0x1f) * 32 + ((d & 0xff) >> 3);
+        } else {
+            me->noEmblem = 1;
+        }
+        if (me->car != m3164)
+            me->car = m3164;
+        f_086afc(&D_241810);
+        n = 0;
+        for (int k = 0; k < 8; k++) {
+            NetEntry *e = f_085a1c(&D_241810, k);
+            if (e) {
+                sprintf(list.name[n], "%s", e->name);
+                list.games[n] = e->games;
+                list.pct[n] = e->pct;
+                list.car[n] = e->car;
+                n++;
+            }
+        }
+        list.count = n;
+        for (; n < 8; n++)
+            list.name[n][0] = 0;
+        D_2301b0.screen->v2(&list, 0);
+        f_086528(&D_241810, 1);
+        if (f_0865e8(&D_241810))
+            f_018af8(&D_2301b0);
+        break;
+    }
+    case 9:
+        f_088138(&D_241810);
+        break;
+    }
+
+    int car = D_2301b0.screen->v10(7);
+    if (car < 0) {
+        car = 0;
+        if (D_1ee120) {
+            D_1ee120 = 0;
+            D_1ee118 = 0;
+            D_1ee114 = 0;
+            f_00578c(D_1dd6b0);
+        }
+    }
+    if (car == 0 && !D_1ee114)
+        car = D_1ee118;
+    if (car != 0) {
+        D_1ee118 = car;
+        if (!D_1ee114 && !f_0056d0(D_1dd6b0)) {
+            Rec c;
+            FIND_CAR(&c, car);
+            f_003150(D_1dd6b0, 0, &c);
+            f_0030c8(D_1dd6b0, 4);
+            f_005554(D_1dd6b0, 1);
+            D_1ee11c = car;
+            D_1ee120 = 1;
+            D_1ee114 = 1;
+        }
+    }
+    if (D_1ee114 && !f_0056d0(D_1dd6b0)) {
+        D_1ee114 = 0;
+        if (D_1ee11c == D_1ee118) {
+            D_1ee118 = 0;
+            ModelMsg mm;
+            mm.Reset();
+            mm.mdl = f_005c34(D_1dd6b0, "Mdl");
+            mm.tex = f_005c34(D_1dd6b0, "Tex");
+            mm.clut = f_005c34(D_1dd6b0, "Clut");
+            mm.ref = f_005c34(D_1dd6b0, "Ref");
+            D_2301b0.screen->v2(&mm, 0);
+        }
+    }
+
+    D_2301b0.screen->v10(3);
+    if (D_2301b0.screen->v10(6) == 2) {
+        f_00e30c();
+        f_00e084();
+        f_00e068();
+        queue.Push(6);
+        return;
+    }
+    if (!D_2301b0.m24)
+        return;
+    LobbyReply r;
+    D_2301b0.screen->v3(&r, 0);
+    D_1d110c = r.m8;
+    D_1d1108 = 6;
+    f_00e084();
+    f_0030f4(D_1dd6b0);
+    {
+        EmblemReply q;
+        D_2301b0.screen->v3(&q, 0);
+        D_1d1638 = q.emblem[m3164] - 1;
+    }
+    D_1ee198.m84 = m3188;
+    D_1ee198.event = m3176;
+    D_1ee198.seed1 = D_1e8ec4.Rand();
+    D_1ee198.seed2 = D_1e8ec4.Rand();
+    f_014fb0(m3168, m3164);
+    Rec c;
+    FIND_CAR(&c, m3164);
+    memcpy(D_24063c, f_0368e8(&D_240740, "Class", c.rec, 0, 0), D_1a211c[1]);
+    int cls = D_24063c[0] - 1;
+    Rec crs = ChosenCourse(D_1dd7c4);
+    int k = cls * 24 + CourseIndex(crs);
+    D_1ee198.car[0] = m3164;
+    D_1ee198.m76[0] = 0;
+    D_1ee198.color[0] = m3172 - 1;
+    D_1ee198.lapRecord = m1820[k];
+    D_1ee198.record = m476[k];
+    D_1ee198.m56 = 1;
+    queue.Push(4);
 }
 
 /* @implements 0x00fc68 us f_00fc68
