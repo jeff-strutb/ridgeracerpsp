@@ -267,6 +267,8 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A call after a branch reuses `a3` from the other arm's setup (only `a1` reloaded) | the callee is declared with one argument fewer (`f(id, tone, vol)`) | f_097524, f_097680 |
 | A fill loop with a reversed counter and a separate value register, pointer stepped before the value | `for (i = 0, k = 0; i < 6; i++, k++) a[i] = k;` (`a[i] = k++` steps the value first; `a[i] = i` is not reversed) | f_098f4c |
 | A small struct returned in `v0`/`v1` from a leaf with an unused 32-byte frame | a second local copied before the return: `Mark m, r; ...; r = m; return r;` (C) | f_0996b0 |
+| `li vX,300` then `slt vX,vX,vY` for a greater-than test against a constant (not `slti 301`) | hold the constant in a local before the test: `int wait = 300; m364++; if (m364 > wait)` | f_091634 |
+| A result returned through a saved register (`move v0,s0`) with `move s0,zero` in a branch slot | separate `return 0;` / `return h + 1;` statements; a single `int r = 0; ... return r;` drops the redundant zero and moves the result to v1 | f_091634 |
 
 **Callee prototypes are behaviour.** This includes the v0 versus v1 choice for later temporaries (f_01c2cc, f_01c648). Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
 
