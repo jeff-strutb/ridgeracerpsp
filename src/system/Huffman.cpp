@@ -15,8 +15,6 @@ void f_131ee4(void *);
 /* A symbol's code: the code left-aligned or right-aligned in 16 bits and its length. When
    decoding, len holds the zero-run length instead. */
 struct Code {
-    void Align() { bits <<= 16 - len; }
-    void SetBits(unsigned short b) { bits = b; }
     unsigned short bits;
     int len;
 };
@@ -132,16 +130,6 @@ public:
     void f_044cd4(int ch);
     int f_044d30();
     void f_044d98();
-    void Put(int ch, Code k)
-    {
-        k.bits <<= 16 - k.len;
-        f_0443e0(ch, k);
-    }
-    void PutRef(int ch, Code &k)
-    {
-        k.bits <<= 16 - k.len;
-        f_0443e0(ch, k);
-    }
     __attribute__((noinline)) int f_044e5c(int ch, unsigned char v)
     {
         Chan *c = &chan[ch];
@@ -326,7 +314,8 @@ void CCodec::f_044230(Chan c)
 /* @draft 0x044294 us f_044294
    WHAT IT DOES: Ors bits into the byte at channel ch's write position; once the byte holds n of
    8 bits it moves to the next byte, taking a new block at a block's end (flagging overflow when
-   none is free), clears it and counts it. */
+   none is free), clears it and counts it.
+   Remaining difference: register choice only (the block number from the free list in a1, the byte offset in a1 and the buffer in v1). */
 void CCodec::f_044294(int ch, int bits, int n)
 {
     unsigned char *p = &data[chan[ch].wr.pos + (chan[ch].wr.blk << 8)];
@@ -357,7 +346,8 @@ void CCodec::f_044294(int ch, int bits, int n)
 }
 
 /* @draft 0x0443e0 us f_0443e0
-   WHAT IT DOES: Writes a left-aligned code of c.len bits to channel ch, a byte at a time. */
+   WHAT IT DOES: Writes a left-aligned code of c.len bits to channel ch, a byte at a time.
+   Remaining difference: the constant 8 of the length clamp is hoisted out of the loop into a saved register; retail loads it in the loop (one saved register fewer). */
 void CCodec::f_0443e0(int ch, Code c)
 {
     Word w;
@@ -389,7 +379,8 @@ void CCodec::f_04449c(Pos *p, int n)
 }
 
 /* @draft 0x044500 us f_044500
-   WHAT IT DOES: Reads the next n bits of channel c (right-aligned) and moves past them. */
+   WHAT IT DOES: Reads the next n bits of channel c (right-aligned) and moves past them.
+   Remaining difference: register choice for the right shift count (8 - bit). */
 Code CCodec::f_044500(Chan *c, int n)
 {
     Pos p = c->rd;
@@ -433,7 +424,8 @@ void CCodec::f_04461c(int ch)
 /* @draft 0x044644 us f_044644
    WHAT IT DOES: The next byte of channel ch's saved form: a serialiser that gives the channel
    number, its flag, its bit count, the written and put byte counts, then the data bytes; 0 once
-   done (and after the last data byte it rewinds the channel). */
+   done (and after the last data byte it rewinds the channel).
+   Remaining difference: the result and the channel base swap s0 and s1. */
 int CCodec::f_044644(int ch)
 {
     unsigned char r = 0;
@@ -489,7 +481,8 @@ int CCodec::f_044644(int ch)
 /* @draft 0x0447ac us f_0447ac
    WHAT IT DOES: Loads saved channels from len bytes at p (the form f_044644 gives): each
    channel's header, then its data copied into fresh blocks. Returns how many channels were
-   loaded. */
+   loaded.
+   Remaining difference: the copy pointer and the counter of the last block swap v1 and a0. */
 int CCodec::f_0447ac(unsigned char *p, int len)
 {
     unsigned char *end = p + len;
@@ -687,4 +680,7 @@ CLibObject D_240ffc;
    WHAT IT DOES: Writes a pending zero run of channel ch.
    @draft 0x04506c us f_04506c
    WHAT IT DOES: Reads the next byte of channel c: from a pending zero run, or by decoding the
-   bits read ahead and refilling them. */
+   bits read ahead and refilling them.
+   Remaining difference: scheduling of each code alignment (16 - len computed into a1 before the argument moves in retail).
+   Remaining difference: as f_044e5c, the scheduling of the code alignment.
+   Remaining difference: the order of the two copies of the code length (argument and saved register) and one register choice. */

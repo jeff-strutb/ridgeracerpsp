@@ -652,7 +652,8 @@ int CCustomController::f_04397c(int i)
 
 /* @draft 0x043a0c us f_043a0c
    WHAT IT DOES: The kind of action i's chosen assignment: actions 7 to 9 are plain buttons (1),
-   10 to 17 kind 0; 255 for none. */
+   10 to 17 kind 0; 255 for none.
+   Remaining difference: block layout; retail keeps the table path as the fall-through and the kind mask after it (the same shape as f_043aa0, which matches), here the constant kinds come first. */
 int CCustomController::f_043a0c(int i)
 {
     unsigned int k;
