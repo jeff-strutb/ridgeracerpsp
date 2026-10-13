@@ -68,6 +68,7 @@ struct Pos {
 };
 
 union Word {
+    unsigned int Get() { return w; }
     void Set(unsigned short v)
     {
         h[1] = 0;
@@ -499,17 +500,17 @@ int CCodec::f_0447ac(unsigned char *p, int len)
             f_044c3c(ch);
         c->m0 = *p++;
         c->wr.bit = *p++;
-        Word w;
-        w.b[0] = *p++;
-        w.b[1] = *p++;
-        w.b[2] = *p++;
-        w.b[3] = *p++;
-        c->m32 = w.w;
-        w.b[0] = *p++;
-        w.b[1] = *p++;
-        w.b[2] = *p++;
-        w.b[3] = *p++;
-        c->m36 = w.w;
+        unsigned char w[4];
+        w[0] = *p++;
+        w[1] = *p++;
+        w[2] = *p++;
+        w[3] = *p++;
+        c->m32 = *(int *)w;
+        w[0] = *p++;
+        w[1] = *p++;
+        w[2] = *p++;
+        w[3] = *p++;
+        c->m36 = *(int *)w;
         if (c->m0 == 0) {
             p += c->m32;
             continue;
@@ -519,21 +520,21 @@ int CCodec::f_0447ac(unsigned char *p, int len)
         c->rd.Set(b);
         int left = c->m32;
         while (left != 0) {
-            if (left <= 256) {
+            if (left > 256) {
                 unsigned char *d = &data[c->rd.blk << 8];
+                for (int k = 0; k < 256; k++)
+                    *d++ = *p++;
+                int nb = f_0441e4();
+                next[c->rd.blk] = nb;
+                c->rd.blk = nb;
+                left -= 256;
+            } else {
                 c->wr.pos = left - 1;
+                unsigned char *d = &data[c->rd.blk << 8];
                 for (int k = 0; k < left; k++)
                     *d++ = *p++;
                 c->wr.blk = c->rd.blk;
                 left = 0;
-            } else {
-                unsigned char *d = &data[c->rd.blk << 8];
-                for (int k = 0; k < 256; k++)
-                    *d++ = *p++;
-                b = f_0441e4();
-                next[c->rd.blk] = b;
-                c->rd.blk = b;
-                left -= 256;
             }
         }
         f_044cd4(ch);
