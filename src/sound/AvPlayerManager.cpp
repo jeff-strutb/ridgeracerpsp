@@ -335,7 +335,7 @@ void CAvPlayerManager::f_0986d8()
         f_098824(6);
 }
 
-/* @draft 0x098824 us f_098824
+/* @implements 0x098824 us f_098824
    WHAT IT DOES: Runs a pad command (0 to 6). A track or disc command also stops the music
    and voices, remembers the command and goes to the command wait (state 7). Returns -1 for
    an unknown command. */
@@ -357,8 +357,8 @@ int CAvPlayerManager::f_098824(int cmd)
         m28 = 0;
         f_098c74();
         f_098ea4();
-        m256 = 7;
         m20 = cmd;
+        m256 = 7;
     }
     return 0;
 }
@@ -571,7 +571,7 @@ int CAvPlayerManager::f_098ea4()
     return m184.f_0fa458();
 }
 
-/* @draft 0x098ed8 us f_098ed8
+/* @implements 0x098ed8 us f_098ed8
    WHAT IT DOES: Returns the current track's number: the DJ list entry, or the disc's track
    (through the shuffled order when shuffle is on) looked up by disc and track. */
 int CAvPlayerManager::f_098ed8()
@@ -579,20 +579,22 @@ int CAvPlayerManager::f_098ed8()
     TrackInfo info;
     if (m2 == 1)
         return m64[m36];
-    if (m0 == 1)
+    if (m0 == 1) {
         m8 = m40[m36];
+        return f_077b0c(&info, m4, m8 + 1);
+    }
     return f_077b0c(&info, m4, m8 + 1);
 }
 
-/* @draft 0x098f4c us f_098f4c
+/* @implements 0x098f4c us f_098f4c
    WHAT IT DOES: Shuffles the disc's six tracks into the shuffled order. */
 int CAvPlayerManager::f_098f4c()
 {
     int a[6];
     int i, n;
-    n = 0;
-    for (i = 0; i < 6; i++)
-        a[i] = n++;
+    int k;
+    for (i = 0, k = 0; i < 6; i++, k++)
+        a[i] = k;
     for (n = 6; n > 0;) {
         int r = f_0f6b90() % n;
         n--;
@@ -604,7 +606,10 @@ int CAvPlayerManager::f_098f4c()
 }
 
 /* @draft 0x098ff0 us f_098ff0
-   WHAT IT DOES: Builds the DJ list: the six tracks of discs 1 to 5, shuffled. */
+   WHAT IT DOES: Builds the DJ list: the six tracks of discs 1 to 5, shuffled.
+   Remaining difference: retail keeps the track counter in s0 and the list pointer in s1;
+   here they are swapped (the code is otherwise the same). Declaration orders, a do-while,
+   a pre-increment argument and a pointer local do not change the allocation. */
 void CAvPlayerManager::f_098ff0()
 {
     TrackInfo info;
@@ -614,7 +619,8 @@ void CAvPlayerManager::f_098ff0()
     for (disc = 1; disc < 6; disc++)
         for (track = 0; track < 6;) {
             track++;
-            a[n++] = f_077b0c(&info, disc, track);
+            a[n] = f_077b0c(&info, disc, track);
+            n++;
         }
     for (n = 30; n > 0;) {
         int r = f_0f6b90() % n;
