@@ -75,6 +75,16 @@ struct TVParam {
     int m24;
 };
 
+/* A sub-object of the camera with a reset method elsewhere. */
+struct TVTimer {
+    void f_0f3f30();
+    int m0;
+};
+
+struct Vec4 {
+    float x, y, z, w;
+};
+
 class CCamTV : public CCamProto {
 public:
     TVShot *f_0802fc();
@@ -83,7 +93,6 @@ public:
     void f_080f04();
     void f_080f90();
     void f_0817e0();
-    void f_081360();
     void f_081604();
     void f_0804bc();
 
@@ -95,10 +104,20 @@ public:
     virtual void f_07fa84();
     virtual void f_0802f0();
 
+    void f_081360();
+    void f_08138c();
+    void f_081938();
+    void f_0803dc();
+    void f_0817d0();
+    void f_0817d8();
+
     int m28;
     TVShot *shot;
     TVCar *car;
-    char p40[408];
+    TVTimer t40;
+    char p44[200];
+    TVTimer t244;
+    char p248[200];
     int m448;
     char p452[12];
     float shotX, shotY, shotZ;
@@ -121,7 +140,17 @@ public:
     struct Quad {
         int v[4];
     } m624, m640;
-    char p656[80];
+    char p656[32];
+    int m688;
+    char p692[12];
+    int m704;
+    char p708[4];
+    int m712;
+    int m716;
+    float m720;
+    int m724;
+    int m728;
+    char p732[4];
     float m736;
     int m740;
     char p744[4];
@@ -204,6 +233,92 @@ void CCamTV::Set(const CamParam *cp)
 void CCamTV::Reset()
 {
     CCamProto::Reset();
+}
+
+/* @implements 0x0802f0 us _ZN7CamCtrl6CCamTV8f_0802f0Ev
+   WHAT IT DOES: Stops the camera: clears a flag on the object it follows. */
+void CCamTV::f_0802f0()
+{
+    ((int *)param.v[0])[185] = 0;
+}
+
+/* @implements 0x080b48 us _ZN7CamCtrl6CCamTV8f_080b48Ev
+   WHAT IT DOES: Clears a counter. */
+void CCamTV::f_080b48()
+{
+    m688 = 0;
+}
+
+/* @implements 0x081604 us _ZN7CamCtrl6CCamTV8f_081604Ev
+   WHAT IT DOES: Clears two words. */
+void CCamTV::f_081604()
+{
+    m712 = 0;
+    m704 = 0;
+}
+
+/* @implements 0x0817e0 us _ZN7CamCtrl6CCamTV8f_0817e0Ev
+   WHAT IT DOES: Resets the sub-object at 244. */
+void CCamTV::f_0817e0()
+{
+    t244.f_0f3f30();
+}
+
+/* @implements 0x081360 us _ZN7CamCtrl6CCamTV8f_081360Ev
+   WHAT IT DOES: Resets the sub-object at 40 and clears a word. */
+void CCamTV::f_081360()
+{
+    t40.f_0f3f30();
+    m716 = 0;
+}
+
+/* @implements 0x081938 us _ZN7CamCtrl6CCamTV8f_081938Ev
+   WHAT IT DOES: Clears two words. */
+void CCamTV::f_081938()
+{
+    m724 = 0;
+    m728 = 0;
+}
+
+}
+
+extern "C" {
+void f_0a65e4(CamCtrl::Vec4 *out, void *in);
+float f_0a65c4(CamCtrl::Vec4 *v);
+}
+extern float D_1d5d9c;
+
+namespace CamCtrl {
+
+/* @implements 0x08138c us _ZN7CamCtrl6CCamTV8f_08138cEv
+   WHAT IT DOES: The distance between the two stored positions, scaled. */
+void CCamTV::f_08138c()
+{
+    Vec4 a, b;
+    f_0a65e4(&a, &m624);
+    f_0a65e4(&b, &m640);
+    a.x = a.x - b.x;
+    a.y = a.y - b.y;
+    a.z = a.z - b.z;
+    m720 = f_0a65c4(&a) * D_1d5d9c;
+}
+
+/* @implements 0x0803dc us _ZN7CamCtrl6CCamTV8f_0803dcEv
+   WHAT IT DOES: Debug display of the camera state (compiled out). */
+void CCamTV::f_0803dc()
+{
+}
+
+/* @implements 0x0817d0 us _ZN7CamCtrl6CCamTV8f_0817d0Ev
+   WHAT IT DOES: Debug display (compiled out). */
+void CCamTV::f_0817d0()
+{
+}
+
+/* @implements 0x0817d8 us _ZN7CamCtrl6CCamTV8f_0817d8Ev
+   WHAT IT DOES: Debug display (compiled out). */
+void CCamTV::f_0817d8()
+{
 }
 
 /* @implements 0x081d94 us _ZN7CamCtrl6CCamTVD1Ev
