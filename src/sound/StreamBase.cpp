@@ -35,8 +35,8 @@ extern CStreamState *D_242ca4;
 /* The stream data packs (their own object file). */
 class CStreamData {
 public:
-    int f_095a94();
-    int f_095b10();
+    int f_095a94(int pack);
+    int f_095b10(int pack);
     int f_095bc4(int pack, int a);
     int f_095974(int pack, int a, char *name);
     int f_09590c(int pack, int a);
@@ -151,19 +151,18 @@ CStreamBase::~CStreamBase()
     m288 = -1;
 }
 
-/* @draft 0x094604 us f_094604
-   WHAT IT DOES: Selects the default channel, sizes the pre-load buffer from the stream data
-   when it is loaded, and selects the pack file. Returns 0, or -1 for a bad channel.
-   Remaining difference: retail keeps the pack in s0 and the object in s1 (here the other way
-   round), so the argument moves and the hoisted move a1,s0 before the bnez differ. */
+/* @implements 0x094604 us f_094604
+   WHAT IT DOES: Selects the default channel, sizes the pre-load buffer from the pack's
+   pre-load header when one is registered, and selects the pack file. Returns 0, or -1 for a
+   bad channel. */
 int CStreamBase::f_094604(int ch, int pack)
 {
     if (f_0946b4(ch) < 0) {
         f_093f90("StreamBase: Init Failed\n");
         return -1;
     }
-    if (D_242ca0 && D_242ca0->f_095a94() == 1) {
-        int size = D_242ca0->f_095b10();
+    if (D_242ca0 && D_242ca0->f_095a94(pack) == 1) {
+        int size = D_242ca0->f_095b10(pack);
         if (size > 0)
             f_095598(size);
     }
