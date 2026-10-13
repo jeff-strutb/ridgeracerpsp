@@ -13,11 +13,38 @@ struct CCustomController {
 }
 extern Controller::CCustomController D_1d8910[1];
 
-/* The replay's recorded header: the recorded length at +16 (frames). */
+/* The replay's recorded header: the recorded length at +16 (frames) and the offsets of three
+   camera event lists. */
 struct ReplayInfo {
-    int m0[4];
+    int m0[2];
+    int m8;
+    int m12;
     int length;
+    int m20;
+    struct {
+        int m0;
+        int off;
+    } list[3];
 };
+
+/* A camera event: from its time on, the replay uses this view and camera parameter; a
+   negative time ends the list. */
+struct ReplayEvent {
+    float time;
+    int mode;
+    int sub;
+};
+
+/* The course collision areas of the map manager. */
+struct CourseAreas {
+    float f_0e3b3c(float a, float b);
+};
+struct MapMgr {
+    CourseAreas *Areas() { return &m12240; }
+    char m0[12240];
+    CourseAreas m12240;
+};
+extern MapMgr D_23c820;
 
 /* An object driven through its vtable (the replay camera and the replay overlays). */
 struct ReplayPart {
@@ -25,7 +52,7 @@ struct ReplayPart {
     virtual void v1();
     virtual void v2();
     virtual void v3();
-    virtual void Start(int);
+    virtual void Start(int *arg);
     virtual void Step();
     virtual void Show();
     virtual void Stop();
@@ -35,7 +62,19 @@ struct ReplayPart {
 struct ReplayOverlay : ReplayPart {
     char m4[736];
     int m740;
+    char m744[8];
+    int m752;
 };
+
+/* The player's car as the replay sees it: the race time at +2144 and the lap at +2212. */
+struct ReplayCar {
+    char m0[2144];
+    float time;
+    char m2148[64];
+    int lap;
+};
+
+int f_0f2de8(ReplayPart *cam);
 
 struct ReplayState {
     char m0[24];
@@ -60,23 +99,35 @@ struct Replay {
     char m0[3060];
     ReplayPart *cam[11];
     ReplayView *m3104;
-    char m3108[20];
+    char m3108[4];
+    ReplayCar *car;
+    char m3116[12];
     ReplayInfo *info;
     char m3132[8];
     int mode;
     int curMode;
     char m3148[4];
     ReplayPart *curCam;
-    char m3156[16];
-    int m3172;
+    int m3156;
+    int m3160;
+    int m3164;
+    int m3168;
+    int list;
     int clock;
-    char m3180[16];
+    float bestTime;
+    int bestLap;
+    int m3188;
+    ReplayEvent *ev;
     int m3196;
     char m3200[4];
     int m3204;
     char m3208[4];
     int m3212;
-    char m3216[32];
+    int m3216;
+    char m3220[4];
+    int m3224;
+    int m3228;
+    char m3232[16];
     ReplayOverlay *m3248;
     ReplayPart *m3252;
 };
@@ -166,7 +217,7 @@ extern "C" void f_07ecb8(Replay *r)
     f_07ee5c(r);
     if (r->clock < r->info->length) {
         r->m3248->m740 = 1;
-        r->m3172 = 0;
+        r->list = 0;
         D_241450 = r->clock;
         D_241454 = 0;
         r->mode = 4;
@@ -225,4 +276,187 @@ extern "C" void f_07eec8(Replay *r)
     f_07ecb8(r);
     f_07edd4(r);
     r->curCam->Step();
+}
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+/* @implements 0x07ef10 us f_07ef10
+   WHAT IT DOES: Tracks the player's progress for the replay after the recording ends: keeps
+   the best lap and time reached, notes when the car comes within 40 of that time on the
+   course, and once it has caught up again shows the finish overlay. Picks the camera event
+   list from the lap (lap + 2, at most 2); list 0 while the recording still lasts. */
+extern "C" void f_07ef10(Replay *r)
+{
+    ReplayInfo *info = r->info;
+    ReplayCar *car = r->car;
+    float t = car->time;
+    int lap = car->lap;
+    int n;
+
+    if (r->clock < info->length) {
+        r->list = 0;
+        return;
+    }
+    if (r->bestLap < lap) {
+        r->bestTime = t;
+        r->bestLap = lap;
+    } else if (r->bestLap == lap && r->bestTime < t) {
+        r->bestTime = t;
+    }
+    if (r->m3228 == 0) {
+        if (D_23c820.Areas()->f_0e3b3c(t, r->bestTime) < -40.0f)
+            r->m3228 = 1;
+    }
+    if (r->m3228) {
+        if (lap >= r->bestLap && r->bestTime <= t) {
+            r->m3216 = 1;
+            r->m3228 = 0;
+            r->m3248->m752 = 0;
+        }
+    }
+    n = r->bestLap + 2;
+    if (n < 3)
+        r->list = n;
+    else
+        r->list = 2;
+}
+
+/* @implements 0x07f04c us f_07f04c
+   WHAT IT DOES: In view 2, once the camera parameter has been applied, asks the view 2 camera
+   whether it has finished and then moves to view 4; in any other case clears the finished
+   flag. */
+extern "C" void f_07f04c(Replay *r)
+{
+    if (r->mode == 2 && r->m3160 == r->m3156) {
+        if (f_0f2de8(r->cam[2]))
+            r->m3224 = 1;
+        if (r->m3224)
+            r->mode = 4;
+        return;
+    }
+    r->m3224 = 0;
+}
+
+/* @implements 0x07f0bc us f_07f0bc
+   WHAT IT DOES: Switches the replay camera when the requested view (low half of the mode) or
+   the camera parameter changed: stops the current camera, takes the new one and starts it
+   with the parameter, which comes from the mode's high half (less one) or the current
+   camera event. Flags the change at +3168. */
+extern "C" void f_07f0bc(Replay *r)
+{
+    int arg;
+
+    if (r->mode == r->curMode && r->m3160 == r->m3156) {
+        r->m3168 = 0;
+        return;
+    }
+    r->m3168 = 1;
+    if (r->curCam)
+        r->curCam->Stop();
+    r->curMode = r->mode;
+    r->m3156 = r->m3160;
+    r->curCam = r->cam[(unsigned short)r->mode];
+    arg = 0;
+    if (r->list) {
+        if ((r->mode >> 16) == 0)
+            arg = r->ev->sub;
+        else
+            arg = (r->mode >> 16) - 1;
+    }
+    if (r->curCam)
+        r->curCam->Start(&arg);
+}
+
+/* @implements 0x07f194 us f_07f194
+   WHAT IT DOES: The common end of a replay frame: draws both overlays, settles the view 2
+   finish, forces camera 3 with parameter 1 in state 4 once the car has caught up, switches
+   the camera, steps it and marks the view for a redraw after a switch. */
+extern "C" void f_07f194(Replay *r)
+{
+    r->m3248->Show();
+    r->m3252->Show();
+    r->m3168 = 0;
+    f_07f04c(r);
+    if (r->m3164 == 4 && r->m3228)
+        r->mode = 0x10003;
+    f_07f0bc(r);
+    r->curCam->Step();
+    if (r->m3168)
+        r->m3104->m664 = 1;
+}
+
+/* @implements 0x07f240 us f_07f240
+   WHAT IT DOES: Replay mode handler: advances the clock and the progress tracking; while the
+   recording lasts uses view 4 with the overlay shown (state 16), afterwards follows the
+   chosen camera event list with the overlay hidden (state 17). In state 4 steps through the
+   events up to the best time and takes the event's view and parameter. Publishes the time
+   and the list number (0 to 9, else 6) and ends the frame. */
+extern "C" void f_07f240(Replay *r)
+{
+    int n;
+
+    f_07ee5c(r);
+    f_07ef10(r);
+    if (r->list == 0) {
+        r->mode = 4;
+        r->m3248->m740 = 1;
+        r->ev = 0;
+        D_1d3d40->m24 = 16;
+    } else {
+        r->ev = (ReplayEvent *)((char *)r->info + r->info->list[r->list].off);
+        r->m3248->m740 = 0;
+        D_1d3d40->m24 = 17;
+    }
+    f_07eca8(r);
+    if (r->m3164 == 4 && r->list) {
+        while (r->ev[1].time >= 0.0f && r->ev[1].time < r->bestTime)
+            r->ev++;
+        r->mode = r->ev->mode;
+        r->m3160 = r->ev->sub;
+    }
+    if (r->list)
+        D_241450 = r->bestTime;
+    else
+        D_241450 = r->clock;
+    n = MAX(r->list, 0);
+    if (n >= 10)
+        n = 6;
+    D_241454 = n;
+    f_07f194(r);
+}
+
+/* @implements 0x07f3b4 us f_07f3b4
+   WHAT IT DOES: Replay mode handler for the finished race: advances the clock and the
+   progress tracking, follows the chosen camera event list with the overlay hidden, in state
+   4 steps through the events up to the replay clock (until the length at +8, unless the
+   flag at +3188 is 1) or else up to the best time, publishes the best time and the list
+   number and ends the frame. */
+extern "C" void f_07f3b4(Replay *r)
+{
+    ReplayInfo *info;
+    int n;
+
+    f_07ee5c(r);
+    f_07ef10(r);
+    info = r->info;
+    r->m3248->m740 = 0;
+    r->ev = (ReplayEvent *)((char *)info + info->list[r->list].off);
+    f_07eca8(r);
+    if (r->m3164 == 4) {
+        if (r->clock < info->m8 && r->m3188 != 1) {
+            while (r->ev[1].time >= 0.0f && r->ev[1].time < r->clock)
+                r->ev++;
+        } else {
+            while (r->ev[1].time >= 0.0f && r->ev[1].time < r->bestTime)
+                r->ev++;
+        }
+        r->mode = r->ev->mode;
+        r->m3160 = r->ev->sub;
+    }
+    D_241450 = r->bestTime;
+    n = MAX(r->list, 0);
+    if (n >= 10)
+        n = 6;
+    D_241454 = n;
+    f_07f194(r);
 }
