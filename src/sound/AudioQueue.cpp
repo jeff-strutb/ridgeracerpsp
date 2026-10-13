@@ -12,6 +12,7 @@ int sceKernelSignalSema(SceUID sema, int count);
 }
 
 int f_119dc8(int channel, int samples);
+int f_119f80(int channel, int left, int right, void *buf);
 void *f_08c334(void *heap, int size);
 void *f_08c378(void *heap, int align, int size);
 extern void *D_242b9c;
@@ -30,6 +31,8 @@ public:
     ~CAudioQueue();
     int f_08cd90();
     int f_08cdc8(void **out);
+    int f_08ce0c();
+    int f_08ce84();
 
     SceUID sema;
     int *quit;
@@ -99,4 +102,26 @@ int CAudioQueue::f_08cdc8(void **out)
     else
         *out = 0;
     return n;
+}
+
+/* @implements 0x08ce0c us f_08ce0c
+   WHAT IT DOES: Queues the buffer just filled (under the lock) and moves the fill position
+   on. Returns 0. */
+int CAudioQueue::f_08ce0c()
+{
+    sceKernelWaitSema(sema, 1, 0);
+    (*filled)++;
+    sceKernelSignalSema(sema, 1);
+    *write = (*write + 1) % *count;
+    return 0;
+}
+
+/* @implements 0x08ce84 us f_08ce84
+   WHAT IT DOES: Plays the next queued buffer at full volume on channel 1 and moves the play
+   position on. Returns 0. */
+int CAudioQueue::f_08ce84()
+{
+    f_119f80(1, 0x8000, 0x8000, bufs[*read]);
+    *read = (*read + 1) % *count;
+    return 0;
 }
