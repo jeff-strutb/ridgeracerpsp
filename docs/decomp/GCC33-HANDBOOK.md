@@ -241,6 +241,13 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A `memset` of a global table at start up, then stores of only its nonzero fields (scheduled together) | an aggregate initialiser with run-time values (`{D_1d5da4 * 27.5f, 1.0f, ...}`); zero members are left to the clear | 0x08271c |
 | Start-up float stores into two small globals, a shared product stored to both | the globals are 4-float structs with aggregate initialisers; `float[4]` arrays schedule the stores differently | 0x081cc4 |
 | Template methods called with `jal`, emitted after the file's other functions | template member functions defined outside the class without `inline` | 0x083948, 0x0835d4 |
+| A float argument chosen by a flag: the else value loaded in the `beqz` slot, the then value loaded on the fall-through | `float v = A; if (flag) v = B; f(v);`; a ternary (either polarity) puts one arm out of line | f_08e160, f_08e388, f_08e97c |
+| A small struct copied to the stack in the callee with loads and stores interleaved in retail's order | the parameter is the struct by value (`void f(Vec3 p, Vec3 v)`, passed by reference under EABI); a pointer parameter copied into a local orders the stores differently | f_08f360, f_08f47c |
+| `move a2,sp` (a stack handle argument) in the `jal` slot after the float argument moves | the handle is the last parameter (`f(int id, float a, float b, float c, Handle *h)`); as the second parameter its setup comes first | f_08e5d4, f_08ee48, f_08ef74 |
+| A struct copy addressed from base registers (`addiu v0,v0,144`, then `lw 4(v0)`...) | copy through pointer locals: `Vec4 *pp = &car->pos; Vec4 p = *pp;` | f_08f0a8 |
+| A counting loop that reloads the global pointer (and its `lui`) every pass | the element read through a `static inline` accessor and `if (Car(i)->m76) n++;` | f_08efd8 |
+| Per-branch copies of a call sequence whose name constants are loaded at first use, tails merged by cross-jumping | a macro taking the names; an inline function binds them to registers at the start of each branch | f_0924c0 |
+| A jump table whose case 0 has its own `return 0` block, placed before the default's | `case 0: return 0;` first, no `default`, `return 0;` after the switch; a `default` label merges the two | f_08d890 |
 
 **Callee prototypes are behaviour.** This includes the v0 versus v1 choice for later temporaries (f_01c2cc, f_01c648). Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
 
