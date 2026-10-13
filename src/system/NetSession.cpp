@@ -113,6 +113,7 @@ public:
     ~CNetSession();
 
     void f_0853e8();
+    void ResetTimers() { for (int i = 0; i < 8; i++) timer[i] = 30000000; }
     void f_0854ec(int s);
     void f_0854f4(char v);
     void f_0854fc(char v);
@@ -258,7 +259,7 @@ CNetSession::~CNetSession()
 {
 }
 
-/* @draft 0x0853e8 us f_0853e8
+/* @implements 0x0853e8 us f_0853e8
    WHAT IT DOES: Clears the session: state 0, host mode, no semaphore or socket, every timer
    at 30 s, an empty member table and empty packet buffers. */
 void CNetSession::f_0853e8()
@@ -279,8 +280,7 @@ void CNetSession::f_0853e8()
     m40 = 0;
     m10 = 1;
     pdp = -1;
-    for (i = 0; i < 8; i++)
-        timer[i] = 30000000;
+    ResetTimers();
     m81 = 0;
     m80 = 0;
     memset(&self, 0, sizeof self);
@@ -1168,11 +1168,149 @@ void CNetSession::f_0870e8(char *from, char *data, int len)
     }
 }
 
+/* @implements 0x087130 us f_087130
+   WHAT IT DOES: Receives one packet and hands it on by its type (0 member table, 1 session
+   record, 2 member entry, 3 session status, 4 member state, 5 game packet), ignoring
+   consoles that are neither members nor the host; returns 0 when there was none. */
+int CNetSession::f_087130()
+{
+    char from[8];
+    unsigned short port = 0;
+    int len = 512;
+    int r, i, known;
+    r = f_086830(from, &port, rbuf, &len);
+    if (r <= 0)
+        return r;
+    known = 0;
+    for (i = 0; i < 8; i++) {
+        if (ent[i].m18 && memcmp(ent[i].mac, from, 6) == 0) {
+            known = 1;
+            break;
+        }
+    }
+    if (memcmp(self.mac, from, 6) == 0)
+        known = 1;
+    if (!known)
+        return 1;
+    int type = rbuf[0];
+    int header = (((rbuf[1] << 8) + rbuf[2]) << 8) + rbuf[3];
+    switch (type) {
+    case 0:
+        f_086d0c(from, rbuf + 4, len - 4);
+        break;
+    case 1:
+        f_08704c(from, rbuf + 4, len - 4);
+        break;
+    case 2:
+        f_086e8c(from, rbuf + 4, len - 4);
+        break;
+    case 3:
+        f_0870e8(from, rbuf + 4, len - 4);
+        break;
+    case 4:
+        f_086fa8(from, rbuf + 4, len - 4);
+        break;
+    case 5:
+        f_083328(&D_241760, from, header, rbuf + 4, len - 4);
+        break;
+    case 6:
+        break;
+    }
+    return 1;
+}
+
 /* @implements 0x0872fc us f_0872fc
    WHAT IT DOES: Returns the matching library's largest pool allocation. */
 int CNetSession::f_0872fc()
 {
     return sceNetAdhocMatchingGetPoolMaxAlloc();
+}
+
+/* @implements 0x087318 us f_087318
+   WHAT IT DOES: Starts a session as host (mode 0) or client with the given session record
+   and member entry: clears everything, makes the entry member 0, and brings ad hoc
+   networking up (or starts matching at once when it is already up). */
+int CNetSession::f_087318(int m, Rec *r, Entry *e)
+{
+    int i;
+    f_0853e8();
+    mode = m;
+    self = *r;
+    self.m19 = 1;
+    for (i = 0; i < 8; i++) {
+        ent[i].m18 = 0;
+        ent[i].m11 = -1;
+    }
+    ent[0] = *e;
+    ent[0].m18 = 1;
+    ent[0].m32 = ent[0].m28 = -1;
+    ent[0].m36 = 0;
+    m32 = 0;
+    ResetTimers();
+    if (D_241e98.f_088338() == 5)
+        return f_08748c();
+    f_0854ec(1);
+    D_241e98.f_0884f0();
+    return 1;
+}
+
+/* @draft 0x08748c us f_08748c
+   WHAT IT DOES: Starts matching: opens the socket, creates the semaphore, initialises the
+   matching library and creates and starts the context (host or client); the host then
+   listens (state 8), a client looks for hosts (state 2). A failure ends the session. */
+int CNetSession::f_08748c()
+{
+    int r;
+    m10 = 1;
+    if (running)
+        return 0;
+    f_085b28();
+    f_085d50();
+    f_0858a8();
+    m36 = 0;
+    sceNetGetLocalEtherAddr(ent[0].mac);
+    r = f_086608();
+    if (r < 0)
+        goto fail;
+    if (sema < 0) {
+        r = sceKernelCreateSema("NPI", 0, 1, 255, 0);
+        if (r < 0)
+            goto fail;
+        sema = r;
+    }
+    r = sceNetAdhocMatchingInit(0x8000);
+    if (r < 0)
+        goto fail;
+    m8 = 1;
+    int mm;
+    if (mode == 0) {
+        self.m10 = 1;
+        ent[0].m11 = 0;
+        sceNetGetLocalEtherAddr(self.mac);
+        mm = 1;
+    } else {
+        self.m10 = 0;
+        mm = 2;
+    }
+    r = sceNetAdhocMatchingCreate(mm, 8, 1, 16384, 1000000, 5000000, 6, 500000, f_08554c);
+    if (r < 0)
+        goto fail;
+    matching = r;
+    r = sceNetAdhocMatchingStart(matching, 17, 16384, 16, 16384, 28, &self);
+    if (r < 0)
+        goto fail;
+    running = 1;
+    if (mode == 0) {
+        f_0854f4(1);
+        f_0854ec(8);
+    } else {
+        f_0854ec(2);
+    }
+    return 1;
+fail:
+    f_088138();
+    f_0854ec(10);
+    return r;
 }
 
 /* @implements 0x087648 us f_087648
@@ -1235,6 +1373,162 @@ int CNetSession::f_087760()
     return 0;
 }
 
+/* @implements 0x0877a8 us f_0877a8
+   WHAT IT DOES: A client's watch on the host: while the matching library lists the host and
+   this console, the timers are reset; when either is missing for 30 s (or 1 s for the host
+   when asked) the session ends (state 9). */
+int CNetSession::f_0877a8(bool quick)
+{
+    Member buf[16];
+    int k = quick ? 1000000 : 30000000;
+    int r;
+    if (!running)
+        return 0;
+    r = f_086350(buf);
+    if (r < 0)
+        return r;
+    if (f_085344(buf, self.mac))
+        m32 = 1000000;
+    else if ((m32 -= dt) < 0) {
+        f_088138();
+        m32 = 30000000;
+        f_0854ec(9);
+        return 1;
+    }
+    if (f_085344(buf, ent[0].mac))
+        timer[0] = k;
+    else if ((timer[0] -= dt) < 0) {
+        f_088138();
+        timer[0] = 30000000;
+        f_0854ec(9);
+        return 1;
+    }
+    return 1;
+}
+
+/* @draft 0x0878b4 us f_0878b4
+   WHAT IT DOES: The host's join requests: accepts the first one queued while listening with
+   room, else refuses it; closes the session when the table is full and reopens it when
+   there is room again. */
+int CNetSession::f_0878b4()
+{
+    int i;
+    for (i = 0; i < 4; i++) {
+        Entry *q = &req[i];
+        if (q->m18) {
+            if (running && m10 && f_0858f4()) {
+                f_086170(&req[i]);
+                f_0859e0();
+                f_086bec();
+                m36 = 0;
+                return 1;
+            }
+            f_086274(q);
+            return 1;
+        }
+    }
+    if (m10 && f_0859b4() >= 8)
+        f_087ac4(0);
+    if (!m10 && !m11 && f_0859b4() < 8)
+        f_087b68();
+    return 1;
+}
+
+/* @implements 0x0879d8 us f_0879d8
+   WHAT IT DOES: The host's watch on its members: one the matching library no longer lists
+   for 30 s is dropped and the members renumbered. */
+int CNetSession::f_0879d8()
+{
+    Member buf[16];
+    int i, r;
+    if (!running)
+        return 0;
+    r = f_086350(buf);
+    if (r < 0)
+        return r;
+    for (i = 1; i < 8; i++) {
+        if (ent[i].m18) {
+            if (f_085344(buf, ent[i].mac))
+                timer[i] = 1000000;
+            else if ((timer[i] -= dt) < 0) {
+                timer[i] = 30000000;
+                ent[i].m18 = 0;
+                f_0859e0();
+                m36 = 0;
+            }
+        }
+    }
+    return 1;
+}
+
+/* @draft 0x087ac4 us f_087ac4
+   WHAT IT DOES: The host stops taking members (status 2): no hello data. */
+int CNetSession::f_087ac4(bool v)
+{
+    int r;
+    if (mode != 0)
+        return 0;
+    m11 = v;
+    m10 = 0;
+    if (state < 2 || state >= 9)
+        return 0;
+    if (D_241e98.f_088338() != 5)
+        return 0;
+    r = sceNetAdhocMatchingSetHelloOpt(matching, 0, 0);
+    if (r < 0)
+        return r;
+    f_0854fc(2);
+    return f_086b84();
+}
+
+/* @draft 0x087b68 us f_087b68
+   WHAT IT DOES: The host takes members again (status 0): the session record as hello data. */
+int CNetSession::f_087b68()
+{
+    m10 = 1;
+    m11 = 0;
+    if (state < 2 || state >= 9)
+        return 0;
+    if (D_241e98.f_088338() != 5)
+        return 0;
+    f_086bec();
+    f_0854fc(0);
+    return f_086b84();
+}
+
+/* @implements 0x087bf4 us f_087bf4
+   WHAT IT DOES: A joined client's frame: watches the host, and once the table it holds has
+   as many members as the session record and the matching library lists them all, marks
+   itself ready (status 1) and goes on to state 6. */
+int CNetSession::f_087bf4()
+{
+    Member buf[16];
+    Member *p;
+    int n;
+    f_087718();
+    f_0877a8(0);
+    if (f_087760())
+        return 1;
+    if (!self.m10)
+        return 0;
+    if (f_0859b4() != self.m19)
+        return 0;
+    if (f_086350(buf) < 0)
+        return 0;
+    n = 0;
+    p = buf;
+    do {
+        p = p->next;
+        n++;
+    } while (p);
+    if (self.m19 != n)
+        return 0;
+    f_0854f4(1);
+    f_086b40();
+    f_0854ec(6);
+    return 0;
+}
+
 /* @implements 0x087cb4 us f_087cb4
    WHAT IT DOES: Leaves the session (state 9) while connected. */
 int CNetSession::f_087cb4()
@@ -1243,6 +1537,45 @@ int CNetSession::f_087cb4()
         f_088138();
         f_0854ec(9);
     }
+    return 1;
+}
+
+/* @draft 0x087d0c us f_087d0c
+   WHAT IT DOES: Waits for ad hoc networking to come up: starts matching once connected, and
+   fails on the states that cannot lead there. */
+int CNetSession::f_087d0c()
+{
+    switch (D_241e98.f_088338()) {
+    case 3:
+        if (mode == 0) {
+            if (D_241e98.f_088340() > 0)
+                f_0854ec(11);
+            else
+                D_241e98.f_0886c0();
+        } else if (mode == 1) {
+            if (D_241e98.f_088340() > 0)
+                D_241e98.f_0886c0();
+            else
+                f_0854ec(12);
+        }
+    case 2:
+    case 4:
+        return 1;
+    case 0:
+    case 1:
+        break;
+    case 5:
+        return f_08748c();
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+    case 10:
+    case 11:
+        f_088138();
+        break;
+    }
+    f_0854ec(10);
     return 1;
 }
 
@@ -1256,6 +1589,27 @@ int CNetSession::f_087e08()
     return 1;
 }
 
+/* @implements 0x087e44 us f_087e44
+   WHAT IT DOES: The host's frame in the session: throttled announcements, join requests, the
+   member watch, and every 5 s the session record and table for everyone. */
+int CNetSession::f_087e44()
+{
+    f_0876c4();
+    f_087718();
+    f_0878b4();
+    f_0879d8();
+    if ((m36 -= dt) < 0) {
+        if (f_0859b4() >= 2) {
+            f_086b84();
+            f_086968();
+        }
+        f_086bec();
+        m36 = 5000000;
+    }
+    f_087760();
+    return 1;
+}
+
 /* @implements 0x087ee8 us f_087ee8
    WHAT IT DOES: Waits for the join answer; gives up (state 4) when the wait runs out. */
 int CNetSession::f_087ee8()
@@ -1264,6 +1618,56 @@ int CNetSession::f_087ee8()
         f_0854ec(4);
         m32 = 0;
     }
+    return 1;
+}
+
+/* @draft 0x087f34 us f_087f34
+   WHAT IT DOES: The session's frame: follows ad hoc networking (ending the session on a
+   failure), takes every packet received, then runs the state's step. */
+int CNetSession::f_087f34()
+{
+    D_241e98.f_0889d0();
+    switch (state) {
+    case 0:
+        return 1;
+    case 9:
+        return f_087cb4();
+    case 10:
+        if (D_241e98.f_088338() == 8 || D_241e98.f_088338() == 11)
+            f_088138();
+        return 1;
+    case 11:
+    case 12:
+        return 1;
+    }
+    f_087688();
+    if (D_241e98.f_088338() == 8) {
+        f_088138();
+        return 1;
+    }
+    if (D_241e98.f_088338() == 11 && D_241810.state != 10)
+        goto fail;
+    if (D_241e98.f_088338() != 2 && D_241e98.f_088338() != 3 && D_241e98.f_088338() != 4
+        && D_241e98.f_088338() != 5)
+        goto fail;
+    while (f_087130() > 0)
+        ;
+    switch (state) {
+    case 1:
+        return f_087d0c();
+    case 3:
+        return f_087ee8();
+    case 5:
+        return f_087bf4();
+    case 6:
+        return f_087e08();
+    case 8:
+        return f_087e44();
+    }
+    return 1;
+fail:
+    f_088138();
+    f_0854ec(10);
     return 1;
 }
 
