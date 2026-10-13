@@ -15,6 +15,8 @@ void f_131ee4(void *);
 /* A symbol's code: the code left-aligned or right-aligned in 16 bits and its length. When
    decoding, len holds the zero-run length instead. */
 struct Code {
+    void Align() { bits <<= 16 - len; }
+    void SetBits(unsigned short b) { bits = b; }
     unsigned short bits;
     int len;
 };
@@ -129,36 +131,48 @@ public:
     void f_044cd4(int ch);
     int f_044d30();
     void f_044d98();
+    void Put(int ch, Code k)
+    {
+        k.bits <<= 16 - k.len;
+        f_0443e0(ch, k);
+    }
+    void PutRef(int ch, Code &k)
+    {
+        k.bits <<= 16 - k.len;
+        f_0443e0(ch, k);
+    }
     __attribute__((noinline)) int f_044e5c(int ch, unsigned char v)
     {
         Chan *c = &chan[ch];
-        if (v == 0) {
-            c->m52++;
-            if (c->m52 < 256)
-                return 1;
-            Code k = huff.f_0440e0(0, c->m52 - 1);
+        Code k;
+        if (v != 0) {
+            if (c->m52 != 0) {
+                k = huff.f_0440e0(0, c->m52 - 1);
+                k.bits <<= 16 - k.len;
+                f_0443e0(ch, k);
+                c->m52 = 0;
+            }
+            k = huff.f_0440e0(v, 0);
             k.bits <<= 16 - k.len;
             f_0443e0(ch, k);
-            c->m52 -= 256;
             return 1;
         }
-        if (c->m52 != 0) {
-            Code k = huff.f_0440e0(0, c->m52 - 1);
-            k.bits <<= 16 - k.len;
-            f_0443e0(ch, k);
-            c->m52 = 0;
-        }
-        Code k = huff.f_0440e0(v, 0);
+        c->m52++;
+        if (c->m52 < 256)
+            return 1;
+        k = huff.f_0440e0(0, c->m52 - 1);
         k.bits <<= 16 - k.len;
         f_0443e0(ch, k);
+        c->m52 -= 256;
         return 1;
     }
     __attribute__((noinline)) int f_044fcc(int ch)
     {
         Chan *c = &chan[ch];
+        Code k;
         if (c->m52 != 0) {
-            Code k = huff.f_0440e0(0, c->m52 - 1);
-            k.bits <<= 16 - k.len;
+            k = huff.f_0440e0(0, c->m52 - 1);
+            k.Align();
             f_0443e0(ch, k);
             c->m52 = 0;
         }
@@ -169,17 +183,17 @@ public:
         int r = 0;
         if (c->m52 != 0) {
             c->m52--;
-            return r;
+        } else {
+            Code q;
+            q.bits = c->m60.h[0];
+            int len = huff.f_044128(&q);
+            c->m52 = q.len;
+            r = (unsigned char)q.bits;
+            q = f_044500(c, len);
+            c->m60.w <<= len;
+            c->m60.h[1] = 0;
+            c->m60.h[0] |= q.bits;
         }
-        Code q;
-        q.bits = c->m60.h[0];
-        int len = huff.f_044128(&q);
-        c->m52 = q.len;
-        r = (unsigned char)q.bits;
-        q = f_044500(c, len);
-        c->m60.w <<= len;
-        c->m60.h[0] |= q.bits;
-        c->m60.h[1] = 0;
         return r;
     }
 
@@ -420,9 +434,12 @@ void CCodec::f_04461c(int ch)
    done (and after the last data byte it rewinds the channel). */
 int CCodec::f_044644(int ch)
 {
-    unsigned char r;
+    unsigned char r = 0;
     Word t;
     switch (chan[ch].m56) {
+    case 0:
+        r = 0;
+        break;
     case 1:
         r = data[chan[ch].rd.pos + (chan[ch].rd.blk << 8)];
         if (chan[ch].rd.blk == chan[ch].wr.blk && chan[ch].rd.pos == chan[ch].wr.pos) {
@@ -462,9 +479,6 @@ int CCodec::f_044644(int ch)
     case 12:
         r = ch;
         chan[ch].m56--;
-        break;
-    default:
-        r = 0;
         break;
     }
     return r;
