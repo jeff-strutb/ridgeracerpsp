@@ -232,6 +232,10 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | An 8-byte struct call result stored to a dead stack temporary as well as to the local (frame 16 bytes larger) | assign instead of initialise: `Code r; r = f();` | f_044cd4, f_044b44 |
 | A chain of separate `return 1` tests where `&&` would merge them | one early return per test (`if (i >= 8) return 1; if (v >= n) return 1; if (v < 0) return 1;`) | f_042924, f_0432f8 |
 | A loop-invariant sum (`first + j`) computed after the inner loop's counter is zeroed | write the sum in the inner loop's condition, not in a local before it | f_044014 |
+| A drain loop with the `-1` compare constant in a saved register (`li s1,-1` before each loop) | `do ret = q.Pop(&r); while (ret != -1);`; `while (q.Pop(&r) != -1);` reloads `li v1,-1` inside the loop except when nested | 0x082f38 |
+| A `memset` of a global table at start up, then stores of only its nonzero fields (scheduled together) | an aggregate initialiser with run-time values (`{D_1d5da4 * 27.5f, 1.0f, ...}`); zero members are left to the clear | 0x08271c |
+| Start-up float stores into two small globals, a shared product stored to both | the globals are 4-float structs with aggregate initialisers; `float[4]` arrays schedule the stores differently | 0x081cc4 |
+| Template methods called with `jal`, emitted after the file's other functions | template member functions defined outside the class without `inline` | 0x083948, 0x0835d4 |
 
 **Callee prototypes are behaviour.** This includes the v0 versus v1 choice for later temporaries (f_01c2cc, f_01c648). Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
 
