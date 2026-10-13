@@ -262,6 +262,11 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | An if/else-if chain of string selects whose first arm is a separate copy that jumps into the default arm's tail | assign one result variable in every arm (`name = c ? A : B;`) and `return name;` once; separate `return`s merge the first arm with the default | f_093680 |
 | `bltz v0` then `li v1,-1` / `move v1,zero` after alternative calls (no `slti`/`negu`) | test each call in its own arm: `if (c) { if (f() < 0) return -1; } else { if (g() < 0) return -1; } return 0;`; a shared `r` with `if (r < 0) return -1; return 0;` if-converts | f_09510c, f_09527c |
 | A select `slti v1,v0,0; negu v1,v1` joined with a zero default in v1 | `int r; if (t) r = f() < 0 ? -1 : 0; else r = 0; return r;` (`int r = 0;` first, or `return` in the arm, move it to v0 or to a saved register) | f_0954ac |
+| An unreferenced C2/C1 constructor pair plus a method placed after another object file's `_GLOBAL__D_` | the class's methods are their own object file (non-inline constructors emit both clones); its caller needs a `symbols.csv` row for the C1 name | 0x0970c0 (`src/sound/EnvBank.cpp`) |
+| A constructor's extra landing pad that only resumes (`j` to `_Unwind_Resume`, `move s1,a0`) | a member whose class has an empty user destructor (`~T() {}`) | 0x096e18 |
+| A call after a branch reuses `a3` from the other arm's setup (only `a1` reloaded) | the callee is declared with one argument fewer (`f(id, tone, vol)`) | f_097524, f_097680 |
+| A fill loop with a reversed counter and a separate value register, pointer stepped before the value | `for (i = 0, k = 0; i < 6; i++, k++) a[i] = k;` (`a[i] = k++` steps the value first; `a[i] = i` is not reversed) | f_098f4c |
+| A small struct returned in `v0`/`v1` from a leaf with an unused 32-byte frame | a second local copied before the return: `Mark m, r; ...; r = m; return r;` (C) | f_0996b0 |
 
 **Callee prototypes are behaviour.** This includes the v0 versus v1 choice for later temporaries (f_01c2cc, f_01c648). Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
 
