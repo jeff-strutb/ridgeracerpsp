@@ -127,6 +127,7 @@ public:
     void Do();
     void f_038604();
     void f_0386a8();
+    void f_038734(const InputFrame &f);
 };
 
 /* The kind of a controller channel: 255 when it is not fitted. */
@@ -431,4 +432,11 @@ void CPlayerInputProxy::f_0386a8()
     codec.f_044c3c(6);
     codec.f_044c3c(7);
     codec.f_044c3c(8);
+}
+
+/* @implements 0x038734 us f_038734
+   WHAT IT DOES: Sets the inputs of the last frame (not called in this build). */
+void CPlayerInputProxy::f_038734(const InputFrame &f)
+{
+    last = f;
 }
