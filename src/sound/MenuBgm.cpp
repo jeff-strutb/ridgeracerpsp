@@ -10,7 +10,9 @@
 
 extern "C" void f_093f90(const char *fmt, ...);
 
-/* One sound voice (36 bytes); its methods are in the voice object file at 0x0fa28c. */
+/* One sound voice (36 bytes); its methods are in the voice object file at 0x0fa28c. The
+   key-off call (0x0fa640) is declared with three arguments: retail's callers leave a3 as
+   it was. */
 extern "C" void f_0fa28c(void *voice);
 struct CVoice {
     CVoice() { f_0fa28c(this); }
@@ -310,22 +312,30 @@ int CMenuBgm::f_097ca4(int part)
 
 /* @draft 0x097cbc us f_097cbc
    WHAT IT DOES: Loads the tone table from the menu music database: for each mode and part
-   row, each tone's on flag, fade time and volume (three columns per tone). */
+   row, each tone's on flag, fade time and volume (three columns per tone).
+   Remaining difference: retail rebuilds the addresses of D_24063c and D_1a211c before each
+   copy (only D_24063c's high half is kept in s6) and keeps the tone counter in a stack slot
+   (not reversed into a down-counter); here loop.c hoists both addresses into saved registers,
+   reverses the counter and spills the mode and part instead. Five loop spellings (column
+   as i * 3, a separate column counter, row local, database pointer inside the loop) give
+   the same code. */
 void CMenuBgm::f_097cbc()
 {
     int m, p, i;
+    DB::CDataBase *db = &D_24504c;
     for (m = 0; m < 9; m++) {
         for (p = 0; p < 3; p++) {
-            int col = 0;
             for (i = 0; i < 24; i++) {
-                DB::CDataBase *db = &D_24504c;
-                memcpy(D_24063c, db->f_0368e8(0, db->f_036984(0, m * 3 + p, db->rowName, db->rows), col, 0), D_1a211c[1]);
+                char *f;
+                f = db->f_0368e8(0, db->f_036984(0, m * 3 + p, db->rowName, db->rows), i * 3, 0);
+                memcpy(D_24063c, f, D_1a211c[1]);
                 tone[m * 3 + p][i] = D_24063c[0];
-                memcpy(D_24063c, db->f_0368e8(0, db->f_036984(0, m * 3 + p, db->rowName, db->rows), col + 1, 0), D_1a211c[2]);
+                f = db->f_0368e8(0, db->f_036984(0, m * 3 + p, db->rowName, db->rows), i * 3 + 1, 0);
+                memcpy(D_24063c, f, D_1a211c[2]);
                 fade[m * 3 + p][i] = *(short *)D_24063c;
-                memcpy(D_24063c, db->f_0368e8(0, db->f_036984(0, m * 3 + p, db->rowName, db->rows), col + 2, 0), D_1a211c[4]);
+                f = db->f_0368e8(0, db->f_036984(0, m * 3 + p, db->rowName, db->rows), i * 3 + 2, 0);
+                memcpy(D_24063c, f, D_1a211c[4]);
                 vol[m * 3 + p][i] = *(float *)D_24063c;
-                col += 3;
             }
         }
     }
