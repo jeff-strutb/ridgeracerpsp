@@ -654,6 +654,7 @@ int CNetSession::f_085f58(char tag)
 }
 
 /* @draft 0x085f90 us f_085f90
+   REMAINING DIFFERENCE: register choice: retail keeps this in s1 and the record in s0 (swapped here).
    WHAT IT DOES: Asks a host seen to let this console join (a record without the host flag
    means go back to the host list). */
 int CNetSession::f_085f90(Rec *r)
@@ -990,6 +991,7 @@ int CNetSession::f_086908()
 }
 
 /* @draft 0x086968 us f_086968
+   REMAINING DIFFERENCE: the copy loop branch shape differs (retail jumps out of line to the copy when the member is active).
    WHAT IT DOES: Broadcasts the member table (type 0): every member's entry. */
 int CNetSession::f_086968()
 {
@@ -1000,11 +1002,11 @@ int CNetSession::f_086968()
     sbuf[2] = 0;
     sbuf[3] = 0;
     for (i = 0; i < 8; i++) {
-        if (ent[i].m18) {
-            memcpy(d, &ent[i], sizeof(Entry));
-            len += sizeof(Entry);
-            d += sizeof(Entry);
-        }
+        if (!ent[i].m18)
+            continue;
+        memcpy(d, &ent[i], sizeof(Entry));
+        len += sizeof(Entry);
+        d += sizeof(Entry);
     }
     return f_0866a4(D_1d3d1c, sbuf, len);
 }
@@ -1079,6 +1081,7 @@ int CNetSession::f_086bb0()
 }
 
 /* @draft 0x086bec us f_086bec
+   REMAINING DIFFERENCE: the two hello calls share registers differently (retail sets up the 28-byte call in the branch slot).
    WHAT IT DOES: As a listening host, sets the matching hello data to the session record (or
    none). */
 int CNetSession::f_086bec()
@@ -1086,24 +1089,25 @@ int CNetSession::f_086bec()
     int r;
     if (state != 8)
         return 0;
-    if (m10)
-        r = sceNetAdhocMatchingSetHelloOpt(matching, 28, &self);
-    else
+    if (!m10)
         r = sceNetAdhocMatchingSetHelloOpt(matching, 0, 0);
+    else
+        r = sceNetAdhocMatchingSetHelloOpt(matching, 28, &self);
     if (r < 0)
         return r;
     return 1;
 }
 
 /* @draft 0x086c50 us f_086c50
+   REMAINING DIFFERENCE: register choice only: retail puts the 5000000 constant in v1 and the m40 load in v0.
    WHAT IT DOES: Updates the hello data and broadcasts the session record, at most once every
    180 frames. */
 int CNetSession::f_086c50()
 {
     f_086bec();
     if (m40) {
-        m36 = 5000000;
         m80 = 1;
+        m36 = 5000000;
         return 1;
     }
     m40 = 180;
@@ -1127,6 +1131,7 @@ int CNetSession::f_086cb4()
 }
 
 /* @draft 0x086d0c us f_086d0c
+   REMAINING DIFFERENCE: register and scheduling differences around the length division and the table loop.
    WHAT IT DOES: A client takes the member table from its host: rebuilds its table from the
    entries, takes its own number, and announces itself again if its entry differs. */
 void CNetSession::f_086d0c(char *from, char *data, unsigned int len)
@@ -1297,6 +1302,7 @@ int CNetSession::f_087318(int m, Rec *r, Entry *e)
 }
 
 /* @draft 0x08748c us f_08748c
+   REMAINING DIFFERENCE: block layout of the failure paths and the host or client branch differ.
    WHAT IT DOES: Starts matching: opens the socket, creates the semaphore, initialises the
    matching library and creates and starts the context (host or client); the host then
    listens (state 8), a client looks for hosts (state 2). A failure ends the session. */
@@ -1449,6 +1455,7 @@ int CNetSession::f_0877a8(bool quick)
 }
 
 /* @draft 0x0878b4 us f_0878b4
+   REMAINING DIFFERENCE: block order of the accept and refuse paths differs.
    WHAT IT DOES: The host's join requests: accepts the first one queued while listening with
    room, else refuses it; closes the session when the table is full and reopens it when
    there is room again. */
@@ -1526,6 +1533,7 @@ int CNetSession::f_087ac4(bool v)
 }
 
 /* @draft 0x087b68 us f_087b68
+   REMAINING DIFFERENCE: register choice only: retail returns through a2 and tests the state with a1 and v1.
    WHAT IT DOES: The host takes members again (status 0): the session record as hello data. */
 int CNetSession::f_087b68()
 {
@@ -1587,6 +1595,7 @@ int CNetSession::f_087cb4()
 }
 
 /* @draft 0x087d0c us f_087d0c
+   REMAINING DIFFERENCE: the bytes match; its jump table entries point into f_087f34, which is still a draft.
    WHAT IT DOES: Waits for ad hoc networking to come up: starts matching once connected, and
    fails on the states that cannot lead there. */
 int CNetSession::f_087d0c()
@@ -1668,6 +1677,7 @@ int CNetSession::f_087ee8()
 }
 
 /* @draft 0x087f34 us f_087f34
+   REMAINING DIFFERENCE: the state tests and the ad hoc state checks are laid out differently.
    WHAT IT DOES: The session's frame: follows ad hoc networking (ending the session on a
    failure), takes every packet received, then runs the state's step. */
 int CNetSession::f_087f34()
