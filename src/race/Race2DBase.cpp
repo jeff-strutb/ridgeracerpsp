@@ -31,8 +31,8 @@ public:
         alpha = 0xff000000;
     }
     virtual ~CFadeMask() {}
-    int Update();
-    void Draw();
+    int f_089548();
+    void f_0895cc();
 
     bool on;
     int hold;
@@ -56,7 +56,7 @@ public:
         fade = 0;
     }
     virtual ~CRace2DBase() {}
-    virtual int v2(int a, int b);
+    virtual int f_089464(int a, int b);
     virtual void v3() = 0;
     virtual void v4() = 0;
     virtual void v5() = 0;
@@ -82,7 +82,7 @@ class CRace2DNormal : public CRace2DBase {
 public:
     CRace2DNormal() {}
     virtual ~CRace2DNormal() {}
-    virtual int v2(int a, int b);
+    virtual int f_089464(int a, int b);
     virtual void v3();
     virtual void v4();
     virtual void v5();
@@ -92,7 +92,7 @@ class CRace2DAvPlayer : public CRace2DBase {
 public:
     CRace2DAvPlayer() {}
     virtual ~CRace2DAvPlayer() {}
-    virtual int v2(int a, int b);
+    virtual int f_089464(int a, int b);
     virtual void v3();
     virtual void v4();
     virtual void v5();
@@ -120,9 +120,9 @@ void f_089438(int mode)
     D_1d3d40->mode = mode;
 }
 
-/* @implements 0x089464 us CRace2DBase2v2
+/* @implements 0x089464 us CRace2DBase8f_089464
    WHAT IT DOES: The common start: attaches the fade mask. */
-int CRace2DBase::v2(int a, int b)
+int CRace2DBase::f_089464(int a, int b)
 {
     fade = &D_242b30;
     return 1;
@@ -177,10 +177,10 @@ void CRace2DBase::f_089500(int frames)
     f->rate = (1.0f / n) * 255.0f;
 }
 
-/* @implements 0x089548 us CFadeMask6Update
+/* @implements 0x089548 us f_089548
    WHAT IT DOES: Steps a running fade by one frame and sets the mask's alpha from it; at the
    end stops the fade and, unless the mask is to stay, hides it. */
-int CFadeMask::Update()
+int CFadeMask::f_089548()
 {
     if (frames != 0.0f) {
         if (frame < frames) {
@@ -202,9 +202,9 @@ int CFadeMask::Update()
     return 1;
 }
 
-/* @implements 0x0895cc us CFadeMask4Draw
+/* @implements 0x0895cc us f_0895cc
    WHAT IT DOES: Draws the mask over the whole screen while it is shown. */
-void CFadeMask::Draw()
+void CFadeMask::f_0895cc()
 {
     if (on) {
         Pos16 r[2];
