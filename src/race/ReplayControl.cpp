@@ -13,6 +13,14 @@ struct CCustomController {
 }
 extern Controller::CCustomController D_1d8910[1];
 
+/* A camera event: from its time on, the replay uses this view and camera parameter; a
+   negative time ends the list. */
+struct ReplayEvent {
+    float time;
+    int mode;
+    int sub;
+};
+
 /* The replay's recorded header: the recorded length at +16 (frames) and the offsets of three
    camera event lists. */
 struct ReplayInfo {
@@ -25,14 +33,7 @@ struct ReplayInfo {
         int m0;
         int off;
     } list[3];
-};
-
-/* A camera event: from its time on, the replay uses this view and camera parameter; a
-   negative time ends the list. */
-struct ReplayEvent {
-    float time;
-    int mode;
-    int sub;
+    ReplayEvent *List(int k) { return (ReplayEvent *)(list[k].off + (int)this); }
 };
 
 /* The course collision areas of the map manager. */
@@ -195,11 +196,9 @@ extern "C" void f_07ebdc(Replay *r)
     }
 }
 
-/* @implements 0x07eca8 us f_07eca8
-   WHAT IT DOES: Nothing. */
-extern "C" void f_07eca8(Replay *r)
-{
-}
+/* Defined at the end of the file: these callers must not see that it is empty (retail
+   reloads fields after calling it). */
+extern "C" void f_07eca8(Replay *r);
 
 /* @implements 0x07ecb0 us f_07ecb0
    WHAT IT DOES: Nothing. */
@@ -289,8 +288,8 @@ extern "C" void f_07ef10(Replay *r)
 {
     ReplayInfo *info = r->info;
     ReplayCar *car = r->car;
-    float t = car->time;
     int lap = car->lap;
+    float t = car->time;
     int n;
 
     if (r->clock < info->length) {
@@ -315,9 +314,8 @@ extern "C" void f_07ef10(Replay *r)
         }
     }
     n = r->bestLap + 2;
-    if (n < 3)
-        r->list = n;
-    else
+    r->list = n;
+    if (n > 2)
         r->list = 2;
 }
 
@@ -355,13 +353,13 @@ extern "C" void f_07f0bc(Replay *r)
         r->curCam->Stop();
     r->curMode = r->mode;
     r->m3156 = r->m3160;
-    r->curCam = r->cam[(unsigned short)r->mode];
+    r->curCam = r->cam[r->mode & 0xffff];
     arg = 0;
     if (r->list) {
-        if ((r->mode >> 16) == 0)
-            arg = r->ev->sub;
-        else
+        if (r->mode >> 16)
             arg = (r->mode >> 16) - 1;
+        else
+            arg = r->ev->sub;
     }
     if (r->curCam)
         r->curCam->Start(&arg);
@@ -403,7 +401,7 @@ extern "C" void f_07f240(Replay *r)
         r->ev = 0;
         D_1d3d40->m24 = 16;
     } else {
-        r->ev = (ReplayEvent *)((char *)r->info + r->info->list[r->list].off);
+        r->ev = r->info->List(r->list);
         r->m3248->m740 = 0;
         D_1d3d40->m24 = 17;
     }
@@ -414,10 +412,10 @@ extern "C" void f_07f240(Replay *r)
         r->mode = r->ev->mode;
         r->m3160 = r->ev->sub;
     }
-    if (r->list)
-        D_241450 = r->bestTime;
-    else
+    if (r->list == 0)
         D_241450 = r->clock;
+    else
+        D_241450 = r->bestTime;
     n = MAX(r->list, 0);
     if (n >= 10)
         n = 6;
@@ -434,18 +432,22 @@ extern "C" void f_07f240(Replay *r)
 extern "C" void f_07f3b4(Replay *r)
 {
     ReplayInfo *info;
+    ReplayEvent *ev;
     int n;
 
     f_07ee5c(r);
     f_07ef10(r);
     info = r->info;
+    ev = info->List(r->list);
     r->m3248->m740 = 0;
-    r->ev = (ReplayEvent *)((char *)info + info->list[r->list].off);
+    r->ev = ev;
     f_07eca8(r);
     if (r->m3164 == 4) {
         if (r->clock < info->m8 && r->m3188 != 1) {
-            while (r->ev[1].time >= 0.0f && r->ev[1].time < r->clock)
+            while (ev[1].time >= 0.0f && ev[1].time < r->clock) {
                 r->ev++;
+                ev = r->ev;
+            }
         } else {
             while (r->ev[1].time >= 0.0f && r->ev[1].time < r->bestTime)
                 r->ev++;
@@ -454,9 +456,16 @@ extern "C" void f_07f3b4(Replay *r)
         r->m3160 = r->ev->sub;
     }
     D_241450 = r->bestTime;
-    n = MAX(r->list, 0);
+    n = r->list;
+    n = MAX(n, 0);
     if (n >= 10)
         n = 6;
     D_241454 = n;
     f_07f194(r);
+}
+
+/* @implements 0x07eca8 us f_07eca8
+   WHAT IT DOES: Nothing. */
+extern "C" void f_07eca8(Replay *r)
+{
 }
