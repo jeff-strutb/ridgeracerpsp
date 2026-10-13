@@ -66,6 +66,11 @@ struct Pos {
 };
 
 union Word {
+    void Set(unsigned short v)
+    {
+        h[1] = 0;
+        h[0] = v;
+    }
     unsigned int w;
     unsigned short h[2];
     unsigned char b[4];
@@ -124,7 +129,7 @@ public:
     void f_044cd4(int ch);
     int f_044d30();
     void f_044d98();
-    int f_044e5c(int ch, unsigned char v)
+    __attribute__((noinline)) int f_044e5c(int ch, unsigned char v)
     {
         Chan *c = &chan[ch];
         if (v == 0) {
@@ -148,7 +153,7 @@ public:
         f_0443e0(ch, k);
         return 1;
     }
-    int f_044fcc(int ch)
+    __attribute__((noinline)) int f_044fcc(int ch)
     {
         Chan *c = &chan[ch];
         if (c->m52 != 0) {
@@ -159,7 +164,7 @@ public:
         }
         return 1;
     }
-    int f_04506c(Chan *c)
+    __attribute__((noinline)) int f_04506c(Chan *c)
     {
         int r = 0;
         if (c->m52 != 0) {
@@ -408,3 +413,262 @@ void CCodec::f_04461c(int ch)
     chan[ch].rd.Set(chan[ch].m4);
     chan[ch].m56 = 12;
 }
+
+/* @draft 0x044644 us f_044644
+   WHAT IT DOES: The next byte of channel ch's saved form: a serialiser that gives the channel
+   number, its flag, its bit count, the written and put byte counts, then the data bytes; 0 once
+   done (and after the last data byte it rewinds the channel). */
+int CCodec::f_044644(int ch)
+{
+    unsigned char r;
+    Word t;
+    switch (chan[ch].m56) {
+    case 1:
+        r = data[chan[ch].rd.pos + (chan[ch].rd.blk << 8)];
+        if (chan[ch].rd.blk == chan[ch].wr.blk && chan[ch].rd.pos == chan[ch].wr.pos) {
+            f_044cd4(ch);
+            chan[ch].m56--;
+        } else if (chan[ch].rd.pos == 255) {
+            chan[ch].rd.pos = 0;
+            chan[ch].rd.blk = next[chan[ch].rd.blk];
+        } else {
+            chan[ch].rd.pos++;
+        }
+        break;
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+        t.w = chan[ch].m36;
+        r = t.b[5 - chan[ch].m56];
+        chan[ch].m56--;
+        break;
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+        t.w = chan[ch].m32;
+        r = t.b[9 - chan[ch].m56];
+        chan[ch].m56--;
+        break;
+    case 10:
+        r = chan[ch].wr.bit;
+        chan[ch].m56--;
+        break;
+    case 11:
+        r = chan[ch].m0;
+        chan[ch].m56--;
+        break;
+    case 12:
+        r = ch;
+        chan[ch].m56--;
+        break;
+    default:
+        r = 0;
+        break;
+    }
+    return r;
+}
+
+/* @draft 0x0447ac us f_0447ac
+   WHAT IT DOES: Loads saved channels from len bytes at p (the form f_044644 gives): each
+   channel's header, then its data copied into fresh blocks. Returns how many channels were
+   loaded. */
+int CCodec::f_0447ac(unsigned char *p, int len)
+{
+    unsigned char *end = p + len;
+    int n = 0;
+    while (p != end) {
+        int ch = *p++;
+        Chan *c = &chan[ch];
+        if (c->m0 != 0)
+            f_044c3c(ch);
+        c->m0 = *p++;
+        c->wr.bit = *p++;
+        Word w;
+        w.b[0] = *p++;
+        w.b[1] = *p++;
+        w.b[2] = *p++;
+        w.b[3] = *p++;
+        c->m32 = w.w;
+        w.b[0] = *p++;
+        w.b[1] = *p++;
+        w.b[2] = *p++;
+        w.b[3] = *p++;
+        c->m36 = w.w;
+        if (c->m0 == 0) {
+            p += c->m32;
+            continue;
+        }
+        int b = f_0441e4();
+        c->m4 = b;
+        c->rd.Set(b);
+        int left = c->m32;
+        while (left != 0) {
+            if (left <= 256) {
+                unsigned char *d = &data[c->rd.blk << 8];
+                c->wr.pos = left - 1;
+                for (int k = 0; k < left; k++)
+                    *d++ = *p++;
+                c->wr.blk = c->rd.blk;
+                left = 0;
+            } else {
+                unsigned char *d = &data[c->rd.blk << 8];
+                for (int k = 0; k < 256; k++)
+                    *d++ = *p++;
+                b = f_0441e4();
+                next[c->rd.blk] = b;
+                c->rd.blk = b;
+                left -= 256;
+            }
+        }
+        f_044cd4(ch);
+        n++;
+    }
+    return n;
+}
+
+/* @implements 0x0449c0 us f_0449c0
+   WHAT IT DOES: Puts byte v into channel ch (-1 once the buffer has overflowed). */
+int CCodec::f_0449c0(int ch, unsigned char v)
+{
+    if (m3084 != 0)
+        return -1;
+    f_044e5c(ch, v);
+    chan[ch].m44 = 1;
+    chan[ch].m36++;
+    return 0;
+}
+
+/* @implements 0x044a28 us f_044a28
+   WHAT IT DOES: Ends a frame of channel ch: writes out a pending zero run. */
+int CCodec::f_044a28(int ch)
+{
+    f_044fcc(ch);
+    chan[ch].m44 = 0;
+    return 0;
+}
+
+/* @implements 0x044a68 us f_044a68
+   WHAT IT DOES: Gets the next byte of channel ch. */
+int CCodec::f_044a68(int ch)
+{
+    Chan *c = &chan[ch];
+    int r = f_04506c(c);
+    c->m40++;
+    return r;
+}
+
+/* @implements 0x044aa4 us f_044aa4
+   WHAT IT DOES: Sets the packer up on n blocks of buf (at most 512): all blocks free, every
+   channel closed. */
+int CCodec::f_044aa4(unsigned char *buf, int n)
+{
+    if (n > 512)
+        return -1;
+    for (int k = 0; k < n; k++) {
+        list[k] = n - 1 - k;
+        next[k] = 0;
+    }
+    count = n;
+    data = buf;
+    for (int c = 0; c < 16; c++)
+        chan[c].Init();
+    m3084 = 0;
+    return 0;
+}
+
+/* @implements 0x044b44 us f_044b44
+   WHAT IT DOES: Opens channel ch for writing in the given mode (non-zero) with a fresh block;
+   -1 when it is already open. */
+int CCodec::f_044b44(int ch, int mode)
+{
+    if (chan[ch].m0 != 0 || mode == 0)
+        return -1;
+    Chan *c = &chan[ch];
+    c->m0 = 0;
+    c->m4 = 0;
+    c->m32 = 1;
+    c->m36 = 0;
+    c->m40 = 0;
+    c->m44 = 0;
+    c->m48 = 0;
+    c->m52 = 0;
+    c->wr.Clear();
+    c->rd.Clear();
+    chan[ch].m0 = mode;
+    chan[ch].m60.w = 0;
+    int b = f_0441e4();
+    c->rd.blk = c->wr.blk = c->m4 = b;
+    f_044230(*c);
+    return 0;
+}
+
+/* @implements 0x044c3c us f_044c3c
+   WHAT IT DOES: Closes channel ch and frees its blocks. */
+void CCodec::f_044c3c(int ch)
+{
+    if (chan[ch].m0 == 0)
+        return;
+    int b = chan[ch].m4;
+    chan[ch].m0 = 0;
+    while (chan[ch].wr.blk != b) {
+        f_04420c(b);
+        b = next[b];
+    }
+    f_04420c(b);
+    chan[ch].m44 = 0;
+    m3084 = 0;
+}
+
+/* @implements 0x044cd4 us f_044cd4
+   WHAT IT DOES: Rewinds channel ch for reading and reads its first 16 bits ahead. */
+void CCodec::f_044cd4(int ch)
+{
+    chan[ch].rd.Set(chan[ch].m4);
+    chan[ch].m40 = 0;
+    chan[ch].m52 = 0;
+    Code r;
+    r = f_044500(&chan[ch], 16);
+    Word *m = &chan[ch].m60;
+    m->h[1] = 0;
+    m->h[0] = r.bits;
+}
+
+/* @implements 0x044d30 us f_044d30
+   WHAT IT DOES: -1 when the free blocks may not last the frame (fewer than the open, written
+   channels whose block is nearly full), else 0. */
+int CCodec::f_044d30()
+{
+    int n = 0;
+    for (int k = 0; k < 16; k++) {
+        if (chan[k].m0 != 0 && chan[k].m44 != 0 && chan[k].wr.pos >= 254)
+            n++;
+    }
+    if (f_044228() < n)
+        return -1;
+    return 0;
+}
+
+/* @implements 0x044d98 us f_044d98
+   WHAT IT DOES: Nothing. */
+void CCodec::f_044d98() {}
+
+/* @implements 0x044da0 us __static_initialization_and_destruction_0
+   WHAT IT DOES: Makes (and at exit destroys) the library object below.
+   @implements 0x044e1c us _GLOBAL__I
+   WHAT IT DOES: Static construction of this object file.
+   @implements 0x044e3c us _GLOBAL__D
+   WHAT IT DOES: Static destruction of this object file. */
+CLibObject D_240ffc;
+
+/* The channel coding methods, inline and emitted out of line after the static
+   initialisation.
+   @draft 0x044e5c us f_044e5c
+   WHAT IT DOES: Writes byte v to channel ch: zero bytes are counted into a run (written as a run
+   code every 256), any other byte first writes the pending run, then its own code.
+   @draft 0x044fcc us f_044fcc
+   WHAT IT DOES: Writes a pending zero run of channel ch.
+   @draft 0x04506c us f_04506c
+   WHAT IT DOES: Reads the next byte of channel c: from a pending zero run, or by decoding the
+   bits read ahead and refilling them. */
