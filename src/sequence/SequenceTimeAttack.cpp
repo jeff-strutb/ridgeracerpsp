@@ -11,7 +11,7 @@ void f_07dff0(void *cam, void *view0, void *view1, void *car, void *table, int c
               int a8, int a9, int a10);
 void f_01d17c(void *, char *course, int count, void *table, void *views, int a5);
 void f_0941c8(void *, int);
-void f_096368(void *, void *);
+void f_096368(void *, struct Name);
 void f_08d764(char *);
 void f_031b98(void *, int);
 void f_0eaca0(void *, int, void *);
@@ -65,7 +65,7 @@ extern CTable D_2407a8;
 struct CourseSel {
     int a;
     int b;
-    void Set(Name n)
+    void Set(const Name &n)
     {
         a = n.a;
         b = n.b;
@@ -273,7 +273,11 @@ CSequenceTimeAttack::~CSequenceTimeAttack()
    WHAT IT DOES: Starts a time attack race: starts the sequence base, picks the first state
    (2 in a replay), selects the course, sets the car job controller up with the next random
    seed, makes the race job from the race's settings, sets up the two views, the camera, the
-   course's map, the ghost record and the sound. */
+   course's map, the ghost record and the sound.
+   Draft: the calls and the race job's argument block follow retail; the stack slots of the
+   course lookups differ (retail keeps the last lookup's result at +16 and its copy at +32, this
+   source the reverse, and retail's lookup of the course row lands at +160), and the two
+   string and table bases swap s3 and s4. */
 void CSequenceTimeAttack::f_038fd4(SeqArgs *a)
 {
     f_03913c(a);
@@ -281,14 +285,14 @@ void CSequenceTimeAttack::f_038fd4(SeqArgs *a)
         m56 = 2;
     else
         m56 = 1;
-    D_27ecd0.Set(D_2407a8.Find((const char *)D_2407d0.f_0368e8("CourseNumber", m4, 0, 0)));
+    Name sel;
+    sel = D_2407a8.Find((const char *)D_2407d0.f_0368e8("CourseNumber", m4, 0, 0));
+    D_27ecd0.Set(sel);
     m16 = m16 * 0x19660d + 0x3c6ef35f;
     m32->f_03a51c(&m4, m16, &a->list);
     RaceJob *job = (RaceJob *)new RaceJobBlock;
     RaceJobArgs r;
-    Name n = D_2407d0.Find(m4);
-    r.course.a = n.a;
-    r.course.b = n.b;
+    r.course = D_2407d0.Find(m4);
     m16 = m16 * 0x19660d + 0x3c6ef35f;
     r.seed = m16;
     r.m12 = a->m12;
@@ -317,10 +321,11 @@ void CSequenceTimeAttack::f_038fd4(SeqArgs *a)
     void *car = m32->f_03b518(0);
     f_07dff0(m52, &m36[0], &m36[1], car, m32->m32, m32->m12 + m32->m16, m20 != 0, 0, 0, 0, 0);
     f_01d17c(D_23be80, m4, m32->m12 + m32->m16, m32->m32, m36, 0);
-    Name c = D_2407a8.Find((const char *)D_2407d0.f_0368e8("CourseNumber", m4, 0, 0));
-    Name t = c;
-    f_0941c8(D_242c90, t.a);
-    f_096368(D_242cb0, &t);
+    {
+        Name c = D_2407a8.Find((const char *)D_2407d0.f_0368e8("CourseNumber", m4, 0, 0));
+        f_0941c8(D_242c90, c.a);
+        f_096368(D_242cb0, c);
+    }
     f_08d764(m48);
     f_031b98(D_2402e0, m32->m12 + m32->m16);
     f_0eaca0(m32, a->m636, m52);
