@@ -35,3 +35,5 @@ addr,name,evidence
 0x0f99e8,_ZN5Radio6CTableC1Ev,constructor of the 24 byte DJ condition table; called after new(24) at 0x093fe0
 0x095cc4,_ZN6Stream14CStreamPreLoadC1Ev,complete object constructor of the stream pre-load data (byte exact in src/sound/StreamPreLoad.cpp); called after new(8) by the Stream::CStreamData constructors at 0x095704 and 0x09575c
 0x095cd8,_ZN6Stream14CStreamPreLoadD1Ev,its complete object destructor (empty; byte exact in src/sound/StreamPreLoad.cpp); called before operator delete by the Stream::CStreamData destructors at 0x0957b4 and 0x095804
+0x09575c,_ZN6Stream11CStreamDataC1Ev,complete object constructor of the stream data (byte exact in src/sound/StreamData.cpp); called after new(8) by the stream manager's set up at 0x095f9c
+0x095804,_ZN6Stream11CStreamDataD1Ev,its complete object destructor (byte exact in src/sound/StreamData.cpp); called before operator delete by the stream manager's release at 0x0960cc
