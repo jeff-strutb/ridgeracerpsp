@@ -8,6 +8,7 @@ extern char D_1dd6b0[];
 
 namespace Controller {
 struct CCustomController {
+    int f_043030();
     int f_0437cc(int i);
 };
 }
@@ -21,19 +22,22 @@ struct ReplayEvent {
     int sub;
 };
 
-/* The replay's recorded header: the recorded length at +16 (frames) and the offsets of three
-   camera event lists. */
+/* The replay's recorded header: lengths, the recorded length at +16 (frames) and offsets
+   of the opening's event list, the camera spots and zones, and seven pairs of camera event
+   and camera track lists. */
 struct ReplayInfo {
-    int m0[2];
+    int m0;
+    int opening;
     int m8;
     int m12;
     int length;
-    int m20;
+    int spots;
+    int zones;
     struct {
-        int m0;
-        int off;
-    } list[3];
-    ReplayEvent *List(int k) { return (ReplayEvent *)(list[k].off + (int)this); }
+        int ev;
+        int track;
+    } pair[7];
+    ReplayEvent *List(int k) { return (ReplayEvent *)(pair[k].ev + (int)this); }
 };
 
 /* The course collision areas of the map manager. */
@@ -53,7 +57,7 @@ extern MapMgr D_23c820;
 struct ReplayPart {
     virtual void v0();
     virtual void v1();
-    virtual void v2();
+    virtual void v2(struct CamArg *p);
     virtual void Reset();
     virtual void Start(int *arg);
     virtual void Step();
@@ -97,12 +101,26 @@ struct ReplayView {
     float x;
     float y;
     float z;
-    char m12[596];
+    char m12[560];
+    int m572;
+    char m576[32];
     float rx;
     float ry;
     float rz;
-    char m620[44];
+    char m620[40];
+    int m660;
     int m664;
+    char m668[20];
+    int m688;
+    int m692;
+    int m696;
+    char m700[4];
+    int m704;
+    float m708;
+    char m712[12];
+    int m724;
+    char m728[12];
+    int m740;
 };
 
 /* The replay's view of the player's car display at +3356. */
@@ -133,6 +151,34 @@ struct MainLoopJobView {
     unsigned char m12;
 };
 extern MainLoopJobView *D_1d88a0;
+
+extern "C" void f_00d354(void *log, int level, const char *fmt, ...);
+extern char D_245178[];
+
+/* Sets up the camera transform from a view's rotation (each angle normalised first) and
+   position and hands the resulting matrix to the view. */
+static inline void SetCamera(ReplayView *v)
+{
+    char m[64];
+    float a, b, c;
+
+    f_028c70();
+    f_02842c();
+    a = v->ry;
+    f_0ccaec(&a);
+    f_0284fc(a);
+    b = v->rx;
+    f_0ccaec(&b);
+    f_0284bc(b);
+    c = v->rz;
+    f_0ccaec(&c);
+    f_02853c(c);
+    f_02880c(v->x, v->y, v->z);
+    f_0287b0();
+    f_028d94((Matrix *)m);
+    f_028ca8();
+    f_0cc1f4(v, (Matrix *)m);
+}
 
 void f_082df8(void *p);
 
@@ -195,14 +241,22 @@ struct ReplayModes {
 };
 
 struct Replay {
+    void f_07ee80();
+    void f_07eec8();
+    void f_07f240();
+    void f_07f3b4();
+
     char m0[3060];
     ReplayPart *cam[11];
     ReplayView *m3104;
-    char m3108[4];
+    void *m3108;
     ReplayCar *car;
-    char m3116[12];
+    int m3116;
+    int m3120;
+    int m3124;
     ReplayInfo *info;
-    char m3132[8];
+    char m3132[4];
+    void *m3136;
     int mode;
     int curMode;
     int m3148;
@@ -218,21 +272,33 @@ struct Replay {
     int m3188;
     ReplayEvent *ev;
     int m3196;
-    char m3200[4];
+    int m3200;
     int m3204;
-    char m3208[4];
+    int m3208;
     int m3212;
     int m3216;
-    char m3220[4];
+    int m3220;
     int m3224;
     int m3228;
-    char m3232[16];
+    int m3232;
+    int m3236;
+    int m3240;
+    int m3244;
     ReplayModes modes;
-    char m3304[52];
+    char m3304[48];
+    ReplayView *m3352;
     ReplayCarView *m3356;
+    int m3360;
 };
 
 extern "C" void f_07ee5c(Replay *r);
+extern "C" void f_07e3a8(Replay *r, ReplayEvent *ev, struct ReplaySpot *spot, struct ReplayZone *zone);
+extern "C" void f_07e568(Replay *r, struct ReplayTrackRef *list);
+void f_082dc0(void *p, ReplayCar *car);
+void *f_154448(void *p, const void *from, const void *to);
+extern char D_1a7248[];
+extern char D_1a73a0[];
+extern int D_24175c;
 extern "C" void f_07ebdc(Replay *r);
 extern "C" void f_07ecb8(Replay *r);
 extern "C" void f_07edd4(Replay *r);
@@ -254,6 +320,116 @@ extern "C" int f_07dfcc(Replay *r)
     return r->m3196 / 5;
 }
 
+/* @draft 0x07dff0 us f_07dff0
+   REMAINING DIFFERENCE: saved register assignment (retail keeps &m3304 in s2, the fifth and
+   sixth arguments in s1 and s0) and the schedule of the member pointer constant copies and
+   the following field stores; the control flow and the calls match.
+   WHAT IT DOES: Sets the replay controller up for a race: the mode handlers, the view, car
+   and display objects and settings, the starting view from the debug flags, the recorded
+   replay (found in the race package unless given), the cameras' parameters, the opening's
+   length, the overlays (the TV camera when there is one), and places every camera spot,
+   zone and track of the recording on the course. */
+extern "C" void f_07dff0(Replay *r, ReplayView *view, void *p2, ReplayCar *car, int a4, int a5,
+                         int a6, int a7, int a8, int a9, ReplayInfo *info)
+{
+    ReplaySpot *spots;
+    ReplayZone *zones;
+    float z[4];
+    int i;
+
+    f_00d354(D_245178, 0x40000, "Initalize CCamCtrl %x\n", r);
+    f_082dc0(r->m3304, car);
+    r->modes.handler[0][0] = &Replay::f_07ee80;
+    r->modes.handler[0][1] = &Replay::f_07eec8;
+    r->modes.handler[1][0] = &Replay::f_07f240;
+    r->modes.handler[1][1] = &Replay::f_07f3b4;
+    r->m3120 = a5;
+    r->m3148 = a6;
+    r->curMode = 6;
+    r->m3116 = a4;
+    r->m3188 = a8;
+    r->m3124 = a6;
+    r->m3204 = a9;
+    r->m3160 = 0;
+    r->m3156 = 0;
+    r->clock = 0;
+    r->m3212 = 0;
+    r->m3136 = r->m3304;
+    r->curCam = r->cam[6];
+    r->m3104 = view;
+    r->m3108 = p2;
+    r->car = car;
+    if (D_24175c & 1) {
+        r->m3164 = 0;
+        r->mode = 0;
+    } else {
+        int m = (D_24175c & 2) ? 1 : 4;
+        r->mode = m;
+        r->m3164 = m;
+    }
+    r->m3356 = (ReplayCarView *)p2;
+    r->m3216 = 0;
+    r->m3220 = 0;
+    r->m3224 = 0;
+    r->m3228 = 0;
+    r->m3232 = 0;
+    r->m3236 = 0;
+    r->m3240 = 0;
+    r->m3244 = 0;
+    r->m3352 = view;
+    r->m3360 = 0;
+    if (info == 0)
+        r->info = (ReplayInfo *)f_005c34(D_1dd6b0, "Replay");
+    else
+        r->info = info;
+    view->m572 = 0;
+    view->m740 = 0;
+    r->m3168 = 0;
+    r->list = 0;
+    D_241454 = 0;
+    view->m660 = r->curMode;
+    r->m3208 = 0;
+    r->bestLap = car->lap - 1;
+    view->m708 = 0.785375f;
+    view->m724 = 0;
+    z[3] = 1.0f;
+    view->m704 = 0;
+    view->m688 = 0;
+    view->m692 = 0;
+    view->m696 = 0;
+    z[0] = 0;
+    z[1] = 0;
+    z[2] = 0;
+    r->bestTime = 0;
+    for (i = 0; i < 9; i++) {
+        if (r->cam[i])
+            r->cam[i]->v2((CamArg *)&r->m3104);
+    }
+    r->m3196 = 0;
+    if (r->m3148) {
+        D_241450 = 0;
+        r->m3200 = r->info->m8;
+        D_241454 = 8;
+    } else {
+        D_241450 = 0;
+        r->m3200 = r->info->m0;
+        D_241454 = 7;
+    }
+    if (r->cam[4])
+        r->modes.overlay = (ReplayOverlay *)f_154448(r->cam[4], D_1a7248, D_1a73a0);
+    else
+        r->modes.overlay = 0;
+    r->modes.m4 = r->cam[1];
+    spots = (ReplaySpot *)(r->info->spots + (int)r->info);
+    zones = (ReplayZone *)(r->info->zones + (int)r->info);
+    f_07e3a8(r, (ReplayEvent *)(r->info->opening + (int)r->info), spots, zones);
+    f_07e3a8(r, (ReplayEvent *)(r->info->m12 + (int)r->info), spots, zones);
+    for (i = 0; i < 7; i++)
+        f_07e3a8(r, (ReplayEvent *)(r->info->pair[i].ev + (int)r->info), spots, zones);
+    for (i = 0; i < 7; i++)
+        f_07e568(r, (ReplayTrackRef *)(r->info->pair[i].track + (int)r->info));
+}
+
 /* @implements 0x07e6d0 us f_07e6d0
    WHAT IT DOES: Resets the replay: clears the object at +3304 and resets every one of the nine
    cameras that exists. */
@@ -266,6 +442,77 @@ extern "C" void f_07e6d0(Replay *r)
         if (r->cam[i])
             r->cam[i]->Reset();
     }
+}
+
+/* @draft 0x07e73c us f_07e73c
+   REMAINING DIFFERENCE: not yet close. Retail returns through v1, strength reduces the event
+   search to a pointer that starts at ev + 12, and inlines the camera switch and transform
+   setup; the block layout and registers still differ.
+   WHAT IT DOES: One frame of the opening scenery (the attract camera run before the race).
+   Unless paused: follows the opening's camera event list up to the clock, switches the
+   camera when the view or parameter changed and steps it, advances the clock by 5 and sets
+   up the camera transform. From frame 3 on, once the clock passes the opening's length or a
+   button is pressed, logs the end and leaves the opening (to view 4 when the race has a
+   second replay kind, else view 0). Returns 0 while running, 1 at the end of the opening
+   and 2 when it was skipped. */
+extern "C" int f_07e73c(Replay *r)
+{
+    ReplayEvent *ev;
+    int ret = 0;
+    int i;
+    int arg;
+
+    if (D_1d88a0->m11)
+        return ret;
+    if (D_1d88a0->m12)
+        return ret;
+    if (r->m3196 == 0)
+        r->modes.overlay->m740 = 1;
+    ev = (ReplayEvent *)(r->info->opening + (int)r->info);
+    r->ev = ev;
+    for (i = 0; ev[i + 1].time >= 0.0f && ev[i + 1].time < (float)r->m3196; i++)
+        ;
+    D_1d3d40->m24 = i + 1;
+    r->ev = &r->ev[i];
+    r->mode = r->ev->mode;
+    r->m3160 = r->ev->sub;
+    if (r->mode == r->curMode && r->m3160 == r->m3156) {
+        r->m3168 = 0;
+    } else {
+        r->m3168 = 1;
+        if (r->curCam)
+            r->curCam->Stop();
+        r->curMode = r->mode;
+        r->m3156 = r->m3160;
+        r->curCam = r->cam[r->mode & 0xffff];
+        arg = 0;
+        if (r->mode >> 16)
+            arg = (r->mode >> 16) - 1;
+        else
+            arg = r->ev->sub;
+        if (r->curCam)
+            r->curCam->Start(&arg);
+    }
+    r->curCam->Step();
+    r->m3196 += 5;
+    SetCamera(r->m3352);
+    r->m3208 = 1;
+    if (r->m3168)
+        r->m3352->m664 = 1;
+    if (r->m3196 < 3)
+        return ret;
+    if (r->m3200 >= r->m3196 && !D_1d8910[0].f_043030())
+        return ret;
+    f_00d354(D_245178, 8, "end opening secenery %d/%d\n", r->m3196, r->m3200);
+    r->curMode = 6;
+    if (r->m3148)
+        r->mode = 4;
+    else
+        r->mode = 0;
+    ret = 1;
+    if (r->m3200 >= r->m3196 && D_1d8910[0].f_043030())
+        ret = 2;
+    return ret;
 }
 
 /* @implements 0x07ebc4 us f_07ebc4
@@ -382,8 +629,10 @@ extern "C" void f_07ee5c(Replay *r)
 /* @implements 0x07eec8 us f_07eec8
    WHAT IT DOES: One replay frame: pad handling, the clock and overlays, the camera switch and
    the current camera's step. */
-extern "C" void f_07eec8(Replay *r)
+void Replay::f_07eec8()
 {
+    Replay *r = this;
+
     f_07ebdc(r);
     f_07ecb8(r);
     f_07edd4(r);
@@ -502,8 +751,9 @@ extern "C" void f_07f194(Replay *r)
    chosen camera event list with the overlay hidden (state 17). In state 4 steps through the
    events up to the best time and takes the event's view and parameter. Publishes the time
    and the list number (0 to 9, else 6) and ends the frame. */
-extern "C" void f_07f240(Replay *r)
+void Replay::f_07f240()
 {
+    Replay *r = this;
     int n;
 
     f_07ee5c(r);
@@ -542,8 +792,9 @@ extern "C" void f_07f240(Replay *r)
    4 steps through the events up to the replay clock (until the length at +8, unless the
    flag at +3188 is 1) or else up to the best time, publishes the best time and the list
    number and ends the frame. */
-extern "C" void f_07f3b4(Replay *r)
+void Replay::f_07f3b4()
 {
+    Replay *r = this;
     ReplayInfo *info;
     ReplayEvent *ev;
     int n;
@@ -669,10 +920,6 @@ extern "C" void f_07e568(Replay *r, ReplayTrackRef *list)
    the 3248 away, an inline method on the sub-object differs more. */
 extern "C" void f_07ea64(Replay *r)
 {
-    ReplayView *v;
-    char m[64];
-    float a, b, c;
-
     if (!D_1d88a0->m11 && !D_1d88a0->m12) {
         f_082e00(r->m3304);
         ReplayModes *md = &r->modes;
@@ -680,21 +927,5 @@ extern "C" void f_07ea64(Replay *r)
         if (r->m3356)
             r->m3356->m744 = r->m3356->m704;
     }
-    v = r->m3104;
-    f_028c70();
-    f_02842c();
-    a = v->ry;
-    f_0ccaec(&a);
-    f_0284fc(a);
-    b = v->rx;
-    f_0ccaec(&b);
-    f_0284bc(b);
-    c = v->rz;
-    f_0ccaec(&c);
-    f_02853c(c);
-    f_02880c(v->x, v->y, v->z);
-    f_0287b0();
-    f_028d94((Matrix *)m);
-    f_028ca8();
-    f_0cc1f4(v, (Matrix *)m);
+    SetCamera(r->m3104);
 }
