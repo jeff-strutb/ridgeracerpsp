@@ -362,7 +362,7 @@ void CNetSession::f_085590(int id, int event, unsigned char *mac, int optlen, vo
     f_085f58('E');
 }
 
-/* @draft 0x085638 us f_085638
+/* @implements 0x085638 us f_085638
    WHAT IT DOES: The host's matching events: a join request is queued; a member that leaves,
    times out or says goodbye is dropped from the table and the members renumbered. */
 void CNetSession::f_085638(int id, int event, unsigned char *mac, int optlen, void *opt)
@@ -383,6 +383,14 @@ void CNetSession::f_085638(int id, int event, unsigned char *mac, int optlen, vo
             f_0859e0();
             m36 = 0;
         }
+        break;
+    case 0:
+    case 1:
+    case 4:
+    case 5:
+    case 6:
+    case 7:
+    case 9:
         break;
     }
 }
@@ -655,7 +663,9 @@ int CNetSession::f_085f90(Rec *r)
         f_0854ec(4);
         return 1;
     }
-    if (state < 2 || state >= 7)
+    if (state < 2)
+        return 0;
+    if (state >= 7)
         return 0;
     if (D_241e98.f_088338() != 5)
         return 0;
@@ -671,14 +681,16 @@ int CNetSession::f_085f90(Rec *r)
     return 1;
 }
 
-/* @draft 0x0860ac us f_0860ac
+/* @implements 0x0860ac us f_0860ac
    WHAT IT DOES: Withdraws a join request to a host. */
 int CNetSession::f_0860ac(Rec *r)
 {
     int ret;
     if (!r->m10)
         return 1;
-    if (state < 2 || state >= 7)
+    if (state < 2)
+        return 0;
+    if (state >= 7)
         return 0;
     if (D_241e98.f_088338() != 5)
         return 0;
@@ -822,21 +834,23 @@ bool CNetSession::f_08651c()
     return self.m10 != 0;
 }
 
-/* @draft 0x086528 us f_086528
+/* @implements 0x086528 us f_086528
    WHAT IT DOES: Sets this console's member status to 3 (ready) or 0 and announces the table;
    nothing to do when it is already so. */
 int CNetSession::f_086528(bool b)
 {
     if (b) {
-        if (f_085504() == 3)
-            return 1;
-        f_0854f4(3);
+        if (f_085504() != 3) {
+            f_0854f4(3);
+            return f_086afc();
+        }
     } else {
-        if (!f_085504())
-            return 1;
-        f_0854f4(0);
+        if (f_085504()) {
+            f_0854f4(0);
+            return f_086afc();
+        }
     }
-    return f_086afc();
+    return 1;
 }
 
 /* @implements 0x086598 us f_086598
@@ -1477,7 +1491,7 @@ int CNetSession::f_0879d8()
     return 1;
 }
 
-/* @draft 0x087ac4 us f_087ac4
+/* @implements 0x087ac4 us f_087ac4
    WHAT IT DOES: The host stops taking members (status 2): no hello data. */
 int CNetSession::f_087ac4(bool v)
 {
@@ -1486,7 +1500,9 @@ int CNetSession::f_087ac4(bool v)
         return 0;
     m11 = v;
     m10 = 0;
-    if (state < 2 || state >= 9)
+    if (state < 2)
+        return 0;
+    if (state >= 9)
         return 0;
     if (D_241e98.f_088338() != 5)
         return 0;
@@ -1503,7 +1519,9 @@ int CNetSession::f_087b68()
 {
     m10 = 1;
     m11 = 0;
-    if (state < 2 || state >= 9)
+    if (state < 2)
+        return 0;
+    if (state >= 9)
         return 0;
     if (D_241e98.f_088338() != 5)
         return 0;
