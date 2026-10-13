@@ -7,6 +7,11 @@ extern float D_1d5da4;
 extern float D_1d5d94;
 
 namespace CamCtrl {
+union Angle;
+}
+extern "C" void f_099b98(CamCtrl::Angle *);
+
+namespace CamCtrl {
 
 struct CamParam {
     int v[6];
@@ -33,7 +38,12 @@ struct TVCar {
     int m84;
 };
 struct TVOwner {
-    char p0[2128];
+    char p0[208];
+    struct {
+        int v[4];
+    } m208;
+    void *State() { return &m208; }
+    char p224[1904];
     TVCar car;
 };
 
@@ -85,12 +95,40 @@ struct Vec4 {
     float x, y, z, w;
 };
 
+/* An angle, passed by value in an integer register. */
+union Angle {
+    float f;
+    int i;
+};
+
+/* An angle wrapped into range. */
+struct Rad {
+    Angle a;
+    Rad(float f)
+    {
+        a.f = f;
+        f_099b98(&a);
+    }
+};
+
+/* The lens data of the camera's view. */
+struct TVView {
+    char p0[488];
+    float m488;
+    char p492[168];
+    int m660;
+    int m664;
+    int m668;
+    int m672;
+    char p676[36];
+    float m712;
+};
+
 class CCamTV : public CCamProto {
 public:
     TVShot *f_0802fc();
     void f_080b48();
     void f_080b50();
-    void f_080f04();
     void f_080f90();
     void f_0817e0();
     void f_081604();
@@ -110,6 +148,7 @@ public:
     void f_0803dc();
     void f_0817d0();
     void f_0817d8();
+    void f_080f04();
 
     int m28;
     TVShot *shot;
@@ -142,7 +181,9 @@ public:
     } m624, m640;
     char p656[32];
     int m688;
-    char p692[12];
+    Angle m692;
+    Angle m696;
+    int m700;
     int m704;
     char p708[4];
     int m712;
@@ -150,12 +191,14 @@ public:
     float m720;
     int m724;
     int m728;
-    char p732[4];
+    float m732;
     float m736;
     int m740;
     char p744[4];
     int m748;
     int m752;
+    char p756[12];
+    Quad m768;
 };
 
 }
@@ -319,6 +362,54 @@ void CCamTV::f_0817d0()
    WHAT IT DOES: Debug display (compiled out). */
 void CCamTV::f_0817d8()
 {
+}
+
+/* @implements 0x080f04 us _ZN7CamCtrl6CCamTV8f_080f04Ev
+   WHAT IT DOES: Takes the shot's two angles (wrapped) and the followed object's four word
+   state, and clears a counter. */
+void CCamTV::f_080f04()
+{
+    char *s = (char *)shot + 160;
+    m700 = 0;
+    m692 = Rad(*(float *)(s + 20)).a;
+    m696 = Rad(*(float *)(s + 28)).a;
+    m768 = *(Quad *)((TVOwner *)param.v[2])->State();
+}
+
+}
+
+extern int D_241454;
+extern float D_23ff60;
+void f_0823f0(int n, CamCtrl::TVView *v);
+
+namespace CamCtrl {
+
+/* @draft 0x07f834 us _ZN7CamCtrl6CCamTV8f_07f834EPi
+   REMAINING DIFFERENCE: only the FP registers of the far distance (retail f0 for the
+   result and the course value, f1 for 1000); an in-place multiply and a ternary were
+   tried.
+   WHAT IT DOES: Starts the camera: puts lens setting 4 on the view, takes its far distance
+   (300, or the course value times 1000 when the course setting is on) and marks the view
+   and the previous camera's view. */
+void CCamTV::f_07f834(int *arg)
+{
+    TVView *v = (TVView *)param.v[0];
+    v->m668 = 1;
+    v->m672 = 0;
+    f_0823f0(4, v);
+    TVView *w = (TVView *)param.v[0];
+    m732 = w->m712;
+    float d;
+    if (D_241454 == 0)
+        d = 300.0f;
+    else
+        d = D_23ff60 * 1000.0f;
+    TVView *o = (TVView *)param.v[1];
+    w->m488 = d;
+    w->m664 = 1;
+    w->m660 = 4;
+    if (o)
+        o->m660 = -1;
 }
 
 /* @implements 0x081d94 us _ZN7CamCtrl6CCamTVD1Ev
