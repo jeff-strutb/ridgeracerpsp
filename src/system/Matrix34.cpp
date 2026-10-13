@@ -1,7 +1,12 @@
 /* The three by three float matrix of the camera math library (retail 0x09f344 to 0x09d228). */
 
+struct Mat34;
+
 struct Vec3 {
     float v[3];
+    Vec3 &f_09fe84(const Mat34 &m, const Vec3 &a);
+    Vec3 &f_09ff1c(const Mat34 &m, const Vec3 &a);
+    Vec3 &f_0a0994(const Mat34 &m, const Vec3 &a);
 };
 
 struct Mat34 {
@@ -12,6 +17,11 @@ struct Mat34 {
     Mat34(float m00, float m10, float m20, float m01, float m11, float m21, float m02, float m12,
           float m22);
     Mat34(const Vec3 &r0, const Vec3 &r1, const Vec3 &r2);
+    Mat34(const Mat34 &s);
+    Mat34 &f_09ff44();
+    float f_0a0140() const;
+    Mat34 &f_0a039c();
+    Mat34 f_0a0944() const;
 };
 
 /* @implements 0x09f344 us _ZN5Mat34C2Ev
@@ -81,4 +91,91 @@ Mat34::Mat34(const Vec3 &r0, const Vec3 &r1, const Vec3 &r2)
     m[2][0] = r2.v[0];
     m[2][1] = r2.v[1];
     m[2][2] = r2.v[2];
+}
+
+/* @implements 0x09fe04 us _ZN5Mat34C2ERKS_
+   WHAT IT DOES: Copies a matrix, column by column. */
+/* @implements 0x09fe44 us _ZN5Mat34C1ERKS_
+   WHAT IT DOES: The same, as the complete object constructor. */
+Mat34::Mat34(const Mat34 &s)
+{
+    for (int j = 0; j < 3; j++)
+        for (int i = 0; i < 3; i++)
+            m[i][j] = s.m[i][j];
+}
+
+/* @implements 0x09fe84 us f_09fe84
+   WHAT IT DOES: Sets the vector to the transposed matrix times a and returns it. */
+Vec3 &Vec3::f_09fe84(const Mat34 &m, const Vec3 &a)
+{
+    v[0] = m.m[0][0] * a.v[0] + m.m[1][0] * a.v[1] + m.m[2][0] * a.v[2];
+    v[1] = m.m[0][1] * a.v[0] + m.m[1][1] * a.v[1] + m.m[2][1] * a.v[2];
+    v[2] = m.m[0][2] * a.v[0] + m.m[1][2] * a.v[1] + m.m[2][2] * a.v[2];
+    return *this;
+}
+
+/* @implements 0x09ff1c us f_09ff1c
+   WHAT IT DOES: The same as f_09fe84, through a call. */
+Vec3 &Vec3::f_09ff1c(const Mat34 &m, const Vec3 &a)
+{
+    f_09fe84(m, a);
+    return *this;
+}
+
+/* @implements 0x09ff44 us f_09ff44
+   WHAT IT DOES: Sets the matrix to the identity and returns it. */
+Mat34 &Mat34::f_09ff44()
+{
+    m[0][1] = 0;
+    m[0][2] = 0;
+    m[1][0] = 0;
+    m[1][2] = 0;
+    m[2][0] = 0;
+    m[2][1] = 0;
+    m[0][0] = m[1][1] = m[2][2] = 1.0f;
+    return *this;
+}
+
+/* @implements 0x0a0140 us f_0a0140
+   WHAT IT DOES: Returns the determinant. */
+float Mat34::f_0a0140() const
+{
+    return m[0][0] * m[1][1] * m[2][2] - m[0][0] * m[1][2] * m[2][1] + m[1][0] * m[2][1] * m[0][2]
+           - m[1][0] * m[0][1] * m[2][2] + m[2][0] * m[1][2] * m[0][1] - m[2][0] * m[1][1] * m[0][2];
+}
+
+/* @implements 0x0a039c us f_0a039c
+   WHAT IT DOES: Transposes the matrix in place and returns it. */
+Mat34 &Mat34::f_0a039c()
+{
+    float t;
+    t = m[1][0];
+    m[1][0] = m[0][1];
+    m[0][1] = t;
+    t = m[2][0];
+    m[2][0] = m[0][2];
+    m[0][2] = t;
+    t = m[2][1];
+    m[2][1] = m[1][2];
+    m[1][2] = t;
+    return *this;
+}
+
+/* @draft 0x0a0944 us f_0a0944
+   WHAT IT DOES: Returns the transposed matrix.
+   Remaining difference: as for the 3x3 matrix's f_09e4b8, retail loads the eighth element
+   last; this source loads it second. */
+Mat34 Mat34::f_0a0944() const
+{
+    return Mat34(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2]);
+}
+
+/* @implements 0x0a0994 us f_0a0994
+   WHAT IT DOES: Sets the vector to the matrix times a and returns it. */
+Vec3 &Vec3::f_0a0994(const Mat34 &m, const Vec3 &a)
+{
+    v[0] = m.m[0][0] * a.v[0] + m.m[0][1] * a.v[1] + m.m[0][2] * a.v[2];
+    v[1] = m.m[1][0] * a.v[0] + m.m[1][1] * a.v[1] + m.m[1][2] * a.v[2];
+    v[2] = m.m[2][0] * a.v[0] + m.m[2][1] * a.v[1] + m.m[2][2] * a.v[2];
+    return *this;
 }
