@@ -211,6 +211,11 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A returned pair stored at both `0(sp)` and `16(sp)` | an inline helper `Pair Get(int i) { Pair r = f(i); return r; }` | f_037294 |
 | A lookup column name loaded into the second saved register of a pair | the name through a `const char *` local (`const char *col = "CarName"; db.Get(col, ...)`) | f_036dec |
 | `addiu a0,v0,%lo(D)` then `addiu a0,a0,12240` for a call on a sub-object | an inline accessor `Areas() { return &m12240; }`; a direct member folds the offset into `%lo` | f_037568 |
+| Two 8-byte record fields reset through two separate stack temporaries (`sw zero,0(sp)` and `sw zero,16(sp)`, the second words copied from the stack) | each field a distinct struct type with a constructor setting only its first word (`m0 = Pair(); m8 = Pair2();`); one shared type reuses a single temporary | f_038900 |
+| Zero stores to a record scheduled into the load delay slots of a stack temporary's copy | those fields are `float` (`= 0.0f`); `int` stores may alias the temporary and wait | f_038900 |
+| A `delete[]` loop that steps its iterator in place, the inlined element destructor using the same register | the destructible members belong to a base class of the element type (`struct Camera : Eyes { Tail t; };`); with them as direct members each pass adds a `move sX,sY` copy and one more saved register | 0x038c30, 0x038fe4 |
+| A test of flag bit 0 as `lw`+`andi 1`+`beqz` (no `lbu`/`xori`) | an inline predicate returning the masked word: `int Sent(int bit) { return m28 & bit; }`, `if (m20 == 0 && !Sent(1))` | f_0395b4 |
+| A jump-table factory: the first case falls into the return block with `move v0,s0`, the default (`move v0,zero`) next, the other cases after it | a result variable assigned in each case with `break`, the cases written in retail's block order (`case 1`, `default`, `case 2`...) | f_0396b0 |
 
 **Callee prototypes are behaviour.** This includes the v0 versus v1 choice for later temporaries (f_01c2cc, f_01c648). Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
 
