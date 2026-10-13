@@ -5,6 +5,8 @@
    2D sprite helpers at 0x0e79c8 on. Each state has entry, update, exit and two draw handlers
    in a table; the music cues come from the RallyX_BGM package. */
 
+struct Car;
+
 extern "C" {
 int f_00222c(const char *name, const char *package);
 int f_113424(int ch, void *data, int arg);
@@ -23,6 +25,11 @@ float f_093538(void *snd);
 void f_0e84b0(void);
 void f_0e84fc(void *map);
 void f_0e7c20(void);
+void f_0e9820(Car *car, Car *enemies);
+void f_0e8db0(Car *car);
+void f_0e930c(Car *car);
+void f_0e9564(Car *car, Car *player);
+int f_0e8d78(Car *car, int x, int y);
 void f_0e79c8(unsigned int color);
 void f_0e7a10(int on);
 void f_0e7a40(int w, int h);
@@ -101,7 +108,18 @@ struct Map {
     short startX, startY;
     short m8[28];
     short enemyStart[8];
+    short m80[4];
+    unsigned char cell[1024]; /* each cell's kind (low 7 bits) */
 };
+
+/* A flag in the maze: its state (0 none, 1 to 3 waiting, 4 on taken) and its cell. */
+struct Flag {
+    signed char state;
+    char m1[3];
+    short cx, cy;
+};
+extern int D_1d5584;
+extern Flag D_27ebf4[];
 
 /* The score board: ten entries and the round's flags. */
 struct Board {
@@ -590,6 +608,51 @@ void f_02ec38(int pad)
         }
         f_02dfb4(2);
         f_02e400();
+    }
+}
+
+/* @draft 0x02fc50 us f_02fc50
+   WHAT IT DOES: The demo state's update: the player's car drives itself; a flag reached is
+   taken (its cell cleared, numbered by the flags taken so far); a crash cell or an enemy
+   catching the car (enemies move after two seconds) ends the demo. Start begins a game (round
+   start state); once the demo has ended or ten flags are taken it returns to the title in
+   three seconds, and before that Select returns at once.
+   Remaining difference: retail tests the flag's state with its own branch to an out of line
+   block (the < 4 test precomputed) and rebuilds the player car's address there; here the two
+   tests are combined with sltu/and and the address is hoisted. The rest matches. */
+void f_02fc50(int pad)
+{
+    f_0e9820(&D_24028c, D_240104);
+    f_0e8db0(&D_24028c);
+    f_0e930c(&D_24028c);
+    Flag *f = D_27ebf4;
+    for (int i = 0; i < D_1d5584; i++, f++) {
+        if (f->state != 0 && f->state < 4 && f->cx == D_24028c.cx && f->cy == D_24028c.cy) {
+            D_27ebf0->cell[(short)D_24028c.m8] &= 0x80;
+            f->state = D_2400f0 + 4;
+            D_2400f0++;
+            break;
+        }
+    }
+    Car *p = &D_24028c;
+    if ((D_27ebf0->cell[(short)p->m8] & 0x7f) == 17)
+        D_2400e8 = 1;
+    if (D_2400d4 >= 120) {
+        for (int i = 0; i < D_1d5a7c[D_27ec74].enemies; i++) {
+            Car *c = &D_240104[i];
+            f_0e9564(c, p);
+            f_0e8db0(c);
+            if (f_0e8d78(c, (unsigned short)D_24028c.x >> 4, (unsigned short)p->y >> 4))
+                D_2400e8 = 1;
+        }
+    }
+    if (pad & 0x20) {
+        f_02dfb4(2);
+    } else if (D_2400e8 || D_2400f0 >= 10) {
+        D_2400d0 = 180;
+        D_2400cc = 0;
+    } else if (pad & 0x10) {
+        f_02dfb4(0);
     }
 }
 
