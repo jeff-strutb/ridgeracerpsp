@@ -45,7 +45,9 @@ struct CCar {
     int m76;
     char pad80[1724];
     int m1804;
-    char pad1808[80];
+    char pad1808[28];
+    float m1836[3];
+    char pad1848[40];
     int m1888;
     char pad1892[60];
     int m1952;
@@ -67,14 +69,16 @@ struct CRaceInfo {
     char pad60[48];
     int m108;
     int m112;
-    char pad116[80];
+    char pad116[12];
+    int m128;
+    char pad132[64];
     CCar *player;
     int m200;
     CCar **cars;
     CCar **m208;
     CCar **order;
     int count;
-    int m220;
+    CCar *marked;
 };
 extern CRaceInfo *D_2407fc;
 
@@ -235,7 +239,7 @@ public:
     void f_090368();
     int f_090370();
     CCar *f_0903c4();
-    int f_0903d4();
+    CCar *f_0903d4();
     CCar *f_0903e4();
     CCar *f_090474();
     CCar *f_090530();
@@ -259,6 +263,10 @@ public:
     void f_090c2c();
     void f_090ef0();
     void f_0910f4();
+    int f_091634();
+    int f_09196c();
+    int f_091e74();
+    int f_092080();
     void f_091258();
     void f_091578();
 
@@ -274,7 +282,7 @@ public:
     int m36;
     int m40[32];
     int m168[32];
-    int m296[3];
+    float m296[3];
     int m308;
     int m312;
     int m316;
@@ -439,10 +447,10 @@ CCar *CDjDetect::f_0903c4()
 }
 
 /* @implements 0x0903d4 us f_0903d4
-   WHAT IT DOES: Returns the race's word at +220. */
-int CDjDetect::f_0903d4()
+   WHAT IT DOES: Returns the race's marked car. */
+CCar *CDjDetect::f_0903d4()
 {
-    return D_2407fc->m220;
+    return D_2407fc->marked;
 }
 
 /* @implements 0x0903e4 us f_0903e4
@@ -626,4 +634,188 @@ void CDjDetect::f_090900()
     if (m12 == 0)
         f_0902e8(0);
     m12++;
+}
+
+/* @implements 0x090944 us f_090944
+   WHAT IT DOES: Time checks: raises events 5 to 8 as the race time passes -9, -6 and -3
+   seconds and zero, the start position events 11, 10 and 9 at frame 120, and while the player
+   is still in the first section beyond 300, event 12 (13 on the final lap in state 3). */
+void CDjDetect::f_090944()
+{
+    if (D_2407fc->m48 > -9000)
+        f_0902e8(5);
+    if (D_2407fc->m48 > -6000)
+        f_0902e8(6);
+    if (D_2407fc->m48 > -3000)
+        f_0902e8(7);
+    if (D_2407fc->m48 >= 0)
+        f_0902e8(8);
+    if (m20 == 120) {
+        int s = f_0903c4()->m1804;
+        if (s == 0)
+            f_0902e8(11);
+        else if (s == 1)
+            f_0902e8(10);
+        else if (s == 2)
+            f_0902e8(9);
+    }
+    CCar *p = f_0903c4();
+    if (p->m2212 == 0 && p->m2144 > 300.0f) {
+        if (f_090684() && D_2407fc->m112 == 1)
+            f_0902e8(13);
+        else
+            f_0902e8(12);
+    }
+}
+
+/* @implements 0x090aa4 us f_090aa4
+   WHAT IT DOES: Position checks on a new section: event 14 for a change of place, 17, 16 and
+   24 for third, second and first place, and in first place outside state 2 the lap events 18
+   to 23. */
+void CDjDetect::f_090aa4()
+{
+    if (m392 != 1)
+        return;
+    if (D_2407fc->m56 == 2)
+        return;
+    int r = D_2407fc->m36 - D_2407fc->m108;
+    if (r != D_2407fc->m36) {
+        if (f_091e74() == 1)
+            f_0902bc(14);
+    }
+    if (r == 3)
+        f_0902e8(17);
+    if (r == 2)
+        f_0902e8(16);
+    if (r == 1) {
+        if (f_09066c())
+            f_0902e8(24);
+    }
+    if (r == 1 && !f_09066c()) {
+        int lap = D_2407fc->m112;
+        if (lap == 0)
+            f_0902bc(18);
+        else if (lap == 1)
+            f_0902bc(19);
+        else if (lap == 2)
+            f_0902bc(20);
+        else if (lap == 3)
+            f_0902bc(21);
+        else if (lap >= 4 && lap <= 7)
+            f_0902bc(22);
+        else if (lap >= 8)
+            f_0902bc(23);
+    }
+}
+
+/* @implements 0x091578 us f_091578
+   WHAT IT DOES: Turns the section table's split result into events 44 and 43 (result 3 picks
+   one by the frame count's parity). */
+void CDjDetect::f_091578()
+{
+    int r = section->f_08ff5c();
+    if (r == 1)
+        f_0902bc(44);
+    if (r == 2)
+        f_0902bc(43);
+    if (r == 3) {
+        if ((m16 & 1) == 0)
+            f_0902bc(44);
+        else
+            f_0902bc(43);
+    }
+    if (r == 4)
+        f_0902bc(44);
+}
+
+/* @implements 0x091634 us f_091634
+   WHAT IT DOES: Watches the car behind: once it has stayed within 15 for 300 frames, returns 1
+   (2 when it is the race's marked car); otherwise 0. */
+int CDjDetect::f_091634()
+{
+    if (!f_090474())
+        return 0;
+    float d = f_0903c4()->m2144;
+    d = d - f_090474()->m2144;
+    if (d < 0)
+        d += f_090728();
+    if (d > 15.0f) {
+        m364 = 0;
+        return 0;
+    }
+    int wait = 300;
+    m364++;
+    if (m364 > wait) {
+        m364 = 0;
+        CCar *b = f_090474();
+        int h = b != f_0903d4();
+        return h + 1;
+    }
+    return 0;
+}
+
+/* @draft 0x09196c us f_09196c
+   WHAT IT DOES: Watches the car ahead: once the player has stayed within 15 of it (20 on the
+   final lap) for 180 frames, returns 1 (2 on the final lap); otherwise 0.
+   Remaining difference: retail reloads D_2407fc for the second lap test and keeps the result
+   in a0; here the pointer and the constant 1 stay in registers from the limit choice (an
+   if/else or ternary limit gives retail's reload but loads both limits in separate blocks). */
+int CDjDetect::f_09196c()
+{
+    if (!f_0903e4()) {
+        m376 = 0;
+        return 0;
+    }
+    float d = f_0903e4()->m2144;
+    d = d - f_0903c4()->m2144;
+    if (d < 0)
+        d += f_090728();
+    float lim = 20.0f;
+    if (D_2407fc->m112 != 1)
+        lim = 15.0f;
+    if (d > lim) {
+        m376 = 0;
+        return 0;
+    }
+    m376++;
+    if (m376 < 181)
+        return 0;
+    if (D_2407fc->m112 == 1) {
+        m376 = 0;
+        return 2;
+    }
+    m376 = 0;
+    return 1;
+}
+
+/* @implements 0x091e74 us f_091e74
+   WHAT IT DOES: Tells whether the race's leader changed since the last call. */
+int CDjDetect::f_091e74()
+{
+    int r = 0;
+    if (D_2407fc->m128 != m396) {
+        m396 = D_2407fc->m128;
+        r = 1;
+    }
+    return r;
+}
+
+/* @implements 0x092080 us f_092080
+   WHAT IT DOES: Copies the player's three gauges and counts the full ones; returns the count
+   when it grew since the last call, otherwise 0. */
+int CDjDetect::f_092080()
+{
+    int n = 0;
+    for (int i = 0; i < 3; i++) {
+        float v = f_0903c4()->m1836[i];
+        m296[i] = v;
+        if (v == 100.0f)
+            n++;
+    }
+    if (m308 < n) {
+        m308 = n;
+        return n;
+    }
+    m308 = n;
+    return 0;
 }
