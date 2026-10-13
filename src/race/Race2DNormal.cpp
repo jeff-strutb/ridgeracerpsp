@@ -129,7 +129,10 @@ extern RaceInfo *D_2407fc;
    WHAT IT DOES: Starts the overlay: clears the tables, reads the race's kind, panel type,
    course and (for the tour kinds 4 and 5) the tour numbers from the databases, loads the
    panel parts, creates and starts the movie (-1 when that fails) with the panel package when
-   there is one, and the subtitle player (by race kind). Returns 1 (0 when the parts fail). */
+   there is one, and the subtitle player (by race kind). Returns 1 (0 when the parts fail).
+   Remaining difference: the database copy size, the copy buffer's address and its high half
+   take saved registers s5, s1, s4 here against s1, s4, s5 in retail; the string pool also
+   needs the panel loader's strings (f_089cd4) ahead of the course names. */
 int CRace2DNormal::f_089464(int a, int b)
 {
     CRace2DBase::f_089464(a, b);
@@ -151,21 +154,24 @@ int CRace2DNormal::f_089464(int a, int b)
         char *f = f_0368e8(&D_240740, "PanelType", D_2407fc->car, 0, 0);
         memcpy(D_24063c, f, D_1a2120);
         type = D_24063c[0];
-        if (D_2407fc->course)
-            m32 = f_08a060(D_2407fc->course);
+        char *c = D_2407fc->course;
+        if (c)
+            m32 = f_08a060(c);
         if (m8 == 4 || m8 == 5) {
             f = f_0368e8(&D_2407d0, "TourNum", D_2407fc->m0, 0, 0);
             memcpy(D_24063c, f, D_1a2120);
-            m16 = D_24063c[0];
+            int n = D_24063c[0];
+            m16 = n;
             f = f_0368e8(&D_2407d0, "TourExtra", D_2407fc->m0, 0, 0);
             memcpy(D_24063c, f, D_1a2120);
-            int sub = 0;
-            if (D_24063c[0] >= 2) {
+            n = D_24063c[0];
+            if (n < 2) {
                 f = f_0368e8(&D_2407d0, "TourSubNum", D_2407fc->m0, 0, 0);
                 memcpy(D_24063c, f, D_1a2120);
-                sub = D_24063c[0];
-            }
-            m20 = sub;
+                n = D_24063c[0];
+            } else
+                n = 0;
+            m20 = n;
             m12 = D_2407fc->m68;
         }
     }
