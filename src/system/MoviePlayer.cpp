@@ -476,7 +476,10 @@ int f_08a9c0(void)
    starts playing. A failure records 5 (decoder) or 1 (file) in D_242b6c and marks the movie
    finished. */
 /* @draft 0x08ae24 us _ZN12CMoviePlayerC1EPKci
-   WHAT IT DOES: The same constructor (complete object version). */
+   WHAT IT DOES: The same constructor (complete object version).
+   Remaining difference (both versions): register allocation and block order of the failure
+   paths (retail keeps several globals' high halves in saved registers and stores the error
+   code from one shared tail); the call sequence is the same. */
 CMoviePlayer::CMoviePlayer(const char *name, int sound)
 {
     displayThread = 0;
@@ -733,7 +736,9 @@ int f_08ba74(SceSize args, void *argp)
    buffers and video frames into free display buffers, waiting for the feeder when nothing
    could be decoded; stops when the stream has been read and the ring buffer drained. Then
    finishes the decoder into one last display buffer and sets the quit flags. Returns the
-   play status (0 at a normal end), or -1 on a decoder error. */
+   play status (0 at a normal end), or -1 on a decoder error.
+   Remaining difference: the loop layout. Retail threads the feeder wait tests into the loop
+   top and keeps the status in s1; the control flow written here is a first transcription. */
 int CMoviePlayer::Decode(void *rb, MovieStreams *s)
 {
     int attr;
@@ -802,7 +807,9 @@ int CMoviePlayer::Decode(void *rb, MovieStreams *s)
 /* @draft 0x08be98 us f_08be98
    WHAT IT DOES: The ring buffer callback: reads packets 2048 byte packets of the stream into
    data. A read that ends inside a packet is retried (holding the display) until it ends on a
-   packet boundary. Returns the number of packets read. */
+   packet boundary. Returns the number of packets read.
+   Remaining difference: retail computes r % 2048 before the r != -1 test and joins both with
+   and; here the -1 test branches first. */
 int f_08be98(void *data, int packets, void *param)
 {
     CMovieFile *f = (CMovieFile *)param;
@@ -824,7 +831,9 @@ int f_08be98(void *data, int packets, void *param)
 /* @draft 0x08bfa8 us _ZN13CMovieHardSub4DrawEv
    WHAT IT DOES: Draws the subtitles whose time span holds the player's frame count: the
    message (one line lower when it has a single line) with its shadow offsets for modes 1
-   and 2, after a debug print of the alpha. Returns 0. */
+   and 2, after a debug print of the alpha. Returns 0.
+   Remaining difference: retail counts the entries down in s2 with a pointer step and keeps
+   1.0 in f20; the loop and register choice here differ. */
 int CMovieHardSub::Draw()
 {
     int frame = D_242b90->frames;
