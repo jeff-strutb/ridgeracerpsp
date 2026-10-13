@@ -23,6 +23,13 @@ float f_093538(void *snd);
 void f_0e84b0(void);
 void f_0e84fc(void *map);
 void f_0e7c20(void);
+void f_0e79c8(unsigned int color);
+void f_0e7a10(int on);
+void f_0e7a40(int w, int h);
+void f_0e7a54(int x, int y, int u, int v);
+void f_0e7bc8(int x, int y, int w, int h);
+void f_0e7c4c(int x, int y, const char *text, int n, unsigned int color);
+void f_0e7cf4(int x, int y, int value, unsigned int color);
 }
 
 /* A package of named resources. */
@@ -593,8 +600,8 @@ void f_02fec4(void)
 }
 
 /* @implements 0x02fecc us f_02fecc
-   WHAT IT DOES: The demo state's update: after three seconds goes back to the title state
-   with the hidden code's stage cleared. */
+   WHAT IT DOES: The round start state's update: after three seconds starts play (state 1)
+   and clears the remembered stage. */
 void f_02fecc(int pad)
 {
     if (D_2400d4 > 180) {
@@ -604,8 +611,8 @@ void f_02fecc(int pad)
 }
 
 /* @implements 0x02ff08 us f_02ff08
-   WHAT IT DOES: The game over state's update: after eight seconds goes back to the title
-   state. */
+   WHAT IT DOES: The new high score state's update: after eight seconds goes back to the
+   title state. */
 void f_02ff08(int pad)
 {
     if (D_2400d4 > 480)
