@@ -317,3 +317,50 @@ int CInfoRaceNormalCircuit::f_03f5b8()
     f_038a80(0);
     return 0;
 }
+
+/* Two words of which only the first is set when made. */
+struct CarPair {
+    int a;
+    int b;
+    CarPair() : a(0) {}
+};
+struct CarPair2 {
+    int a;
+    int b;
+    CarPair2() : a(0) {}
+};
+
+/* The race's per car record (at D_240900). */
+struct RaceCars {
+    CarPair m0;
+    int m8;
+    int m12;
+    int m16;
+    CarPair2 m20[13];
+    int m124[13];
+    int m176[13];
+    int m228[13];
+    int m280[13];
+    int m332;
+    void f_03fe1c();
+};
+
+/* @draft 0x03fe1c us f_03fe1c
+   WHAT IT DOES: clears the per car record: the counters, every car's pair and the three
+   per car slots (to -1).
+   Remaining difference: retail stores +4 (the temporary's second word) before the zero at +8;
+   here +8 comes first. No order of these statements (single or chained) gives retail's. */
+void RaceCars::f_03fe1c()
+{
+    m12 = 0;
+    m16 = 0;
+    m332 = 0;
+    m8 = 0;
+    m0 = CarPair();
+    for (int i = 0; i < 13; i++) {
+        m20[i] = CarPair2();
+        m124[i] = -1;
+        m176[i] = -1;
+        m228[i] = -1;
+    }
+}
