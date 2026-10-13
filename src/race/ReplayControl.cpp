@@ -52,7 +52,7 @@ struct ReplayPart {
     virtual void v0();
     virtual void v1();
     virtual void v2();
-    virtual void v3();
+    virtual void Reset();
     virtual void Start(int *arg);
     virtual void Step();
     virtual void Show();
@@ -96,6 +96,8 @@ struct ReplayView {
     int m664;
 };
 
+void f_082df8(void *p);
+
 struct Replay {
     char m0[3060];
     ReplayPart *cam[11];
@@ -131,6 +133,8 @@ struct Replay {
     char m3232[16];
     ReplayOverlay *m3248;
     ReplayPart *m3252;
+    char m3256[48];
+    char m3304[1];
 };
 
 extern "C" void f_07ee5c(Replay *r);
@@ -153,6 +157,20 @@ extern "C" int f_07df70(Replay *r)
 extern "C" int f_07dfcc(Replay *r)
 {
     return r->m3196 / 5;
+}
+
+/* @implements 0x07e6d0 us f_07e6d0
+   WHAT IT DOES: Resets the replay: clears the object at +3304 and resets every one of the nine
+   cameras that exists. */
+extern "C" void f_07e6d0(Replay *r)
+{
+    int i;
+
+    f_082df8(r->m3304);
+    for (i = 0; i < 9; i++) {
+        if (r->cam[i])
+            r->cam[i]->Reset();
+    }
 }
 
 /* @implements 0x07ebc4 us f_07ebc4
