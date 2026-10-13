@@ -6,8 +6,30 @@ struct Vec4 {
     Vec4(float a, float b, float c, float d) : x(a), y(b), z(c), w(d) {}
 };
 
+struct Vec3 {
+    float v[3];
+};
+
+struct Mat33 {
+    float m[3][3];
+};
+
+struct Mat34 {
+    float m[3][4];
+};
+
 struct Mat44 {
     float m[4][4];
+    Mat44(const Mat33 &s);
+    Mat44(const Mat34 &s);
+    Vec3 &f_0a3748(int i);
+    Vec3 &f_0a3754();
+    Vec3 &f_0a375c();
+    Vec3 &f_0a3764();
+    const Vec3 &f_0a376c(int i) const;
+    const Vec3 &f_0a3778() const;
+    const Vec3 &f_0a3780() const;
+    const Vec3 &f_0a3788() const;
     Mat44(float s);
     Mat44(const float (*src)[4]);
     Mat44 &f_09b8b8();
@@ -137,4 +159,98 @@ Mat44 &Mat44::f_09bb28(const Mat44 &a, const Mat44 &b)
         m[3][i] = a.m[0][i] * b.m[3][0] + a.m[1][i] * b.m[3][1] + a.m[2][i] * b.m[3][2] + a.m[3][i] * b.m[3][3];
     }
     return *this;
+}
+
+/* @implements 0x0a3748 us f_0a3748
+   WHAT IT DOES: Returns row i as a vector. */
+Vec3 &Mat44::f_0a3748(int i)
+{
+    return *(Vec3 *)m[i];
+}
+
+/* @implements 0x0a3754 us f_0a3754
+   WHAT IT DOES: Returns row 0 (the x axis) as a vector. */
+Vec3 &Mat44::f_0a3754()
+{
+    return *(Vec3 *)m[0];
+}
+
+/* @implements 0x0a375c us f_0a375c
+   WHAT IT DOES: Returns row 1 (the y axis) as a vector. */
+Vec3 &Mat44::f_0a375c()
+{
+    return *(Vec3 *)m[1];
+}
+
+/* @implements 0x0a3764 us f_0a3764
+   WHAT IT DOES: Returns row 2 (the z axis) as a vector. */
+Vec3 &Mat44::f_0a3764()
+{
+    return *(Vec3 *)m[2];
+}
+
+/* @implements 0x0a376c us f_0a376c
+   WHAT IT DOES: Returns row i as a vector (read only). */
+const Vec3 &Mat44::f_0a376c(int i) const
+{
+    return *(const Vec3 *)m[i];
+}
+
+/* @implements 0x0a3778 us f_0a3778
+   WHAT IT DOES: Returns row 0 (the x axis) as a vector (read only). */
+const Vec3 &Mat44::f_0a3778() const
+{
+    return *(const Vec3 *)m[0];
+}
+
+/* @implements 0x0a3780 us f_0a3780
+   WHAT IT DOES: Returns row 1 (the y axis) as a vector (read only). */
+const Vec3 &Mat44::f_0a3780() const
+{
+    return *(const Vec3 *)m[1];
+}
+
+/* @implements 0x0a3788 us f_0a3788
+   WHAT IT DOES: Returns row 2 (the z axis) as a vector (read only). */
+const Vec3 &Mat44::f_0a3788() const
+{
+    return *(const Vec3 *)m[2];
+}
+
+/* @implements 0x0a3790 us _ZN5Mat44C2ERK5Mat33
+   WHAT IT DOES: Builds a 4x4 matrix from a 3x3 one, with a zero last row and column and a 1 in
+   the corner. */
+/* @implements 0x0a37fc us _ZN5Mat44C1ERK5Mat33
+   WHAT IT DOES: The same, as the complete object constructor. */
+Mat44::Mat44(const Mat33 &s)
+{
+    for (int j = 0; j < 3; j++) {
+        int i;
+        for (i = 0; i < 3; i++)
+            m[i][j] = s.m[i][j];
+        m[i][j] = 0;
+    }
+    m[2][3] = 0;
+    m[1][3] = 0;
+    m[0][3] = 0;
+    m[3][3] = 1.0f;
+}
+
+/* @implements 0x0a3868 us _ZN5Mat44C2ERK5Mat34
+   WHAT IT DOES: Builds a 4x4 matrix from a padded-row 3x3 one, with a zero last row and column
+   and a 1 in the corner. */
+/* @implements 0x0a38d0 us _ZN5Mat44C1ERK5Mat34
+   WHAT IT DOES: The same, as the complete object constructor. */
+Mat44::Mat44(const Mat34 &s)
+{
+    for (int j = 0; j < 3; j++) {
+        int i;
+        for (i = 0; i < 3; i++)
+            m[i][j] = s.m[i][j];
+        m[i][j] = 0;
+    }
+    m[2][3] = 0;
+    m[1][3] = 0;
+    m[0][3] = 0;
+    m[3][3] = 1.0f;
 }
