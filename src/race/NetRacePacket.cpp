@@ -363,3 +363,24 @@ void CarState::f_084c88()
 {
     pos = Step(pos);
 }
+
+/* @implements 0x085320 us f_085320
+   WHAT IT DOES: Returns an empty name (debug text compiled out). */
+const char *f_085320()
+{
+    return "";
+}
+
+/* @implements 0x08532c us f_08532c
+   WHAT IT DOES: Returns an empty name (debug text compiled out). */
+const char *f_08532c()
+{
+    return "";
+}
+
+/* @implements 0x085338 us f_085338
+   WHAT IT DOES: Returns an empty name (debug text compiled out). */
+const char *f_085338()
+{
+    return "";
+}
