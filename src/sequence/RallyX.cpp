@@ -11,11 +11,11 @@ int f_113424(int ch, void *data, int arg);
 void f_113488(int ch);
 void f_1135b8(int ch, float volume);
 void *f_093330(void);
-void f_0933f8(void *snd, int se);
+int f_0933f8(void *snd, int se);
 void f_093448(void *snd);
 void f_093464(void *snd);
 void f_093480(void *snd);
-void f_09349c(void *snd);
+int f_09349c(void *snd, int h);
 void f_0934d4(void *snd);
 void f_0934f8(void *snd);
 void f_093518(void *snd, float volume);
@@ -482,7 +482,7 @@ void f_02e9e8(void)
     f_093518(f_093330(), D_1d1aa0);
 }
 
-extern "C" void f_031a94(Board *b);
+void f_031a94(Board *b);
 
 /* @implements 0x02ea2c us f_02ea2c
    WHAT IT DOES: Runs one frame of the mini game: steps the score board and the sprite
@@ -583,5 +583,59 @@ void f_02ec38(int pad)
         }
         f_02dfb4(2);
         f_02e400();
+    }
+}
+
+/* @implements 0x02fec4 us f_02fec4
+   WHAT IT DOES: An empty state handler. */
+void f_02fec4(void)
+{
+}
+
+/* @implements 0x02fecc us f_02fecc
+   WHAT IT DOES: The demo state's update: after three seconds goes back to the title state
+   with the hidden code's stage cleared. */
+void f_02fecc(int pad)
+{
+    if (D_2400d4 > 180) {
+        f_02dfb4(1);
+        D_2402d0 = 0;
+    }
+}
+
+/* @implements 0x02ff08 us f_02ff08
+   WHAT IT DOES: The game over state's update: after eight seconds goes back to the title
+   state. */
+void f_02ff08(int pad)
+{
+    if (D_2400d4 > 480)
+        f_02dfb4(0);
+}
+
+/* @implements 0x031a94 us f_031a94
+   WHAT IT DOES: Steps the sound effect queue: starts the effect at the head of the queue if
+   no voice plays it yet, and once it plays, drops it from the queue; then frees the voices
+   whose effect has ended. */
+void f_031a94(Board *b)
+{
+    int busy = b->m88 != 0;
+    if (b->b[0] == -1) {
+        b->m88 = 0;
+        busy = 0;
+    }
+    if (busy) {
+        if (b->a[b->b[0]] == -1)
+            b->a[b->b[0]] = f_0933f8(f_093330(), b->b[0]);
+        if (b->a[b->b[0]] != -1) {
+            int n = --b->m88;
+            for (int i = 0; i < n; i++)
+                b->b[i] = b->b[i + 1];
+        }
+    }
+    for (int i = 0; i < 11; i++) {
+        if (b->a[i] != -1) {
+            if (f_09349c(f_093330(), b->a[i]))
+                b->a[i] = -1;
+        }
     }
 }
