@@ -219,6 +219,13 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A `delete[]` loop that steps its iterator in place, the inlined element destructor using the same register | the destructible members belong to a base class of the element type (`struct Camera : Eyes { Tail t; };`); with them as direct members each pass adds a `move sX,sY` copy and one more saved register | 0x038c30, 0x038fe4 |
 | A test of flag bit 0 as `lw`+`andi 1`+`beqz` (no `lbu`/`xori`) | an inline predicate returning the masked word: `int Sent(int bit) { return m28 & bit; }`, `if (m20 == 0 && !Sent(1))` | f_0395b4 |
 | A jump-table factory: the first case falls into the return block with `move v0,s0`, the default (`move v0,zero`) next, the other cases after it | a result variable assigned in each case with `break`, the cases written in retail's block order (`case 1`, `default`, `case 2`...) | f_0396b0 |
+| `addu rd, off, base` (offset register first) for a header-relative pointer | integer arithmetic `(T *)(h->off + (int)h)`; `(char *)h + off` puts the base first | f_07f240, f_07f3b4, f_07e3a8 |
+| Fields reloaded after a call to an empty function of the same file | define the empty function after its callers; a body GCC has already seen lets callers keep fields in registers across the call | f_07f3b4 (f_07eca8) |
+| A loop pointer copied into its saved register after the loop's entry test | index the array (`ev[i].mode`) instead of stepping the pointer parameter | f_07e3a8 |
+| An int call result converted and stored through an address recomputed after the call, stores cross-jumped | go through a float temporary: `float d = f(); a[ev[i].sub].x = d;` | f_07e3a8, f_07e568 |
+| A table pointer loaded once per outer iteration (hoisted), the inner loop stepping a copy | read it into a local before the inner loop and step that local (`map++`) | f_07da28 |
+| An empty counted inner loop followed by one store | the store is loop invariant and was moved out: `for (j = 0; j < 8; j++) a[i][i] = 0;` | f_076eb0 |
+| Three halfword/word stores in order 416, 414, 412 | `t[1] = t[0] = -1; id = v;` | f_07d880 |
 
 **Callee prototypes are behaviour.** This includes the v0 versus v1 choice for later temporaries (f_01c2cc, f_01c648). Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
 
