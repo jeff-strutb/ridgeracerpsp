@@ -257,6 +257,11 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A counting loop that reloads the global pointer (and its `lui`) every pass | the element read through a `static inline` accessor and `if (Car(i)->m76) n++;` | f_08efd8 |
 | Per-branch copies of a call sequence whose name constants are loaded at first use, tails merged by cross-jumping | a macro taking the names; an inline function binds them to registers at the start of each branch | f_0924c0 |
 | A jump table whose case 0 has its own `return 0` block, placed before the default's | `case 0: return 0;` first, no `default`, `return 0;` after the switch; a `default` label merges the two | f_08d890 |
+| A global argument loaded into the `jal` delay slot, its `lui` left after `sw ra` (not scheduled to the top) | the callee is declared to return `int` (a `void` prototype lets sched2 hoist `lui`/`lw` above the prologue); explains the control set's f_0942f0 needing `-O1` | f_0942f0, f_094310, f_0940e8 |
+| `li v0,2; sltiu a2,a2,1; subu a2,v0,a2` divisor (`2 - (x == 0)`) in the parameter's register | `int n = x ? 2 : 1; return c / n / 16 * 28;` (the ternary inline in the division splits into two shift paths; `2 - (x == 0)` written out puts the constant and the result in other registers) | f_095624 |
+| An if/else-if chain of string selects whose first arm is a separate copy that jumps into the default arm's tail | assign one result variable in every arm (`name = c ? A : B;`) and `return name;` once; separate `return`s merge the first arm with the default | f_093680 |
+| `bltz v0` then `li v1,-1` / `move v1,zero` after alternative calls (no `slti`/`negu`) | test each call in its own arm: `if (c) { if (f() < 0) return -1; } else { if (g() < 0) return -1; } return 0;`; a shared `r` with `if (r < 0) return -1; return 0;` if-converts | f_09510c, f_09527c |
+| A select `slti v1,v0,0; negu v1,v1` joined with a zero default in v1 | `int r; if (t) r = f() < 0 ? -1 : 0; else r = 0; return r;` (`int r = 0;` first, or `return` in the arm, move it to v0 or to a saved register) | f_0954ac |
 
 **Callee prototypes are behaviour.** This includes the v0 versus v1 choice for later temporaries (f_01c2cc, f_01c648). Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
 
