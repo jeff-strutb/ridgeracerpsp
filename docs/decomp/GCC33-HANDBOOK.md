@@ -226,6 +226,12 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A table pointer loaded once per outer iteration (hoisted), the inner loop stepping a copy | read it into a local before the inner loop and step that local (`map++`) | f_07da28 |
 | An empty counted inner loop followed by one store | the store is loop invariant and was moved out: `for (j = 0; j < 8; j++) a[i][i] = 0;` | f_076eb0 |
 | Three halfword/word stores in order 416, 414, 412 | `t[1] = t[0] = -1; id = v;` | f_07d880 |
+| A table element's address built after an early-out branch (not hoisted above it), `li v0,-1` in both branch slots | index the global table directly in the return (`return D[m5][i].assign[f(i)].b0;`); an element pointer local hoists the address above the first test | f_043b6c, f_043b2c, f_0428c0 |
+| A byte array at +111 addressed as `(this + i) + 96` with offset 15 | it is a separate member array (`unsigned char tmp[7]` after `sel[1][7]`), not row 1 of a 2D array | f_042640 |
+| A small struct or union local kept on the stack (`sh`/`sw` then `lw` back) instead of in registers | give it an inline method used on it (`r.Set(b, 9)`, `w.Set(v)`): taking `this` makes it addressable | f_045128, f_045168 |
+| An 8-byte struct call result stored to a dead stack temporary as well as to the local (frame 16 bytes larger) | assign instead of initialise: `Code r; r = f();` | f_044cd4, f_044b44 |
+| A chain of separate `return 1` tests where `&&` would merge them | one early return per test (`if (i >= 8) return 1; if (v >= n) return 1; if (v < 0) return 1;`) | f_042924, f_0432f8 |
+| A loop-invariant sum (`first + j`) computed after the inner loop's counter is zeroed | write the sum in the inner loop's condition, not in a local before it | f_044014 |
 
 **Callee prototypes are behaviour.** This includes the v0 versus v1 choice for later temporaries (f_01c2cc, f_01c648). Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
 
