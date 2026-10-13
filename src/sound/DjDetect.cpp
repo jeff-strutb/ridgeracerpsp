@@ -33,6 +33,7 @@ struct CCourseData {
 };
 extern CCourseData D_242c90;
 
+void f_09b070(float *out, const void *rot, int n);
 int f_093bac(void *s);
 int f_093bc8(void *s, int i, int cls);
 int f_093bf0(void *s, int i, int cls);
@@ -43,7 +44,11 @@ int f_093cb4(void *s, int i);
 struct CCar {
     char pad0[76];
     int m76;
-    char pad80[1724];
+    char pad80[128];
+    int rot[4];
+    char pad224[1568];
+    float m1792;
+    char pad1796[8];
     int m1804;
     char pad1808[28];
     float m1836[3];
@@ -91,6 +96,8 @@ struct CSystemFlags {
 extern CSystemFlags *D_1d88a0;
 
 extern int D_23f7f8;
+extern char D_245178[];
+void f_00d354(void *log, int level, const char *fmt, ...);
 
 /* One car's record for one section. */
 struct CSplit {
@@ -150,10 +157,13 @@ static inline Pair GetM(int i)
     return r;
 }
 
-/* @implements 0x08f680 us f_08f680
+/* @draft 0x08f680 us f_08f680
    WHAT IT DOES: Looks up the player car's class, counts the course's sections and allocates a
    record row per car, each record starting from the section's reference times for that class
-   and its two flags. */
+   and its two flags.
+   Remaining difference: the bytes match; the "Class" string reference is BADREF only because
+   the strings that follow it in .rodata belong to f_08f988 (CCorneringJudge::Process), not yet
+   transcribed. */
 void CDjSection::f_08f680()
 {
     m0 = 0;
@@ -266,7 +276,11 @@ public:
     int f_091634();
     int f_09196c();
     int f_091e74();
+    int f_091e9c();
     int f_092080();
+    int f_09211c();
+    int f_091714();
+    int f_091a4c();
     void f_091258();
     void f_091578();
 
@@ -280,12 +294,12 @@ public:
     int m28;
     float m32;
     int m36;
-    int m40[32];
+    float m40[32];
     int m168[32];
     float m296[3];
     int m308;
-    int m312;
-    int m316;
+    float m312;
+    float m316;
     int m320;
     int m324;
     struct {
@@ -708,6 +722,41 @@ void CDjDetect::f_090aa4()
     }
 }
 
+/* @implements 0x0910f4 us f_0910f4
+   WHAT IT DOES: The rival checks of mode 1: outside state 3 the car behind (events 30, 31),
+   then the overtakes (33 passed, 32 passed by), and outside state 3 the car ahead (36, 35)
+   and the battle event 34. */
+void CDjDetect::f_0910f4()
+{
+    if (D_2407fc->m56 != 1)
+        return;
+    int r;
+    if (!f_090684()) {
+        r = f_091634();
+        if (r == 1)
+            f_0902bc(30);
+        if (r == 2)
+            f_0902bc(31);
+    }
+    r = f_091714();
+    if (r == 1)
+        f_0902bc(33);
+    if (r == -1)
+        f_0902bc(32);
+    if (!f_090684()) {
+        r = f_09196c();
+        if (r == 1)
+            f_0902bc(36);
+        if (r == 2)
+            f_0902bc(35);
+    }
+    if (!f_090684()) {
+        r = f_091a4c();
+        if (r == 1)
+            f_0902bc(34);
+    }
+}
+
 /* @implements 0x091578 us f_091578
    WHAT IT DOES: Turns the section table's split result into events 44 and 43 (result 3 picks
    one by the frame count's parity). */
@@ -800,6 +849,47 @@ int CDjDetect::f_091e74()
     return r;
 }
 
+/* @implements 0x091e9c us f_091e9c
+   WHAT IT DOES: Watches every car's boost gauge: a gauge that empties clears the car's mark;
+   a gauge that rises marks the car once, and the first rise of the player returns 1 while a
+   rival's within 15 of the player returns 2 (logging its slot and distance); a full gauge
+   marks it, a falling one clears the mark. */
+int CDjDetect::f_091e9c()
+{
+    for (int i = 0; i < D_2407fc->count; i++) {
+        CCar *c = D_2407fc->cars[i];
+        if (c->m1792 == 0) {
+            m40[i] = 0;
+            m168[i] = 0;
+        } else if (m40[i] < c->m1792) {
+            m40[i] = c->m1792;
+            if (m168[i] == 0) {
+                m168[i] = 1;
+                CCar *p = f_0903c4();
+                if (c == p)
+                    return 1;
+                double dist = p->m2144 - c->m2144;
+                f_00d354(D_245178, 0x800000, "BufferNum = %d  Distance = %f\n", i, dist);
+                double a = dist;
+                if (a < 0)
+                    a = -a;
+                if (!(a >= 15.0))
+                    return 2;
+            } else {
+                m40[i] = c->m1792;
+                m168[i] = 1;
+            }
+        } else if (c->m1792 == 1.0f) {
+            m40[i] = 1.0f;
+            m168[i] = 1;
+        } else if (c->m1792 < m40[i]) {
+            m40[i] = c->m1792;
+            m168[i] = 0;
+        }
+    }
+    return 0;
+}
+
 /* @implements 0x092080 us f_092080
    WHAT IT DOES: Copies the player's three gauges and counts the full ones; returns the count
    when it grew since the last call, otherwise 0. */
@@ -818,4 +908,38 @@ int CDjDetect::f_092080()
     }
     m308 = n;
     return 0;
+}
+
+/* @draft 0x09211c us f_09211c
+   WHAT IT DOES: Spin check: adds up the player's heading change (wrapped into -pi to pi);
+   a change of direction or 199 frames restart it, and a full turn either way returns 1.
+   Remaining difference: retail reloads the frame count after the angle store and the angle
+   for the double compare; here both stay in registers (the angle sum lands in $f12). */
+int CDjDetect::f_09211c()
+{
+    float a[4];
+    f_09b070(a, f_0903c4()->rot, 4);
+    float d = a[1] - m312;
+    m312 = a[1];
+    if (d < -3.14159265f)
+        d += 6.2831853f;
+    if (d > 3.14159265f)
+        d -= 6.2831853f;
+    m316 += d;
+    m320++;
+    int wait = 198;
+    int r = 0;
+    if ((m316 > 0 && d < 0) || (m316 < 0 && d > 0) || m320 > wait) {
+        m320 = 0;
+    } else {
+        double v = m316;
+        if (v < 0)
+            v = -v;
+        if (!(v > 6.28318548202514648))
+            return 0;
+        m320 = 0;
+        r = 1;
+    }
+    m316 = 0;
+    return r;
 }
