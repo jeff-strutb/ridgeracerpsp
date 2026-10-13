@@ -28,3 +28,8 @@ addr,name,evidence
 0x07f598,_ZN7CamCtrl9CCamProto5ResetEv,CamCtrl::CCamProto::Reset (slot 3 of _ZTVN7CamCtrl9CCamProtoE, byte exact in src/race/CamProto.cpp); called directly by CamCtrl::CCamTV::Reset (0x07f818 byte exact in src/race/CamTV.cpp)
 0x07f564,_ZN7CamCtrl9CCamProto3SetEPKNS_8CamParamE,CamCtrl::CCamProto::Set (slot 2 of _ZTVN7CamCtrl9CCamProtoE); called directly first by CamCtrl::CCamTV::Set (0x07f600)
 0x0970cc,_ZN8CEnvBankC1Ev,complete object constructor of the 8-byte tone record allocated by the CEnviron constructors (0x096e18/0x096e84) right after operator new; byte exact in src/sound/EnvBank.cpp
+0x093828,_ZN10RadioDriveC1Ev,complete object constructor of the radio drive data reader (byte exact in src/sound/RadioDrive.cpp); called after new in Radio::CInterface's set up at 0x093fe0
+0x093844,_ZN10RadioDriveD1Ev,its complete object destructor (empty; byte exact in src/sound/RadioDrive.cpp); called before operator delete in Radio::CInterface's release at 0x09411c
+0x0f6cc8,_ZN5Radio7CPlayerC1Ev,second of two identical constructors (0x0f6c14 / 0x0f6cc8) of the 16 byte DJ stream player kept in D_27f09c; called after new(16) at 0x093fe0
+0x0f6e10,_ZN5Radio7CPlayerD1Ev,second of two identical destructors (0x0f6d7c / 0x0f6e10) of the same player; called before operator delete at 0x09411c
+0x0f99e8,_ZN5Radio6CTableC1Ev,constructor of the 24 byte DJ condition table; called after new(24) at 0x093fe0
