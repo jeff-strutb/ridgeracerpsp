@@ -35,10 +35,14 @@ def grade():
     out = {}
     files = sorted(glob.glob(os.path.join(ROOT, 'src/**/*.c'), recursive=True) +
                    glob.glob(os.path.join(ROOT, 'src/**/*.cpp'), recursive=True))
-    for path in files:
-        p = subprocess.run([sys.executable, '-I', os.path.join(ROOT, 'tools/score.py'), path],
-                           capture_output=True, text=True)
-        for line in p.stdout.splitlines():
+    # One score.py per file, run concurrently (each is mostly single-threaded Python); the
+    # results are merged in file order, so the outcome is the same as a serial run.
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max(1, (os.cpu_count() or 4))) as ex:
+        outs = list(ex.map(lambda path: subprocess.run([sys.executable, '-I', os.path.join(ROOT, 'tools/score.py'), path],
+                                                       capture_output=True, text=True).stdout, files))
+    for path, stdout in zip(files, outs):
+        for line in stdout.splitlines():
             m = re.match(r'(\w+)\s+0x([0-9a-f]+)\s', line)
             if m:
                 a, rel = int(m.group(2), 16), os.path.relpath(path, ROOT)

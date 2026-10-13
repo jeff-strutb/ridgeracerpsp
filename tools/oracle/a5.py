@@ -56,10 +56,13 @@ def watched():
 
 
 def run(exe, script, trace, watch, calls, cycles_ref=None):
-    staged = os.path.join(a7.OUT, 'stage', 'BOOT.elf')
-    os.makedirs(os.path.dirname(staged), exist_ok=True)
+    # Each script has its own stage directory, so scripts run in parallel; retail and candidate
+    # of one script still use the same staged path (it is written into emulated RAM).
+    stage = os.path.join(a7.OUT, 'stage', os.path.splitext(os.path.basename(script))[0])
+    staged = os.path.join(stage, 'BOOT.elf')
+    os.makedirs(stage, exist_ok=True)
     shutil.copyfile(exe, staged)
-    ms = os.path.join(a7.OUT, 'stage', 'memstick')
+    ms = os.path.join(stage, 'memstick')
     shutil.rmtree(ms, ignore_errors=True)
     os.makedirs(ms)
     env = dict(os.environ, RRBOX_EPOCH=a7.EPOCH, TZ='UTC', RRBOX_MEMSTICK=ms)
@@ -87,6 +90,71 @@ def records(path):
     return out
 
 
+def summarise(path):
+    """One streaming pass over a call log: {func: [calls, base, v0, v1, f0, clobbered]}.
+
+    base digests, call by call in return order (calls never returned last, in entry order), the
+    entry record and the call's writes and write hash; v0, v1 and f0 digest those return
+    registers separately, so the comparison can pick them by the function's return type. Two
+    logs agree on a function exactly when records()/compare() would find every call equal."""
+    out, open_calls = {}, {}
+    new = lambda: [0, hashlib.blake2b(digest_size=16), hashlib.blake2b(digest_size=16),
+                   hashlib.blake2b(digest_size=16), hashlib.blake2b(digest_size=16), 0]
+    with open(path, 'rb') as f:
+        for line in f:
+            if line[0] == 69:  # 'E': remember the entry record until the call returns
+                k, _, rest = line.partition(b' ')[2].partition(b' ')
+                call, _, entry = rest.partition(b' ')
+                open_calls[(k, call)] = entry.rstrip(b'\n')
+                continue
+            t = line.split()  # R func call v0= v1= f0= writes= hash= clobbered= cyc=
+            entry = open_calls.pop((t[1], t[2]), b'')
+            d = out.get(t[1]) or out.setdefault(t[1], new())
+            d[0] += 1
+            d[1].update(entry + b'|' + t[6] + b'|' + t[7] + b';')
+            d[2].update(t[3] + b';')
+            d[3].update(t[4] + b';')
+            d[4].update(t[5] + b';')
+            if t[8] != b'clobbered=000':
+                d[5] += 1
+    for (k, call), entry in open_calls.items():
+        d = out.get(k) or out.setdefault(k, new())
+        d[0] += 1
+        d[1].update(entry + b'|NORET;')
+    return {int(k, 16): [d[0]] + [h.hexdigest() for h in d[1:5]] + [d[5]] for k, d in out.items()}
+
+
+def script_pair(s, m1, watch, watch_retail):
+    """Run one script on retail (or reuse the cached retail run) and on the candidate, and
+    summarise both call logs. Runs in its own process, one per script."""
+    name = os.path.splitext(os.path.basename(s))[0]
+    files = {side: (os.path.join(a7.OUT, f'{name}.{side}.trace'), os.path.join(a7.OUT, f'{name}.{side}.calls'))
+             for side in ('retail', 'candidate')}
+    # A retail run depends only on the executable, the script, the watched addresses and rrbox.
+    key = hashlib.sha256(b''.join(open(f, 'rb').read() for f in (a7.RETAIL, s, watch_retail, a7.BOX))).hexdigest()[:24]
+    cached = os.path.join(ROOT, 'build/oracle/retail-cache', key)
+    tr_, ca_ = files['retail']
+    if not (os.path.exists(cached + '.trace') and os.path.exists(cached + '.calls') and os.path.exists(cached + '.sum')):
+        run(a7.RETAIL, s, tr_, watch_retail, ca_)
+        os.makedirs(os.path.dirname(cached), exist_ok=True)
+        open(cached + '.sum.tmp', 'w').write(repr(summarise(ca_)))
+        for src, dst in ((tr_, cached + '.trace'), (ca_, cached + '.calls'), (cached + '.sum.tmp', cached + '.sum')):
+            if src != cached + '.sum.tmp':
+                shutil.copyfile(src, dst + '.tmp')
+                src = dst + '.tmp'
+            os.replace(src, dst)
+    # the candidate run reads retail's call log for the time lockstep; the cached copy serves
+    run(m1, s, files['candidate'][0], watch, files['candidate'][1], cached + '.calls')
+    tr = open(cached + '.trace').read().split('\n')
+    tc = open(files['candidate'][0]).read().split('\n')
+    first = next((k for k, (x, y) in enumerate(zip(tr, tc)) if x != y), None)
+    if first is None and len(tr) != len(tc):
+        first = min(len(tr), len(tc))
+    cov = [line.split() for line in open(files['candidate'][1] + '.cov')]
+    files['retail'] = (cached + '.trace', cached + '.calls')
+    return name, first, len(tr) - 1, eval(open(cached + '.sum').read()), summarise(files['candidate'][1]), cov, files
+
+
 def compare(rk, ret_r, ret_c):
     if ret_r is None or ret_c is None:
         return None if ret_r == ret_c else 'one side never returned'
@@ -99,9 +167,14 @@ def compare(rk, ret_r, ret_c):
     return None
 
 
+DETAIL = False
+
+
 def main():
     w = watched()
-    scripts = [os.path.abspath(s) for s in sys.argv[1:]] or sorted(glob.glob(os.path.join(ROOT, 'tools/oracle/scripts/*.txt')))
+    global DETAIL
+    DETAIL = '--detail' in sys.argv
+    scripts = [os.path.abspath(s) for s in sys.argv[1:] if not s.startswith('--')] or sorted(glob.glob(os.path.join(ROOT, 'tools/oracle/scripts/*.txt')))
     m1 = os.path.join(ROOT, 'build/image/BOOT.M1.BIN')
     if not os.path.exists(m1):
         raise SystemExit('build the M1 image first: python3 tools/oracle/m1image.py')
@@ -113,46 +186,55 @@ def main():
         a, z = line.split()
         sizes[int(a, 16)] = int(z)  # a placed draft: its compiled body, not the padded slot
     open(watch, 'w').write(''.join(f'{a:x} {sizes[a]}\n' for a in sorted(w)))
+    # Retail's watch list uses the map's sizes (placed draft sizes only matter for the candidate's
+    # coverage), so a retail run stays cacheable while drafts change.
+    mapsz = {int(r['addr'], 16): int(r['size']) for r in csv.DictReader(open(os.path.join(ROOT, 'config/us/funcs.csv')))}
+    watch_retail = os.path.join(a7.OUT, 'watch_retail.txt')
+    open(watch_retail, 'w').write(''.join(f'{a:x} {mapsz[a]}\n' for a in sorted(w)))
     missed = {a: None for a in w}  # words never executed in any script (intersection over scripts)
     verdict = {a: ['UNCOVERED', 0, ''] for a in w}
     a7_bad = 0
-    for s in scripts:
-        name = os.path.splitext(os.path.basename(s))[0]
-        files = {}
-        for side, exe in (('retail', a7.RETAIL), ('candidate', m1)):
-            files[side] = (os.path.join(a7.OUT, f'{name}.{side}.trace'), os.path.join(a7.OUT, f'{name}.{side}.calls'))
-            run(exe, s, files[side][0], watch, files[side][1],
-                files['retail'][1] if side == 'candidate' else None)
-        tr = [l.split() for l in open(files['retail'][0])]
-        tc = [l.split() for l in open(files['candidate'][0])]
-        first = next((k for k, (x, y) in enumerate(zip(tr, tc)) if x != y), None)
-        if first is not None or len(tr) != len(tc):
+    from concurrent.futures import ProcessPoolExecutor
+    with ProcessPoolExecutor(len(scripts) or 1) as ex:
+        results = list(ex.map(script_pair, scripts, [m1] * len(scripts), [watch] * len(scripts),
+                              [watch_retail] * len(scripts)))
+    for name, first, nframes, sr, sc, cov, files in results:
+        if first is not None:
             a7_bad += 1
-            print(f'A7 DIFFERS  {name}: first at frame {first if first is not None else min(len(tr), len(tc))}')
+            print(f'A7 DIFFERS  {name}: first at frame {first}')
         else:
-            print(f'A7 IDENTICAL {name}: {len(tr)} frames')
-        for line in open(files['candidate'][1] + '.cov'):
-            t = line.split()
+            print(f'A7 IDENTICAL {name}: {nframes} frames')
+        for t in cov:
             a, miss = int(t[0], 16), {int(x, 16) for x in t[3:]}
             missed[a] = miss if missed[a] is None else missed[a] & miss
-        rr, rc = records(files['retail'][1]), records(files['candidate'][1])
         for a in w:
-            cr, cc = rr.get(a, []), rc.get(a, [])
             v = verdict[a]
             if v[0] == 'DIFFERS':
                 continue
-            if len(cr) != len(cc):
-                v[0], v[2] = 'DIFFERS', f'{name}: {len(cr)} calls in retail, {len(cc)} in candidate'
+            r, c = sr.get(a), sc.get(a)
+            nr, nc = (r[0] if r else 0), (c[0] if c else 0)
+            if nr != nc:
+                v[0], v[2] = 'DIFFERS', f'{name}: {nr} calls in retail, {nc} in candidate'
                 continue
-            for k, ((er, xr), (ec, xc)) in enumerate(zip(cr, cc)):
-                why = 'entry differs' if er != ec else compare(w[a][2], xr, xc)
-                if why:
-                    v[0], v[2] = 'DIFFERS', f'{name} call {k}: {why}'
-                    break
+            if not nr:
+                continue
+            rk = w[a][2]
+            fields = {'void': [1], 'int': [1, 2], 'wide': [1, 2, 3], 'float': [1, 4]}[rk]
+            bad = [('entry/writes', 'v0', 'v1', 'f0')[x - 1] for x in fields if r[x] != c[x]]
+            if bad:
+                v[0], v[2] = 'DIFFERS', f'{name}: calls differ in {", ".join(bad)} (rerun with --detail for the call)'
+            elif c[5]:
+                v[0], v[2] = 'DIFFERS', f'{name}: callee-saved registers clobbered in {c[5]} calls'
             else:
-                if cr:
-                    v[0] = 'PASS'
-                    v[1] += len(cr)
+                v[0] = 'PASS'
+                v[1] += nr
+            if v[0] == 'DIFFERS' and DETAIL:
+                cr, cc = records(files['retail'][1]).get(a, []), records(files['candidate'][1]).get(a, [])
+                for n, ((er, xr), (ec, xc)) in enumerate(zip(cr, cc)):
+                    why = 'entry differs' if er != ec else compare(rk, xr, xc)
+                    if why:
+                        v[2] = f'{name} call {n}: {why}'
+                        break
     ledger = os.path.join(ROOT, 'config/us/t3_live.csv')
     rows = []
     for a in sorted(w):

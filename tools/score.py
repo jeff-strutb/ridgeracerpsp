@@ -21,6 +21,9 @@ reference does not (wrong global, wrong string, unresolvable symbol).
 import argparse
 import csv
 import os
+import glob
+import shutil
+import hashlib
 import re
 import struct
 import subprocess
@@ -58,6 +61,16 @@ def compile_obj(src, cc, flags):
         driver = f'{tc}/psp/bin/c++' if is_cpp else f'{tc}/psp/bin/gcc'
     # Several sessions may compile the same file at once: each writes its own temporaries and
     # renames them into place (atomic), so no reader ever sees another run's half-written object.
+    # Compiled objects are cached by content: the source, every header it could include, the
+    # compiler and the flags. A hit is byte-for-byte the object a fresh compile would give, so
+    # scoring, the image gate and the M1 image share one compile per source version.
+    key = hashlib.sha256('\0'.join([cc, driver, flags, open(os.path.join(ROOT, rel), 'rb').read().hex(), headers_digest()]).encode()).hexdigest()[:24]
+    cache = os.path.join(ROOT, 'build', 'score', 'cache', key)
+    if os.path.exists(cache + '.o') and os.path.exists(cache + '.s'):
+        for ext in ('.s', '.o'):
+            shutil.copyfile(cache + ext, os.path.join(ROOT, f'{out}.{os.getpid()}{ext}'))
+            os.replace(os.path.join(ROOT, f'{out}.{os.getpid()}{ext}'), os.path.join(ROOT, out + ext))
+        return os.path.join(ROOT, out + '.o')
     tmp = f'{out}.{os.getpid()}'
     cmd = (f'cd {ROOT} && rm -f {tmp}.s {tmp}.o && {driver} -S -Iinclude {flags} {rel} -o {tmp}.s && '
            f'{asm} -G0 {tmp}.s -o {tmp}.o && mv -f {tmp}.s {out}.s && mv -f {tmp}.o {out}.o')
@@ -67,7 +80,27 @@ def compile_obj(src, cc, flags):
         subprocess.run([os.path.join(ROOT, 'tools/toolchains/lima.sh'), 'sh', '-c', f'cd {ROOT} && rm -f {tmp}.s {tmp}.o'])
         sys.stderr.write(p.stdout + p.stderr)
         raise SystemExit('compile failed')
+    os.makedirs(os.path.dirname(cache), exist_ok=True)
+    for ext in ('.s', '.o'):
+        shutil.copyfile(os.path.join(ROOT, out + ext), f'{cache}.{os.getpid()}{ext}')
+        os.replace(f'{cache}.{os.getpid()}{ext}', cache + ext)
     return os.path.join(ROOT, out + '.o')
+
+
+_HEADERS = None
+
+
+def headers_digest():
+    """One hash over every header a source could include (src/ and include/)."""
+    global _HEADERS
+    if _HEADERS is None:
+        h = hashlib.sha256()
+        for p in sorted(glob.glob(os.path.join(ROOT, 'src/**/*.h*'), recursive=True) +
+                        glob.glob(os.path.join(ROOT, 'include/**/*'), recursive=True)):
+            if os.path.isfile(p):
+                h.update(os.path.relpath(p, ROOT).encode() + b'\0' + open(p, 'rb').read())
+        _HEADERS = h.hexdigest()
+    return _HEADERS
 
 
 def tags(src, claims_only=False):
