@@ -50,8 +50,73 @@ public:
     void f_083dac(char *s);
 };
 
-struct CarState;
-struct CarPacket;
+/* A position or velocity vector, and an orientation (a type of its own, so copies of the
+   two kinds may be interleaved). */
+struct Vec4 {
+    float x, y, z, w;
+} __attribute__((aligned(16)));
+struct Rot4 {
+    float x, y, z, w;
+} __attribute__((aligned(16)));
+
+/* The parts of a race car read and written here. */
+struct CCar {
+    char m0[144];
+    Vec4 pos;
+    Vec4 vel;
+    char m176[32];
+    Rot4 rot;
+    char m224[1520];
+    float m1744;
+    float m1748;
+    char m1752[84];
+    float m1836;
+    char m1840[256];
+    float m2096;
+    int m2100;
+    int m2104;
+    int m2108;
+    int m2112;
+    int m2116;
+    int m2120;
+};
+
+/* A car's state as exchanged between consoles. */
+struct CarState {
+    float m0;
+    float m4;
+    float m8;
+    float m12;
+    char m16[16];
+    int m32;
+    bool m36;
+    bool m37;
+    bool m38;
+    bool m39;
+    bool m40;
+    bool m41;
+    bool m42;
+    Vec4 pos;
+    Vec4 vel;
+    Rot4 rot;
+
+    void Set(const Vec4 &p, const Vec4 &v, const Rot4 &r)
+    {
+        pos = p;
+        rot = r;
+        vel = v;
+    }
+    void Get(Vec4 &p, Vec4 &v, Rot4 &r)
+    {
+        p = pos;
+        r = rot;
+        v = vel;
+    }
+    void f_0849a4(CCar *car);
+    void f_084ad0(CCar *car);
+    void f_084bd8(int t);
+    void f_084c88();
+};
 
 class CNetRacePacket {
 public:
@@ -172,4 +237,68 @@ int CNetRacePacket::f_084968(CStartingGridManager *g, char *out)
 void CNetRacePacket::f_084988(char *in, CStartingGridManager *g)
 {
     g->f_083dac(in);
+}
+
+/* @implements 0x0849a4 us f_0849a4
+   WHAT IT DOES: Takes a car's state for sending: position, velocity, orientation, and six
+   flags from its controls (whether each is engaged). */
+void CarState::f_0849a4(CCar *car)
+{
+    Set(car->pos, car->vel, car->rot);
+    if (car->m2108 == 1)
+        m36 = 1;
+    else
+        m36 = 0;
+    if (car->m2096 < 0.01f)
+        m37 = 0;
+    else
+        m37 = 1;
+    if (car->m2104)
+        m38 = 1;
+    else
+        m38 = 0;
+    if (car->m1744 < 0.01f)
+        m39 = 0;
+    else
+        m39 = 1;
+    if (car->m1748 < 0.01f)
+        m40 = 0;
+    else
+        m40 = 1;
+    if (car->m2120)
+        m41 = 1;
+    else
+        m41 = 0;
+}
+
+/* @implements 0x084ad0 us f_084ad0
+   WHAT IT DOES: Applies a received state to a car: position, velocity, orientation, and the
+   controls from the six flags. */
+void CarState::f_084ad0(CCar *car)
+{
+    Get(car->pos, car->vel, car->rot);
+    if (m36)
+        car->m1836 = 100.0f;
+    else
+        car->m1836 = 0;
+    if (m37)
+        car->m2096 = 1.0f;
+    else
+        car->m2096 = 0;
+    if (m38)
+        car->m2104 = 1;
+    else
+        car->m2104 = 0;
+    if (m39)
+        car->m1744 = 1.0f;
+    else
+        car->m1744 = 0;
+    if (m40)
+        car->m1748 = 1.0f;
+    else
+        car->m1748 = 0;
+    if (m41)
+        car->m2120 = 1;
+    else
+        car->m2120 = 0;
 }
