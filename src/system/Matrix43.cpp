@@ -34,6 +34,16 @@ struct Mat33 {
     float m[3][3];
 };
 
+/* The 3x3 matrix with rows padded to four floats. */
+struct Mat34 {
+    float m[3][4];
+};
+
+/* The 4x3 matrix with rows padded to four floats. */
+struct Mat43p {
+    float m[4][4];
+};
+
 /* The 3x3 matrix's constructors from Euler angles, a rotation vector and a quaternion (complete
    object forms), called on an uninitialised matrix. */
 extern "C" {
@@ -57,6 +67,11 @@ struct Mat43 {
     Mat43(const Euler &e);
     Mat43(const Vec3 &r);
     Mat43(const Quat &q);
+    Mat43(const Mat33 &r);
+    Mat43(const Mat34 &r);
+    Mat43(const Mat33 &r, const Vec3 &t);
+    Mat43(const Mat34 &r, const Vec3 &t);
+    Mat43(const Mat43p &s);
     Vec3 &f_0a1a70();
     Mat33 &f_0a1a78();
     const Mat33 &f_0a1dd8() const;
@@ -297,4 +312,71 @@ float Mat43::f_0a22a4() const
 {
     Mat44 t(*this);
     return t.f_09b9f4();
+}
+
+/* @implements 0x0a23ac us _ZN5Mat43C2ERK5Mat33
+   WHAT IT DOES: Builds the matrix from a rotation, with no translation. */
+/* @implements 0x0a23f4 us _ZN5Mat43C1ERK5Mat33
+   WHAT IT DOES: The same, as the complete object constructor. */
+Mat43::Mat43(const Mat33 &r)
+{
+    for (int j = 0; j < 3; j++)
+        for (int i = 0; i < 3; i++)
+            m[i][j] = r.m[i][j];
+    m[3][0] = 0;
+    m[3][1] = 0;
+    m[3][2] = 0;
+}
+
+/* @implements 0x0a243c us _ZN5Mat43C2ERK5Mat34
+   WHAT IT DOES: Builds the matrix from a padded-row rotation, with no translation. */
+/* @implements 0x0a2488 us _ZN5Mat43C1ERK5Mat34
+   WHAT IT DOES: The same, as the complete object constructor. */
+Mat43::Mat43(const Mat34 &r)
+{
+    for (int j = 0; j < 3; j++)
+        for (int i = 0; i < 3; i++)
+            m[i][j] = r.m[i][j];
+    m[3][0] = 0;
+    m[3][1] = 0;
+    m[3][2] = 0;
+}
+
+/* @implements 0x0a24d4 us _ZN5Mat43C2ERK5Mat33RK4Vec3
+   WHAT IT DOES: Builds the matrix from a rotation and a translation. */
+/* @implements 0x0a2528 us _ZN5Mat43C1ERK5Mat33RK4Vec3
+   WHAT IT DOES: The same, as the complete object constructor. */
+Mat43::Mat43(const Mat33 &r, const Vec3 &t)
+{
+    for (int j = 0; j < 3; j++)
+        for (int i = 0; i < 3; i++)
+            m[i][j] = r.m[i][j];
+    m[3][0] = t.v[0];
+    m[3][1] = t.v[1];
+    m[3][2] = t.v[2];
+}
+
+/* @implements 0x0a257c us _ZN5Mat43C2ERK5Mat34RK4Vec3
+   WHAT IT DOES: Builds the matrix from a padded-row rotation and a translation. */
+/* @implements 0x0a25d4 us _ZN5Mat43C1ERK5Mat34RK4Vec3
+   WHAT IT DOES: The same, as the complete object constructor. */
+Mat43::Mat43(const Mat34 &r, const Vec3 &t)
+{
+    for (int j = 0; j < 3; j++)
+        for (int i = 0; i < 3; i++)
+            m[i][j] = r.m[i][j];
+    m[3][0] = t.v[0];
+    m[3][1] = t.v[1];
+    m[3][2] = t.v[2];
+}
+
+/* @implements 0x0a262c us _ZN5Mat43C2ERK6Mat43p
+   WHAT IT DOES: Builds the matrix from its padded-row form, column by column. */
+/* @implements 0x0a2670 us _ZN5Mat43C1ERK6Mat43p
+   WHAT IT DOES: The same, as the complete object constructor. */
+Mat43::Mat43(const Mat43p &s)
+{
+    for (int j = 0; j < 3; j++)
+        for (int i = 0; i < 4; i++)
+            m[i][j] = s.m[i][j];
 }
