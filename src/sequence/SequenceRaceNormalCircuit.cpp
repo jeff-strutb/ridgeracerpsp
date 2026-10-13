@@ -51,6 +51,17 @@ struct CTable {
 extern CTable D_2407a8;
 extern CTable D_2407d0;
 
+/* Finds a record by name in a table (none for no name). */
+static inline Rec Find(CTable *t, char *name)
+{
+    Rec r;
+    if (name)
+        r.rec = f_036984(t, name, 0, t->index, t->count);
+    else
+        r.rec = 0;
+    return r;
+}
+
 /* The sound system. */
 class CSound {
 public:
@@ -124,6 +135,11 @@ struct View {
     char m660[8];
     int m668;
     char m672[80];
+    void Set(int a, int b)
+    {
+        m668 = a;
+        m656 = b;
+    }
 };
 
 /* The race information of a normal circuit race (made elsewhere). */
@@ -137,7 +153,7 @@ public:
     char m4[140];
 };
 extern "C" void f_03e51c(f_03e3b8_t *info, InfoParams *p);
-extern "C" void f_03a51c(CarCtrl *ctrl, char **setup, int seed, char *list, Rec course);
+extern "C" void f_03a51c(CarCtrl *ctrl, char **setup, int seed, char *list);
 
 namespace RacePSP {
 class CSequenceBase;
@@ -220,7 +236,12 @@ CSequenceRaceNormalCircuit::~CSequenceRaceNormalCircuit()
    1), the course's record, the cars (with a new random seed), the race information (with
    another seed, the start arguments' grid and the replay), both views' modes, the replay, the
    race sound, the music, the race effects and the camera, and the race sound mode and a 3
-   second sound fade in. */
+   second sound fade in.
+   Draft: the course records are found through an inline returning the record by value
+   (memory temporaries as in retail for the first and last lookups); remaining differences:
+   retail keeps the information's course record in its own frame slot (sp+160, frame 208)
+   where this source shares sp+32, the state select uses v1 instead of v0, and the course
+   table's address is kept in a saved register instead of being rebuilt for the last lookup. */
 void CSequenceRaceNormalCircuit::f_038fd4(SeqArgs *a)
 {
     CSequenceBase::f_03913c(a);
@@ -229,24 +250,22 @@ void CSequenceRaceNormalCircuit::f_038fd4(SeqArgs *a)
         s = 2;
     state = s;
     {
-        Rec r;
-        char *n = f_0368e8(&D_2407d0, "CourseNumber", m4, 0, 0);
-        if (n)
-            r.rec = f_036984(&D_2407a8, n, 0, D_2407a8.index, D_2407a8.count);
-        else
-            r.rec = 0;
+        Rec r = Find(&D_2407a8, f_0368e8(&D_2407d0, "CourseNumber", m4, 0, 0));
         D_27ecd0 = r;
         m16 = m16 * 0x19660d + 0x3c6ef35f;
-        f_03a51c(m32, &m4, m16, a->m32, r);
+        f_03a51c(m32, &m4, m16, a->m32);
     }
     f_03e3b8_t *info = new f_03e3b8_t;
     {
         InfoParams p;
-        if (m4)
-            p.course.rec = f_036984(&D_2407d0, m4, 0, D_2407d0.index, D_2407d0.count);
+        Rec c;
+        char *name = m4;
+        if (name)
+            c.rec = f_036984(&D_2407d0, name, 0, D_2407d0.index, D_2407d0.count);
         else
-            p.course.rec = 0;
+            c.rec = 0;
         m16 = m16 * 0x19660d + 0x3c6ef35f;
+        p.course = c;
         p.seed = m16;
         p.m12 = a->m12;
         p.mode = m20;
@@ -256,8 +275,11 @@ void CSequenceRaceNormalCircuit::f_038fd4(SeqArgs *a)
         p.m32 = a->m584;
         p.m44 = a->m588;
         p.m48 = a->m592;
-        for (int i = 0; i < 3; i++)
-            p.m56[i] = a->m600[i];
+        for (int i = 0; i < 3; i++) {
+            p.m56[i].v[0] = a->m600[i].v[0];
+            p.m56[i].v[1] = a->m600[i].v[1];
+            p.m56[i].v[2] = a->m600[i].v[2];
+        }
         p.replay = f_07df70(m52);
         p.m92 = a->m636;
         p.m96 = a->m640;
@@ -266,28 +288,23 @@ void CSequenceRaceNormalCircuit::f_038fd4(SeqArgs *a)
         f_03e51c(info, &p);
     }
     m40 = info;
-    m36[0].m668 = 1;
-    m36[0].m656 = 0;
-    m36[1].m668 = 0;
-    m36[1].m656 = 3;
+    m36[0].Set(1, 0);
+    m36[1].Set(0, 3);
     f_07dff0(m52, m36, &m36[1], (void *)f_03b518(m32, 0), (int)m32->m32, m32->m12 + m32->m16, m20 != 0, 0, 0, 0, 0);
     f_01d17c(D_23be80, m4, m32->m12 + m32->m16, (int)m32->m32, m36, 0);
     {
-        Rec r;
-        char *n = f_0368e8(&D_2407d0, "CourseNumber", m4, 0, 0);
-        if (n)
-            r.rec = f_036984(&D_2407a8, n, 0, D_2407a8.index, D_2407a8.count);
-        else
-            r.rec = 0;
+        Rec r = Find(&D_2407a8, f_0368e8(&D_2407d0, "CourseNumber", m4, 0, 0));
         f_0941c8(D_242c90, r.rec);
         f_096368(D_242cb0, r);
     }
     f_08d764(m48);
     f_031b98(D_2402e0, m32->m12 + m32->m16);
     f_0eaca0(m32, a->m636, m52);
-    int k = m20 == 1;
+    int k;
     if (m20 == 2)
         k = 2;
+    else
+        k = m20 == 1;
     f_089438(k);
     D_1d3d40->v2(a->m636, 0);
     f_0894b0(D_1d3d40, 3000);
