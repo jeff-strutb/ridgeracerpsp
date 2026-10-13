@@ -55,8 +55,15 @@ void f_09d858(Mat33 *m, const Quat &q);
 struct Mat44 {
     float m[4][4];
     Mat44(const Mat43 &s);
+    Mat44 &f_09b908();
     float f_09b9f4() const;
 };
+
+/* The inverse of a 4x4 matrix, inverted in a copy. */
+inline Mat44 Inverse(Mat44 m)
+{
+    return m.f_09b908();
+}
 
 struct Mat43 {
     float m[4][3];
@@ -84,6 +91,8 @@ struct Mat43 {
     Mat43 &f_0a2264(Angle a);
     Mat43 &f_0a2284(Angle a);
     float f_0a22a4() const;
+    Mat43 f_0a1fd8() const;
+    Mat43 &f_0a2090();
 };
 
 /* @implements 0x0a1980 us _ZN5Mat43C2Ef
@@ -379,4 +388,20 @@ Mat43::Mat43(const Mat43p &s)
     for (int j = 0; j < 3; j++)
         for (int i = 0; i < 4; i++)
             m[i][j] = s.m[i][j];
+}
+
+/* @implements 0x0a1fd8 us f_0a1fd8
+   WHAT IT DOES: Returns the inverse, through the 4x4 matrix. */
+Mat43 Mat43::f_0a1fd8() const
+{
+    Mat44 t(*this);
+    return Mat43(Inverse(t));
+}
+
+/* @implements 0x0a2090 us f_0a2090
+   WHAT IT DOES: Inverts the matrix in place and returns it. */
+Mat43 &Mat43::f_0a2090()
+{
+    *this = f_0a1fd8();
+    return *this;
 }
