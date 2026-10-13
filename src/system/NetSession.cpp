@@ -159,7 +159,7 @@ public:
     int f_086608();
     int f_0866a4(const char *to, void *data, int len);
     int f_086744(const char *to, int type, void *data, int len);
-    int f_0867b8(const char *to, int type, int header, void *data, int len);
+    int f_0867b8(const char *to, int type, unsigned int header, void *data, int len);
     int f_086830(char *from, unsigned short *port, void *buf, int *len);
     int f_086908();
     int f_086968();
@@ -761,12 +761,25 @@ int CNetSession::f_086324()
     return r;
 }
 
-/* @draft 0x086350 us f_086350
+/* @implements 0x086350 us f_086350
    WHAT IT DOES: Reads the matching library's member list (at most 16 members) into a buffer;
    an empty list when the session is not up. */
 int CNetSession::f_086350(Member *buf)
 {
-    if ((state == 5 || state == 6 || state == 8) && D_241e98.f_088338() == 5) {
+    if (state == 5)
+        goto get;
+    if (state == 6)
+        goto get;
+    if (state == 8)
+        goto get;
+    buf->next = 0;
+    return 0;
+get:
+    if (D_241e98.f_088338() != 5) {
+        buf->next = 0;
+        return 0;
+    }
+    {
         int len = 0;
         int r = sceNetAdhocMatchingGetMembers(matching, &len, 0);
         if (r < 0)
@@ -778,8 +791,6 @@ int CNetSession::f_086350(Member *buf)
             return r;
         return 1;
     }
-    buf->next = 0;
-    return 0;
 }
 
 /* @implements 0x08640c us f_08640c
@@ -897,19 +908,19 @@ int CNetSession::f_086608()
     return 1;
 }
 
-/* @draft 0x0866a4 us f_0866a4
+/* @implements 0x0866a4 us f_0866a4
    WHAT IT DOES: Sends data to an address on port 12345. */
 int CNetSession::f_0866a4(const char *to, void *data, int len)
 {
-    int r = 0;
+    int r;
     if (pdp < 0)
+        return 0;
+    if (D_241e98.f_088338() != 5)
+        return 0;
+    r = sceNetAdhocPdpSend(pdp, to, 12345, data, len, 0, 0);
+    if (r < 0)
         return r;
-    if (D_241e98.f_088338() == 5) {
-        r = sceNetAdhocPdpSend(pdp, to, 12345, data, len, 0, 0);
-        if (r >= 0)
-            r = 1;
-    }
-    return r;
+    return 1;
 }
 
 /* @implements 0x086744 us f_086744
@@ -924,10 +935,10 @@ int CNetSession::f_086744(const char *to, int type, void *data, int len)
     return f_0866a4(to, sbuf, len + 4);
 }
 
-/* @draft 0x0867b8 us f_0867b8
+/* @implements 0x0867b8 us f_0867b8
    WHAT IT DOES: Sends a packet: the type byte, the header's low three bytes high first, then
    the data. */
-int CNetSession::f_0867b8(const char *to, int type, int header, void *data, int len)
+int CNetSession::f_0867b8(const char *to, int type, unsigned int header, void *data, int len)
 {
     sbuf[0] = type;
     sbuf[1] = header >> 16;
@@ -937,27 +948,28 @@ int CNetSession::f_0867b8(const char *to, int type, int header, void *data, int 
     return f_0866a4(to, sbuf, len + 4);
 }
 
-/* @draft 0x086830 us f_086830
+/* @implements 0x086830 us f_086830
    WHAT IT DOES: Receives a packet without waiting: its length, 0 when there is none, or the
    error. */
 int CNetSession::f_086830(char *from, unsigned short *port, void *buf, int *len)
 {
-    int r = 0;
+    int r;
     if (pdp < 0)
-        return r;
-    if (D_241e98.f_088338() == 5) {
-        r = sceNetAdhocPdpRecv(pdp, from, port, buf, len, 0, 1);
-        switch (r) {
-        case (int)0x80410709:
-        case (int)0x80410715:
-            *len = 0;
-            return 0;
-        }
-        if (r < 0)
-            return r;
-        return *len;
+        return 0;
+    if (D_241e98.f_088338() != 5)
+        return 0;
+    r = sceNetAdhocPdpRecv(pdp, from, port, buf, len, 0, 1);
+    if (r == (int)0x80410715) {
+        *len = 0;
+        return 0;
     }
-    return r;
+    if (r == (int)0x80410709) {
+        *len = 0;
+        return 0;
+    }
+    if (r < 0)
+        return r;
+    return *len;
 }
 
 /* @implements 0x086908 us f_086908
