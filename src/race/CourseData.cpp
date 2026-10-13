@@ -89,7 +89,7 @@ public:
 }
 
 extern unsigned char D_24063c[];
-extern const int D_1a211c[7];
+extern const int D_1a211c[];
 
 /* The course database. */
 DB::CDataBase D_2407a8;
@@ -124,15 +124,11 @@ void f_0374f0(void)
     D_23c820.f_028f80(D_1dd6b0.f_005a38(name)->f_002acc("TexVram"), 1);
 }
 
-/* @draft 0x037568 us f_037568
+/* @implements 0x037568 us f_037568
    WHAT IT DOES: Loads the course: sets up the collision areas from the scene's road, run off
    and cross section data, the wall hits (with no wall touched yet), and hands the model,
    textures, clip, event, environment, motion, light and shade data to the map manager with
-   the course's reverse flag from the course database.
-   Remaining difference: the address of D_24063c is kept in a saved register across the
-   database lookup (retail keeps only its high half), which costs one register, so the wall
-   hit data is spilled to the stack instead of the model and texture memory data, and the
-   size D_1a211c[1] is loaded through an address register rather than as D_1a2120 directly. */
+   the course's reverse flag from the course database. */
 void f_037568(void)
 {
     char name[256];
@@ -167,7 +163,9 @@ void f_037568(void)
     void *shadePoly = D_1dd6b0.f_005a38(name)->f_002acc("ShadePoly");
     {
         Pair p = D_1dd6b0.f_0031c0();
-        memcpy(D_24063c, D_2407a8.f_0368e8("IsReverse", (char *)p.a, 0, 0), D_1a211c[1]);
+        char *c = (char *)p.a;
+        char *f = D_2407a8.f_0368e8("IsReverse", c, 0, 0);
+        memcpy(D_24063c, f, D_1a211c[1]);
     }
     D_23c820.f_029040(model, texMem, mapClip, event, envC, envD, motion, roadArea, danmen,
                       runOffArea, runOffPoly, roadPoly, wallHit, lightPoint, shadePoly,
