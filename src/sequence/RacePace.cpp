@@ -82,6 +82,24 @@ struct RandOwner {
     unsigned int seed;
 };
 
+/* @draft 0x040c90 us f_040c90
+   WHAT IT DOES: for the sequences numbered 1, 4 and 5, loads the pace package named after the
+   current sequence ("Pace_<name>").
+   Remaining difference: only the saved register numbering. Retail gives the copy size
+   (D_1a2120) s1 and the table, field name and buffer addresses s2 to s5; here the size is s5. */
+void f_040c90()
+{
+    char name[64];
+    Rec r = D_1dd6b0.m276;
+    if (r.rec) {
+        if (IsSequence(r, 1) || IsSequence(r, 4) || IsSequence(r, 5)) {
+            Rec c = D_1dd6b0.m276;
+            sprintf(name, "Pace_%s", c.rec);
+            D_1dd6b0.f_005d4c(name);
+        }
+    }
+}
+
 /* @implements 0x040dfc us f_040dfc
    WHAT IT DOES: loads the computer car pace database from the "ComCarPace" package entry. */
 void f_040dfc(int arg)
@@ -147,22 +165,4 @@ void f_040ff0()
 void f_041010()
 {
     f_040f54(0, 0xffff);
-}
-
-/* @draft 0x040c90 us f_040c90
-   WHAT IT DOES: for the sequences numbered 1, 4 and 5, loads the pace package named after the
-   current sequence ("Pace_<name>").
-   Remaining difference: only the saved register numbering. Retail gives the copy size
-   (D_1a2120) s1 and the table, field name and buffer addresses s2 to s5; here the size is s5. */
-void f_040c90()
-{
-    char name[64];
-    Rec r = D_1dd6b0.m276;
-    if (r.rec) {
-        if (IsSequence(r, 1) || IsSequence(r, 4) || IsSequence(r, 5)) {
-            Rec c = D_1dd6b0.m276;
-            sprintf(name, "Pace_%s", c.rec);
-            D_1dd6b0.f_005d4c(name);
-        }
-    }
 }
