@@ -5,6 +5,15 @@ struct Mat34 {
     float m[3][4];
 };
 
+struct Mat44 {
+    float m[4][4];
+};
+
+/* The vector unit's 4x4 matrix (quadword aligned). */
+struct VMatrix {
+    float m[4][4];
+} __attribute__((aligned(16)));
+
 struct Vec3 {
     float v[3];
     Vec3 &f_09d9c8(const Mat33 &m, const Vec3 &a);
@@ -21,6 +30,9 @@ struct Mat33 {
           float m22);
     Mat33(const Vec3 &r0, const Vec3 &r1, const Vec3 &r2);
     Mat33(const Mat34 &s);
+    Mat33(const Mat44 &s);
+    Mat33(const Mat33 &s);
+    Mat33(const VMatrix &s);
     Mat33 &f_09da88();
     float f_09dc9c() const;
     Mat33 &f_09df00();
@@ -181,4 +193,38 @@ Vec3 &Vec3::f_09e508(const Mat33 &m, const Vec3 &a)
     v[1] = m.m[1][0] * a.v[0] + m.m[1][1] * a.v[1] + m.m[1][2] * a.v[2];
     v[2] = m.m[2][0] * a.v[0] + m.m[2][1] * a.v[1] + m.m[2][2] * a.v[2];
     return *this;
+}
+
+/* @implements 0x09e9b0 us _ZN5Mat33C2ERK5Mat44
+   WHAT IT DOES: Builds the matrix from a 4x4 matrix's upper left 3x3, column by column. */
+/* @implements 0x09e9f4 us _ZN5Mat33C1ERK5Mat44
+   WHAT IT DOES: The same, as the complete object constructor. */
+Mat33::Mat33(const Mat44 &s)
+{
+    for (int j = 0; j < 3; j++)
+        for (int i = 0; i < 3; i++)
+            m[i][j] = s.m[i][j];
+}
+
+/* @implements 0x09ea38 us _ZN5Mat33C2ERKS_
+   WHAT IT DOES: Copies a matrix, column by column. */
+/* @implements 0x09ea78 us _ZN5Mat33C1ERKS_
+   WHAT IT DOES: The same, as the complete object constructor. */
+Mat33::Mat33(const Mat33 &s)
+{
+    for (int j = 0; j < 3; j++)
+        for (int i = 0; i < 3; i++)
+            m[i][j] = s.m[i][j];
+}
+
+/* @implements 0x09eab8 us _ZN5Mat33C2ERK7VMatrix
+   WHAT IT DOES: Builds the matrix from a vector unit matrix's upper left 3x3, column by
+   column. */
+/* @implements 0x09eafc us _ZN5Mat33C1ERK7VMatrix
+   WHAT IT DOES: The same, as the complete object constructor. */
+Mat33::Mat33(const VMatrix &s)
+{
+    for (int j = 0; j < 3; j++)
+        for (int i = 0; i < 3; i++)
+            m[i][j] = s.m[i][j];
 }
