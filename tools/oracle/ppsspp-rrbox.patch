@@ -36,6 +36,37 @@ index 944098f..c73bddb 100644
  
  	// Now, g_stackSize should be back to 0. Enable this for "pedantic mode", will find a lot of problems.
  	// Check g_stack[0] in the debugger.
+diff --git a/Core/HLE/sceIo.cpp b/Core/HLE/sceIo.cpp
+index 32f19be..57192fa 100644
+--- a/Core/HLE/sceIo.cpp
++++ b/Core/HLE/sceIo.cpp
+@@ -769,6 +769,14 @@ void __IoDoState(PointerWrap &p) {
+ 	}
+ }
+ 
++// rrbox: wait for the host I/O thread to finish every queued read and write. A large read is
++// copied into emulated RAM on that thread while other PSP threads (and frames) run on until the
++// reader is woken, so a RAM hash taken meanwhile depends on host speed. Emulated state is not
++// touched: the copy lands where and when it would anyway.
++void __IoSyncHostThread() {
++	ioManager.SyncThread();
++}
++
+ void __IoShutdown() {
+ 	ioManagerThreadEnabled = false;
+ 	ioManager.SyncThread();
+diff --git a/Core/HLE/sceIo.h b/Core/HLE/sceIo.h
+index 9a30051..7c3f281 100644
+--- a/Core/HLE/sceIo.h
++++ b/Core/HLE/sceIo.h
+@@ -23,6 +23,7 @@ class KernelObject;
+ void __IoInit();
+ void __IoDoState(PointerWrap &p);
+ void __IoShutdown();
++void __IoSyncHostThread();
+ void __IoVblank();
+ 
+ struct ScePspDateTime;
 diff --git a/Core/HLE/sceKernelTime.cpp b/Core/HLE/sceKernelTime.cpp
 index a15c981..f001ebf 100644
 --- a/Core/HLE/sceKernelTime.cpp
@@ -299,10 +330,18 @@ index 0000000..f217fee
 +void OnWrite(u32 addr, u64 value, int size);
 +}
 diff --git a/headless/Headless.cpp b/headless/Headless.cpp
-index 293878d..7219acb 100644
+index 293878d..7e8106a 100644
 --- a/headless/Headless.cpp
 +++ b/headless/Headless.cpp
-@@ -51,6 +51,17 @@
+@@ -42,6 +42,7 @@
+ #include "Core/CoreTiming.h"
+ #include "Core/System.h"
+ #include "Core/WebServer.h"
++#include "Core/HLE/sceIo.h"
+ #include "Core/HLE/sceUtility.h"
+ #include "Core/SaveState.h"
+ #include "GPU/GPUCommon.h"
+@@ -51,6 +52,17 @@
  
  #include "Compare.h"
  #include "HeadlessHost.h"
@@ -320,7 +359,7 @@ index 293878d..7219acb 100644
  #if defined(_WIN32)
  #include "WindowsHeadlessHost.h"
  #elif defined(SDL)
-@@ -171,6 +182,78 @@ static HeadlessHost *getHost(GPUCore gpuCore) {
+@@ -171,6 +183,111 @@ static HeadlessHost *getHost(GPUCore gpuCore) {
  	}
  }
  
@@ -360,6 +399,13 @@ index 293878d..7219acb 100644
 +	std::vector<float> score;
 +	std::vector<std::array<float, 3>> hist;  // car position at each decision
 +	int back = 6;
++	// With --rr-drive-path: progress is measured along a recorded lap instead (a closed loop of
++	// x z points), so a spin cannot turn "forward" round. The car's place on it is the nearest
++	// point of a segment within a window of the place found at the last decision.
++	std::vector<std::array<float, 2>> path;
++	std::vector<float> arc;  // arc length at each path point
++	float lap = 0;
++	int at = -1;             // the path segment the car was on at the last decision
 +};
 +static RRDrive g_drv;
 +static const u32 RR_GAS = 0x4000, RR_L = 0x80, RR_R = 0x20;  // CROSS accelerates; d-pad steers
@@ -375,6 +421,32 @@ index 293878d..7219acb 100644
 +		u32 w = Memory::Read_U32(0x08a4d3b0 + 4 * k);
 +		memcpy(&p[k], &w, 4);
 +	}
++}
++
++// Arc length (0..lap) of the point of the drive path nearest to p, searching segments from
++// 60 units behind to 150 ahead of segment `at` (all of them when at < 0); `at` is updated.
++static float RRPathPos(const float p[3], int &at) {
++	const auto &P = g_drv.path;
++	const int n = (int)P.size();
++	float best = 1e30f, pos = 0;
++	int bestJ = at;
++	for (int j = 0; j < n; j++) {
++		if (at >= 0) {
++			float rel = g_drv.arc[j] - g_drv.arc[at];
++			if (rel > g_drv.lap / 2) rel -= g_drv.lap;
++			if (rel < -g_drv.lap / 2) rel += g_drv.lap;
++			if (rel < -60.0f || rel > 150.0f)
++				continue;
++		}
++		const auto &a = P[j], &b = P[(j + 1) % n];
++		float ux = b[0] - a[0], uz = b[1] - a[1], len2 = ux * ux + uz * uz;
++		float t = len2 > 0 ? ((p[0] - a[0]) * ux + (p[2] - a[1]) * uz) / len2 : 0;
++		t = t < 0 ? 0 : (t > 1 ? 1 : t);
++		float dx = a[0] + t * ux - p[0], dz = a[1] + t * uz - p[2], d2 = dx * dx + dz * dz;
++		if (d2 < best) { best = d2; bestJ = j; pos = g_drv.arc[j] + t * sqrtf(len2); }
++	}
++	at = bestJ;
++	return pos;
 +}
 +static std::string g_rrWatch, g_rrCalls;  // A5: watched function list and the call log
 +static std::string g_rrCyclesRef;         // A5 candidate runs: retail's call log, for time-equalised lockstep
@@ -399,7 +471,7 @@ index 293878d..7219acb 100644
  struct AutoTestOptions {
  	double timeout;
  	double maxScreenshotError;
-@@ -226,6 +309,40 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -226,6 +343,40 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		draw->BeginFrame(Draw::DebugFlags::NONE);
  	}
  
@@ -440,11 +512,14 @@ index 293878d..7219acb 100644
  	bool passed = true;
  	double deadline = time_now_d() + opt.timeout;
  	coreState = coreParameter.startBreak ? CORE_STEPPING_CPU : CORE_RUNNING_CPU;
-@@ -238,6 +355,124 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -238,6 +389,136 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		if (coreState == CORE_NEXTFRAME) {
  			coreState = CORE_RUNNING_CPU;
  			headlessHost->SwapBuffers();
 +			// rrbox: end of frame rrFrame: log it, then apply the input held for the next frame.
++			// Reads in flight on the host I/O thread land first, so what is hashed, shot, dumped
++			// or snapshotted never depends on host speed.
++			__IoSyncHostThread();
 +			if (rrTrace && !g_drv.rolling) {
 +				const u8 *ram = Memory::GetPointerUnchecked(PSP_GetUserMemoryBase());
 +				u64 h;
@@ -527,9 +602,18 @@ index 293878d..7219acb 100644
 +					float p[3];
 +					RRCar(p);
 +					float dir[3], n = 0, d = 0;
++					if (!g_drv.path.empty()) {
++						const float from = RRPathPos(g_drv.p0, g_drv.at);  // where the car was at the decision
++						int at = g_drv.at;
++						d = RRPathPos(p, at) - from;
++						if (d > g_drv.lap / 2) d -= g_drv.lap;
++						if (d < -g_drv.lap / 2) d += g_drv.lap;
++						n = -1;  // scored
++					}
 +					const auto &old = g_drv.hist[g_drv.hist.size() > (size_t)g_drv.back ? g_drv.hist.size() - 1 - g_drv.back : 0];
 +					for (int k = 0; k < 3; k++) { dir[k] = g_drv.p0[k] - old[k]; n += dir[k] * dir[k]; }
-+					if (n > 1.0f) {  // moving: progress along the recent direction of travel
++					if (n < 0) {
++					} else if (n > 1.0f) {  // moving: progress along the recent direction of travel
 +						n = sqrtf(n);
 +						for (int k = 0; k < 3; k++) d += (p[k] - g_drv.p0[k]) * dir[k] / n;
 +					} else {         // standing (the start): plain distance
@@ -565,7 +649,7 @@ index 293878d..7219acb 100644
  		}
  		if (coreState == CORE_STEPPING_CPU && !coreParameter.startBreak) {
  			break;
-@@ -261,6 +496,7 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -261,6 +542,7 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  			Core_Stop();
  		}
  	}
@@ -573,7 +657,7 @@ index 293878d..7219acb 100644
  	if (gpu) {
  		gpu->EndHostFrame();
  	}
-@@ -445,6 +681,44 @@ int main(int argc, const char* argv[])
+@@ -445,6 +727,59 @@ int main(int argc, const char* argv[])
  			teamCityMode = true;
  		else if (!strncmp(argv[i], "--state=", strlen("--state=")) && strlen(argv[i]) > strlen("--state="))
  			stateToLoad = argv[i] + strlen("--state=");
@@ -611,6 +695,21 @@ index 293878d..7219acb 100644
 +			sscanf(argv[i] + 11, "%d:%1023s", &g_drv.start, out);
 +			g_drv.out = out;
 +		}
++		else if (!strncmp(argv[i], "--rr-drive-path=", 16)) {
++			if (FILE *f = fopen(argv[i] + 16, "r")) {
++				float x, z;
++				while (fscanf(f, "%f %f", &x, &z) == 2)
++					g_drv.path.push_back({x, z});
++				fclose(f);
++			}
++			const size_t n = g_drv.path.size();
++			for (size_t k = 0; k < n; k++) {
++				g_drv.arc.push_back(g_drv.lap);
++				const auto &a = g_drv.path[k], &b = g_drv.path[(k + 1) % n];
++				g_drv.lap += sqrtf((b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1]));
++			}
++			if (n < 3) { fprintf(stderr, "rrbox: drive path %s: fewer than 3 points\n", argv[i] + 16); return 1; }
++		}
 +		else if (!strncmp(argv[i], "--rr-drive-params=", 18))
 +			sscanf(argv[i] + 18, "%d:%d", &g_drv.step, &g_drv.horizon);
 +		else if (!strncmp(argv[i], "--rr-trace=", 11))
@@ -618,7 +717,7 @@ index 293878d..7219acb 100644
  		else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
  			return printUsage(argv[0], NULL);
  		else if (!strcmp(argv[i], "--ignore")) {
-@@ -558,6 +832,13 @@ int main(int argc, const char* argv[])
+@@ -558,6 +893,13 @@ int main(int argc, const char* argv[])
  	g_Config.internalDataDirectory.clear();
  	g_Config.bUseOldAtrac = oldAtrac;
  	g_Config.iForceEnableHLE = 0xFFFFFFFF;  // Run all modules as HLE. We don't have anything to load in this context.
@@ -632,7 +731,7 @@ index 293878d..7219acb 100644
  
  	// g_Config.bUseOldAtrac = true;
  
-@@ -572,6 +853,11 @@ int main(int argc, const char* argv[])
+@@ -572,6 +914,11 @@ int main(int argc, const char* argv[])
  #elif !PPSSPP_PLATFORM(ANDROID)
  	g_Config.memStickDirectory = Path(std::string(getenv("HOME"))) / ".ppsspp";
  #endif

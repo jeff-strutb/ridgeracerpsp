@@ -6,7 +6,7 @@ The oracle runs the original game, or a candidate built from this tree, and reco
 
 ## Determinism
 
-Two runs of the same executable and script must be identical. Measured 2026-10-12: ten one-minute runs of retail had identical traces, and all 3,600 frame hashes were distinct, so the game state really changes.
+Two runs of the same executable and script must be identical. Measured 2026-10-12: ten one-minute runs of retail had identical traces, and all 3,600 frame hashes were distinct, so the game state really changes. Measured again 2026-10-13 after the I/O drain: 16 runs started together on a fully loaded host had identical traces.
 
 What it takes:
 
@@ -16,7 +16,8 @@ What it takes:
 | `RRBOX_EPOCH` and `TZ=UTC` | They fix both wall-clock sources: the kernel start time and the RTC base. |
 | 32 MB launch hardware | The headless default is a Slim with 64 MB, and the memory size changes the game's heap. |
 | Wi-Fi off | Removes network-dependent behaviour. |
-| SAS mixing on the emulation thread; `IOTIMING_FAST` | Nothing waits on host thread timing. |
+| SAS mixing on the emulation thread; `IOTIMING_FAST` | Emulated time, not host time, decides when sound is mixed and when I/O completes. |
+| The host I/O thread is drained at every frame end | Every file read by a PSP thread is copied into emulated RAM on PPSSPP's I/O thread, while the reading PSP thread waits `size/100` µs of emulated time and other threads, and frames, run on. Ridge Racer's 311 KB read of `RRP.DAT` at tick 25,693,114 spans the frame 6 boundary. On an idle host the copy finished before the frame's RAM hash; on a loaded or cold host it did not, and frames 6, 41, 47 and 4,782 to 4,808 hashed differently (6 of 16 runs under load). rrbox now waits for the I/O thread before hashing, shooting, dumping or snapshotting a frame. Emulated state is untouched: with a 40 ms delay forced on every host read, traces match a normal run on every frame, and 16 runs under load all agree. |
 | An empty memory stick inside the repo for every run (`RRBOX_MEMSTICK`) | PPSSPP's default memory stick is the host's `~/.ppsspp`, which the oracle must never touch, and a save left over from an earlier run would change the game's path. |
 
 ## Booting a candidate
@@ -48,7 +49,7 @@ For each script in `scripts/`, retail and the candidate each record per frame th
 
 `--rr-peek=FILE` appends the listed memory words to every trace line, for studying game state.
 
-`--rr-drive=START:OUT` (with `--rr-drive-params=STEP:HORIZON`, default 20:80) drives the race by search from frame START. Every STEP frames rrbox snapshots the machine in memory, plays each of five options out to HORIZON frames (accelerate straight, or steer left or right for STEP frames and then straight or keep steering), and keeps the one whose car (0x08a4d3b0, x y z) gets furthest along its direction of travel over the last six decisions (about two seconds). Wall hits and spins cost distance, and turning round scores negative: with plain straight-line distance a spun car drove the course backwards. The chosen inputs are appended to OUT as ordinary script lines, so a race driven once becomes a plain script that every later run replays without search. Two details matter for the replay to match: the live button state is not part of a savestate, so it is put back by hand after every restore; and the trace, frame dumps and the stop frame ignore the rollouts. A restore leaves one sound buffer (0x08d5bd80 to 0x08d5d5b8) different from a straight run, which never reaches game state; the replayed script, not the search run, is the reference.
+`--rr-drive=START:OUT` (with `--rr-drive-params=STEP:HORIZON`, default 20:80) drives the race by search from frame START. Every STEP frames rrbox snapshots the machine in memory, plays each of five options out to HORIZON frames (accelerate straight, or steer left or right for STEP frames and then straight or keep steering), and keeps the one whose car (0x08a4d3b0, x y z) gets furthest along its direction of travel over the last six decisions (about two seconds). Wall hits and spins cost distance, and turning round scores negative: with plain straight-line distance a spun car drove the course backwards. The chosen inputs are appended to OUT as ordinary script lines, so a race driven once becomes a plain script that every later run replays without search. With `--rr-drive-path=FILE` (lines of `x z`, a closed loop such as an earlier lap of the same car taken from a trace), progress is instead arc length along that path: the car's place on it is the nearest point of a segment from 60 units behind to 150 ahead of its place at the last decision. Measuring along the car's own recent direction fails after a spin: on lap 3 of Seaside the car stalled on a wall, turned round, and the driver then rewarded driving the course backwards. Two details matter for the replay to match: the live button state is not part of a savestate, so it is put back by hand after every restore; and the trace, frame dumps and the stop frame ignore the rollouts. A restore leaves one sound buffer (0x08d5bd80 to 0x08d5d5b8) different from a straight run, which never reaches game state; the replayed script, not the search run, is the reference.
 
 `tools/oracle/explore.sh SCRIPT FRAMES EVERY OUTDIR [FIRST]` saves the emulated PSP's displayed frame every N frames and tiles them into a sheet (`sheet.py`). This is how scripts are written. These are the emulator's own output frames, never a capture of the host's screen.
 
@@ -115,6 +116,5 @@ A `@draft` is **T3** when its `config/us/t3_live.csv` row says PASS with full co
 
 - Driving the power-resume and shutdown paths, which still show as uncovered.
 - Display-list and audio comparison.
-- A steering driver. Notes so far are in `docs/decomp/RAM-NOTES.md`.
 - Scripts that finish laps and reach the other modes.
 - Per-instruction coverage.
