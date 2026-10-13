@@ -161,7 +161,7 @@ public:
         Code k;
         if (c->m52 != 0) {
             k = huff.f_0440e0(0, c->m52 - 1);
-            k.Align();
+            k.bits <<= 16 - k.len;
             f_0443e0(ch, k);
             c->m52 = 0;
         }
