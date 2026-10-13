@@ -88,6 +88,20 @@ static inline Vec4 operator+(const Vec4 &p, const Vec4 &v)
     return r;
 }
 
+/* Four bytes copied as one block. */
+struct Bytes4 {
+    char b[4];
+};
+
+/* Writes the sum of n words as four bytes. */
+static inline void PutSum(char *d, const int *w, unsigned int n)
+{
+    int sum = 0;
+    for (unsigned int i = 0; i < 6; i++)
+        sum += w[i];
+    *(Bytes4 *)d = *(Bytes4 *)&sum;
+}
+
 /* The parts of a race car read and written here. */
 struct CCar {
     char m0[144];
@@ -161,12 +175,12 @@ class CNetRacePacket {
 public:
     void f_083edc(int t);
     int f_083f1c(int *a, int *b, int *c);
-    void f_083fa8(unsigned int ch, CarState *car, void *b);
-    int f_084048(unsigned int ch, CarState *car, void *b);
+    void f_083fa8(unsigned int ch, CarState *car, char *b);
+    int f_084048(unsigned int ch, CarState *car, char *b);
     void f_0840f4(CStartingGridManager *g);
     int f_084150(CStartingGridManager *g);
-    void f_0841e0(CarState *car, void *b, char *out);
-    int f_084580(char *in, CarState *car, void *b);
+    void f_0841e0(CarState *st, char *id, char *out);
+    int f_084580(char *in, CarState *car, char *b);
     int f_084968(CStartingGridManager *g, char *out);
     void f_084988(char *in, CStartingGridManager *g);
 };
@@ -203,7 +217,7 @@ int CNetRacePacket::f_083f1c(int *a, int *b, int *c)
 
 /* @implements 0x083fa8 us f_083fa8
    WHAT IT DOES: Packs a car's state and broadcasts it on channel ch (0 to 7). */
-void CNetRacePacket::f_083fa8(unsigned int ch, CarState *car, void *b)
+void CNetRacePacket::f_083fa8(unsigned int ch, CarState *car, char *b)
 {
     Packet pkt;
     PacketInfo info;
@@ -218,7 +232,7 @@ void CNetRacePacket::f_083fa8(unsigned int ch, CarState *car, void *b)
 /* @implements 0x084048 us f_084048
    WHAT IT DOES: Unpacks the newest car state received on channel ch. Returns the unpack's
    result (0 when the checksum agrees), or -1 when there is no packet. */
-int CNetRacePacket::f_084048(unsigned int ch, CarState *car, void *b)
+int CNetRacePacket::f_084048(unsigned int ch, CarState *car, char *b)
 {
     PacketInfo info;
     struct {
@@ -261,6 +275,66 @@ int CNetRacePacket::f_084150(CStartingGridManager *g)
         return -1;
     f_084988(rec.d, g);
     return r;
+}
+
+/* @draft 0x0841e0 us f_0841e0
+   WHAT IT DOES: Packs a car state into a 28-byte packet: the sender id (4 bytes); the
+   position (x and z offset by 2^21 in 22 bits each, y offset by 120000 and halved in 18
+   bits) with two flags (8 bytes); the velocity (x and z times 16 offset by 32768 in 16 bits,
+   y times 16 offset by 2048 in 12 bits) with four flags (6 bytes); the orientation as three
+   16-bit angles (6 bytes); and the sum of the first 24 bytes as words (4 bytes).
+   Remaining differences: retail keeps the 2^21 constant's high half in a1 and the first
+   flag pair in a0 (this source swaps them), and its checksum loop compares against 6 held
+   in a register (li t2,6 / sltu) where this source gets sltiu; a local, an inline helper's
+   parameter and a reassigned variable for the bound all fold to the immediate. */
+void CNetRacePacket::f_0841e0(CarState *st, char *id, char *out)
+{
+    char *p = out;
+    *(Bytes4 *)p = *(Bytes4 *)id;
+    p += 4;
+    int fl = (st->m36 << 1) | st->m37;
+    unsigned int x = (unsigned int)(st->pos.x + 2097152.0f);
+    unsigned int z = (unsigned int)(st->pos.z + 2097152.0f);
+    unsigned int y = (unsigned int)((st->pos.y + 120000.0f) * 0.5f);
+    p[0] = x;
+    p[1] = x >> 8;
+    p[2] = ((x >> 16) & 0x3f) | ((z & 3) << 6);
+    p[3] = z >> 2;
+    p[4] = z >> 10;
+    p[5] = ((z >> 18) & 0xf) | ((y & 0xf) << 4);
+    p[6] = y >> 4;
+    p[7] = ((y >> 12) & 0x3f) | ((fl & 3) << 6);
+
+    p = out + 12;
+    fl = (st->m38 << 3) | (st->m39 << 2) | (st->m40 << 1) | st->m41;
+    unsigned int vx = (unsigned int)(st->vel.x * 16.0f + 32768.0f);
+    unsigned int vz = (unsigned int)(st->vel.z * 16.0f + 32768.0f);
+    unsigned int vy = (unsigned int)(st->vel.y * 16.0f + 2048.0f);
+    p[0] = vx;
+    p[1] = vx >> 8;
+    p[2] = vz;
+    p[3] = vz >> 8;
+    p[4] = vy;
+    p[5] = ((vy & 0xf00) >> 8) | ((fl & 0xf) << 4);
+
+    p = out + 18;
+    float a[3];
+    f_09b070(a, &st->rot, 4);
+    unsigned int ax = (short)(a[0] * 10430.378f);
+    unsigned int ay = (short)(a[1] * 10430.378f);
+    unsigned int az = (short)(a[2] * 10430.378f);
+    p[0] = ax;
+    p[1] = ax >> 8;
+    p[2] = ay;
+    p[3] = ay >> 8;
+    p[4] = az;
+    p[5] = az >> 8;
+
+    p = out + 24;
+    int sum = 0;
+    for (unsigned int i = 0; i < 6; i++)
+        sum += ((int *)out)[i];
+    *(Bytes4 *)p = *(Bytes4 *)&sum;
 }
 
 /* @implements 0x084968 us f_084968
