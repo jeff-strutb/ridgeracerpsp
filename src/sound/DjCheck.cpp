@@ -168,7 +168,7 @@ void CDjCheck::f_08e0b4()
     carWait = 0;
 }
 
-/* @draft 0x08e160 us f_08e160
+/* @implements 0x08e160 us f_08e160
    WHAT IT DOES: Wall hits. While the wait timer runs it only counts down. When the player's
    car has hit a wall, the timer restarts at 10 frames, the hit angle is folded into -pi/2 to
    pi/2 and turned into a pan, and the damage picks the sound: a light knock under 0.8, a
@@ -194,16 +194,31 @@ void CDjCheck::f_08e160()
         D_242c18 = pan;
         D_242c1c = f_08efc8()->m1900;
         if (D_242c1c < lo)
-            f_08f234(0, D_2407fc->m20 == 0 ? 0.9f : 1.0f, pan, 0.0f, &h);
+            {
+                float v = 0.9f;
+                if (D_2407fc->m20)
+                    v = 1.0f;
+                f_08f234(0, v, pan, 0.0f, &h);
+            }
         if (lo < D_242c1c && D_242c1c < hi)
-            f_08f234(0, D_2407fc->m20 == 0 ? 1.2f : 1.0f, pan, 0.0f, &h);
+            {
+                float v = 1.2f;
+                if (D_2407fc->m20)
+                    v = 1.0f;
+                f_08f234(0, v, pan, 0.0f, &h);
+            }
         if (hi <= D_242c1c)
-            f_08f234(1, D_2407fc->m20 == 0 ? 1.5f : 1.0f, pan, 0.0f, &h);
+            {
+                float v = 1.5f;
+                if (D_2407fc->m20)
+                    v = 1.0f;
+                f_08f234(1, v, pan, 0.0f, &h);
+            }
     }
     f_02db68(D_24517c, 0x800000, 1, 15, 0xffffff, "WallHitDamage = %f", D_242c1c);
 }
 
-/* @draft 0x08e388 us f_08e388
+/* @implements 0x08e388 us f_08e388
    WHAT IT DOES: Car hits, like the wall hits: a 10-frame wait, the hit angle as the pan, and
    the damage picking the volume (0.5 to 1.5, 1.5 to 3.0, from 3.0). Shows the damage. */
 void CDjCheck::f_08e388()
@@ -228,11 +243,26 @@ void CDjCheck::f_08e388()
         D_242c20 = pan;
         D_242c24 = f_08efc8()->m1964;
         if (lo < D_242c24 && D_242c24 < mid)
-            f_08f234(2, D_2407fc->m20 == 0 ? 0.9f : 1.0f, pan, 0.0f, &h);
+            {
+                float v = 0.9f;
+                if (D_2407fc->m20)
+                    v = 1.0f;
+                f_08f234(2, v, pan, 0.0f, &h);
+            }
         if (mid < D_242c24 && D_242c24 < hi)
-            f_08f234(2, D_2407fc->m20 == 0 ? 1.2f : 1.0f, pan, 0.0f, &h);
+            {
+                float v = 1.2f;
+                if (D_2407fc->m20)
+                    v = 1.0f;
+                f_08f234(2, v, pan, 0.0f, &h);
+            }
         if (hi <= D_242c24)
-            f_08f234(2, D_2407fc->m20 == 0 ? 1.5f : 1.0f, pan, 0.0f, &h);
+            {
+                float v = 1.5f;
+                if (D_2407fc->m20)
+                    v = 1.0f;
+                f_08f234(2, v, pan, 0.0f, &h);
+            }
     }
     f_02db68(D_24517c, 0x800000, 1, 16, 0xffffff, "CarHitDamage = %f", D_242c24);
 }
@@ -301,7 +331,7 @@ void CDjCheck::f_08e7a8()
     }
 }
 
-/* @draft 0x08e97c us f_08e97c
+/* @implements 0x08e97c us f_08e97c
    WHAT IT DOES: The drift squeal: starts it once when the player's car starts drifting
    (state 1), and forgets it when the car is not drifting (state 0 or 3). */
 void CDjCheck::f_08e97c()
@@ -312,8 +342,102 @@ void CDjCheck::f_08e97c()
         m144 = 0;
     int s = f_08efc8()->m2108;
     if (s == 1 && m144 == 0) {
-        f_08f234(5, D_2407fc->m20 == 0 ? 1.2f : 1.0f, 0.0f, 0.0f, &D_242c28);
+        float v = 1.2f;
+        if (D_2407fc->m20)
+            v = 1.0f;
+        f_08f234(5, v, 0.0f, 0.0f, &D_242c28);
         m144 = s;
+    }
+}
+
+/* A course object as the ambient sounds read it: its position and velocity. */
+struct CCourseObj {
+    int m0[8];
+    Vec3 pos;
+    int m44;
+    Vec3 vel;
+};
+
+/* @draft 0x08ea3c us f_08ea3c
+   WHAT IT DOES: The course's four ambient sounds (helicopter, jet, fireworks, plane). For
+   each one whose object exists: a free voice starts the sound at the object (the fireworks
+   at a fixed spot), louder for the fireworks, unless the system is busy; a playing one is
+   moved with the object, or stopped while the system is busy. When the object is gone a
+   free voice is stopped. Each step is shown on screen. */
+void CDjCheck::f_08ea3c()
+{
+    for (int i = 0; i < 4; i++) {
+        CCourseObj *o = (CCourseObj *)f_0e7718(D_27eac0, i);
+        if (o) {
+            f_10c86c(&ambient[i]);
+            Vec3 pos;
+            Vec3 vel;
+            pos.x = o->pos.x;
+            pos.y = o->pos.y;
+            pos.z = o->pos.z;
+            vel.x = o->vel.x;
+            vel.y = o->vel.y;
+            vel.z = o->vel.z;
+            if (f_08f54c(&ambient[i]) == 1) {
+                if (!D_1d88a0->m11 && !D_1d88a0->m12) {
+                    if (i == 0) {
+                        f_08f360(10, pos, vel, 1.2f, 0.0f, 0.0f, &ambient[0]);
+                    } else if (i == 1) {
+                        f_08f360(11, pos, vel, 1.2f, 0.0f, 0.0f, &ambient[1]);
+                    } else if (i == 2) {
+                        pos.x = 630200.0f;
+                        pos.y = 172600.0f;
+                        pos.z = 1040600.0f;
+                        f_08f360(12, pos, vel, 5.0f, 0.0f, 0.0f, &ambient[2]);
+                    } else if (i == 3) {
+                        f_08f360(13, pos, vel, 1.2f, 0.0f, 0.0f, &ambient[3]);
+                    }
+                }
+                if (i == 0) {
+                    f_02db68(D_24517c, 0x800000, 1, 10, 0xffffff, "Heli Sound KeyOn");
+                } else if (i == 1) {
+                    f_02db68(D_24517c, 0x800000, 1, 10, 0xffffff, "Jet Sound KeyOn");
+                } else if (i == 2) {
+                    f_02db68(D_24517c, 0x800000, 1, 10, 0xffffff, "Hanabi Sound KeyOn");
+                } else if (i == 3) {
+                    f_02db68(D_24517c, 0x800000, 1, 10, 0xffffff, "Cessna Sound KeyOn");
+                }
+            } else {
+                if (D_1d88a0->m11 || D_1d88a0->m12) {
+                    f_08f530(&ambient[i]);
+                } else {
+                    if (i == 2) {
+                        pos.x = 630200.0f;
+                        pos.y = 172600.0f;
+                        pos.z = 1040600.0f;
+                    }
+                    f_08f47c(pos, vel, &ambient[i]);
+                }
+                if (i == 0) {
+                    f_02db68(D_24517c, 0x800000, 1, 11, 0xffffff, "Heli Sound is On the Air");
+                } else if (i == 1) {
+                    f_02db68(D_24517c, 0x800000, 1, 12, 0xffffff, "Jet Sound is On the Air");
+                } else if (i == 2) {
+                    f_02db68(D_24517c, 0x800000, 1, 13, 0xffffff, "Hanabi Sound is On the Air");
+                } else if (i == 3) {
+                    f_02db68(D_24517c, 0x800000, 1, 14, 0xffffff, "Cessna Sound is On the Air");
+                }
+            }
+        } else if (!f_08f54c(&ambient[i])) {
+            f_08f530(&ambient[i]);
+            const char *m;
+            if (i == 0)
+                m = "Heli Sound KeyOff";
+            else if (i == 1)
+                m = "Jet Sound KeyOff";
+            else if (i == 2)
+                m = "Hanabi Sound KeyOff";
+            else if (i == 3)
+                m = "Cessna Sound KeyOff";
+            else
+                continue;
+            f_02db68(D_24517c, 0x800000, 1, 10, 0xffffff, m);
+        }
     }
 }
 
@@ -396,8 +520,10 @@ CCar *CDjCheck::f_08f048(int n)
    WHAT IT DOES: Returns the distance from the player's car to another car. */
 float CDjCheck::f_08f0a8(CCar *c)
 {
-    Vec4 p = f_08efc8()->pos;
-    Vec4 q = c->pos;
+    Vec4 *pp = &f_08efc8()->pos;
+    Vec4 *qq = &c->pos;
+    Vec4 p = *pp;
+    Vec4 q = *qq;
     Vec4 d;
     d.x = q.x - p.x;
     d.y = q.y - p.y;
