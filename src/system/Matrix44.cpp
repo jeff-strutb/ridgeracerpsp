@@ -13,6 +13,7 @@ struct Mat44 {
     Mat44 &f_09b8b8();
     Mat44 &f_09b908();
     float f_09b9f4() const;
+    Mat44 &f_09bb28(const Mat44 &a, const Mat44 &b);
 };
 
 /* @implements 0x09b7a0 us _ZN5Mat44C2Ef
@@ -120,4 +121,20 @@ float Mat44::f_09b9f4() const
         }
     }
     return d;
+}
+
+/* @draft 0x09bb28 us f_09bb28
+   WHAT IT DOES: Sets the matrix to the product b * a (row-major, column vectors) and returns
+   it, one column per pass.
+   Remaining difference: retail keeps a's row addresses as separate counters 16, 32, 48 (+4
+   per pass) added to a's base; this source steps one pointer into a (flat indexing tried). */
+Mat44 &Mat44::f_09bb28(const Mat44 &a, const Mat44 &b)
+{
+    for (int i = 0; i < 4; i++) {
+        m[0][i] = a.m[0][i] * b.m[0][0] + a.m[1][i] * b.m[0][1] + a.m[2][i] * b.m[0][2] + a.m[3][i] * b.m[0][3];
+        m[1][i] = a.m[0][i] * b.m[1][0] + a.m[1][i] * b.m[1][1] + a.m[2][i] * b.m[1][2] + a.m[3][i] * b.m[1][3];
+        m[2][i] = a.m[0][i] * b.m[2][0] + a.m[1][i] * b.m[2][1] + a.m[2][i] * b.m[2][2] + a.m[3][i] * b.m[2][3];
+        m[3][i] = a.m[0][i] * b.m[3][0] + a.m[1][i] * b.m[3][1] + a.m[2][i] * b.m[3][2] + a.m[3][i] * b.m[3][3];
+    }
+    return *this;
 }
