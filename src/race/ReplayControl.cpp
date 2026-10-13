@@ -94,9 +94,45 @@ extern float D_241450;
 extern int D_241454;
 
 struct ReplayView {
-    char m0[664];
+    float x;
+    float y;
+    float z;
+    char m12[596];
+    float rx;
+    float ry;
+    float rz;
+    char m620[44];
     int m664;
 };
+
+/* The replay's view of the player's car display at +3356. */
+struct ReplayCarView {
+    char m0[704];
+    float m704;
+    char m708[36];
+    float m744;
+};
+
+struct Matrix;
+void f_028c70(void);
+void f_02842c(void);
+void f_0284bc(float a);
+void f_0284fc(float a);
+void f_02853c(float a);
+void f_02880c(float x, float y, float z);
+void f_0287b0(void);
+void f_028d94(Matrix *m);
+void f_028ca8(void);
+void f_0ccaec(float *a);
+void f_0cc1f4(ReplayView *v, Matrix *m);
+void f_082e00(void *p);
+
+struct MainLoopJobView {
+    char m0[11];
+    unsigned char m11;
+    unsigned char m12;
+};
+extern MainLoopJobView *D_1d88a0;
 
 void f_082df8(void *p);
 
@@ -150,6 +186,14 @@ struct ReplayTrackRef {
     int off;
 };
 
+struct Replay;
+/* The replay's mode handlers: one row per replay kind, one column per state. */
+struct ReplayModes {
+    ReplayOverlay *overlay;
+    ReplayPart *m4;
+    void (Replay::*handler[2][3])();
+};
+
 struct Replay {
     char m0[3060];
     ReplayPart *cam[11];
@@ -161,7 +205,7 @@ struct Replay {
     char m3132[8];
     int mode;
     int curMode;
-    char m3148[4];
+    int m3148;
     ReplayPart *curCam;
     int m3156;
     int m3160;
@@ -183,10 +227,9 @@ struct Replay {
     int m3224;
     int m3228;
     char m3232[16];
-    ReplayOverlay *m3248;
-    ReplayPart *m3252;
-    char m3256[48];
-    char m3304[1];
+    ReplayModes modes;
+    char m3304[52];
+    ReplayCarView *m3356;
 };
 
 extern "C" void f_07ee5c(Replay *r);
@@ -285,12 +328,12 @@ extern "C" void f_07ecb8(Replay *r)
 {
     f_07ee5c(r);
     if (r->clock < r->info->length) {
-        r->m3248->m740 = 1;
+        r->modes.overlay->m740 = 1;
         r->list = 0;
         D_241450 = r->clock;
         D_241454 = 0;
         r->mode = 4;
-        r->m3248->Show();
+        r->modes.overlay->Show();
         D_1d3d40->m24 = 16;
         return;
     }
@@ -307,9 +350,9 @@ extern "C" void f_07ecb8(Replay *r)
             else
                 r->mode = 1;
         }
-        r->m3248->m740 = 0;
+        r->modes.overlay->m740 = 0;
     }
-    r->m3252->Show();
+    r->modes.m4->Show();
     D_1d3d40->m24 = 17;
 }
 
@@ -380,7 +423,7 @@ extern "C" void f_07ef10(Replay *r)
         if (lap >= r->bestLap && r->bestTime <= t) {
             r->m3216 = 1;
             r->m3228 = 0;
-            r->m3248->m752 = 0;
+            r->modes.overlay->m752 = 0;
         }
     }
     n = r->bestLap + 2;
@@ -441,8 +484,8 @@ extern "C" void f_07f0bc(Replay *r)
    the camera, steps it and marks the view for a redraw after a switch. */
 extern "C" void f_07f194(Replay *r)
 {
-    r->m3248->Show();
-    r->m3252->Show();
+    r->modes.overlay->Show();
+    r->modes.m4->Show();
     r->m3168 = 0;
     f_07f04c(r);
     if (r->m3164 == 4 && r->m3228)
@@ -467,12 +510,12 @@ extern "C" void f_07f240(Replay *r)
     f_07ef10(r);
     if (r->list == 0) {
         r->mode = 4;
-        r->m3248->m740 = 1;
+        r->modes.overlay->m740 = 1;
         r->ev = 0;
         D_1d3d40->m24 = 16;
     } else {
         r->ev = r->info->List(r->list);
-        r->m3248->m740 = 0;
+        r->modes.overlay->m740 = 0;
         D_1d3d40->m24 = 17;
     }
     f_07eca8(r);
@@ -509,7 +552,7 @@ extern "C" void f_07f3b4(Replay *r)
     f_07ef10(r);
     info = r->info;
     ev = info->List(r->list);
-    r->m3248->m740 = 0;
+    r->modes.overlay->m740 = 0;
     r->ev = ev;
     f_07eca8(r);
     if (r->m3164 == 4) {
@@ -613,4 +656,45 @@ extern "C" void f_07e568(Replay *r, ReplayTrackRef *list)
             t->d1 = t->d0;
         }
     }
+}
+
+/* @draft 0x07ea64 us f_07ea64
+   WHAT IT DOES: The replay's frame: unless the game is paused, steps the object at +3304,
+   runs the handler for the current replay kind and state, and copies the car display's
+   value at +704 to +744. Then sets up the camera transform from the view's rotation (each
+   angle normalised first) and position, and hands the resulting matrix to the view.
+   REMAINING DIFFERENCE: 4 words in the handler call. Retail forms the entry address as
+   (index * 8 + this) + 3248 at the call and reloads the delta this-relative; this build
+   keeps this + 3248 in a3 from before the index arithmetic. A direct member access folds
+   the 3248 away, an inline method on the sub-object differs more. */
+extern "C" void f_07ea64(Replay *r)
+{
+    ReplayView *v;
+    char m[64];
+    float a, b, c;
+
+    if (!D_1d88a0->m11 && !D_1d88a0->m12) {
+        f_082e00(r->m3304);
+        ReplayModes *md = &r->modes;
+        (r->*md->handler[r->m3148][r->m3188])();
+        if (r->m3356)
+            r->m3356->m744 = r->m3356->m704;
+    }
+    v = r->m3104;
+    f_028c70();
+    f_02842c();
+    a = v->ry;
+    f_0ccaec(&a);
+    f_0284fc(a);
+    b = v->rx;
+    f_0ccaec(&b);
+    f_0284bc(b);
+    c = v->rz;
+    f_0ccaec(&c);
+    f_02853c(c);
+    f_02880c(v->x, v->y, v->z);
+    f_0287b0();
+    f_028d94((Matrix *)m);
+    f_028ca8();
+    f_0cc1f4(v, (Matrix *)m);
 }
