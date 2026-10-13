@@ -37,3 +37,10 @@ addr,name,evidence
 0x095cd8,_ZN6Stream14CStreamPreLoadD1Ev,its complete object destructor (empty; byte exact in src/sound/StreamPreLoad.cpp); called before operator delete by the Stream::CStreamData destructors at 0x0957b4 and 0x095804
 0x09575c,_ZN6Stream11CStreamDataC1Ev,complete object constructor of the stream data (byte exact in src/sound/StreamData.cpp); called after new(8) by the stream manager's set up at 0x095f9c
 0x095804,_ZN6Stream11CStreamDataD1Ev,its complete object destructor (byte exact in src/sound/StreamData.cpp); called before operator delete by the stream manager's release at 0x0960cc
+0x08c528,_ZN13CMovieDisplayC1Eiii,constructor called by new in the movie player constructor at 0x08a9cc (44 byte object stored to D_242b84); byte exact in src/system/MovieDisplay.cpp
+0x08c70c,_ZN13CMovieDisplayD1Ev,destructor called before operator delete of D_242b84 in the movie player destructor at 0x08b32c; byte exact in src/system/MovieDisplay.cpp
+0x08cc44,_ZN11CAudioQueueC1Eiii,constructor called by new in the movie player constructor at 0x08a9cc (32 byte object stored to D_242b88); src/sound/AudioQueue.cpp
+0x08cd74,_ZN11CAudioQueueD1Ev,destructor called before operator delete of D_242b88 in the movie player destructor at 0x08b32c; byte exact in src/sound/AudioQueue.cpp
+0x08d0f4,_ZN11CMpegFeederC1EPv,constructor called by new in the movie player constructor at 0x08a9cc (16 byte object stored to D_242b8c); byte exact in src/system/MpegFeeder.cpp
+0x08d160,_ZN11CMpegFeederD1Ev,destructor called before operator delete of D_242b8c in the movie player destructor at 0x08b32c; byte exact in src/system/MpegFeeder.cpp
+0x164c48,__gedf2,libgcc double compare: in f_091e9c the compiler's call for a double `>=` (distance against 15.0) comes where retail calls 0x164c48 and its result is tested with bgez
