@@ -59,6 +59,35 @@ struct Rot4 {
     float x, y, z, w;
 } __attribute__((aligned(16)));
 
+/* Vector arithmetic on positions; the results are points (w = 1). */
+static inline Vec4 operator*(float t, const Vec4 &v)
+{
+    Vec4 r;
+    r.x = t * v.x;
+    r.y = t * v.y;
+    r.z = t * v.z;
+    r.w = 1.0f;
+    return r;
+}
+static inline Vec4 operator/(const Vec4 &v, float d)
+{
+    Vec4 r;
+    r.x = v.x / d;
+    r.y = v.y / d;
+    r.z = v.z / d;
+    r.w = 1.0f;
+    return r;
+}
+static inline Vec4 operator+(const Vec4 &p, const Vec4 &v)
+{
+    Vec4 r;
+    r.x = p.x + v.x;
+    r.y = p.y + v.y;
+    r.z = p.z + v.z;
+    r.w = 1.0f;
+    return r;
+}
+
 /* The parts of a race car read and written here. */
 struct CCar {
     char m0[144];
@@ -111,6 +140,16 @@ struct CarState {
         p = pos;
         r = rot;
         v = vel;
+    }
+    /* A point one velocity step on from p. */
+    Vec4 Step(const Vec4 &p)
+    {
+        Vec4 r;
+        r.x = p.x + vel.x;
+        r.y = p.y + vel.y;
+        r.z = p.z + vel.z;
+        r.w = 1.0f;
+        return r;
     }
     void f_0849a4(CCar *car);
     void f_084ad0(CCar *car);
@@ -301,4 +340,26 @@ void CarState::f_084ad0(CCar *car)
         car->m2120 = 1;
     else
         car->m2120 = 0;
+}
+
+/* @implements 0x084bd8 us f_084bd8
+   WHAT IT DOES: Moves the state's position ahead by the velocity over n frames (the velocity
+   is per 16 units of time, 50 frames to the unit; a negative n counts as 0), and clears the
+   frame counter. */
+void CarState::f_084bd8(int n)
+{
+    if (n < 0)
+        n = 0;
+    float t = n / 50.0f;
+    m32 = 0;
+    Vec4 p;
+    p = pos + t * vel / 16.0f;
+    pos = p;
+}
+
+/* @implements 0x084c88 us f_084c88
+   WHAT IT DOES: Moves the state's position on by one step of its velocity. */
+void CarState::f_084c88()
+{
+    pos = Step(pos);
 }
