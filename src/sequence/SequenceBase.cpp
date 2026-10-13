@@ -170,6 +170,40 @@ struct View {
     char m620[36];
     int m656;
     char m660[92];
+
+    void SetFov(float f)
+    {
+        fov = f;
+        cot = 1.0f / f_0cd3cc(f);
+    }
+    View()
+    {
+        int w = 480;
+        count = 1;
+        m0 = 0;
+        m4 = 0;
+        m8 = 0;
+        SetFov(0.523598f);
+        aspect = 1.76471f;
+        width = count * w;
+        zNear = 300.0f;
+        zFar = 2000000.0f;
+        m528 = 1400.0f;
+        m532 = 1400.0f;
+        m512 = 2048;
+        m516 = 2048;
+        height = 272;
+        cx = 240.0f;
+        cy = 136.0f;
+        SetFov(0.523598f);
+        zNear = 300.0f;
+        zFar = 3000000.0f;
+        SetFov(0.523598f);
+        m608 = 0;
+        m612 = 0;
+        m616 = 0;
+        m656 = 0;
+    }
 };
 
 /* The race state (52 bytes; made and destroyed elsewhere). */
@@ -353,47 +387,20 @@ void CSequenceBase::f_03925c()
 
 /* @draft 0x0392b0 us f_0392b0
    WHAT IT DOES: Builds the two views: each full screen (480 by 272, centred), 30 degrees of
-   field of view, with its depth range. */
+   field of view, with its depth range.
+   Draft: the stores and calls follow retail; the allocation differs: the loop's -1 is hoisted
+   into fp, the 1 and 2048 swap saved registers, and the aspect's FPR depends on where its
+   constant is first used (retail's literal pool order is 1.0, aspect, 300, 2e6, 1400, 3e6,
+   the field of view, 240, 136). */
 void CSequenceBase::f_0392b0()
 {
-    View *v = new View[2];
-    int i;
-
-    for (i = 0; i < 2; i++) {
-        View *e = &v[i];
-        e->count = 1;
-        e->m0 = 0;
-        e->m4 = 0;
-        e->m8 = 0;
-        e->fov = 0.523598f;
-        e->cot = 1.0f / f_0cd3cc(0.523598f);
-        e->width = e->count * 480;
-        e->zNear = 300.0f;
-        e->zFar = 2000000.0f;
-        e->m528 = 1400.0f;
-        e->m532 = 1400.0f;
-        e->aspect = 1.76471f;
-        e->m512 = 2048;
-        e->m516 = 2048;
-        e->height = 272;
-        e->cx = 240.0f;
-        e->cy = 136.0f;
-        e->fov = 0.523598f;
-        e->cot = 1.0f / f_0cd3cc(0.523598f);
-        e->zNear = 300.0f;
-        e->zFar = 3000000.0f;
-        e->fov = 0.523598f;
-        e->cot = 1.0f / f_0cd3cc(0.523598f);
-        e->m608 = 0;
-        e->m612 = 0;
-        e->m616 = 0;
-        e->m656 = 0;
-    }
-    m36 = v;
+    m36 = new View[2];
 }
 
 /* @draft 0x039480 us f_039480
-   WHAT IT DOES: Builds the race camera and clears its state. */
+   WHAT IT DOES: Builds the race camera and clears its state.
+   Draft: retail forms the state's address (raw block + 3120) in s1 before the eyes'
+   constructor call and stores through it after; this source forms it after the call. */
 void CSequenceBase::f_039480()
 {
     m52 = new Camera[1];
