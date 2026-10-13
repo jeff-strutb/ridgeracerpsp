@@ -28,3 +28,4 @@ addr,name,evidence
 0x07f598,_ZN7CamCtrl9CCamProto5ResetEv,CamCtrl::CCamProto::Reset (slot 3 of _ZTVN7CamCtrl9CCamProtoE, byte exact in src/race/CamProto.cpp); called directly by CamCtrl::CCamTV::Reset (0x07f818 byte exact in src/race/CamTV.cpp)
 0x07f564,_ZN7CamCtrl9CCamProto3SetEPKNS_8CamParamE,CamCtrl::CCamProto::Set (slot 2 of _ZTVN7CamCtrl9CCamProtoE); called directly first by CamCtrl::CCamTV::Set (0x07f600)
 0x0970cc,_ZN8CEnvToneC1Ev,complete object constructor of the 8-byte tone record allocated by the CEnviron constructors (0x096e18/0x096e84) right after operator new; byte exact in src/sound/EnvTone.cpp
+0x0970cc,_ZN8CEnvToneC1Ev,complete object constructor of the 8-byte tone record allocated by the CEnviron constructors (0x096e18/0x096e84) right after operator new; byte exact in src/sound/EnvTone.cpp
