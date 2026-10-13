@@ -157,7 +157,11 @@ static inline int Sequence(int mode)
    WHAT IT DOES: Sets the controller up for a race: clears it, keeps the race mode and course
    and the random seed, reads the mode's car flags and sequence number from the game database
    and builds the cars the sequence needs (logging an error for an unknown sequence), then
-   sorts the cars. */
+   sorts the cars.
+   Draft: only the allocation of two saved registers differs: retail keeps the list argument in
+   s7 and the high half of "SequenceNumber" in s6, this source the reverse (the list has 4
+   references to the string's 3; case orders, store orders and the error path's spelling do not
+   change it). */
 void CCarJobCtrlPSP::f_03a51c(CarSetup *s, int seed, CarList *l)
 {
     f_03b614();
