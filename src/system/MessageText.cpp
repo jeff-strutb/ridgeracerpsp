@@ -27,11 +27,18 @@ struct MsgHdr {
     MsgFontEnt font[1];
 };
 
-/* One font's tables, resolved to addresses. */
+/* One entry of a font's character to glyph map. */
+struct MsgMap {
+    unsigned short code;
+    unsigned short glyph;
+};
+
+/* One font's tables, resolved to addresses: two character to glyph maps and a third
+   table. */
 struct MsgFont {
     char *m0;
-    char *m4;
-    char *m8;
+    MsgMap *map16;
+    MsgMap *map8;
 };
 
 /* One message id and its string's offset (in glyph codes). */
@@ -112,8 +119,8 @@ extern "C" int f_07d76c(CMessageText *m, MsgHdr *h)
     ids = h->ids;
     for (i = 0; i < m->nfont; i++) {
         m->font[i].m0 = (char *)m->hdr + m->fontEnt[i].m4;
-        m->font[i].m4 = (char *)m->hdr + m->fontEnt[i].m8;
-        m->font[i].m8 = (char *)m->hdr + m->fontEnt[i].m12;
+        m->font[i].map16 = (MsgMap *)((char *)m->hdr + m->fontEnt[i].m8);
+        m->font[i].map8 = (MsgMap *)((char *)m->hdr + m->fontEnt[i].m12);
     }
     m->ids = (MsgId *)((char *)m->hdr + ids);
     m->strs = (short *)(m->ids + m->nmsg);
@@ -166,4 +173,135 @@ extern "C" void f_07d89c(CMessageText *m, int slot, const char *s, int unused)
         d++;
     }
     *d = 0;
+}
+
+/* @draft 0x07d948 us f_07d948
+   WHAT IT DOES: Sets an argument slot to a Shift-JIS string converted to a font's glyph codes.
+   Lead bytes 0x81 to 0x9f and 0xe0 to 0xef take the next byte with them; each character code
+   is looked up in the font's map and characters not in it are dropped. Does nothing when no
+   message file is attached.
+   REMAINING DIFFERENCE: 3 words at the loop's back edge. Retail tests the reloaded byte in
+   v0 and copies it to t0 in the branch slot; this build tests t0 directly and fills the slot
+   from the loop head. Unsigned char, int and short variables and four loop shapes tried. */
+extern "C" void f_07d948(CMessageText *m, int slot, const unsigned char *s, int font)
+{
+    short *d;
+    MsgFontEnt *e;
+    MsgFont *f;
+    int c;
+    int code;
+    MsgMap *map;
+    int k;
+
+    if (m->hdr == 0)
+        return;
+    d = m->arg[slot].text;
+    f = &m->font[font];
+    e = &m->fontEnt[font];
+    while ((c = *s) != 0) {
+        if ((unsigned char)(c - 0x81) < 31 | (unsigned char)(c - 0xe0) < 16) {
+            code = s[0] | (s[1] << 8);
+            s += 2;
+        } else {
+            code = c;
+            s++;
+        }
+        for (k = 0, map = f->map8; k < e->m20; k++) {
+            if (map->code == code) {
+                *d++ = map->glyph;
+                break;
+            }
+            map++;
+        }
+    }
+    *d = 0;
+}
+
+/* @implements 0x07da28 us f_07da28
+   WHAT IT DOES: Sets an argument slot to a string of 16-bit character codes converted to a
+   font's glyph codes through its second map; characters not in the map are dropped. Does
+   nothing when no message file is attached. */
+extern "C" void f_07da28(CMessageText *m, int slot, const unsigned short *s, int font)
+{
+    short *d;
+    MsgFontEnt *e;
+    MsgFont *f;
+    MsgMap *map;
+    unsigned short c;
+    int k;
+
+    if (m->hdr == 0)
+        return;
+    d = m->arg[slot].text;
+    f = &m->font[font];
+    e = &m->fontEnt[font];
+    c = *s;
+    while (c) {
+        for (k = 0, map = f->map16; k < e->m16; k++) {
+            if (map->code == (short)c) {
+                *d++ = map->glyph;
+                break;
+            }
+            map++;
+        }
+        s++;
+        c = *s;
+    }
+    *d = 0;
+}
+
+/* @implements 0x07de74 us f_07de74
+   WHAT IT DOES: Returns the first glyph code of a message (its font number), or -1 when the
+   id is unknown. */
+extern "C" int f_07de74(CMessageText *m, int id)
+{
+    short *p = f_07deec(m, id);
+    int r = -1;
+    if (p)
+        r = *p;
+    return r;
+}
+
+/* @implements 0x07dea0 us f_07dea0
+   WHAT IT DOES: Centres a run of laid out glyphs: moves them right by half the spare width. */
+extern "C" void f_07dea0(CMessageText *m, MsgGlyph *g, int n, int dx)
+{
+    f_07dec4(m, g, n, dx / 2);
+}
+
+/* @implements 0x07dec4 us f_07dec4
+   WHAT IT DOES: Moves a run of laid out glyphs right by a distance. */
+extern "C" void f_07dec4(CMessageText *m, MsgGlyph *g, int n, int dx)
+{
+    int i;
+
+    for (i = 0; i < n; i++)
+        g[i].x += dx;
+}
+
+/* @implements 0x07deec us f_07deec
+   WHAT IT DOES: Finds a message by id and returns its string, or the shared empty string when
+   the id is unknown. */
+extern "C" short *f_07deec(CMessageText *m, int id)
+{
+    int i;
+
+    for (i = 0; i < m->nmsg; i++) {
+        if (m->ids[i].id == id)
+            return &m->strs[m->ids[i].off];
+    }
+    return D_1d3a3c;
+}
+
+/* @implements 0x07df34 us f_07df34
+   WHAT IT DOES: Returns 1 when a message with the id exists, 0 otherwise. */
+extern "C" int f_07df34(CMessageText *m, int id)
+{
+    int i;
+
+    for (i = 0; i < m->nmsg; i++) {
+        if (m->ids[i].id == id)
+            return 1;
+    }
+    return 0;
 }
