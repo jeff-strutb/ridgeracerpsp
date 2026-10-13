@@ -119,7 +119,8 @@ public:
     int Trig(int mask) { return trig & mask; }
     int Repeat(int mask) { return repeat & mask; }
 
-    unsigned char sel[2][7];
+    unsigned char sel[1][7];
+    unsigned char tmp[7];
 };
 }
 
@@ -142,7 +143,7 @@ void CCustomController::f_041d34(int port, unsigned char a, unsigned char b)
         for (int j = 0; j < 7; j++)
             sel[i][j] = 0;
     for (int j = 0; j < 7; j++)
-        sel[1][j] = 0;
+        tmp[j] = 0;
     sel[0][0] = 0;
     sel[0][1] = 0;
     sel[0][2] = 0;
@@ -152,26 +153,26 @@ void CCustomController::f_041d34(int port, unsigned char a, unsigned char b)
     sel[0][6] = 0;
 }
 
-/* @draft 0x042640 us f_042640
+/* @implements 0x042640 us f_042640
    WHAT IT DOES: Steps action i's pending assignment to the next one. Returns 1 when it is
    already the last. */
 int CCustomController::f_042640(int i)
 {
-    if (sel[1][i] < f_043b2c(i) - 1) {
-        sel[1][i]++;
+    if (tmp[i] < f_043b2c(i) - 1) {
+        tmp[i]++;
         return 0;
     }
     return 1;
 }
 
-/* @draft 0x042698 us f_042698
+/* @implements 0x042698 us f_042698
    WHAT IT DOES: Steps action i's pending assignment to the previous one. Returns 1 when it is
    already the first. */
 int CCustomController::f_042698(int i)
 {
-    if (sel[1][i] == 0)
+    if (tmp[i] == 0)
         return 1;
-    sel[1][i]--;
+    tmp[i]--;
     return 0;
 }
 
@@ -183,7 +184,7 @@ void CCustomController::f_0426c0()
     if (Mode() > 0)
         return;
     for (int j = 0; j < 7; j++)
-        sel[1][j] = sel[m5][j];
+        tmp[j] = sel[m5][j];
 }
 
 /* @implements 0x042730 us f_042730
@@ -193,7 +194,7 @@ void CCustomController::f_042730()
     if (Mode() > 0)
         return;
     for (int j = 0; j < 7; j++)
-        sel[m5][j] = sel[1][j];
+        sel[m5][j] = tmp[j];
 }
 
 /* @implements 0x0427a0 us f_0427a0
@@ -202,7 +203,7 @@ void CCustomController::f_042730()
 void CCustomController::f_0427a0()
 {
     for (int j = 0; j < 7; j++)
-        sel[1][j] = 0;
+        tmp[j] = 0;
     if (Mode() != 0)
         return;
     f_042924(0, 0);
@@ -226,34 +227,34 @@ int CCustomController::f_042888(int i)
     return -1;
 }
 
-/* @draft 0x0428c0 us f_0428c0
+/* @implements 0x0428c0 us f_0428c0
    WHAT IT DOES: Chooses assignment v for action i of the given mode's layout, if the action
    offers it. */
 void CCustomController::f_0428c0(int mode, int i, int v)
 {
     if (mode > 0)
         return;
-    Action *a = D_1d5d70[mode];
     if ((unsigned int)i < 8) {
-        if (v < a[i].count && v >= 0)
+        if (v < D_1d5d70[mode][i].count && v >= 0)
             sel[mode][i] = v;
     }
 }
 
-/* @draft 0x042924 us f_042924
+/* @implements 0x042924 us f_042924
    WHAT IT DOES: Sets action i's pending assignment to v if the action offers it. Returns 0 when
    set, 1 otherwise. */
 int CCustomController::f_042924(int i, int v)
 {
     if (Mode() > 0)
         return 1;
-    if ((unsigned int)i < 8) {
-        if (v < f_043b2c(i) && v >= 0) {
-            sel[1][i] = v;
-            return 0;
-        }
-    }
-    return 1;
+    if ((unsigned int)i >= 8)
+        return 1;
+    if (v >= f_043b2c(i))
+        return 1;
+    if (v < 0)
+        return 1;
+    tmp[i] = v;
+    return 0;
 }
 
 /* @implements 0x0429c4 us f_0429c4
@@ -538,17 +539,18 @@ int CCustomController::f_0434f0()
     return r;
 }
 
-/* @draft 0x043548 us f_043548
+/* @implements 0x043548 us f_043548
    WHAT IT DOES: 1 while a pos button is held, else -1 while a neg button is held, else 0. */
 int CCustomController::f_043548(int neg, int pos)
 {
-    int n = held & neg;
     if (held & pos)
         return 1;
-    return n ? -1 : 0;
+    if (held & neg)
+        return -1;
+    return 0;
 }
 
-/* @draft 0x04356c us f_04356c
+/* @implements 0x04356c us f_04356c
    WHAT IT DOES: The direction held on action i: for button kinds 1, -1 or 0 from its two
    buttons; otherwise the difference of the two analog levels. */
 int CCustomController::f_04356c(int i)
@@ -556,7 +558,9 @@ int CCustomController::f_04356c(int i)
     if (f_043a0c(i) < 2) {
         if (held & f_043bd0(i))
             return 1;
-        return (held & f_043b6c(i)) ? -1 : 0;
+        if (held & f_043b6c(i))
+            return -1;
+        return 0;
     }
     int v = level[f_043bd0(i)];
     v -= level[f_043b6c(i)];
@@ -572,28 +576,33 @@ int CCustomController::f_04361c(int i)
     return (held & Mask(f_043b6c(i))) != 0;
 }
 
-/* @draft 0x0436ac us f_0436ac
+/* @implements 0x0436ac us f_0436ac
    WHAT IT DOES: 1 when a pos button was just pressed, else -1 for a neg button, else 0. */
 int CCustomController::f_0436ac(int neg, int pos)
 {
-    int n = trig & neg;
     if (trig & pos)
         return 1;
-    return n ? -1 : 0;
+    if (trig & neg)
+        return -1;
+    return 0;
 }
 
-/* @draft 0x0436d0 us f_0436d0
+/* @implements 0x0436d0 us f_0436d0
    WHAT IT DOES: The direction just pressed on action i. */
 int CCustomController::f_0436d0(int i)
 {
     if (f_043a0c(i) < 2) {
         if (trig & f_043bd0(i))
             return 1;
-        return (trig & f_043b6c(i)) ? -1 : 0;
+        if (trig & f_043b6c(i))
+            return -1;
+        return 0;
     }
     if (trig & Mask(f_043bd0(i)))
         return 1;
-    return (trig & Mask(f_043b6c(i))) ? -1 : 0;
+    if (trig & Mask(f_043b6c(i)))
+        return -1;
+    return 0;
 }
 
 /* @implements 0x0437cc us f_0437cc
@@ -605,28 +614,33 @@ int CCustomController::f_0437cc(int i)
     return (trig & Mask(f_043b6c(i))) != 0;
 }
 
-/* @draft 0x04385c us f_04385c
+/* @implements 0x04385c us f_04385c
    WHAT IT DOES: 1 when a pos button repeats, else -1 for a neg button, else 0. */
 int CCustomController::f_04385c(int neg, int pos)
 {
-    int n = repeat & neg;
     if (repeat & pos)
         return 1;
-    return n ? -1 : 0;
+    if (repeat & neg)
+        return -1;
+    return 0;
 }
 
-/* @draft 0x043880 us f_043880
+/* @implements 0x043880 us f_043880
    WHAT IT DOES: The direction repeating on action i. */
 int CCustomController::f_043880(int i)
 {
     if (f_043a0c(i) < 2) {
         if (repeat & f_043bd0(i))
             return 1;
-        return (repeat & f_043b6c(i)) ? -1 : 0;
+        if (repeat & f_043b6c(i))
+            return -1;
+        return 0;
     }
     if (repeat & Mask(f_043bd0(i)))
         return 1;
-    return (repeat & Mask(f_043b6c(i))) ? -1 : 0;
+    if (repeat & Mask(f_043b6c(i)))
+        return -1;
+    return 0;
 }
 
 /* @implements 0x04397c us f_04397c
@@ -646,9 +660,8 @@ int CCustomController::f_043a0c(int i)
     unsigned int k;
     if (m5 > 0)
         return 255;
-    Action *a = &D_1d5d70[m5][i];
     if (i < 7)
-        k = a->assign[f_042888(i)].kind;
+        k = D_1d5d70[m5][i].assign[f_042888(i)].kind;
     else if (i < 10)
         k = 1;
     else if (i < 18)
@@ -658,16 +671,15 @@ int CCustomController::f_043a0c(int i)
     return k & 0xf;
 }
 
-/* @draft 0x043aa0 us f_043aa0
+/* @implements 0x043aa0 us f_043aa0
    WHAT IT DOES: The kind word of action i's chosen assignment, with its flags. */
 unsigned int CCustomController::f_043aa0(int i)
 {
     unsigned int k;
     if (m5 > 0)
         return 255;
-    Action *a = &D_1d5d70[m5][i];
     if (i < 7)
-        k = a->assign[f_042888(i)].kind;
+        k = D_1d5d70[m5][i].assign[f_042888(i)].kind;
     else if (i < 10)
         k = 1;
     else if (i < 18)
@@ -677,51 +689,47 @@ unsigned int CCustomController::f_043aa0(int i)
     return k;
 }
 
-/* @draft 0x043b2c us f_043b2c
+/* @implements 0x043b2c us f_043b2c
    WHAT IT DOES: How many assignments action i offers. */
 int CCustomController::f_043b2c(int i)
 {
     if (m5 > 0)
         return -1;
-    Action *a = &D_1d5d70[m5][i];
     if ((unsigned int)i < 7)
-        return a->count;
+        return D_1d5d70[m5][i].count;
     return 1;
 }
 
-/* @draft 0x043b6c us f_043b6c
+/* @implements 0x043b6c us f_043b6c
    WHAT IT DOES: The first button of action i's chosen assignment. */
 int CCustomController::f_043b6c(int i)
 {
     if (m5 > 0)
         return -1;
-    Action *a = &D_1d5d70[m5][i];
     if (i < 7)
-        return a->assign[f_042888(i)].b0;
+        return D_1d5d70[m5][i].assign[f_042888(i)].b0;
     return -1;
 }
 
-/* @draft 0x043bd0 us f_043bd0
+/* @implements 0x043bd0 us f_043bd0
    WHAT IT DOES: The second button of action i's chosen assignment. */
 int CCustomController::f_043bd0(int i)
 {
     if (m5 > 0)
         return -1;
-    Action *a = &D_1d5d70[m5][i];
     if (i < 7)
-        return a->assign[f_042888(i)].b1;
+        return D_1d5d70[m5][i].assign[f_042888(i)].b1;
     return -1;
 }
 
-/* @draft 0x043c34 us f_043c34
+/* @implements 0x043c34 us f_043c34
    WHAT IT DOES: The third button of action i's chosen assignment. */
 int CCustomController::f_043c34(int i)
 {
     if (m5 > 0)
         return -1;
-    Action *a = &D_1d5d70[m5][i];
     if (i < 7)
-        return a->assign[f_042888(i)].b2;
+        return D_1d5d70[m5][i].assign[f_042888(i)].b2;
     return -1;
 }
 
