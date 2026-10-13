@@ -1,5 +1,16 @@
 /* The three by three float matrix of the camera math library (retail 0x09f344 to 0x09d228). */
 
+extern "C" {
+float f_099fc4(float a);
+float f_09a154(float a);
+}
+
+/* An angle in radians, passed by value in an integer register. */
+union Angle {
+    float a;
+    float Rad() const { return a; }
+};
+
 struct Mat34;
 
 struct Mat33 {
@@ -38,6 +49,10 @@ struct Mat34 {
     float f_0a0140() const;
     Mat34 &f_0a039c();
     Mat34 f_0a0944() const;
+    Mat34 &f_0a082c(Angle a, int i, int j);
+    Mat34 &f_0a08e4(Angle a);
+    Mat34 &f_0a0904(Angle a);
+    Mat34 &f_0a0924(Angle a);
 };
 
 /* @implements 0x09f344 us _ZN5Mat34C2Ev
@@ -227,4 +242,40 @@ Mat34::Mat34(const Mat44 &s)
     for (int j = 0; j < 3; j++)
         for (int i = 0; i < 3; i++)
             m[i][j] = s.m[i][j];
+}
+
+/* @implements 0x0a082c us f_0a082c
+   WHAT IT DOES: Rotates every row's (i, j) pair of elements by the angle and returns the
+   matrix. */
+Mat34 &Mat34::f_0a082c(Angle a, int i, int j)
+{
+    float c = f_099fc4(a.Rad());
+    float s = f_09a154(a.Rad());
+    for (int r = 0; r < 3; r++) {
+        float x = m[r][i], y = m[r][j];
+        m[r][i] = x * s - y * c;
+        m[r][j] = x * c + y * s;
+    }
+    return *this;
+}
+
+/* @implements 0x0a08e4 us f_0a08e4
+   WHAT IT DOES: Rotates about the x axis (the (1, 2) pairs). */
+Mat34 &Mat34::f_0a08e4(Angle a)
+{
+    return f_0a082c(a, 1, 2);
+}
+
+/* @implements 0x0a0904 us f_0a0904
+   WHAT IT DOES: Rotates about the y axis (the (2, 0) pairs). */
+Mat34 &Mat34::f_0a0904(Angle a)
+{
+    return f_0a082c(a, 2, 0);
+}
+
+/* @implements 0x0a0924 us f_0a0924
+   WHAT IT DOES: Rotates about the z axis (the (0, 1) pairs). */
+Mat34 &Mat34::f_0a0924(Angle a)
+{
+    return f_0a082c(a, 0, 1);
 }
