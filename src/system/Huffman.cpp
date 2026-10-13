@@ -231,16 +231,17 @@ CHuffman::CHuffman()
    WHAT IT DOES: Destroys the coder and frees it. */
 CHuffman::~CHuffman() {}
 
-/* @draft 0x044014 us f_044014
+/* @implements 0x044014 us f_044014
    WHAT IT DOES: Builds the symbol table: for every code of every length, finds the symbol with
    that code and length and records it at the code's index. */
 void CHuffman::f_044014()
 {
     for (int k = 0; D_1d2d04[k].len != 0; k++) {
+        int first = D_1d2d04[k].first;
         for (int j = 0; j < D_1d2d04[k].n; j++) {
             int s;
             for (s = 0; s < 512; s++) {
-                if (D_1d1d04[s].len == D_1d2d04[k].len && D_1d1d04[s].bits == D_1d2d04[k].first + j)
+                if (D_1d1d04[s].len == D_1d2d04[k].len && D_1d1d04[s].bits == first + j)
                     break;
             }
             D_240bfc[D_1d2d04[k].base + j] = s;
