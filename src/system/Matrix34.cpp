@@ -2,6 +2,19 @@
 
 struct Mat34;
 
+struct Mat33 {
+    float m[3][3];
+};
+
+/* A 3x3 matrix with a translation row. */
+struct Mat43 {
+    float m[4][3];
+};
+
+struct Mat44 {
+    float m[4][4];
+};
+
 struct Vec3 {
     float v[3];
     Vec3 &f_09fe84(const Mat34 &m, const Vec3 &a);
@@ -18,6 +31,9 @@ struct Mat34 {
           float m22);
     Mat34(const Vec3 &r0, const Vec3 &r1, const Vec3 &r2);
     Mat34(const Mat34 &s);
+    Mat34(const Mat33 &s);
+    Mat34(const Mat43 &s);
+    Mat34(const Mat44 &s);
     Mat34 &f_09ff44();
     float f_0a0140() const;
     Mat34 &f_0a039c();
@@ -178,4 +194,37 @@ Vec3 &Vec3::f_0a0994(const Mat34 &m, const Vec3 &a)
     v[1] = m.m[1][0] * a.v[0] + m.m[1][1] * a.v[1] + m.m[1][2] * a.v[2];
     v[2] = m.m[2][0] * a.v[0] + m.m[2][1] * a.v[1] + m.m[2][2] * a.v[2];
     return *this;
+}
+
+/* @implements 0x0a0e3c us _ZN5Mat34C2ERK5Mat33
+   WHAT IT DOES: Builds the matrix from a 3x3 matrix, column by column. */
+/* @implements 0x0a0e80 us _ZN5Mat34C1ERK5Mat33
+   WHAT IT DOES: The same, as the complete object constructor. */
+Mat34::Mat34(const Mat33 &s)
+{
+    for (int j = 0; j < 3; j++)
+        for (int i = 0; i < 3; i++)
+            m[i][j] = s.m[i][j];
+}
+
+/* @implements 0x0a0ec4 us _ZN5Mat34C2ERK5Mat43
+   WHAT IT DOES: Builds the matrix from a 4x3 matrix's rotation part, column by column. */
+/* @implements 0x0a0f08 us _ZN5Mat34C1ERK5Mat43
+   WHAT IT DOES: The same, as the complete object constructor. */
+Mat34::Mat34(const Mat43 &s)
+{
+    for (int j = 0; j < 3; j++)
+        for (int i = 0; i < 3; i++)
+            m[i][j] = s.m[i][j];
+}
+
+/* @implements 0x0a0f4c us _ZN5Mat34C2ERK5Mat44
+   WHAT IT DOES: Builds the matrix from a 4x4 matrix's upper left 3x3, column by column. */
+/* @implements 0x0a0f8c us _ZN5Mat34C1ERK5Mat44
+   WHAT IT DOES: The same, as the complete object constructor. */
+Mat34::Mat34(const Mat44 &s)
+{
+    for (int j = 0; j < 3; j++)
+        for (int i = 0; i < 3; i++)
+            m[i][j] = s.m[i][j];
 }
