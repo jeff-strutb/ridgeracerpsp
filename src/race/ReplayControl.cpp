@@ -38,6 +38,8 @@ struct ReplayInfo {
 
 /* The course collision areas of the map manager. */
 struct CourseAreas {
+    int f_0e23d0(float x, float z);
+    float f_0e26dc(float d);
     float f_0e3b3c(float a, float b);
 };
 struct MapMgr {
@@ -97,6 +99,56 @@ struct ReplayView {
 };
 
 void f_082df8(void *p);
+
+/* A fixed camera spot (60 bytes): its position and its distance along the course, computed
+   on first use (negative until then). */
+struct ReplaySpot {
+    float x;
+    float y;
+    float z;
+    char m12[44];
+    float dist;
+};
+
+/* A camera zone (152 bytes): two positions and their distances along the course. */
+struct ReplayZone {
+    float x0;
+    float y0;
+    float z0;
+    float x1;
+    float y1;
+    float z1;
+    char m24[112];
+    float d0;
+    float d1;
+    char m144[8];
+};
+
+/* A camera track of the recording: how its start and end are placed on the course and
+   their distances along it. */
+struct ReplayTrack {
+    char m0[8];
+    int startKind;
+    float x0;
+    float y0;
+    float z0;
+    char m24[100];
+    int endKind;
+    char m128[12];
+    int endKind2;
+    float x1;
+    float y1;
+    float z1;
+    char m156[132];
+    float d0;
+    float d1;
+};
+
+/* An entry of a track list: a negative time ends it. */
+struct ReplayTrackRef {
+    float time;
+    int off;
+};
 
 struct Replay {
     char m0[3060];
@@ -486,4 +538,79 @@ extern "C" void f_07f3b4(Replay *r)
    WHAT IT DOES: Nothing. */
 extern "C" void f_07eca8(Replay *r)
 {
+}
+
+/* @implements 0x07e3a8 us f_07e3a8
+   WHAT IT DOES: Places the camera spots and zones that an event list uses on the course: for
+   each event in view 2 the spot's distance along the course, for each event in view 5 the
+   zone's start and end distances, computed from their positions the first time and
+   normalised to the lap afterwards. */
+extern "C" void f_07e3a8(Replay *r, ReplayEvent *ev, ReplaySpot *spot, ReplayZone *zone)
+{
+    CourseAreas *ar = D_23c820.Areas();
+    int i;
+
+    for (i = 0; ev[i].time >= 0.0f; i++) {
+        if (ev[i].mode == 2) {
+            ReplaySpot *p = (ReplaySpot *)(ev[i].sub * (int)sizeof(ReplaySpot) + (int)spot);
+            float d;
+            if (p->dist < 0.0f) {
+                d = ar->f_0e23d0(p->x, p->z);
+                spot[ev[i].sub].dist = d;
+            } else {
+                d = ar->f_0e26dc(p->dist);
+                p->dist = d;
+            }
+        } else if (ev[i].mode == 5) {
+            ReplayZone *p = (ReplayZone *)(ev[i].sub * (int)sizeof(ReplayZone) + (int)zone);
+            if (p->d0 < 0.0f) {
+                float d = ar->f_0e23d0(p->x0, p->z0);
+                zone[ev[i].sub].d0 = d;
+                d = ar->f_0e23d0(zone[ev[i].sub].x1, zone[ev[i].sub].z1);
+                zone[ev[i].sub].d1 = d;
+            } else if (p->d1 < 0.0f) {
+                p->d0 = ar->f_0e26dc(p->d0);
+                zone[ev[i].sub].d1 = zone[ev[i].sub].d0;
+            }
+        }
+    }
+}
+
+/* @implements 0x07e568 us f_07e568
+   WHAT IT DOES: Places the recording's camera tracks on the course: a track's start distance
+   comes from its start position (kind 0) or its z (kind 1), and its end distance copies the
+   start (no end) or comes from the end position (kind 0) or its z (kind 1). */
+extern "C" void f_07e568(Replay *r, ReplayTrackRef *list)
+{
+    CourseAreas *ar = D_23c820.Areas();
+    int i;
+
+    for (i = 0; list[i].time >= 0.0f; i++) {
+        ReplayTrack *t = (ReplayTrack *)(list[i].off + (int)r->info);
+        if (t->d0 < 0.0f) {
+            float d;
+            if (t->startKind == 0) {
+                d = ar->f_0e23d0(t->x0, t->z0);
+                t->d0 = d;
+            } else if (t->startKind == 1) {
+                d = t->z0;
+                t->d0 = d;
+            }
+            if (t->d1 < 0.0f) {
+                if (t->endKind != 0) {
+                    if (t->endKind2 == 0) {
+                        d = ar->f_0e23d0(t->x1, t->z1);
+                        t->d1 = d;
+                    } else if (t->endKind2 == 1) {
+                        d = t->z1;
+                        t->d1 = d;
+                    }
+                } else {
+                    t->d1 = t->d0;
+                }
+            }
+        } else if (t->d1 < 0.0f) {
+            t->d1 = t->d0;
+        }
+    }
 }
