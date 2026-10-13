@@ -262,7 +262,9 @@ int CAdhocControl::f_088664()
 
 /* @draft 0x0886c0 us f_0886c0
    WHAT IT DOES: Joins the game's group, bringing networking up first when it is down.
-   Returns 1 when the connect started, 0x80000021 while busy, or a library error. */
+   Returns 1 when the connect started, 0x80000021 while busy, or a library error.
+   Remaining difference: on a failed connect retail clears the joining flag before copying
+   the error into the result register (this source copies first; two words). */
 int CAdhocControl::f_0886c0()
 {
     int s, st, r, c;
@@ -298,7 +300,9 @@ busy:
 
 /* @draft 0x0887a8 us f_0887a8
    WHAT IT DOES: Leaves the group and waits until the library reports the disconnection.
-   Returns 1 after waiting, 0 when there was nothing to wait for, or a library error. */
+   Returns 1 after waiting, 0 when there was nothing to wait for, or a library error.
+   Remaining difference: retail keeps the result in a0 (this source gets a1), and loads the
+   constant 9 for the wait loop before the joining flag store. */
 int CAdhocControl::f_0887a8()
 {
     if (f_088338() == 9) {
@@ -311,29 +315,35 @@ int CAdhocControl::f_0887a8()
         f_088348(7);
         return 0;
     }
-    if (joining) {
+    if (!joining) {
         if (s == 8)
-            f_088348(9);
-        else
-            f_088348(6);
-        int r = sceNetAdhocctlDisconnect();
-        if (r < 0) {
-            joining = 0;
-            return r;
-        }
-        joining = 0;
-        for (;;) {
-            s = f_088338();
-            if (s != 6 && s != 9)
-                return 1;
-            sceKernelDelayThread(1000);
-        }
+            f_088348(10);
+        else if (s == 6)
+            f_088348(7);
+        return 0;
     }
     if (s == 8)
-        f_088348(10);
-    else if (s == 6)
-        f_088348(7);
-    return 0;
+        f_088348(9);
+    else
+        f_088348(6);
+    int r = sceNetAdhocctlDisconnect();
+    if (r < 0) {
+        joining = 0;
+        return r;
+    }
+    joining = 0;
+    for (;;) {
+        s = f_088338();
+        if (s == 6) {
+            sceKernelDelayThread(1000);
+            continue;
+        }
+        if (s == 9) {
+            sceKernelDelayThread(1000);
+            continue;
+        }
+        return 1;
+    }
 }
 
 /* @implements 0x0888c8 us f_0888c8
