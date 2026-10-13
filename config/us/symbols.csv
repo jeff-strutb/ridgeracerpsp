@@ -43,3 +43,4 @@ addr,name,evidence
 0x08cd74,_ZN11CAudioQueueD1Ev,destructor called before operator delete of D_242b88 in the movie player destructor at 0x08b32c; byte exact in src/sound/AudioQueue.cpp
 0x08d0f4,_ZN11CMpegFeederC1EPv,constructor called by new in the movie player constructor at 0x08a9cc (16 byte object stored to D_242b8c); byte exact in src/system/MpegFeeder.cpp
 0x08d160,_ZN11CMpegFeederD1Ev,destructor called before operator delete of D_242b8c in the movie player destructor at 0x08b32c; byte exact in src/system/MpegFeeder.cpp
+0x164c48,__gedf2,libgcc double compare: in f_091e9c the compiler's call for a double `>=` (distance against 15.0) comes where retail calls 0x164c48 and its result is tested with bgez
