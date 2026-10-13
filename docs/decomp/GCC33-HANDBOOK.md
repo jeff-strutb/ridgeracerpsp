@@ -219,6 +219,11 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A `delete[]` loop that steps its iterator in place, the inlined element destructor using the same register | the destructible members belong to a base class of the element type (`struct Camera : Eyes { Tail t; };`); with them as direct members each pass adds a `move sX,sY` copy and one more saved register | 0x038c30, 0x038fe4 |
 | A test of flag bit 0 as `lw`+`andi 1`+`beqz` (no `lbu`/`xori`) | an inline predicate returning the masked word: `int Sent(int bit) { return m28 & bit; }`, `if (m20 == 0 && !Sent(1))` | f_0395b4 |
 | A jump-table factory: the first case falls into the return block with `move v0,s0`, the default (`move v0,zero`) next, the other cases after it | a result variable assigned in each case with `break`, the cases written in retail's block order (`case 1`, `default`, `case 2`...) | f_0396b0 |
+| A stack buffer's address held in a saved register (`move s2,sp`) for `memset`/`strcmp` calls in a loop | a pointer local to the array: `char work[80]; char *buf = work;` | f_088f9c |
+| An offset added in place in the argument register (`addiu a2,a2,2400`) before a division passed on | `x += 2400; f(x / 10);` rather than `f((x + 2400) / 10)` | f_088f9c |
+| A `delete` with its own null test, the object in a saved register across a release call before `operator delete` | the class has an inline destructor making that call (`~CMovie() { f_04b978(this); }`) and the code says `delete movie;` | f_08a244, f_089ad0 |
+| `sb a1` of a flag argument with no `sltu a1,zero,a1` | declare the parameter `bool` | f_089498 |
+| A global pointer select whose fall-through loads the first object | `if (!mode) G = &A; else G = &B;` (a ternary or the positive test loads B first) | f_089438 |
 | `addu rd, off, base` (offset register first) for a header-relative pointer | integer arithmetic `(T *)(h->off + (int)h)`; `(char *)h + off` puts the base first | f_07f240, f_07f3b4, f_07e3a8 |
 | Fields reloaded after a call to an empty function of the same file | define the empty function after its callers; a body GCC has already seen lets callers keep fields in registers across the call | f_07f3b4 (f_07eca8) |
 | A loop pointer copied into its saved register after the loop's entry test | index the array (`ev[i].mode`) instead of stepping the pointer parameter | f_07e3a8 |
