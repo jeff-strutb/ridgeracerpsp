@@ -23,8 +23,9 @@ int f_1110c8(int stream, int pause);
 int f_111774(int stream, int volume);
 int f_1113e4(int stream, void *info);
 int f_111900(int stream, int cursor);
-void f_0956dc(int stream);
 }
+
+int f_0956dc(int ch);  /* defined in StreamCallback.cpp */
 
 /* The stream library's state (its own object file). */
 struct CStreamState {
