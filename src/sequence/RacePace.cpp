@@ -9,8 +9,38 @@ inline void *operator new(unsigned int, void *p)
     return p;
 }
 
+#include <stdio.h>
+#include <string.h>
+
 extern "C" {
 void f_041030(void *db, void *data, int arg);
+}
+
+/* The game database's tables (their own object file). */
+struct CTable {
+    int m0;
+    int m4;
+    int count;
+    int m12[3];
+    int *index;
+};
+extern CTable D_2407d0;
+extern unsigned char D_24063c[];
+extern const int D_1a2120;
+char *f_0368e8(CTable *t, const char *field, char *rec, int a, int i);
+
+/* A record found in a database table. */
+struct Rec {
+    char *rec;
+    int m4;
+};
+
+/* Whether a sequence record has the given sequence number. */
+inline bool IsSequence(const Rec &r, int n)
+{
+    char *f = f_0368e8(&D_2407d0, "SequenceNumber", r.rec, 0, 0);
+    memcpy(D_24063c, f, D_1a2120);
+    return D_24063c[0] == n;
 }
 
 namespace DB {
@@ -31,6 +61,9 @@ public:
 /* The sequence manager (its own object file). */
 struct CSequence {
     void *f_005c34(const char *name);
+    void f_005d4c(const char *name);
+    char m0[276];
+    Rec m276;
 };
 extern CSequence D_1dd6b0;
 
@@ -114,4 +147,22 @@ void f_040ff0()
 void f_041010()
 {
     f_040f54(0, 0xffff);
+}
+
+/* @draft 0x040c90 us f_040c90
+   WHAT IT DOES: for the sequences numbered 1, 4 and 5, loads the pace package named after the
+   current sequence ("Pace_<name>").
+   Remaining difference: only the saved register numbering. Retail gives the copy size
+   (D_1a2120) s1 and the table, field name and buffer addresses s2 to s5; here the size is s5. */
+void f_040c90()
+{
+    char name[64];
+    Rec r = D_1dd6b0.m276;
+    if (r.rec) {
+        if (IsSequence(r, 1) || IsSequence(r, 4) || IsSequence(r, 5)) {
+            Rec c = D_1dd6b0.m276;
+            sprintf(name, "Pace_%s", c.rec);
+            D_1dd6b0.f_005d4c(name);
+        }
+    }
 }
