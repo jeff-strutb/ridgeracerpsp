@@ -4,7 +4,7 @@
    number of places, a taken flag per entry, a flag per entry for "this is my own console"
    and the grid position dealt to each entry. The record travels between consoles as a
    17-byte message (the count, the taken flags and the positions). Before it (0x083990 to
-   0x083a9c) sit two methods of a small ring of 32-byte messages. */
+   0x083a9c) sit two methods of the packet processor's ring queue for 32-byte records. */
 
 #include <stdlib.h>
 
@@ -13,26 +13,28 @@ int f_126f1c(const char *fmt, ...);
 unsigned int sceKernelGetSystemTimeLow(void);
 }
 
-/* A 32-byte message. */
-struct Msg32 {
-    int w[8];
-};
-
-/* A ring of 32-byte messages: the read and write positions, the capacity and the storage. */
-struct MsgRing {
+/* The game packet processor's ring queue (see src/system/GamePacketProc.cpp), whose 32-byte
+   record instantiation's Pop and Last are emitted here. */
+template <class T> struct Queue {
     int head;
     int tail;
     int size;
-    Msg32 *buf;
+    T *buf;
 
-    int f_083990(Msg32 *out);
-    int f_083a18(Msg32 *out);
+    int Pop(T *out);
+    int Last(T *out);
 };
 
-/* @implements 0x083990 us f_083990
-   WHAT IT DOES: Takes the oldest message out of the ring into out. Returns 1, or -1 when
-   the ring is empty. */
-int MsgRing::f_083990(Msg32 *out)
+/* A channel record: the sender's id and the packet data. */
+struct Rec32 {
+    int id;
+    char data[28];
+};
+
+/* @implements 0x083990 us _ZN5QueueI5Rec32E3PopEPS0_
+   WHAT IT DOES: Takes the oldest record out of the queue into out. Returns 1, or -1 when
+   the queue is empty. */
+template <class T> int Queue<T>::Pop(T *out)
 {
     int r = -1;
     if (tail != head) {
@@ -44,10 +46,10 @@ int MsgRing::f_083990(Msg32 *out)
     return r;
 }
 
-/* @implements 0x083a18 us f_083a18
-   WHAT IT DOES: Copies the newest message in the ring into out without taking it. Returns -1
-   when the ring is empty (the copy is then of a stale slot), otherwise 1. */
-int MsgRing::f_083a18(Msg32 *out)
+/* @implements 0x083a18 us _ZN5QueueI5Rec32E4LastEPS0_
+   WHAT IT DOES: Copies the newest record in the queue into out without taking it. Returns -1
+   when the queue is empty (the copy is then of a stale slot), otherwise 1. */
+template <class T> int Queue<T>::Last(T *out)
 {
     int i = tail - 1;
     if (i < 0)
@@ -55,6 +57,9 @@ int MsgRing::f_083a18(Msg32 *out)
     *out = buf[i];
     return tail == head ? -1 : 1;
 }
+
+template int Queue<Rec32>::Pop(Rec32 *out);
+template int Queue<Rec32>::Last(Rec32 *out);
 
 struct Flags8 {
     signed char f[8];
