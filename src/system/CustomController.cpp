@@ -481,26 +481,24 @@ int CCustomController::f_0432ac()
     return f_043880(1);
 }
 
-/* @draft 0x0432f8 us f_0432f8
+/* @implements 0x0432f8 us f_0432f8
    WHAT IT DOES: The analog steering of action 0: for an axis kind (3, 4) the difference of its
    two buttons' levels; for kind 5 also the third level in the high half. */
 int CCustomController::f_0432f8()
 {
     int t = f_043a0c(0);
-    int r;
     if (t == 3 || t == 4) {
-        r = level[f_043bd0(0)];
+        int r = level[f_043bd0(0)];
         r -= level[f_043b6c(0)];
-    } else {
-        r = 0;
-        if (t == 5) {
-            int hi = level[f_043c34(0)];
-            r = level[f_043bd0(0)];
-            r -= level[f_043b6c(0)];
-            r = (hi << 16) | (r & 0xffff);
-        }
+        return r;
     }
-    return r;
+    if (t == 5) {
+        int hi = level[f_043c34(0)];
+        int r = level[f_043bd0(0)];
+        r -= level[f_043b6c(0)];
+        return (hi << 16) | (r & 0xffff);
+    }
+    return 0;
 }
 
 /* @implements 0x0433ec us f_0433ec
@@ -783,22 +781,18 @@ void CCustomController::f_043dd8()
     f_042730();
 }
 
-/* @draft 0x043e84 us f_043e84
+/* @implements 0x043e84 us f_043e84
    WHAT IT DOES: Whether button 0x10 was just pressed while 0x400 and 0x800 are held. */
 int CCustomController::f_043e84()
 {
-    if (Trig(0x10) && Held(0x400) && Held(0x800))
-        return 1;
-    return 0;
+    return Trig(0x10) && Held(0x400) && Held(0x800);
 }
 
-/* @draft 0x043eb8 us f_043eb8
+/* @implements 0x043eb8 us f_043eb8
    WHAT IT DOES: Whether button 4 was just pressed while 0x400 and 0x800 are held. */
 int CCustomController::f_043eb8()
 {
-    if (Trig(4) && Held(0x400) && Held(0x800))
-        return 1;
-    return 0;
+    return Trig(4) && Held(0x400) && Held(0x800);
 }
 
 /* @implements 0x043eec us f_043eec
