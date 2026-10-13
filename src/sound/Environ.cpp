@@ -2,7 +2,7 @@
    that owns a small tone record and a sound player sub-object (0x0fa28c). Start plays the
    record's sound through the player and logs it; Stop logs and stops the environment
    sound. The static data's startup and shutdown entries close the object file; the tone
-   record's methods are their own object file (EnvTone.cpp). */
+   record's methods are their own object file (EnvBank.cpp). */
 
 extern "C" {
 void f_093f90(const char *fmt, ...);
@@ -12,8 +12,8 @@ void f_10d408(int handle, int *id);
 void f_0fa7ac(void);
 }
 
-struct CEnvTone {
-    CEnvTone();
+struct CEnvBank {
+    CEnvBank();
     void f_0970d8();
 
     int m0;
@@ -34,7 +34,7 @@ public:
     int f_096f70();
     void f_096fdc();
 
-    CEnvTone *m0;
+    CEnvBank *m0;
     CEnvPlayer m4;
 };
 
@@ -47,7 +47,7 @@ static CEnviron D_242dec;
    WHAT IT DOES: Same as the base object constructor (complete object constructor). */
 CEnviron::CEnviron()
 {
-    m0 = new CEnvTone;
+    m0 = new CEnvBank;
     m0->f_0970d8();
 }
 
