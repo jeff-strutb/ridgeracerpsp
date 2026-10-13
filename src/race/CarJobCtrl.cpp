@@ -39,6 +39,12 @@ struct CCar {
     char m2148[7996];
 } __attribute__((aligned(16)));
 
+/* The player's cars and the other cars. */
+struct CCarMine : CCar {
+};
+struct CCarOther : CCar {
+};
+
 extern "C" {
 void f_0eda14(CCar *);
 void f_0ed58c(CCar *);
@@ -87,8 +93,8 @@ struct CCarJobCtrlPSP {
     int m8;
     int m12;
     int m16;
-    CCar *m20;
-    CCar *m24;
+    CCarMine *m20;
+    CCarOther *m24;
     CCar **m28;
     CCar **m32;
     int m36;
@@ -265,7 +271,7 @@ void CCarJobCtrlPSP::f_03b614()
     m44 = 0;
 }
 
-/* @draft 0x03b640 us f_03b640
+/* @implements 0x03b640 us f_03b640
    WHAT IT DOES: Builds the car arrays from the list of cars to make: counts the player's cars
    (at most 2) and the other cars (at most 13), makes the player's cars and then the other cars
    (rivals, or ghosts when the flag is clear), and fills the table of every car and its sorted
@@ -281,12 +287,11 @@ void CCarJobCtrlPSP::f_03b640(CarList *l, int rival)
     }
     if (n > 0) {
         m12 = n;
-        m20 = (CCar *)new CMyCar[n];
+        m20 = (CCarMine *)new CMyCar[n];
     } else {
         f_00d354(D_245178, 16, "Error(%s): %s = %d\n", "CCarJobCtrlPSP::CreateBuffers", "m_iNumMyCars", n);
     }
-    n = 0;
-    for (i = 0; i < 13; i++) {
+    for (i = 0, n = 0; i < 13; i++) {
         if (!l->other[i].m0)
             break;
         n++;
@@ -294,9 +299,9 @@ void CCarJobCtrlPSP::f_03b640(CarList *l, int rival)
     if (n > 0) {
         m16 = n;
         if (rival)
-            m24 = (CCar *)new CRivalCar[n];
+            m24 = (CCarOther *)new CRivalCar[n];
         else
-            m24 = (CCar *)new CGhostCar[n];
+            m24 = (CCarOther *)new CGhostCar[n];
     } else {
         m16 = 0;
         m24 = 0;
