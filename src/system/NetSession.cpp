@@ -131,7 +131,7 @@ public:
     void f_0859e0();
     Entry *f_085a1c(int n);
     int f_085a58(int n);
-    Entry *f_085a9c(const char *mac, bool self);
+    Entry *f_085a9c(const char *mac, unsigned char self);
     void f_085b28();
     Rec *f_085b64(Rec *r);
     int f_085c30(Rec *r);
@@ -154,7 +154,7 @@ public:
     void f_0864ec();
     bool f_08651c();
     int f_086528(bool b);
-    int f_086598(int v, bool self);
+    int f_086598(int v, unsigned char self);
     int f_0865e8();
     int f_086608();
     int f_0866a4(const char *to, void *data, int len);
@@ -490,36 +490,45 @@ void CNetSession::f_0859e0()
     self.m19 = n;
 }
 
-/* @draft 0x085a1c us f_085a1c
+/* @implements 0x085a1c us f_085a1c
    WHAT IT DOES: Returns the member with the given number, or 0. */
 Entry *CNetSession::f_085a1c(int n)
 {
     int i;
-    for (i = 0; i < 8; i++)
-        if (ent[i].m18 && ent[i].m11 == n)
+    for (i = 0; i < 8; i++) {
+        if (!ent[i].m18)
+            continue;
+        if (n == ent[i].m11)
             return &ent[i];
+    }
     return 0;
 }
 
-/* @draft 0x085a58 us f_085a58
+/* @implements 0x085a58 us f_085a58
    WHAT IT DOES: Returns the table index of the other member with the given number, or -1. */
 int CNetSession::f_085a58(int n)
 {
     int i;
-    for (i = 1; i < 8; i++)
-        if (ent[i].m18 && ent[i].m11 == n)
+    for (i = 1; i < 8; i++) {
+        if (!ent[i].m18)
+            continue;
+        if (n == ent[i].m11)
             return i;
+    }
     return -1;
 }
 
-/* @draft 0x085a9c us f_085a9c
+/* @implements 0x085a9c us f_085a9c
    WHAT IT DOES: Finds a member by MAC address, entry 0 included only when asked. */
-Entry *CNetSession::f_085a9c(const char *mac, bool self)
+Entry *CNetSession::f_085a9c(const char *mac, unsigned char self)
 {
     int i;
-    for (i = !self; i < 8; i++)
-        if (ent[i].m18 && memcmp(mac, ent[i].mac, 6) == 0)
+    for (i = !self; i < 8; i++) {
+        if (!ent[i].m18)
+            continue;
+        if (memcmp(mac, ent[i].mac, 6) == 0)
             return &ent[i];
+    }
     return 0;
 }
 
@@ -530,7 +539,7 @@ void CNetSession::f_085b28()
     memset(pend, 0, sizeof pend);
 }
 
-/* @draft 0x085b64 us f_085b64
+/* @implements 0x085b64 us f_085b64
    WHAT IT DOES: Returns the slot of a host seen with the record's address, else a free slot,
    else 0. */
 Rec *CNetSession::f_085b64(Rec *r)
@@ -539,9 +548,9 @@ Rec *CNetSession::f_085b64(Rec *r)
     for (i = 0; i < 2; i++)
         if (pend[i].m10 == 1 && memcmp(pend[i].mac, r->mac, 6) == 0)
             return &pend[i];
-    for (i = 0; i < 2; i++)
-        if (!pend[i].m10)
-            return &pend[i];
+    for (int j = 0; j < 2; j++)
+        if (!pend[j].m10)
+            return &pend[j];
     return 0;
 }
 
@@ -580,7 +589,7 @@ void CNetSession::f_085d50()
     memset(req, 0, sizeof req);
 }
 
-/* @draft 0x085d74 us f_085d74
+/* @implements 0x085d74 us f_085d74
    WHAT IT DOES: Returns the queued request from the entry's address, else a free slot, else 0. */
 Entry *CNetSession::f_085d74(Entry *r)
 {
@@ -588,9 +597,9 @@ Entry *CNetSession::f_085d74(Entry *r)
     for (i = 0; i < 4; i++)
         if (req[i].m18 == 1 && memcmp(req[i].mac, r->mac, 6) == 0)
             return &req[i];
-    for (i = 0; i < 4; i++)
-        if (!req[i].m18)
-            return &req[i];
+    for (int j = 0; j < 4; j++)
+        if (!req[j].m18)
+            return &req[j];
     return 0;
 }
 
@@ -611,15 +620,16 @@ int CNetSession::f_085e30(Entry *r)
     return 0;
 }
 
-/* @draft 0x085ed0 us f_085ed0
+/* @implements 0x085ed0 us f_085ed0
    WHAT IT DOES: Takes the session semaphore (0.1 s timeout); reports a timeout with the
    caller's tag. */
 int CNetSession::f_085ed0(char tag)
 {
-    unsigned int timeout = 100000;
+    unsigned int timeout;
     int r;
     if (sema < 0)
         return 0;
+    timeout = 100000;
     r = sceKernelWaitSema(sema, 1, &timeout);
     if (timeout == 0)
         iprintf("sema %c timeout! %d, rv=%08x\n", tag, 0, r);
@@ -727,13 +737,16 @@ int CNetSession::f_086274(Entry *r)
     return 1;
 }
 
-/* @draft 0x086324 us f_086324
+/* @implements 0x086324 us f_086324
    WHAT IT DOES: Tells whether the session is up (state 6 or 8). */
 int CNetSession::f_086324()
 {
-    if (state == 6 || state == 8)
-        return 1;
-    return 0;
+    int r = 0;
+    if (state == 6)
+        r = 1;
+    else if (state == 8)
+        r = 1;
+    return r;
 }
 
 /* @draft 0x086350 us f_086350
@@ -826,15 +839,18 @@ int CNetSession::f_086528(bool b)
     return f_086afc();
 }
 
-/* @draft 0x086598 us f_086598
+/* @implements 0x086598 us f_086598
    WHAT IT DOES: Tells whether every member (this console included only when asked) has the
    given member status. */
-int CNetSession::f_086598(int v, bool self)
+int CNetSession::f_086598(int v, unsigned char self)
 {
     int i;
-    for (i = !self; i < 8; i++)
-        if (ent[i].m18 && ent[i].m10 != v)
+    for (i = !self; i < 8; i++) {
+        if (!ent[i].m18)
+            continue;
+        if (ent[i].m10 != v)
             return 0;
+    }
     return 1;
 }
 
