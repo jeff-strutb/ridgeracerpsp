@@ -17,3 +17,4 @@ addr,name,evidence
 0x04a580,_ZN2An7CSwgSubD2Ev,its destructor on the same cleanup path
 0x164bc0,__ltdf2,libgcc double compare (byte identical to __ledf2, so named by call site): in f_01e648 the compiler's call for a double `<` comes where retail calls 0x164bc0, followed by __truncdfsf2 where retail calls 0x164f7c
 0x164f7c,__truncdfsf2,libgcc double to float, called right after 0x164bc0 in f_01e648 as the compiler's conversion is; follows __make_dp (0x164f48) in libgcc's link order
+0x078098,_ZN6Select9CMenuDataD2Ev,stores the Select::CMenuData vptr (_ZTVN6Select9CMenuDataE+8) and returns; called by the destructors of every menu settings object after their own vptr store (0x07ab80 byte exact)
