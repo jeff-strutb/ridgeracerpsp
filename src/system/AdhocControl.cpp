@@ -1,9 +1,9 @@
-/* The ad hoc connection object file (retail 0x0882d0 to 0x088b18): the object that brings
+/* The ad hoc connection object file (retail 0x0882d0 to 0x088b58): the object that brings
    the console's wireless ad hoc networking up and down. It initialises the network
    libraries, scans for other consoles on the configured channel, joins the game's group and
    tracks the progress through a state number that the library's event handler advances.
-   The single instance is D_241e98; the static data's start and exit entries follow at
-   0x088b18. The function at 0x0882d0 before it returns an empty name. */
+   The single instance is D_241e98; the static data's start and exit entries end the file
+   (0x088b18). The function at 0x0882d0 before it returns an empty name. */
 
 #include <stdlib.h>
 #include <string.h>
@@ -411,3 +411,9 @@ void CAdhocControl::f_088a10()
 
 /* @implements 0x088aa4 us __static_initialization_and_destruction_0
    WHAT IT DOES: At startup, constructs the ad hoc object; at exit, destroys it. */
+
+/* @implements 0x088b18 us _GLOBAL__I_
+   WHAT IT DOES: The startup entry for this file's static data. */
+
+/* @implements 0x088b38 us _GLOBAL__D_
+   WHAT IT DOES: The exit entry for this file's static data. */
