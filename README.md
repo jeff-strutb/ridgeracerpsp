@@ -61,18 +61,18 @@ _Snapshot 2026-10-13._
 
 ```
 M1  Behaviour exact (T3 + T4)
-    ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   10.6%   120,700 / 1,136,792 B   942 / 5,654 fns
+    ████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   20.3%   231,276 / 1,136,792 B   2,118 / 5,654 fns
 M2  Byte exact (T4)
-    ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   10.6%   120,408 / 1,136,792 B   941 / 5,654 fns
+    ████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   20.3%   230,984 / 1,136,792 B   2,117 / 5,654 fns
 ```
 
 | Code | Functions | Bytes | Counted |
 |---|---:|---:|---|
-| **Game** (the denominator) | 5,654 | 1,136,792 | yes: T4 941, T3 1, T2 161, T1 4,551 |
+| **Game** (the denominator) | 5,654 | 1,136,792 | yes: T4 2117, T3 1, T2 254, T1 3,282 |
 | Libraries: libstdc++, newlib, libgcc (fenced) | 1,513 | 317,544 | no; matched from their own source or linked |
 | Unidentified, in the library region | 390 | 45,676 | not until classified |
 
-T2 includes the 41 functions of the compiler control set (`src/control/`), most of them byte-exact; they become T4 once filed into their translation units.
+T2 includes the 33 functions of the compiler control set (`src/control/`), most of them byte-exact; they become T4 once filed into their translation units.
 <!-- PROGRESS:END -->
 
 ![decomp progress treemap](docs/progress-map.svg)
