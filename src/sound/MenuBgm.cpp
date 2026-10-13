@@ -179,7 +179,7 @@ int CMenuBgm::f_097680(int mode, int part)
     return 0;
 }
 
-/* @draft 0x097878 us f_097878
+/* @implements 0x097878 us f_097878
    WHAT IT DOES: Changes the music to another menu mode and part. While playing, fades the
    new mode's tones in and the others out (or fades everything out when the new mode has no
    tones); when stopped, restarts like Start. Returns -1 for an invalid mode or part. */
@@ -199,8 +199,8 @@ int CMenuBgm::f_097878(int mode, int part)
     m4 = m;
     m8 = m12;
     m12 = p;
-    f_093f90("CMenuBgm: Change: Mode[%d -> %d] Part[%d -> %d] ", m0, m4, m8, m12);
     int idx = m * 3 + p;
+    f_093f90("CMenuBgm: Change: Mode[%d -> %d] Part[%d -> %d] ", m0, m4, m8, m12);
     if (m20 == 0) {
         if (f_097f28(idx) == 1) {
             for (i = 0; i < 24; i++)
