@@ -381,43 +381,42 @@ void CRidgeMycar::f_0bff90()
 /* @draft 0x0bff98 us f_0bff98
    WHAT IT DOES: The boost gauge state machine (0 idle, 1 rising, 2 holding, 3 falling) and
    the resulting speed factor, capped at 2.
-   DIFFERS: three spots: retail multiplies the falling factor straight into the result
-   register (f4), stores the zero floor of the hold time from f4 (this build: sw zero), and in
-   state 1 stores the speed before loading the new state. */
+   DIFFERS: two spots: retail multiplies the falling factor straight into the result register
+   (f4) and stores the hold time's zero floor from f4; this build multiplies through f0 and
+   stores sw zero. If-chains, declaration orders and split multiplies do not fix it. */
 void CRidgeMycar::f_0bff98()
 {
     Phys *p = &phys;
     float add = 0.0f;
     int done = 0;
 
-    if (m10044 == 1) {
+    switch (m10044) {
+    case 0:
+        if (m7692.b16) {
+            if (100.0f <= m10048) {
+                m10036 = m7780;
+                m10048 -= 100.0f;
+                m10044 = 1;
+                m10056 = 100.0f;
+            }
+        } else {
+            m10036 = 1.0f;
+        }
+        break;
+    case 1:
         m10036 += m10076;
         if (m7788 < m10036) {
             m10036 = m7788;
             m10044 = 2;
         }
-        goto hold;
-    } else if (m10044 < 2) {
-        if (m10044 == 0) {
-            if (m7692.b16) {
-                if (100.0f <= m10048) {
-                    m10036 = m7780;
-                    m10048 -= 100.0f;
-                    m10044 = 1;
-                    m10056 = 100.0f;
-                }
-            } else {
-                m10036 = 1.0f;
-            }
-        }
-    } else if (m10044 == 2) {
-    hold:
+    case 2:
         m10056 -= m10060;
         if (m10056 <= add) {
             done = 1;
             m10056 = add;
         }
-    } else if (m10044 == 3) {
+        break;
+    case 3:
         m10036 += m10064;
         if (m10036 < 1.0f) {
             m10036 = 1.0f;
@@ -428,6 +427,7 @@ void CRidgeMycar::f_0bff98()
             m10044 = 1;
             m10056 = 100.0f;
         }
+        break;
     }
     if (m10044 == 1 || m10044 == 2) {
         if (p->m1096 <= 55.6f)
