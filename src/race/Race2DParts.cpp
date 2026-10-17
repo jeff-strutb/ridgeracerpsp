@@ -34,6 +34,12 @@ class C2DList;
 /* A piece of the overlay (src/race/Decoration2D.cpp). */
 class C2DDecorationBase {
 public:
+    C2DDecorationBase()
+    {
+        race = 0;
+        group = 0;
+        on = 1;
+    }
     virtual ~C2DDecorationBase();
     virtual int f_101f44();
     virtual void f_101f4c();
@@ -45,6 +51,151 @@ public:
     virtual void v9();
     virtual void v10();
     virtual void v11(float t);
+
+    C2DList *race;
+    void *group;
+    unsigned char on;
+    int state;
+    int start;
+};
+
+/* The overlay's pieces (each its own object file); only their sizes and vtables matter
+   here. */
+class C2DCourseMapNormal : public C2DDecorationBase {
+public:
+    virtual ~C2DCourseMapNormal();
+    virtual void Free();
+    char m24[52];
+};
+class C2DCourseMapWbattle : public C2DDecorationBase {
+public:
+    virtual ~C2DCourseMapWbattle();
+    virtual void Free();
+    char m24[48];
+};
+class C2DTimeLimit : public C2DDecorationBase {
+public:
+    virtual ~C2DTimeLimit();
+    virtual void Free();
+    char m24[8];
+};
+class C2DLapTime : public C2DDecorationBase {
+public:
+    virtual ~C2DLapTime();
+    virtual void Free();
+    char m24[4];
+};
+class C2DNitro : public C2DDecorationBase {
+public:
+    virtual ~C2DNitro();
+    virtual void Free();
+    char m24[48];
+};
+class C2DTotalTime : public C2DDecorationBase {
+public:
+    virtual ~C2DTotalTime();
+    virtual void Free();
+    char m24[4];
+};
+class C2DRecordTime : public C2DDecorationBase {
+public:
+    virtual ~C2DRecordTime();
+    virtual void Free();
+    char m24[4];
+};
+class C2DPosition : public C2DDecorationBase {
+public:
+    virtual ~C2DPosition();
+    virtual void Free();
+    char m24[24];
+};
+class C2DPositionTour : public C2DDecorationBase {
+public:
+    virtual ~C2DPositionTour();
+    virtual void Free();
+    char m24[24];
+};
+class C2DLap : public C2DDecorationBase {
+public:
+    virtual ~C2DLap();
+    virtual void Free();
+    char m24[24];
+};
+class C2DFlag : public C2DDecorationBase {
+public:
+    virtual ~C2DFlag();
+    virtual void Free();
+    char m24[8];
+};
+class C2DRaceInfo : public C2DDecorationBase {
+public:
+    virtual ~C2DRaceInfo();
+    virtual void Free();
+    char m24[8];
+};
+class C2DRaceInfoStart : public C2DDecorationBase {
+public:
+    virtual ~C2DRaceInfoStart();
+    virtual void Free();
+    char m24[16];
+};
+class C2DRaceInfoFinish : public C2DDecorationBase {
+public:
+    virtual ~C2DRaceInfoFinish();
+    virtual void Free();
+    char m24[4];
+};
+class C2DInfoWin : public C2DDecorationBase {
+public:
+    virtual ~C2DInfoWin();
+    virtual void Free();
+    char m24[200];
+};
+class C2DAnalogMeter : public C2DDecorationBase {
+public:
+    virtual ~C2DAnalogMeter();
+    virtual void Free();
+    char m24[48];
+};
+class C2DDigitalMeter : public C2DDecorationBase {
+public:
+    virtual ~C2DDigitalMeter();
+    virtual void Free();
+    char m24[48];
+};
+class C2DPacmanMeter : public C2DDecorationBase {
+public:
+    virtual ~C2DPacmanMeter();
+    virtual void Free();
+    char m24[48];
+};
+class C2DRallyXMeter : public C2DDecorationBase {
+public:
+    virtual ~C2DRallyXMeter();
+    virtual void Free();
+    char m24[28];
+};
+class C2DBeforeRace : public C2DDecorationBase {
+public:
+    virtual ~C2DBeforeRace();
+    virtual void Free();
+    char m24[144];
+};
+class C2DReplay : public C2DDecorationBase {
+public:
+    virtual ~C2DReplay();
+    virtual void Free();
+};
+class C2DAvPlayer : public C2DDecorationBase {
+public:
+    virtual ~C2DAvPlayer();
+    virtual void Free();
+};
+class C2DAllTime : public C2DDecorationBase {
+public:
+    virtual ~C2DAllTime();
+    virtual void Free();
+    char m24[248];
 };
 
 /* The overlay the list belongs to. */
@@ -77,7 +228,7 @@ public:
     void f_0f5b70();
     void f_0f5be8();
     void f_0f5c08();
-    void f_0f5ce4(int id);
+    int f_0f5ce4(int id);
     int f_0f62e4(C2DDecorationBase *p);
     void f_0f6314(int id, unsigned char on);
     int f_0f63a8();
@@ -339,6 +490,88 @@ void C2DList::f_0f5c08()
             if (piece[i])
                 piece[i]->v11(0);
     }
+}
+
+/* @implements 0x0f5ce4 us _ZN2Fj7C2DList8f_0f5ce4Ei
+   WHAT IT DOES: Creates piece id (1 to 23: the course maps, the timers, the nitro gauge, the
+   position and lap counters, the flag, the race information panels, the meters, the before
+   race panel, the replay and movie marks and the all time panel) and adds it to the list.
+   Returns its place, or -1 for an unknown id or a full list. */
+int C2DList::f_0f5ce4(int id)
+{
+    int r = -1;
+    switch (id) {
+    case 1:
+        r = f_0f62e4(new C2DCourseMapNormal);
+        break;
+    case 2:
+        r = f_0f62e4(new C2DCourseMapWbattle);
+        break;
+    case 3:
+        r = f_0f62e4(new C2DTimeLimit);
+        break;
+    case 4:
+        r = f_0f62e4(new C2DLapTime);
+        break;
+    case 5:
+        r = f_0f62e4(new C2DNitro);
+        break;
+    case 6:
+        r = f_0f62e4(new C2DTotalTime);
+        break;
+    case 7:
+        r = f_0f62e4(new C2DRecordTime);
+        break;
+    case 8:
+        r = f_0f62e4(new C2DPosition);
+        break;
+    case 9:
+        r = f_0f62e4(new C2DPositionTour);
+        break;
+    case 10:
+        r = f_0f62e4(new C2DLap);
+        break;
+    case 11:
+        r = f_0f62e4(new C2DFlag);
+        break;
+    case 12:
+        r = f_0f62e4(new C2DRaceInfo);
+        break;
+    case 13:
+        r = f_0f62e4(new C2DRaceInfoStart);
+        break;
+    case 14:
+        r = f_0f62e4(new C2DRaceInfoFinish);
+        break;
+    case 15:
+        r = f_0f62e4(new C2DInfoWin);
+        break;
+    case 16:
+        r = f_0f62e4(new C2DAnalogMeter);
+        break;
+    case 17:
+        r = f_0f62e4(new C2DDigitalMeter);
+        break;
+    case 18:
+        r = f_0f62e4(new C2DPacmanMeter);
+        break;
+    case 19:
+        r = f_0f62e4(new C2DRallyXMeter);
+        break;
+    case 20:
+        r = f_0f62e4(new C2DBeforeRace);
+        break;
+    case 21:
+        r = f_0f62e4(new C2DReplay);
+        break;
+    case 22:
+        r = f_0f62e4(new C2DAvPlayer);
+        break;
+    case 23:
+        r = f_0f62e4(new C2DAllTime);
+        break;
+    }
+    return r;
 }
 
 /* @draft 0x0f62e4 us _ZN2Fj7C2DList8f_0f62e4EPNS_17C2DDecorationBaseE
