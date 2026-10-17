@@ -13,11 +13,31 @@ union Angle {
 /* Euler angles, each passed by value in an integer register. */
 struct AVec {
     Angle x, y, z, w;
+    void Set(Angle a, Angle b, Angle c)
+    {
+        x = a;
+        y = b;
+        z = c;
+        w.a = 0.0f;
+    }
+};
+
+struct Vec3 {
+    float x, y, z;
 };
 
 struct Vec4 {
     float x, y, z, w;
     float Len2() { return x * x + y * y + z * z; }
+    Vec4 Plus(const Vec3 &o) const
+    {
+        Vec4 r;
+        r.x = x + o.x;
+        r.y = y + o.y;
+        r.z = z + o.z;
+        r.w = 1.0f;
+        return r;
+    }
 };
 
 extern "C" {
@@ -35,8 +55,31 @@ float f_09a9dc(float x, float z);
 void f_0bc3e0(void *f, float a, float b);
 void f_0bc954(void *o, float a, float b, float c, float d, float e, float g, float h);
 void f_0c2908(void *car, void *bits);
+void f_0a6d4c(struct Vec4 *out, struct Mat43p *m, struct Vec4 *v);
+void f_09fd1c(struct Mat34 *m, const struct Quat *q);
+void f_0a28c4(void *m, float s);
 float sqrtf(float);
 }
+
+struct Quat {
+    float v[4];
+};
+
+/* The padded-row 3x3 matrix. */
+struct Mat34 {
+    float m[3][4];
+};
+
+/* A 3x3 rotation in its first three rows and a translation in the fourth. */
+struct Mat43p {
+    float m[4][4];
+    Mat43p() {}
+    Mat43p(float s) { f_0a28c4(this, s); }
+};
+
+struct Mat44 {
+    float m[4][4];
+};
 
 /* The computer car base (src/race/RidgeComcar.cpp). */
 struct CRidgeComcarBase {
@@ -157,12 +200,39 @@ public:
     virtual void f_0c23d8();
     virtual void f_0c2478();
 
+    void Offset(Vec4 &r, const Vec4 &p)
+    {
+        r.x = p.x + m9728.x;
+        r.y = p.y + m9728.y;
+        r.z = p.z + m9728.z;
+        r.w = 1.0f;
+    }
+
     char p4[140];
     Vec4 m144;             /* 144: position */
     char p160[32];
     float m192;            /* 192 */
     char p196[12];
-    char m208[1520];       /* 208: orientation matrix */
+    char m208[16];         /* 208: orientation quaternion */
+    char p224[32];
+    Vec4 m256[4];          /* 256: wheel offsets */
+    Vec4 m320[4];          /* 320: wheel positions */
+    AVec m384;             /* 384: front wheel angles */
+    AVec m400;             /* 400 */
+    Angle m416;
+    char p420[12];
+    Angle m432;
+    char p436[12];
+    Vec4 m448[4];          /* 448 */
+    char p512[4];
+    Angle m516;
+    char p520[12];
+    Angle m532;
+    char p536[40];
+    Mat44 m576;            /* 576: body matrix */
+    char p640[512];
+    Mat43p m1152;          /* 1152: body matrix (4x3) */
+    char p1216[512];
     float m1728;           /* 1728 */
     float m1732;
     float m1736;
@@ -179,7 +249,9 @@ public:
     float m1792;
     char p1796[40];
     float m1836;           /* 1836: received boost level */
-    char p1840[264];
+    char p1840[160];
+    Vec4 m2000[4];         /* 2000: previous wheel positions */
+    char p2064[40];
     int m2104;             /* 2104 */
     int m2108;
     char p2112[4];
@@ -203,9 +275,22 @@ public:
     char p7864[92];
     float m7956;           /* 7956 */
     char p7960[104];
-    char m8064[1480];      /* 8064 */
+    char m8064[48];        /* 8064: the engine sound */
+    float m8112;           /* 8112: wheel 0 steering */
+    char p8116[364];
+    float m8480;           /* 8480: wheel 1 steering */
+    char p8484[364];
+    float m8848;           /* 8848 */
+    char p8852[364];
+    float m9216;           /* 9216 */
+    char p9220[324];
     float m9544;           /* 9544 */
-    char p9548[220];
+    char p9548[180];
+    Vec3 m9728;            /* 9728: body offset */
+    char p9740[4];
+    float m9744;           /* 9744: front ride height */
+    float m9748;           /* 9748: rear ride height */
+    char p9752[16];
     float m9768;           /* 9768 */
     float m9772;
     int m9776;
@@ -387,11 +472,92 @@ void CRidgeNetcar::f_0c1b80()
     }
 }
 
+/* @implements 0x0c1e00 us f_0c1e00
+   WHAT IT DOES: Expands a 4x3 matrix into a 4x4 one (last column 0, 0, 0, 1). */
+extern "C" void f_0c1e00(Mat44 *d, const Mat43p *s)
+{
+    int i, j;
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 3; j++)
+            d->m[i][j] = s->m[i][j];
+    d->m[2][3] = d->m[1][3] = d->m[0][3] = 0.0f;
+    d->m[3][3] = 1.0f;
+}
+
 /* @draft 0x0c1e54 us f_0c1e54
-   WHAT IT DOES: Builds the wheel matrices from the received state.
-   DIFFERS: not yet transcribed. */
+   WHAT IT DOES: Places the body and the wheels from the received state: copies the wheel
+   heights, sets the front and rear wheel angles (steering, spin), builds the body matrix
+   from the orientation quaternion and the offset position, keeps it in both the 4x3 and the
+   4x4 form, then moves each wheel to its offset position (less the front or rear ride
+   height) transformed by the body matrix, keeping the previous positions.
+   DIFFERS: retail holds the first angle's address (sp+128, also the end of the rotation
+   copy) in s4 and so uses one more saved register; the rest follows with a one-instruction
+   shift. */
 void CRidgeNetcar::f_0c1e54()
 {
+    AVec *fr = &m384;
+    AVec *rr = &m400;
+    m448[0].y = m256[0].y;
+    m448[1].y = m256[1].y;
+    m448[2].y = m256[2].y;
+    m448[3].y = m256[3].y;
+    Angle a0;
+    a0.a = -m8112;
+    f_099b98(&a0);
+    Angle a1;
+    a1.a = m9768;
+    f_099b98(&a1);
+    Angle a2;
+    a2.a = 0.0f;
+    f_099b98(&a2);
+    fr->Set(a0, a1, a2);
+    Angle b0;
+    b0.a = -m8480;
+    f_099b98(&b0);
+    Angle b1;
+    b1.a = m9768;
+    f_099b98(&b1);
+    Angle b2;
+    b2.a = 0.0f;
+    f_099b98(&b2);
+    rr->Set(b0, b1, b2);
+    Angle c;
+    c.a = -m8848;
+    f_099b98(&c);
+    m416 = c;
+    Angle d;
+    d.a = -m9216;
+    f_099b98(&d);
+    m432 = d;
+    Angle e;
+    e.a = m9768;
+    f_099b98(&e);
+    m516 = e;
+    Angle g;
+    g.a = m9768;
+    f_099b98(&g);
+    m532 = g;
+    Mat43p mat(1.0f);
+    Vec4 v;
+    Offset(v, m144);
+    *(Vec4 *)mat.m[3] = v;
+    Mat34 t;
+    f_09fd1c(&t, (Quat *)m208);
+    *(Mat34 *)mat.m = t;
+    m1152 = mat;
+    f_0c1e00(&m576, &mat);
+    int i;
+    for (i = 0; i < 4; i++) {
+        m2000[i] = m320[i];
+        Offset(v, m256[i]);
+        m320[i] = v;
+        if (i < 2)
+            m320[i].y = m320[i].y - m9744;
+        else
+            m320[i].y = m320[i].y - m9748;
+        f_0a6d4c(&v, &mat, &m320[i]);
+        m320[i] = v;
+    }
 }
 
 /* @implements 0x0c21b0 us f_0c21b0
@@ -654,4 +820,4 @@ void CRidgeNetcar::f_0c28e4()
 
 typedef char check_phys[sizeof(Phys) == 1888 ? 1 : -1];
 #define OFS(m) ((unsigned)&((CRidgeNetcar *)0)->m)
-typedef char check_a[OFS(phys) == 5792 && OFS(m1836) == 1836 && OFS(m2128) == 2128 && OFS(m7692) == 7692 && OFS(m7956) == 7956 && OFS(m9928) == 9928 && OFS(m10036) == 10036 && OFS(m10084) == 10084 && OFS(m208) == 208 && OFS(m1836) == 1836 && OFS(m2104) == 2104 && OFS(m7816) == 7816 && OFS(m9544) == 9544 && OFS(m9912) == 9912 && OFS(m10024) == 10024 && OFS(m10096) == 10096 && OFS(m1792) == 1792 && OFS(m2192) == 2192 && OFS(m8064) == 8064 && OFS(m1744) == 1744 ? 1 : -1];
+typedef char check_a[OFS(phys) == 5792 && OFS(m1836) == 1836 && OFS(m2128) == 2128 && OFS(m7692) == 7692 && OFS(m7956) == 7956 && OFS(m9928) == 9928 && OFS(m10036) == 10036 && OFS(m10084) == 10084 && OFS(m208) == 208 && OFS(m1836) == 1836 && OFS(m2104) == 2104 && OFS(m7816) == 7816 && OFS(m9544) == 9544 && OFS(m9912) == 9912 && OFS(m10024) == 10024 && OFS(m10096) == 10096 && OFS(m1792) == 1792 && OFS(m2192) == 2192 && OFS(m8064) == 8064 && OFS(m1744) == 1744 && OFS(m1152) == 1152 && OFS(m2000) == 2000 && OFS(m9216) == 9216 && OFS(m9728) == 9728 && OFS(m532) == 532 ? 1 : -1];
