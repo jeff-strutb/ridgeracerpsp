@@ -143,7 +143,7 @@ int f_10d228(int ch);
 int f_10d250(void);
 int f_10d274(int ch);
 int f_10d2c4(void);
-int f_10d2e8(void);
+int f_10d2e8(int ch);
 int f_10d310(void);
 int f_10da30(unsigned short bank);
 unsigned int f_10da58(unsigned short bank);
@@ -486,10 +486,10 @@ int f_10f5ac(void)
 }
 
 /* @implements 0x10f608 us f_10f608
-   WHAT IT DOES: Calls 0x10d2e8 and returns 0. */
-int f_10f608(void)
+   WHAT IT DOES: Stops voice ch (0x10d2e8) and returns 0. */
+int f_10f608(int ch)
 {
-    f_10d2e8();
+    f_10d2e8(ch);
     return 0;
 }
 
