@@ -191,7 +191,7 @@ void f_10f6e0(SoundReq *r, int ch, int bank, unsigned short idx, float vol, shor
 void f_10f73c(SoundEntry *e, int *vol, short *pan, short *pitch);
 int f_10f990(unsigned short bank, unsigned short idx, int flag, SoundReq *q);
 float f_10f9dc(short cents);
-int f_10fd4c(unsigned short bank, unsigned short idx, short a, short b, SoundReq *q, int mode, int bus, float vol, float gain);
+int f_10fd4c(unsigned short bank, unsigned short idx, short a, short b, SoundReq *q, int mode, float vol, int bus, float gain);
 int f_11041c(unsigned short bank, unsigned short idx, SoundVoice *v);
 int f_1105dc(int pan);
 int f_110630(int t, int level);
@@ -666,7 +666,7 @@ void f_10fcbc(void)
    gets the entry's settings with their random variations, the volume and pan of its two
    buses, its level, pan and send levels and its pitch, and is keyed on. Returns 0 or an
    error. */
-int f_10fd4c(unsigned short bank, unsigned short idx, short a, short b, SoundReq *q, int mode, int bus, float vol, float gain)
+int f_10fd4c(unsigned short bank, unsigned short idx, short a, short b, SoundReq *q, int mode, float vol, int bus, float gain)
 {
     BusMix m0, m1;
     short pan, pitch;
@@ -832,7 +832,7 @@ int f_1104ec(unsigned short bank, unsigned short idx, SoundReq *r)
         return 0x80000010;
     if (!(idx < f_10da58(bank)))
         return 0x80000011;
-    f_10fd4c(bank, idx, r->m20, r->m28, r, 1, -1, r->vol, 1.0f);
+    f_10fd4c(bank, idx, r->m20, r->m28, r, 1, r->vol, -1, 1.0f);
     return 0;
 }
 
