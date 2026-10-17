@@ -68,7 +68,9 @@ struct MapMgr {
     }
     char m0[12144];
     EvData m12144;
-    char m12152[852];
+    char m12152[96];
+    int length;         /* +12248: the course's length */
+    char m12252[752];
     int frame;          /* +13004 */
     int m13008[3];
     unsigned int seed;  /* +13020 */
@@ -77,6 +79,9 @@ extern MapMgr D_23c820;
 
 /* The camera of the frame being run: its position first. */
 extern Vec4 *D_2542a0;
+
+/* The camera's distance along the course. */
+#define VIEW_DIST() (*(float *)((char *)D_2542a0 + 704))
 
 /* The camera-facing matrix of the frame being run (built by Begin). */
 extern Matrix D_2542b0;
@@ -1250,6 +1255,114 @@ int CEvent33::Run(EventWork *w, int arg)
 void CEvent33::Release(EventWork *w)
 {
     f_0ec35c(&((EvLoop *)w->shared->p)->snd);
+}
+
+/* @implements 0x0d274c us _ZN8CEvent177Release
+   WHAT IT DOES: Lets go of the shared object, complaining when the count goes below zero. */
+void CEvent17::Release(EventWork *w)
+{
+    EvShared *sh = w->shared->p;
+    if (--sh->ref < 0)
+        f_126f1c("CEventJobWorkBase  Refrence Counter Overflow!!");
+}
+
+/* @draft 0x0d2790 us _ZN8CEvent194Eval
+   WHAT IT DOES: While the event's object is in view, sets the job's alpha by interpolating the
+   event's (distance, alpha) keys at the camera's distance along the course (fading to 0 at the
+   event's end distance), then scores like type 0; without keys it never runs.
+   DIFFERS: the job and the map manager take each other's saved registers, and the map
+   manager's address is rebuilt after the key search. */
+float CEvent19::Eval(EventWork *w)
+{
+    MapMgr *mm = &D_23c820;
+    Event *ev = w->ev;
+    int obj = ev->obj;
+    Vec4 *box = mm->m12144.objs[obj].boxes;
+    EvObject *o;
+    float r2, dist, l2, r;
+    Vec4 p = {0, 0, 0, 0};
+    Vec4 c;
+    int pd = 0, pa = 0, nd, na, d, i, n;
+
+    p.x = ev->pos.x;
+    p.y = ev->pos.y;
+    p.z = ev->pos.z;
+    f_027dc8(&c, box, &p);
+    if (!f_0cc8c8(D_2542a0, c, box->w))
+        r = -1.0f;
+    else {
+        w->m24 = 100;
+        ev = w->ev;
+        n = (ev->flags >> 21) & 7;
+        if (n == 0)
+            r = -1.0f;
+        else {
+            int len = mm->length;
+            d = ((int)VIEW_DIST() + len - ev->m8) % len;
+            nd = 0;
+            na = 100;
+            for (i = 0; i < n; i++) {
+                pa = na;
+                pd = nd;
+                nd = *f_0dad68(w->ev, 0x700, i);
+                na = *f_0dad68(w->ev, 0xe00000, i);
+                if (d < nd)
+                    break;
+            }
+            ev = w->ev;
+            if (i == n) {
+                pd = nd;
+                nd = ev->m12;
+                pa = na;
+                na = 0;
+            }
+            if (nd - pd == 0)
+                w->m24 = na;
+            else
+                w->m24 = ((nd - d) * pa + (d - pd) * na) / (nd - pd);
+            o = &D_23c820.m12144.objs[obj];
+            r2 = o->radius;
+            dist = o->dist;
+            r2 = r2 * r2;
+            Vec4 q = ToVec4(ev->pos);
+            c = q;
+            f_027e0c(&q, &c, D_2542a0);
+            l2 = f_027ebc(&q, &q);
+            if (r2 < l2)
+                r = -1.0f;
+            else
+                r = (dist + 0.999f) - l2 / 2000.0f / 2000.0f / 1000.0f / 1000.0f;
+        }
+    }
+    return r;
+}
+
+/* @implements 0x0d2a54 us _ZN8CEvent193Run
+   WHAT IT DOES: Draws the event's object at the event's position (rotated when the event
+   says), facing the camera unless flagged 0x80000, scaled when the event says, with the alpha
+   its score left in the job. */
+int CEvent19::Run(EventWork *w, int arg)
+{
+    Matrix m;
+
+    f_028c70();
+    f_02842c();
+    f_0287cc(w->ev->pos.x, w->ev->pos.y, w->ev->pos.z);
+    if (w->ev->flags & 1) {
+        Vec3 r = f_0dacd4(w->ev);
+        f_02853c(r.z);
+        f_0284fc(r.y);
+        f_0284bc(r.x);
+    }
+    if (!(w->ev->flags & 0x80000))
+        f_028748(&D_2542b0);
+    if (w->ev->flags & 2) {
+        Vec3 sc = f_0dad14(w->ev);
+        f_02884c(sc.x, sc.y, sc.z);
+    }
+    f_028d94(&m);
+    f_028ca8();
+    return f_0fed54(w->ev->obj, &m, arg, (w->m24 << 24) | 0xffffff);
 }
 
 /* @implements 0x0d2b74 us _ZN8CEvent197Release
