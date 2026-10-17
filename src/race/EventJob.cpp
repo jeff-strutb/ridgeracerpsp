@@ -140,6 +140,24 @@ extern "C" int f_0ff388(int obj, Matrix *m, int arg, int colour);
 extern "C" void f_0ccaec(float *angle);
 extern "C" int f_0ff0ec(int obj, Matrix *m, int arg, int colour, float a, float b);
 
+/* The course's effect manager and the replay flag it is told. */
+struct EffectMgr {
+    char m0[173156];
+    int replay;
+};
+extern EffectMgr D_2543a0;
+extern signed char D_23fae9;
+extern "C" int f_0e4d28(EffectMgr *m, int arg, Vec4 *view, float x, float y, float z);
+
+/* A looping sound held by the shared object of type 33 (at +16). */
+struct EvLoop {
+    int m0[4];
+    int snd;
+};
+extern "C" void f_0ec2b8(void *snd);
+extern "C" void f_0ec2cc(void *snd);
+extern "C" void f_0ec35c(void *snd);
+
 /* The frame counter. */
 extern int D_23faec;
 
@@ -1192,10 +1210,46 @@ float CEvent32::Eval(EventWork *w)
     return 2000.0f;
 }
 
+/* @implements 0x0d20f8 us _ZN8CEvent323Run
+   WHAT IT DOES: Sets the event's sound going (kind 2) at the event's position and runs the
+   effect manager there, telling it whether this is a replay. */
+int CEvent32::Run(EventWork *w, int arg)
+{
+    f_0e767c(D_27eac0, 2, w->ev->pos.x, w->ev->pos.y, w->ev->pos.z);
+    D_2543a0.replay = D_23fae9;
+    return f_0e4d28(&D_2543a0, arg, D_2542a0, w->ev->pos.x, w->ev->pos.y, w->ev->pos.z);
+}
+
 /* @implements 0x0d2184 us _ZN8CEvent327Release
    WHAT IT DOES: Nothing to release. */
 void CEvent32::Release(EventWork *w)
 {
+}
+
+/* @implements 0x0d218c us _ZN8CEvent334Eval
+   WHAT IT DOES: Starts the shared looping sound on the job's first frame, keeps it going, and
+   scores 0. */
+float CEvent33::Eval(EventWork *w)
+{
+    EvLoop *l = (EvLoop *)w->shared->p;
+    if (w->m16 == 0)
+        f_0ec2b8(&l->snd);
+    f_0ec2cc(&l->snd);
+    return 0.0f;
+}
+
+/* @implements 0x0d21d8 us _ZN8CEvent333Run
+   WHAT IT DOES: Does nothing; passes the argument back. */
+int CEvent33::Run(EventWork *w, int arg)
+{
+    return arg;
+}
+
+/* @implements 0x0d21e0 us _ZN8CEvent337Release
+   WHAT IT DOES: Stops the shared looping sound. */
+void CEvent33::Release(EventWork *w)
+{
+    f_0ec35c(&((EvLoop *)w->shared->p)->snd);
 }
 
 /* @implements 0x0d2b74 us _ZN8CEvent197Release
