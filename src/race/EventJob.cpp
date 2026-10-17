@@ -128,6 +128,7 @@ extern "C" int *f_0dad68(Event *ev, int key, int i);
 extern char D_27eac0[];
 extern "C" void f_0e767c(void *emitters, int kind, float x, float y, float z);
 extern "C" int f_0ff388(int obj, Matrix *m, int arg, int colour);
+extern "C" void f_0ccaec(float *angle);
 
 /* The frame counter. */
 extern int D_23faec;
@@ -142,7 +143,9 @@ struct EvShared {
     EvSharedVt *vt;
     int m4;
     int ref;
-    int m12[9];
+    int m12[5];
+    int angle;          /* +32: a turning angle, 65536 to the turn */
+    int m36[3];
     Vec4 m48[4];        /* its placement matrix, the last row its offset */
     int m112[256];
     int m1136;
@@ -772,6 +775,73 @@ int CEvent21::Run(EventWork *w, int arg)
 /* @implements 0x0d10c4 us _ZN8CEvent217Release
    WHAT IT DOES: Lets go of the shared object, complaining when the count goes below zero. */
 void CEvent21::Release(EventWork *w)
+{
+    EvShared *sh = w->shared->p;
+    if (--sh->ref < 0)
+        f_126f1c("CEventJobWorkBase  Refrence Counter Overflow!!");
+}
+
+/* @draft 0x0d1108 us _ZN8CEvent164Eval
+   WHAT IT DOES: Takes the shared object on the job's first frame (building it when this is
+   the first taker) and scores like type 2.
+   DIFFERS: as type 2's. */
+float CEvent16::Eval(EventWork *w)
+{
+    EvShared *sh = w->shared->p;
+    EvObject *o;
+    float r2, dist, l2, r;
+    Vec4 c;
+
+    if (w->m16 == 0) {
+        if (++sh->ref == 1)
+            sh->vt->Init(sh);
+    }
+    Event *ev = w->ev;
+    o = &D_23c820.m12144.objs[ev->obj];
+    r2 = o->radius;
+    dist = o->dist;
+    r2 = r2 * r2;
+    Vec4 q = ToVec4(ev->pos);
+    c = q;
+    f_027e0c(&q, &c, D_2542a0);
+    l2 = f_027ebc(&q, &q);
+    if (r2 < l2)
+        r = -1.0f;
+    else
+        r = (dist + 0.999f) - l2 / 2000.0f / 2000.0f / 1000.0f / 1000.0f;
+    return r;
+}
+
+/* @implements 0x0d1258 us _ZN8CEvent163Run
+   WHAT IT DOES: Draws the event's object at the event's position (rotated when the event
+   says), turned about z by the shared object's angle. */
+int CEvent16::Run(EventWork *w, int arg)
+{
+    int n = w->ev->obj;
+    EvShared *sh = w->shared->p;
+    Matrix m;
+    float a;
+
+    f_028c70();
+    f_02842c();
+    f_02880c(w->ev->pos.x, w->ev->pos.y, w->ev->pos.z);
+    if (w->ev->flags & 1) {
+        Vec3 r = f_0dacd4(w->ev);
+        f_02853c(r.z);
+        f_0284fc(r.y);
+        f_0284bc(r.x);
+    }
+    a = sh->angle * 6.2831855f * 1.52587890625e-05f;
+    f_0ccaec(&a);
+    f_02853c(a);
+    f_028d94(&m);
+    f_028ca8();
+    return f_0fed54(n, &m, arg, -1);
+}
+
+/* @implements 0x0d135c us _ZN8CEvent167Release
+   WHAT IT DOES: Lets go of the shared object, complaining when the count goes below zero. */
+void CEvent16::Release(EventWork *w)
 {
     EvShared *sh = w->shared->p;
     if (--sh->ref < 0)
