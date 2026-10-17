@@ -204,6 +204,32 @@ public:
 
 using namespace Fj;
 
+/* @draft 0x107fb0 us C2DMeterBase8f_107fb0
+   WHAT IT DOES: Shows a digit (the last decimal digit of n) in a meter sprite: places the
+   sprite at the digit's rectangle and picks the digit's cell from the strip of ten.
+   Remaining difference (17 words, scheduling): retail loads the group pointer before the
+   sprite lookup's argument moves and stores the corners around them; the store order (found
+   by compiling every chain order in one scratch file) and the address arithmetic agree. */
+void C2DMeterBase::f_107fb0(int s, int n)
+{
+    Corner c[4];
+    float u0, v0;
+
+    n %= 10;
+    f_101da4(c, &D_1d5fe8[type].r[3 + n]);
+    u0 = 0;
+    v0 = D_1d5fe8[type].r[3 + n].v * n;
+    c[0].u = c[2].u = u0;
+    c[0].v = c[1].v = v0;
+    c[1].u = c[3].u = D_1d5fe8[type].r[3 + n].u + u0;
+    c[2].v = c[3].v = v0 + D_1d5fe8[type].r[3 + n].v;
+    {
+        Group *g = group;
+
+        f_04bf6c(g, f_101f54(s), c);
+    }
+}
+
 /* @implements 0x1082c4 us C2DAnalogMeter8f_101b1c
    WHAT IT DOES: Sets the analog meter up for the car's meter type: places the dial and the
    needle hub, places the second needle (or hides it when the type has none), sets the lamps
