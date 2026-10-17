@@ -1672,8 +1672,9 @@ void CHanabiWork::Setup(::Event *e)
     }
 }
 
-/* @implements 0x0d4980 us _ZN3Map5Event11CHanabiWork4Stop
-   WHAT IT DOES: Stops the firework if it is running. */
+/* @draft 0x0d4980 us _ZN3Map5Event11CHanabiWork4Stop
+   WHAT IT DOES: Stops the firework if it is running.
+   DIFFERS: the field test is scheduled differently against the prologue (+4 B). */
 void CHanabiWork::Stop()
 {
     if (active == 1) {
@@ -1717,8 +1718,10 @@ void CLeafWork::Setup(::Event *e)
     colour[2] = *f_0dad68(ev, 0xe00000, 2);
 }
 
-/* @implements 0x0d4ac4 us _ZN3Map5Event9CLeafWork4Stop
-   WHAT IT DOES: Stops the leaves if they are running. */
+/* @draft 0x0d4ac4 us _ZN3Map5Event9CLeafWork4Stop
+   WHAT IT DOES: Stops the leaves if they are running.
+   DIFFERS: retail loads the field ahead of the stack adjustment and fills the branch slot
+   with the return address store; this build keeps the prologue first (+4 B). */
 void CLeafWork::Stop()
 {
     if (active == 1) {
