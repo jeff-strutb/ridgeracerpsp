@@ -502,17 +502,21 @@ int CInfoTimeAttack::f_0f0108()
    the replay, the end schedule, the last sector time and the ranking's finish. Otherwise
    kind 0 times the player's sector ends. Then the best lap, the ranking sort and the player's
    place, every other car's sector and lap times, and the race clock.
-   Remaining difference: allocation. Retail loads each race clock for the tracker call into a3
-   and builds clock % 3 in t0 (the fifth argument) from the sign onwards; here the clock goes
-   to t0 and the quotient to other registers, which shifts the registers of every tracker call
-   (a separate local for the remainder only moves it to a2/a3/t0). The control flow matches. */
+   Remaining difference: two words. Retail keeps the sector end step's tracker result in a3, a
+   register of its own; here it shares t0 with the first tracker result (a separate local
+   gives a1 and moves the laps pointer, seven words).
+   The remainder is written q = c / 3; q = c - q * 3, which keeps the quotient and the
+   remainder in the fifth argument register as retail does (c % 3 gives the quotient its own
+   register). */
 void CInfoTimeAttack::f_0f013c()
 {
     f_038a80(0);
     director.f_0ee76c();
     float at = 0;
     int clk = D_2408f0->m116;
-    int r = f_0a8d5c(car->m2128, &at, 50, 3, clk % 3);
+    int ph = clk / 3;
+    ph = clk - ph * 3;
+    int r = f_0a8d5c(car->m2128, &at, 50, 3, ph);
     if (r < -2) {
         m108 = 0;
     } else {
@@ -538,11 +542,14 @@ void CInfoTimeAttack::f_0f013c()
     case 0: {
         float at2 = end;
         int clk2 = ri->m132;
-        int r2 = f_0a8d5c(car->m2128, &at2, 50, 3, clk2 % 3);
-        if (r2 >= -2 && car->m2212 == lap) {
-            RaceLaps *l2 = D_2408f0->m200;
+        int ph2 = clk2 / 3;
+        ph2 = clk2 - ph2 * 3;
+        r = f_0a8d5c(car->m2128, &at2, 50, 3, ph2);
+        if (r >= -2 && car->m2212 == lap) {
+            RaceInfo *q = D_2408f0;
+            RaceLaps *l2 = q->m200;
             if (sec != l2->m2404 - 1) {
-                l2->m0[lap][sec] = D_2408f0->m132 + r2;
+                l2->m0[lap][sec] = q->m132 + r;
                 l2->m2376++;
             }
         }
@@ -559,7 +566,7 @@ void CInfoTimeAttack::f_0f013c()
         ri->m132 += 50;
         break;
     case 2:
-        ri->m120 = ri->m116 += r;
+        ri->m116 = ri->m120 = ri->m116 + r;
         ri->m132 += r;
         ri->m136 = ri->m48 + r;
         car->m124 = 1;
@@ -613,15 +620,17 @@ void CInfoTimeAttack::f_0f013c()
         if (lp == D_2408f0->m36)
             continue;
         int clk3 = D_2408f0->m48;
-        int s3 = D_2408f0->m200->m17852[i];
-        float at3 = D_2408f0->m200->m2392[s3];
-        int r3 = f_0a8d5c(c->m2128, &at3, 50, 3, clk3 % 3);
+        sec = D_2408f0->m200->m17852[i];
+        float at3 = D_2408f0->m200->m2392[sec];
+        int ph3 = clk3 / 3;
+        ph3 = clk3 - ph3 * 3;
+        int r3 = f_0a8d5c(c->m2128, &at3, 50, 3, ph3);
         if (r3 < -2)
             continue;
         RaceLaps *l3 = D_2408f0->m200;
         if (l3->m17956[i]->m2212 < lp)
             continue;
-        l3->m2408[i][lp][s3] = D_2408f0->m48 + r3;
+        l3->m2408[i][lp][sec] = D_2408f0->m48 + r3;
         if (++l3->m17852[i] == l3->m2404) {
             l3->m17852[i] = 0;
             l3->m17904[i]++;
@@ -630,20 +639,21 @@ void CInfoTimeAttack::f_0f013c()
     D_2408f0->m32 -= 50;
 }
 
-/* @draft 0x0f0638 us f_0f0638
+/* @implements 0x0f0638 us f_0f0638
    WHAT IT DOES: the race step before the final laps: records the car, steps the ranking and,
    once the car has crossed the line onto its first lap, starts the lap clock and the race
    time and goes to the race state (state 2, phase 1). Then the ranking sort and the player's
    place, every other car's sector and lap times, and the race clock.
-   Remaining difference: the same clock % 3 register choice as 0x0f013c; otherwise the code
-   matches word for word. */
+   The remainder for the tracker calls is written q = c / 3; q = c - q * 3 (see 0x0f013c). */
 void CInfoTimeAttack::f_0f0638()
 {
     f_038a80(0);
     director.f_0ee76c();
     float at = 0;
     int clk = D_2408f0->m116;
-    int r = f_0a8d5c(car->m2128, &at, 50, 3, clk % 3);
+    int ph = clk / 3;
+    ph = clk - ph * 3;
+    int r = f_0a8d5c(car->m2128, &at, 50, 3, ph);
     if (r < -2) {
         m108 = 0;
     } else {
@@ -675,7 +685,9 @@ void CInfoTimeAttack::f_0f0638()
         int clk3 = D_2408f0->m48;
         int s3 = D_2408f0->m200->m17852[i];
         float at3 = D_2408f0->m200->m2392[s3];
-        int r3 = f_0a8d5c(c->m2128, &at3, 50, 3, clk3 % 3);
+        int ph3 = clk3 / 3;
+        ph3 = clk3 - ph3 * 3;
+        int r3 = f_0a8d5c(c->m2128, &at3, 50, 3, ph3);
         if (r3 < -2)
             continue;
         RaceLaps *l3 = D_2408f0->m200;
