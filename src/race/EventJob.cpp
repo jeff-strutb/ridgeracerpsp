@@ -61,8 +61,17 @@ struct EvData {
 struct MapMgr {
     EvData *Events() { return &m12144; }
     EvObject &Object(int i) { return m12144.objs[i]; }
+    int Rand()
+    {
+        seed = seed * 0x19660d + 0x3c6ef35f;
+        return (int)(seed >> 1) % 32768;
+    }
     char m0[12144];
     EvData m12144;
+    char m12152[852];
+    int frame;          /* +13004 */
+    int m13008[3];
+    unsigned int seed;  /* +13020 */
 };
 extern MapMgr D_23c820;
 
@@ -129,6 +138,7 @@ extern char D_27eac0[];
 extern "C" void f_0e767c(void *emitters, int kind, float x, float y, float z);
 extern "C" int f_0ff388(int obj, Matrix *m, int arg, int colour);
 extern "C" void f_0ccaec(float *angle);
+extern "C" int f_0ff0ec(int obj, Matrix *m, int arg, int colour, float a, float b);
 
 /* The frame counter. */
 extern int D_23faec;
@@ -868,10 +878,205 @@ void CEvent12::Release(EventWork *w)
 {
 }
 
+/* @implements 0x0d13bc us _ZN8CEvent244Eval
+   WHAT IT DOES: On the job's first frame picks its animation start (a random phase when the
+   event's period is negative, else the current frame), then scores like type 0. */
+float CEvent24::Eval(EventWork *w)
+{
+    Event *ev = w->ev;
+    int n = ev->obj;
+    EvData *d;
+    Vec4 *box;
+    EvObject *o;
+    float r2, dist, l2, r;
+    Vec4 p = {0, 0, 0, 0};
+    Vec4 c;
+
+    p.x = ev->pos.x;
+    p.y = ev->pos.y;
+    p.z = ev->pos.z;
+    if (w->m16 == 0) {
+        if (*f_0dad68(ev, 0x3800, 0) < 0)
+            w->m24 = D_23c820.Rand();
+        else
+            w->m24 = D_23c820.frame;
+    }
+    d = D_23c820.Events();
+    box = d->Obj(n)->boxes;
+    f_027dc8(&c, box, &p);
+    if (!f_0cc8c8(D_2542a0, c, box->w))
+        r = -1.0f;
+    else {
+        o = &d->objs[n];
+        r2 = o->radius;
+        dist = o->dist;
+        r2 = r2 * r2;
+        Vec4 q = ToVec4(w->ev->pos);
+        c = q;
+        f_027e0c(&q, &c, D_2542a0);
+        l2 = f_027ebc(&q, &q);
+        if (r2 < l2)
+            r = -1.0f;
+        else
+            r = (dist + 0.999f) - l2 / 2000.0f / 2000.0f / 1000.0f / 1000.0f;
+    }
+    return r;
+}
+
+/* @implements 0x0d15c8 us _ZN8CEvent243Run
+   WHAT IT DOES: Draws the event's object at the event's position through the animated draw:
+   the model index steps through the event's frame count at its period from the job's start,
+   with a blend weight from two more parameters. */
+int CEvent24::Run(EventWork *w, int arg)
+{
+    Event *ev = w->ev;
+    Vec4 p;
+    Matrix m;
+    int obj, period, count, k;
+    float a;
+
+    p.x = ev->pos.x;
+    p.y = ev->pos.y;
+    p.z = ev->pos.z;
+    p.w = 1.0f;
+    obj = ev->obj;
+    period = *f_0dad68(ev, 0x3800, 0);
+    count = *f_0dad68(w->ev, 0x40000, 0);
+    int num = *f_0dad68(w->ev, 0xe00000, 1);
+    int den = *f_0dad68(w->ev, 0xe00000, 2);
+    k = ((D_23faec - w->m24) << 10) / (period * 60) % count;
+    a = (float)num / (float)den;
+    f_028c70();
+    f_02842c();
+    f_02880c(p.x, p.y, p.z);
+    f_028d94(&m);
+    f_028ca8();
+    return f_0ff0ec(obj + k, &m, arg, -1, a, 0.0f);
+}
+
 /* @implements 0x0d1730 us _ZN8CEvent247Release
    WHAT IT DOES: Nothing to release. */
 void CEvent24::Release(EventWork *w)
 {
+}
+
+/* @implements 0x0d1738 us _ZN8CEvent234Eval
+   WHAT IT DOES: On the job's first frame picks its animation start (a random phase within the
+   frame count when the event's period is negative, else the current frame), then scores like
+   type 0. */
+float CEvent23::Eval(EventWork *w)
+{
+    Event *ev = w->ev;
+    int n = ev->obj;
+    EvData *d;
+    Vec4 *box;
+    EvObject *o;
+    float r2, dist, l2, r;
+    Vec4 p = {0, 0, 0, 0};
+    Vec4 c;
+
+    p.x = ev->pos.x;
+    p.y = ev->pos.y;
+    p.z = ev->pos.z;
+    if (w->m16 == 0) {
+        if (*f_0dad68(ev, 0x3800, 0) < 0) {
+            int f = D_23c820.frame;
+            if (f == 0)
+                w->m24 = 0;
+            else
+                w->m24 = D_23c820.Rand() % f;
+        } else
+            w->m24 = D_23c820.frame;
+    }
+    d = D_23c820.Events();
+    box = d->Obj(n)->boxes;
+    f_027dc8(&c, box, &p);
+    if (!f_0cc8c8(D_2542a0, c, box->w))
+        r = -1.0f;
+    else {
+        o = &d->objs[n];
+        r2 = o->radius;
+        dist = o->dist;
+        r2 = r2 * r2;
+        Vec4 q = ToVec4(w->ev->pos);
+        c = q;
+        f_027e0c(&q, &c, D_2542a0);
+        l2 = f_027ebc(&q, &q);
+        if (r2 < l2)
+            r = -1.0f;
+        else
+            r = (dist + 0.999f) - l2 / 2000.0f / 2000.0f / 1000.0f / 1000.0f;
+    }
+    return r;
+}
+
+/* @draft 0x0d1964 us _ZN8CEvent233Run
+   WHAT IT DOES: Draws the event's frames at the event's position (rotated when the event
+   says): the current frame of the cycle fully, fading in over the event's fade time, and the
+   other frames fading out over the fade time after their turn.
+   DIFFERS: retail keeps the fade-time block in line after its test; this build moves it out
+   of line, shifting the code that follows. */
+int CEvent23::Run(EventWork *w, int arg)
+{
+    Event *ev = w->ev;
+    Vec4 p;
+    Matrix m;
+    float fade = 0.0f;
+    int obj, period, count, t, cur, cycle, i;
+
+    p.x = ev->pos.x;
+    p.y = ev->pos.y;
+    p.z = ev->pos.z;
+    p.w = 1.0f;
+    obj = ev->obj;
+    if ((ev->flags & 0x3800) > 0x800) {
+        fade = *f_0dad68(ev, 0x3800, 1) * 60.0f;
+        if (fade < 0.0f)
+            fade = -fade;
+    }
+    period = *f_0dad68(w->ev, 0x3800, 0) * 60;
+    count = *f_0dad68(w->ev, 0x40000, 0);
+    if (period < 0)
+        period = -period;
+    t = (D_23faec - w->m24) << 10;
+    cur = t / period % count;
+    f_028c70();
+    f_02842c();
+    f_02880c(p.x, p.y, p.z);
+    if (w->ev->flags & 1) {
+        Vec3 r = f_0dacd4(w->ev);
+        f_02853c(r.z);
+        f_0284fc(r.y);
+        f_0284bc(r.x);
+    }
+    f_028d94(&m);
+    f_028ca8();
+    for (i = 0; i < count; i++) {
+        cycle = count * period;
+        if (i == cur) {
+            float f = (float)(t % period);
+            if (f < fade) {
+                f = f / fade;
+                if (f < 0.0f)
+                    f = 0.0f;
+                if (1.0f < f)
+                    f = 1.0f;
+                arg = f_0fed54(obj + i, &m, arg, ((int)(f * 254.0f) << 24) | 0xffffff);
+            } else
+                arg = f_0fed54(obj + i, &m, arg, -1);
+        } else {
+            float f = (float)((t - (i + 1) * period) % cycle);
+            if (0.0f <= f && f < fade) {
+                f = 1.0f - f / fade;
+                if (f < 0.0f)
+                    f = 0.0f;
+                if (1.0f < f)
+                    f = 1.0f;
+                arg = f_0fed54(obj + i, &m, arg, ((int)(f * 254.0f) << 24) | 0xffffff);
+            }
+        }
+    }
+    return arg;
 }
 
 /* @implements 0x0d1c98 us _ZN8CEvent237Release
