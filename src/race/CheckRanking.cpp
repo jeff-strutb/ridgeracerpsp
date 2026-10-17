@@ -1,4 +1,4 @@
-/* The race ranking checker (retail 0x0edc98 to 0x0eede0, "Component::CCheckRanking"). It keeps
+/* The race ranking checker (retail 0x0edc98 to 0x0eee20, "Component::CCheckRanking"). It keeps
    one 28-byte standing record per car of the race (the car, its lap, its distance along the
    course, two finishing times and a finished flag), sorts the records into race order after
    every update and copies the sorted cars into a standing table. It also writes the finishing
@@ -626,4 +626,14 @@ void CCheckRanking::f_0eec50()
             m_pSortBuffers[i].car->m124 = 1;
         }
     }
+}
+
+/* @implements 0x0eede0 us f_0eede0
+   WHAT IT DOES: Converts a sector distance into a time: zero when count is not positive,
+   otherwise x * 10800 * n / count * 1.024. */
+extern "C" float f_0eede0(int count, int n, float x)
+{
+    if (count <= 0)
+        return 0;
+    return x * 10800.0f * n / count * 1.024f;
 }
