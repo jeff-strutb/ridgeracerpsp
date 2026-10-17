@@ -83,6 +83,12 @@ extern Vec4 *D_2542a0;
 /* The camera's distance along the course. */
 #define VIEW_DIST() (*(float *)((char *)D_2542a0 + 704))
 
+/* Whether a sphere is in the camera's view. */
+static inline int InView(const Vec4 &c, float r)
+{
+    return f_0cc8c8(D_2542a0, c, r);
+}
+
 /* The camera-facing matrix of the frame being run (built by Begin). */
 extern Matrix D_2542b0;
 
@@ -188,6 +194,19 @@ struct EvShared {
     int m1140[2];
     int m1148;          /* the camera it was last set up for */
     int m1152;          /* a turning angle, 65536 to the turn */
+};
+
+/* The shared object of type 34: a frame animation started once the camera passes a point. */
+struct EvTimer {
+    EvSharedVt *vt;
+    int m4;
+    int ref;
+    int period;
+    int count;
+    int time;
+    int started;
+    int m28[2];
+    int m36;
 };
 
 struct EvSharedHolder {
@@ -629,8 +648,7 @@ void CEvent05::Release(EventWork *w)
    WHAT IT DOES: Takes the shared object on the job's first frame (building it when this is
    the first taker, and restarting it when the camera has changed), places the event at the
    object's offset, starts the event's sound when it has one, and scores like type 0.
-   DIFFERS: the first-frame block's layout, the visibility call's argument order, and the
-   copy of the placed position (retail stores the copy's fourth word as a known zero). */
+   DIFFERS: the first-frame block's layout and the copy of the placed position. */
 float CEvent06::Eval(EventWork *w)
 {
     Event *ev = w->ev;
@@ -659,7 +677,7 @@ float CEvent06::Eval(EventWork *w)
     EvData *d = D_23c820.Events();
     box = d->Obj(n)->boxes;
     f_027dc8(&c, box, &p);
-    if (!f_0cc8c8(D_2542a0, c, box->w))
+    if (!InView(c, box->w))
         r = -1.0f;
     else {
         o = &d->objs[n];
@@ -1369,6 +1387,85 @@ int CEvent19::Run(EventWork *w, int arg)
    WHAT IT DOES: Nothing to release. */
 void CEvent19::Release(EventWork *w)
 {
+}
+
+/* @draft 0x0d2b7c us _ZN8CEvent344Eval
+   WHAT IT DOES: Starts the shared animation (once) when the camera's distance along the
+   course reaches the event's start distance, then scores like type 0.
+   DIFFERS: the object table load in the visible arm takes v1 rather than v0, and the camera
+   pointer is loaded late for the subtraction (+4 B). */
+float CEvent34::Eval(EventWork *w)
+{
+    Event *ev = w->ev;
+    EvTimer *t = (EvTimer *)w->shared->p;
+    int n = ev->obj;
+    EvData *d;
+    Vec4 *box;
+    EvObject *o;
+    float r2, dist, l2, r;
+    Vec4 p = {0, 0, 0, 0};
+    Vec4 c;
+    int start, len, at;
+
+    p.x = ev->pos.x;
+    p.y = ev->pos.y;
+    p.z = ev->pos.z;
+    start = *f_0dad68(ev, 0x700, 0);
+    len = D_23c820.length;
+    at = (int)VIEW_DIST() + len - w->ev->m8;
+    while (at >= len)
+        at -= len;
+    if (at >= start && t->started == 0) {
+        t->started = 1;
+        t->time = 0;
+        t->m36 = 0;
+    }
+    d = D_23c820.Events();
+    box = d->Obj(n)->boxes;
+    f_027dc8(&c, box, &p);
+    if (!InView(c, box->w))
+        r = -1.0f;
+    else {
+        o = &d->objs[n];
+        r2 = o->radius;
+        dist = o->dist;
+        r2 = r2 * r2;
+        Vec4 q = ToVec4(w->ev->pos);
+        c = q;
+        f_027e0c(&q, &c, D_2542a0);
+        l2 = f_027ebc(&q, &q);
+        if (r2 < l2)
+            r = -1.0f;
+        else
+            r = (dist + 0.999f) - l2 / 2000.0f / 2000.0f / 1000.0f / 1000.0f;
+    }
+    return r;
+}
+
+/* @implements 0x0d2da0 us _ZN8CEvent343Run
+   WHAT IT DOES: Draws the frame of the shared animation its time has reached at the event's
+   position (rotated and scaled as the event says). */
+int CEvent34::Run(EventWork *w, int arg)
+{
+    EvTimer *t = (EvTimer *)w->shared->p;
+    Matrix m;
+
+    f_028c70();
+    f_02842c();
+    f_0287cc(w->ev->pos.x, w->ev->pos.y, w->ev->pos.z);
+    if (w->ev->flags & 1) {
+        Vec3 r = f_0dacd4(w->ev);
+        f_02853c(r.z);
+        f_0284fc(r.y);
+        f_0284bc(r.x);
+    }
+    if (w->ev->flags & 2) {
+        Vec3 sc = f_0dad14(w->ev);
+        f_02884c(sc.x, sc.y, sc.z);
+    }
+    f_028d94(&m);
+    f_028ca8();
+    return f_0fed54(w->ev->obj + t->time / (t->period * 60) % t->count, &m, arg, -1);
 }
 
 /* @implements 0x0d2ecc us _ZN8CEvent347Release
