@@ -34,6 +34,7 @@ void f_0287cc(float x, float y, float z);
 void f_02884c(float x, float y, float z);
 void f_02880c(float x, float y, float z);
 void f_028748(const Matrix *m);
+void f_028e9c(const void *m);
 int f_0fed54(int obj, Matrix *m, int arg, int mode);
 }
 
@@ -106,7 +107,7 @@ static inline Vec4 operator-(Vec4 a, const Vec4 &b)
 struct Event {
     short type;
     short m2;
-    int flags;
+    unsigned int flags;
     int m8;
     int m12;
     Vec3 pos;
@@ -123,14 +124,42 @@ extern "C" Vec3 f_0dad14(Event *ev);
 /* An event parameter by key and index, from the event data's object file. */
 extern "C" int *f_0dad68(Event *ev, int key, int i);
 
+/* The course's sound emitters. */
+extern char D_27eac0[];
+extern "C" void f_0e767c(void *emitters, int kind, float x, float y, float z);
+extern "C" int f_0ff388(int obj, Matrix *m, int arg, int colour);
+
 /* The frame counter. */
 extern int D_23faec;
+
+/* An object shared by every job of one kind, kept alive by a reference count: built when
+   the first job takes it. */
+struct EvShared;
+struct EvSharedVt {
+    void (*Init)(EvShared *s);
+};
+struct EvShared {
+    EvSharedVt *vt;
+    int m4;
+    int ref;
+    int m12[9];
+    Vec4 m48[4];        /* its placement matrix, the last row its offset */
+    int m112[256];
+    int m1136;
+    int m1140[2];
+    int m1148;          /* the camera it was last set up for */
+    int m1152;          /* a turning angle, 65536 to the turn */
+};
+
+struct EvSharedHolder {
+    EvShared *p;
+};
 
 /* The work record of a running event job. */
 struct EventWork {
     int m0;
     Event *ev;
-    int m8;
+    EvSharedHolder *shared;
     int m12;
     int m16;
     int m20;
@@ -555,6 +584,198 @@ int CEvent05::Run(EventWork *w, int arg)
    WHAT IT DOES: Nothing to release. */
 void CEvent05::Release(EventWork *w)
 {
+}
+
+/* @draft 0x0d0954 us _ZN8CEvent064Eval
+   WHAT IT DOES: Takes the shared object on the job's first frame (building it when this is
+   the first taker, and restarting it when the camera has changed), places the event at the
+   object's offset, starts the event's sound when it has one, and scores like type 0.
+   DIFFERS: the first-frame block's layout, the visibility call's argument order, and the
+   copy of the placed position (retail stores the copy's fourth word as a known zero). */
+float CEvent06::Eval(EventWork *w)
+{
+    Event *ev = w->ev;
+    EvShared *sh = w->shared->p;
+    int n = ev->obj;
+    Vec4 *box;
+    EvObject *o;
+    float r2, dist, l2, r;
+    Vec4 p = {0, 0, 0, 0};
+    Vec4 c;
+
+    p.x = ev->pos.x;
+    p.y = ev->pos.y;
+    p.z = ev->pos.z;
+    if (w->m16 == 0) {
+        if (++sh->ref == 1)
+            sh->vt->Init(sh);
+        if (*(int *)((char *)D_2542a0 + 572) != sh->m1148) {
+            sh->m1148 = *(int *)((char *)D_2542a0 + 572);
+            sh->m1136 = 0;
+        }
+    }
+    f_027dc8(&p, &p, &sh->m48[3]);
+    if (w->ev->flags & 0x80000)
+        f_0e767c(D_27eac0, 1, p.x, p.y, p.z);
+    EvData *d = D_23c820.Events();
+    box = d->Obj(n)->boxes;
+    f_027dc8(&c, box, &p);
+    if (!f_0cc8c8(D_2542a0, c, box->w))
+        r = -1.0f;
+    else {
+        o = &d->objs[n];
+        r2 = o->radius;
+        dist = o->dist;
+        r2 = r2 * r2;
+        Vec4 q = {0, 0, 0, 0};
+        q.x = p.x;
+        q.y = p.y;
+        q.z = p.z;
+        c = q;
+        f_027e0c(&q, &c, D_2542a0);
+        l2 = f_027ebc(&q, &q);
+        if (r2 < l2)
+            r = -1.0f;
+        else
+            r = (dist + 0.999f) - l2 / 2000.0f / 2000.0f / 1000.0f / 1000.0f;
+    }
+    return r;
+}
+
+/* @implements 0x0d0b78 us _ZN8CEvent063Run
+   WHAT IT DOES: Draws the event's object with the shared object's matrix at the event's
+   position (through the second draw path for objects flagged 0x40). */
+int CEvent06::Run(EventWork *w, int arg)
+{
+    EvShared *sh = w->shared->p;
+    int n = w->ev->obj;
+    Matrix m;
+
+    f_028c70();
+    f_028e9c(sh->m48);
+    f_0287cc(w->ev->pos.x, w->ev->pos.y, w->ev->pos.z);
+    f_028d94(&m);
+    f_028ca8();
+    if (D_23c820.m12144.Obj(n)->m4[0] & 0x40)
+        return f_0ff388(n, &m, arg, -1);
+    return f_0fed54(n, &m, arg, -1);
+}
+
+/* @implements 0x0d0c3c us _ZN8CEvent067Release
+   WHAT IT DOES: Lets go of the shared object, complaining when the count goes below zero. */
+void CEvent06::Release(EventWork *w)
+{
+    EvShared *sh = w->shared->p;
+    if (--sh->ref < 0)
+        f_126f1c("CEventJobWorkBase  Refrence Counter Overflow!!");
+}
+
+/* @implements 0x0d0c80 us _ZN8CEvent214Eval
+   WHAT IT DOES: Takes the shared object on the job's first frame (building it when this is
+   the first taker), places the event at the object's offset, sets the event's sound going
+   (kind 3 when the event says, else 0), and scores like type 0. */
+float CEvent21::Eval(EventWork *w)
+{
+    Event *ev = w->ev;
+    EvShared *sh = w->shared->p;
+    int n = ev->obj;
+    Vec4 *box;
+    EvObject *o;
+    float r2, dist, l2, r;
+    Vec4 p = {0, 0, 0, 0};
+    Vec4 c;
+
+    p.x = ev->pos.x;
+    p.y = ev->pos.y;
+    p.z = ev->pos.z;
+    if (w->m16 == 0) {
+        if (++sh->ref == 1)
+            sh->vt->Init(sh);
+    }
+    f_027dc8(&p, &p, &sh->m48[3]);
+    if (!(w->ev->flags & 0x80000))
+        f_0e767c(D_27eac0, 0, p.x, p.y, p.z);
+    else
+        f_0e767c(D_27eac0, 3, p.x, p.y, p.z);
+    EvData *d = D_23c820.Events();
+    box = d->Obj(n)->boxes;
+    f_027dc8(&c, box, &p);
+    if (!f_0cc8c8(D_2542a0, c, box->w))
+        r = -1.0f;
+    else {
+        o = &d->objs[n];
+        r2 = o->radius;
+        dist = o->dist;
+        r2 = r2 * r2;
+        Vec4 q = {0, 0, 0, 0};
+        q.x = p.x;
+        q.y = p.y;
+        q.z = p.z;
+        c = q;
+        f_027e0c(&q, &c, D_2542a0);
+        l2 = f_027ebc(&q, &q);
+        if (r2 < l2)
+            r = -1.0f;
+        else
+            r = (dist + 0.999f) - l2 / 2000.0f / 2000.0f / 1000.0f / 1000.0f;
+    }
+    return r;
+}
+
+/* @implements 0x0d0e94 us _ZN8CEvent213Run
+   WHAT IT DOES: Draws the event's object with the shared object's matrix at the event's
+   position (rotated when the event says), then up to two turning parts named by the event's
+   parameters, placed by the event's part count and kind and turned by the shared angle. */
+int CEvent21::Run(EventWork *w, int arg)
+{
+    EvShared *sh = w->shared->p;
+    Matrix m;
+    int k;
+
+    f_028c70();
+    f_028e9c(sh->m48);
+    f_0287cc(w->ev->pos.x, w->ev->pos.y, w->ev->pos.z);
+    if (w->ev->flags & 1) {
+        Vec3 r = f_0dacd4(w->ev);
+        f_02853c(r.z);
+        f_0284fc(r.y);
+        f_0284bc(r.x);
+    }
+    f_028d94(&m);
+    arg = f_0fed54(w->ev->obj, &m, arg, -1);
+    k = (w->ev->flags >> 14) & 7;
+    f_028c70();
+    if (k > 0) {
+        if (!(w->ev->flags & 0x80000)) {
+            f_0287cc(0.0f, 4400.0f, 100.0f);
+            f_0284bc(1.5707964f);
+        } else {
+            f_0287cc(0.0f, 0.0f, -8200.0f);
+            f_0284fc(3.14159f);
+        }
+        f_02853c(sh->m1152 * 6.2831855f * 1.52587890625e-05f);
+        f_028d94(&m);
+        arg = f_0fed54(*f_0dad68(w->ev, 0x1c000, 0), &m, arg, -1);
+    }
+    f_028ca8();
+    if (k >= 2) {
+        f_0287cc(0.0f, 774.0f, -5477.0f);
+        f_0284fc(1.5707964f);
+        f_02853c(sh->m1152 * 6.2831855f * 1.52587890625e-05f);
+        f_028d94(&m);
+        arg = f_0fed54(*f_0dad68(w->ev, 0x1c000, 1), &m, arg, -1);
+    }
+    f_028ca8();
+    return arg;
+}
+
+/* @implements 0x0d10c4 us _ZN8CEvent217Release
+   WHAT IT DOES: Lets go of the shared object, complaining when the count goes below zero. */
+void CEvent21::Release(EventWork *w)
+{
+    EvShared *sh = w->shared->p;
+    if (--sh->ref < 0)
+        f_126f1c("CEventJobWorkBase  Refrence Counter Overflow!!");
 }
 
 /* @implements 0x0d13a0 us _ZN8CEvent124Eval
