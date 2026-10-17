@@ -264,6 +264,13 @@ public:
     virtual void f_0c10e8();
     virtual void f_0c1190();
 
+    /* The direction record: x and z of the direction vector and the heading. */
+    void SetDir(float h, float x, float z)
+    {
+        m2128 = x;
+        m2132 = z;
+        m2136 = h;
+    }
     void f_0c0984(int i, CarRow *tab);
     void f_0c0b3c(Spec *s);
     void f_0c0d00(Spec *s);
@@ -380,11 +387,9 @@ void CRidgeComcar::f_0c0900()
 {
 }
 
-/* @draft 0x0c0908 us f_0c0908
+/* @implements 0x0c0908 us f_0c0908
    WHAT IT DOES: Builds the car's direction vector from its position (y relative to the
-   ground height), scales it to length 1000, and stores it with the heading.
-   DIFFERS: the three loads before the final stores come out in another order (every store
-   order and a struct temporary were tried). */
+   ground height), scales it to length 1000, and stores it with the heading. */
 void CRidgeComcar::f_0c0908()
 {
     Vec4 v;
@@ -393,9 +398,7 @@ void CRidgeComcar::f_0c0908()
     v.z = -phys.cur.pos.z;
     v.w = 1.0f;
     f_0a5e1c(&v, 1000.0f);
-    m2128 = v.x;
-    m2136 = phys.cur.heading;
-    m2132 = v.z;
+    SetDir(phys.cur.heading, v.x, v.z);
 }
 
 /* @draft 0x0c0984 us f_0c0984
