@@ -42,7 +42,8 @@ int f_0fed54(int obj, Matrix *m, int arg, int mode);
    and its draw radius. */
 struct EvObject {
     char *name;
-    int m4[4];
+    int m4[3];          /* m4[0]: flags */
+    void *data;         /* +16: its pack data */
     int nBoxes;
     Vec4 *boxes;
     int m28[4];
@@ -168,6 +169,10 @@ struct EvLoop {
 extern "C" void f_0ec2b8(void *snd);
 extern "C" void f_0ec2cc(void *snd);
 extern "C" void f_0ec35c(void *snd);
+extern "C" void f_0ec2a8(void *snd);
+extern "C" void f_0ec2b0(void *snd);
+extern "C" void f_0e428c(EffectMgr *m, void *data);
+extern "C" void f_0e43ec(EffectMgr *m, void *owner);
 
 /* The frame counter. */
 extern int D_23faec;
@@ -226,7 +231,7 @@ struct EventWork {
     int m32;
 };
 
-class CEventJobWorkBase {
+class CEventHandler {
 public:
     static float Eval(EventWork *w);
     static int Run(EventWork *w, int arg);
@@ -235,7 +240,7 @@ public:
 };
 
 #define EVENT_TYPE(N)                               \
-    class CEvent##N : public CEventJobWorkBase {    \
+    class CEvent##N : public CEventHandler {    \
     public:                                         \
         static float Eval(EventWork *w);            \
         static int Run(EventWork *w, int arg);      \
@@ -263,7 +268,7 @@ EVENT_TYPE(33)
 EVENT_TYPE(34)
 
 /* Type 20 has handlers of its own but answers through the base class's Flag. */
-class CEvent20 : public CEventJobWorkBase {
+class CEvent20 : public CEventHandler {
 public:
     static float Eval(EventWork *w);
     static int Run(EventWork *w, int arg);
@@ -1474,32 +1479,346 @@ void CEvent34::Release(EventWork *w)
 {
 }
 
-/* @implements 0x0d2ed4 us _ZN17CEventJobWorkBase4Eval
+/* @implements 0x0d2ed4 us _ZN13CEventHandler4Eval
    WHAT IT DOES: Default: never asks to run. */
-float CEventJobWorkBase::Eval(EventWork *w)
+float CEventHandler::Eval(EventWork *w)
 {
     return -1.0f;
 }
 
-/* @implements 0x0d2ee0 us _ZN17CEventJobWorkBase3Run
+/* @implements 0x0d2ee0 us _ZN13CEventHandler3Run
    WHAT IT DOES: Default: does nothing; passes the argument back. */
-int CEventJobWorkBase::Run(EventWork *w, int arg)
+int CEventHandler::Run(EventWork *w, int arg)
 {
     return arg;
 }
 
-/* @implements 0x0d2ee8 us _ZN17CEventJobWorkBase7Release
+/* @implements 0x0d2ee8 us _ZN13CEventHandler7Release
    WHAT IT DOES: Default: nothing to release. */
-void CEventJobWorkBase::Release(EventWork *w)
+void CEventHandler::Release(EventWork *w)
 {
 }
+
+namespace Map {
+namespace Event {
+
+/* The work objects shared by the jobs of one kind of event: set up from an event, updated
+   once a frame while any job holds them, stopped when the last job lets go. */
+class CEventJobWorkBase {
+public:
+    virtual void Update() = 0;
+    virtual void Setup(::Event *e) = 0;
+    virtual void Stop() = 0;
+    virtual void Reset();
+
+    ::Event *ev;
+    int ref;
+};
+
+/* Moving models (type 6 and relatives): a placement matrix and a camera cut counter. */
+class CMotWork : public CEventJobWorkBase {
+public:
+    virtual void Update();
+    virtual void Setup(::Event *e);
+    virtual void Stop();
+    virtual void Reset();
+
+    int m12[9];
+    Vec4 matrix[4];
+    int m112[256];
+    int m1136;
+    int m1140[2];
+    int cam;
+    int angle;
+};
+
+/* The helicopter: a moving model of its own. */
+class CHeliWork : public CMotWork {
+public:
+    virtual void Update();
+};
+
+/* The cyclists. */
+class CCycleWork : public CEventJobWorkBase {
+public:
+    virtual void Update();
+    virtual void Setup(::Event *e);
+    virtual void Stop();
+
+    int *m12;
+    int *m16;
+};
+
+/* The flashes. */
+class CFlashWork : public CEventJobWorkBase {
+public:
+    virtual void Update();
+    virtual void Setup(::Event *e);
+    virtual void Stop();
+
+    int m12;
+    int *m16;
+    int *m20;
+};
+
+/* The fireworks: started through the effect manager. */
+class CHanabiWork : public CEventJobWorkBase {
+public:
+    virtual void Update();
+    virtual void Setup(::Event *e);
+    virtual void Stop();
+
+    int active;
+};
+
+/* The falling leaves. */
+class CLeafWork : public CEventJobWorkBase {
+public:
+    virtual void Update();
+    virtual void Setup(::Event *e);
+    virtual void Stop();
+    bool IsActive() { return active == 1; }
+
+    int active;
+    int m16;
+    int count;
+    float pos[3];
+    float rot[3];
+    unsigned char colour[3];
+};
+
+/* The pigeons. */
+class CHatoWork : public CEventJobWorkBase {
+public:
+    virtual void Update();
+    virtual void Setup(::Event *e);
+    virtual void Stop();
+
+    int m12;
+    int *birds;
+};
+
+/* The cows: a frame animation run forwards or backwards on cue. */
+class CUshiWork : public CEventJobWorkBase {
+public:
+    virtual void Update();
+    virtual void Setup(::Event *e);
+    virtual void Stop();
+    virtual void Reset();
+
+    int period;
+    int count;
+    int time;
+    int state;
+    int length;
+    int cam;
+    int m36;
+    int frame;
+};
+
+/* @implements 0x0d3e98 us _ZN3Map5Event8CMotWork5Setup
+   WHAT IT DOES: Takes the event. */
+void CMotWork::Setup(::Event *e)
+{
+    ev = e;
+}
+
+/* @implements 0x0d3ea0 us _ZN3Map5Event8CMotWork4Stop
+   WHAT IT DOES: Nothing to stop. */
+void CMotWork::Stop()
+{
+}
+
+/* @implements 0x0d3ea8 us _ZN3Map5Event17CEventJobWorkBase5Reset
+   WHAT IT DOES: Default: nothing to reset. */
+void CEventJobWorkBase::Reset()
+{
+}
+
+/* @implements 0x0d3fe8 us _ZN3Map5Event8CMotWork5Reset
+   WHAT IT DOES: Clears the cut counter. */
+void CMotWork::Reset()
+{
+    m1136 = 0;
+}
+
+/* @implements 0x0d4380 us _ZN3Map5Event10CCycleWork4Stop
+   WHAT IT DOES: Frees the two tables. */
+void CCycleWork::Stop()
+{
+    if (m12)
+        delete[] m12;
+    if (m16)
+        delete[] m16;
+}
+
+/* @implements 0x0d46e0 us _ZN3Map5Event10CFlashWork4Stop
+   WHAT IT DOES: Frees the two tables. */
+void CFlashWork::Stop()
+{
+    if (m16)
+        delete[] m16;
+    if (m20)
+        delete[] m20;
+}
+
+/* @implements 0x0d492c us _ZN3Map5Event11CHanabiWork5Setup
+   WHAT IT DOES: Starts the event object's firework through the effect manager, once. */
+void CHanabiWork::Setup(::Event *e)
+{
+    if (active == 0) {
+        active = 1;
+        f_0e428c(&D_2543a0, D_23c820.m12144.Obj(e->obj)->data);
+    }
+}
+
+/* @implements 0x0d4980 us _ZN3Map5Event11CHanabiWork4Stop
+   WHAT IT DOES: Stops the firework if it is running. */
+void CHanabiWork::Stop()
+{
+    if (active == 1) {
+        active = 0;
+        f_0e43ec(&D_2543a0, this);
+    }
+}
+
+/* @implements 0x0d49bc us _ZN3Map5Event11CHanabiWork6Update
+   WHAT IT DOES: Nothing per frame. */
+void CHanabiWork::Update()
+{
+}
+
+/* @implements 0x0d49c4 us _ZN3Map5Event9CLeafWork5Setup
+   WHAT IT DOES: Takes the event, starts the leaves once, and copies the event's position,
+   rotation (zero without one), leaf count and colour. */
+void CLeafWork::Setup(::Event *e)
+{
+    ev = e;
+    if (active == 0) {
+        active = 1;
+        f_0ec2a8(this);
+    }
+    pos[0] = ev->pos.x;
+    pos[1] = ev->pos.y;
+    pos[2] = ev->pos.z;
+    if (ev->flags & 1) {
+        Vec3 r = f_0dacd4(ev);
+        rot[0] = r.x;
+        rot[1] = r.y;
+        rot[2] = r.z;
+    } else {
+        rot[0] = 0;
+        rot[1] = 0;
+        rot[2] = 0;
+    }
+    count = *f_0dad68(ev, 0x40000, 0);
+    colour[0] = *f_0dad68(ev, 0xe00000, 0);
+    colour[1] = *f_0dad68(ev, 0xe00000, 1);
+    colour[2] = *f_0dad68(ev, 0xe00000, 2);
+}
+
+/* @implements 0x0d4ac4 us _ZN3Map5Event9CLeafWork4Stop
+   WHAT IT DOES: Stops the leaves if they are running. */
+void CLeafWork::Stop()
+{
+    if (active == 1) {
+        active = 0;
+        f_0ec2b0(this);
+    }
+}
+
+/* @implements 0x0d4af4 us _ZN3Map5Event9CLeafWork6Update
+   WHAT IT DOES: Nothing per frame. */
+void CLeafWork::Update()
+{
+}
+
+/* @implements 0x0d4d64 us _ZN3Map5Event9CHatoWork4Stop
+   WHAT IT DOES: Frees the birds. */
+void CHatoWork::Stop()
+{
+    if (birds)
+        delete[] birds;
+}
+
+/* @implements 0x0d4e04 us _ZN3Map5Event9CUshiWork5Setup
+   WHAT IT DOES: Takes the event and its period (32 unless the event gives one) and frame
+   count, and resets the animation. */
+void CUshiWork::Setup(::Event *e)
+{
+    ev = e;
+    if (e->flags & 8)
+        period = *f_0dad68(e, 0x700, 0);
+    else
+        period = 32;
+    int n = *f_0dad68(e, 0x40000, 0);
+    cam = -9999;
+    m36 = 0;
+    count = n;
+    time = 0;
+    state = 0;
+    length = n * period * 60;
+}
+
+/* @implements 0x0d4eb0 us _ZN3Map5Event9CUshiWork4Stop
+   WHAT IT DOES: Nothing to stop. */
+void CUshiWork::Stop()
+{
+}
+
+/* @implements 0x0d4eb8 us _ZN3Map5Event9CUshiWork6Update
+   WHAT IT DOES: Runs the animation forwards to its end (state 1) or backwards to 80% of it
+   (state 2), then holds (state 3) until the camera cuts, which returns it to rest. */
+void CUshiWork::Update()
+{
+    switch (state) {
+    case 0:
+        break;
+    case 1:
+        time += 1024;
+        if (time >= length) {
+            state = 3;
+            time = length - 1;
+            frame = length - 1;
+        }
+        break;
+    case 2:
+        time -= 1024;
+        if (time < length * 8 / 10) {
+            state = 3;
+            frame = time;
+        }
+        break;
+    case 3:
+        if (cam == -9999)
+            cam = *(int *)((char *)D_2542a0 + 572);
+        if (cam != *(int *)((char *)D_2542a0 + 572))
+            state = 0;
+        cam = *(int *)((char *)D_2542a0 + 572);
+        break;
+    }
+}
+
+/* @implements 0x0d4f9c us _ZN3Map5Event9CUshiWork5Reset
+   WHAT IT DOES: Back to rest. */
+void CUshiWork::Reset()
+{
+    cam = -9999;
+    time = 0;
+    m36 = 0;
+    state = 0;
+}
+
+}
+}
+
 
 typedef float (*EvalFn)(EventWork *);
 typedef int (*RunFn)(EventWork *, int);
 typedef void (*ReleaseFn)(EventWork *);
 typedef int (*FlagFn)();
 
-#define BASE CEventJobWorkBase
+#define BASE CEventHandler
 #define ROW4(f) &CEvent00::f, &CEvent01::f, &CEvent02::f, &CEvent03::f, &CEvent04::f, &CEvent05::f, &CEvent06::f, \
     &BASE::f, &BASE::f, &BASE::f, &BASE::f, &BASE::f, &CEvent12::f, &BASE::f, &BASE::f, &BASE::f,                 \
     &CEvent16::f, &CEvent17::f, &CEvent18::f, &CEvent19::f, &CEvent20::f, &CEvent21::f, &BASE::f, &CEvent23::f,   \
@@ -1548,5 +1867,5 @@ FlagFn D_1d4c0c[36] = { ROW4(Flag) };
    WHAT IT DOES: Answers 1. */
 /* @implements 0x0d54b8 us _ZN8CEvent344Flag
    WHAT IT DOES: Answers 1. */
-/* @implements 0x0d54c0 us _ZN17CEventJobWorkBase4Flag
+/* @implements 0x0d54c0 us _ZN13CEventHandler4Flag
    WHAT IT DOES: Default: answers 1. */
