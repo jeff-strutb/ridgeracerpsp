@@ -32,6 +32,7 @@ void f_0284fc(float a);
 void f_02853c(float a);
 void f_0287cc(float x, float y, float z);
 void f_02884c(float x, float y, float z);
+void f_02880c(float x, float y, float z);
 void f_028748(const Matrix *m);
 int f_0fed54(int obj, Matrix *m, int arg, int mode);
 }
@@ -50,6 +51,7 @@ struct EvObject {
 };
 
 struct EvData {
+    EvObject *Obj(int i) { return &objs[i]; }
     void *header;
     EvObject *objs;
 };
@@ -57,6 +59,7 @@ struct EvData {
 /* The map manager (src/race/MapManager.cpp), holding the event data at +12144. */
 struct MapMgr {
     EvData *Events() { return &m12144; }
+    EvObject &Object(int i) { return m12144.objs[i]; }
     char m0[12144];
     EvData m12144;
 };
@@ -67,6 +70,9 @@ extern Vec4 *D_2542a0;
 
 /* The camera-facing matrix of the frame being run (built by Begin). */
 extern Matrix D_2542b0;
+
+/* The camera-facing matrix about the vertical axis only (built by Begin). */
+extern Matrix D_2542f0;
 
 static inline Vec4 ToVec4(const Vec3 &p)
 {
@@ -113,6 +119,12 @@ struct Event {
    data's own object file. */
 extern "C" Vec3 f_0dacd4(Event *ev);
 extern "C" Vec3 f_0dad14(Event *ev);
+
+/* An event parameter by key and index, from the event data's object file. */
+extern "C" int *f_0dad68(Event *ev, int key, int i);
+
+/* The frame counter. */
+extern int D_23faec;
 
 /* The work record of a running event job. */
 struct EventWork {
@@ -171,19 +183,17 @@ public:
     static void Release(EventWork *w);
 };
 
-/* @draft 0x0cfc6c us _ZN8CEvent004Eval
+/* @implements 0x0cfc6c us _ZN8CEvent004Eval
    WHAT IT DOES: Asks to run while the event's object is in view and within its draw radius
-   of the camera: nearer objects and objects further along the course score higher.
-   DIFFERS: retail copies the event position into the slot the visibility centre used (16),
-   this build gives the copy a slot of its own (+4 B of frame code). */
+   of the camera: nearer objects and objects further along the course score higher. */
 float CEvent00::Eval(EventWork *w)
 {
     EvData *d = D_23c820.Events();
     Event *ev = w->ev;
     int n = ev->obj;
-    EvObject *o = &d->objs[n];
-    Vec4 *box = o->boxes;
-    float r2, dist, l2;
+    Vec4 *box = d->Obj(n)->boxes;
+    EvObject *o;
+    float r2, dist, l2, r;
     Vec4 p = {0, 0, 0, 0};
     Vec4 c;
 
@@ -192,20 +202,22 @@ float CEvent00::Eval(EventWork *w)
     p.z = ev->pos.z;
     f_027dc8(&c, box, &p);
     if (!f_0cc8c8(D_2542a0, c, box->w))
-        return -1.0f;
-    ev = w->ev;
-    o = &d->objs[n];
-    r2 = o->radius;
-    dist = o->dist;
-    r2 = r2 * r2;
-    {
-        Vec4 q = ToVec4(ev->pos);
-        Sub(&q, q, *D_2542a0);
+        r = -1.0f;
+    else {
+        o = &d->objs[n];
+        r2 = o->radius;
+        dist = o->dist;
+        r2 = r2 * r2;
+        Vec4 q = ToVec4(w->ev->pos);
+        c = q;
+        f_027e0c(&q, &c, D_2542a0);
         l2 = f_027ebc(&q, &q);
+        if (r2 < l2)
+            r = -1.0f;
+        else
+            r = (dist + 0.999f) - l2 / 2000.0f / 2000.0f / 1000.0f / 1000.0f;
     }
-    if (r2 < l2)
-        return -1.0f;
-    return (dist + 0.999f) - l2 / 2000.0f / 2000.0f / 1000.0f / 1000.0f;
+    return r;
 }
 
 /* @implements 0x0cfe10 us _ZN8CEvent003Run
@@ -247,6 +259,41 @@ void CEvent00::Release(EventWork *w)
 {
 }
 
+/* @implements 0x0cff38 us _ZN8CEvent014Eval
+   WHAT IT DOES: The same score as type 0's (its own copy of the constants). */
+float CEvent01::Eval(EventWork *w)
+{
+    EvData *d = D_23c820.Events();
+    Event *ev = w->ev;
+    Vec4 *box = d->Obj(ev->obj)->boxes;
+    EvObject *o;
+    float r2, dist, l2, r;
+    Vec4 p = {0, 0, 0, 0};
+    Vec4 c;
+
+    p.x = ev->pos.x;
+    p.y = ev->pos.y;
+    p.z = ev->pos.z;
+    f_027dc8(&c, box, &p);
+    if (!f_0cc8c8(D_2542a0, c, box->w))
+        r = -1.0f;
+    else {
+        o = d->Obj(w->ev->obj);
+        r2 = o->radius;
+        dist = o->dist;
+        r2 = r2 * r2;
+        Vec4 q = ToVec4(w->ev->pos);
+        c = q;
+        f_027e0c(&q, &c, D_2542a0);
+        l2 = f_027ebc(&q, &q);
+        if (r2 < l2)
+            r = -1.0f;
+        else
+            r = (dist + 0.999f) - l2 / 2000.0f / 2000.0f / 1000.0f / 1000.0f;
+    }
+    return r;
+}
+
 /* @implements 0x0d00dc us _ZN8CEvent013Run
    WHAT IT DOES: Draws the event's object facing the camera (scaled first when the event
    says) at the event's position, and returns what the draw returns. */
@@ -276,10 +323,136 @@ void CEvent01::Release(EventWork *w)
 {
 }
 
+/* @implements 0x0d01c8 us _ZN8CEvent204Eval
+   WHAT IT DOES: The same score as type 0's (its own copy of the constants). */
+float CEvent20::Eval(EventWork *w)
+{
+    EvData *d = D_23c820.Events();
+    Event *ev = w->ev;
+    Vec4 *box = d->Obj(ev->obj)->boxes;
+    EvObject *o;
+    float r2, dist, l2, r;
+    Vec4 p = {0, 0, 0, 0};
+    Vec4 c;
+
+    p.x = ev->pos.x;
+    p.y = ev->pos.y;
+    p.z = ev->pos.z;
+    f_027dc8(&c, box, &p);
+    if (!f_0cc8c8(D_2542a0, c, box->w))
+        r = -1.0f;
+    else {
+        o = d->Obj(w->ev->obj);
+        r2 = o->radius;
+        dist = o->dist;
+        r2 = r2 * r2;
+        Vec4 q = ToVec4(w->ev->pos);
+        c = q;
+        f_027e0c(&q, &c, D_2542a0);
+        l2 = f_027ebc(&q, &q);
+        if (r2 < l2)
+            r = -1.0f;
+        else
+            r = (dist + 0.999f) - l2 / 2000.0f / 2000.0f / 1000.0f / 1000.0f;
+    }
+    return r;
+}
+
+/* @implements 0x0d036c us _ZN8CEvent203Run
+   WHAT IT DOES: Draws the event's object facing the camera, fading it in, holding it and
+   fading it out over a repeating period (from the frame counter when the period is given
+   negative, else from the job's own time); outside the cycle it draws nothing. */
+int CEvent20::Run(EventWork *w, int arg)
+{
+    int period = *f_0dad68(w->ev, 0x3800, 0);
+    int hold = *f_0dad68(w->ev, 0xe00000, 0);
+    int fade = *f_0dad68(w->ev, 0xe00000, 1);
+    int t;
+    float a;
+
+    if (period < 0) {
+        t = D_23faec;
+        period = -period;
+    } else
+        t = (w->m16 << 10) / 60;
+    t %= period;
+    a = 1.0f;
+    if (t < fade)
+        a = (float)t / (float)fade;
+    else {
+        t -= fade;
+        if (t >= hold) {
+            t -= hold;
+            if (t >= fade)
+                return arg;
+            a = (float)(fade - t) / (float)fade;
+        }
+    }
+    {
+        int colour = ((int)(a * 255.0f) << 24) | 0xffffff;
+        Matrix m = D_2542b0;
+        Event *ev = w->ev;
+        m.m[3][0] = ev->pos.x;
+        m.m[3][1] = ev->pos.y;
+        m.m[3][2] = ev->pos.z;
+        return f_0fed54(ev->obj, &m, arg, colour);
+    }
+}
+
 /* @implements 0x0d0524 us _ZN8CEvent207Release
    WHAT IT DOES: Nothing to release. */
 void CEvent20::Release(EventWork *w)
 {
+}
+
+/* @draft 0x0d052c us _ZN8CEvent024Eval
+   WHAT IT DOES: Asks to run while the camera is within the object's draw radius of the
+   event: nearer objects and objects further along the course score higher.
+   DIFFERS: the event position's x is loaded into $f1 rather than $f0 (2 words). */
+float CEvent02::Eval(EventWork *w)
+{
+    Event *ev = w->ev;
+    EvObject *o = &D_23c820.m12144.objs[ev->obj];
+    float r2 = o->radius;
+    float dist = o->dist;
+    float l2;
+    Vec4 c;
+
+    r2 = r2 * r2;
+    Vec4 q = ToVec4(ev->pos);
+    c = q;
+    f_027e0c(&q, &c, D_2542a0);
+    l2 = f_027ebc(&q, &q);
+    float r;
+    if (r2 < l2)
+        r = -1.0f;
+    else
+        r = (dist + 0.999f) - l2 / 2000.0f / 2000.0f / 1000.0f / 1000.0f;
+    return r;
+}
+
+/* @implements 0x0d0630 us _ZN8CEvent023Run
+   WHAT IT DOES: Draws the event's object turned about the vertical axis to face the camera
+   (scaled first when the event says) at the event's position. */
+int CEvent02::Run(EventWork *w, int arg)
+{
+    Event *ev = w->ev;
+    int obj = ev->obj;
+    Matrix m;
+
+    if (ev->flags & 2) {
+        Vec3 s = f_0dad14(ev);
+        f_02842c();
+        f_028748(&D_2542f0);
+        f_02884c(s.x, s.y, s.z);
+        f_028d94(&m);
+        ev = w->ev;
+    } else
+        m = D_2542f0;
+    m.m[3][0] = ev->pos.x;
+    m.m[3][1] = ev->pos.y;
+    m.m[3][2] = ev->pos.z;
+    return f_0fed54(obj, &m, arg, -1);
 }
 
 /* @implements 0x0d0720 us _ZN8CEvent027Release
@@ -306,6 +479,56 @@ int CEvent03::Run(EventWork *w, int arg)
    WHAT IT DOES: Nothing to release. */
 void CEvent03::Release(EventWork *w)
 {
+}
+
+/* @draft 0x0d0744 us _ZN8CEvent044Eval
+   WHAT IT DOES: The same score as type 2's (its own copy of the constants).
+   DIFFERS: as type 2's. */
+float CEvent04::Eval(EventWork *w)
+{
+    Event *ev = w->ev;
+    EvObject *o = &D_23c820.m12144.objs[ev->obj];
+    float r2 = o->radius;
+    float dist = o->dist;
+    float l2;
+    Vec4 c;
+
+    r2 = r2 * r2;
+    Vec4 q = ToVec4(ev->pos);
+    c = q;
+    f_027e0c(&q, &c, D_2542a0);
+    l2 = f_027ebc(&q, &q);
+    float r;
+    if (r2 < l2)
+        r = -1.0f;
+    else
+        r = (dist + 0.999f) - l2 / 2000.0f / 2000.0f / 1000.0f / 1000.0f;
+    return r;
+}
+
+/* @implements 0x0d0848 us _ZN8CEvent043Run
+   WHAT IT DOES: Draws the event's object facing the camera, its facing applied about the
+   event's position. */
+int CEvent04::Run(EventWork *w, int arg)
+{
+    Event *ev = w->ev;
+    Vec4 p;
+    Matrix m;
+    int obj;
+
+    p.x = ev->pos.x;
+    p.y = ev->pos.y;
+    p.z = ev->pos.z;
+    p.w = 1.0f;
+    obj = ev->obj;
+    m = D_2542b0;
+    f_028c70();
+    f_02842c();
+    f_02880c(p.x, p.y, p.z);
+    f_028748(&m);
+    f_028d94(&m);
+    f_028ca8();
+    return f_0fed54(obj, &m, arg, -1);
 }
 
 /* @implements 0x0d0930 us _ZN8CEvent047Release
