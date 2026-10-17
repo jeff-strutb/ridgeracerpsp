@@ -5,8 +5,95 @@
    of what it holds, and Flag answers 1. Types without handlers of their own use the base
    class's. The object file ends with the job work list the handlers run under. */
 
+struct Vec3 {
+    float x, y, z;
+};
+
+struct Vec4 {
+    float x, y, z, w;
+} __attribute__((aligned(16)));
+
+struct Matrix {
+    float m[4][4];
+} __attribute__((aligned(16)));
+
 extern "C" {
 int f_126f1c(const char *fmt, ...);
+Vec4 *f_027dc8(Vec4 *d, const Vec4 *a, const Vec4 *b);
+Vec4 *f_027e0c(Vec4 *d, const Vec4 *a, const Vec4 *b);
+float f_027ebc(const Vec4 *a, const Vec4 *b);
+int f_0cc8c8(void *view, const Vec4 &centre, float r);
+void f_028c70(void);
+void f_028ca8(void);
+void f_028d94(Matrix *m);
+void f_02842c(void);
+void f_0284bc(float a);
+void f_0284fc(float a);
+void f_02853c(float a);
+void f_0287cc(float x, float y, float z);
+void f_02884c(float x, float y, float z);
+void f_028748(const Matrix *m);
+int f_0fed54(int obj, Matrix *m, int arg, int mode);
+}
+
+/* A course object of the event data: its bounding spheres, its distance along the course
+   and its draw radius. */
+struct EvObject {
+    char *name;
+    int m4[4];
+    int nBoxes;
+    Vec4 *boxes;
+    int m28[4];
+    float dist;
+    int m48[3];
+    float radius;
+};
+
+struct EvData {
+    void *header;
+    EvObject *objs;
+};
+
+/* The map manager (src/race/MapManager.cpp), holding the event data at +12144. */
+struct MapMgr {
+    EvData *Events() { return &m12144; }
+    char m0[12144];
+    EvData m12144;
+};
+extern MapMgr D_23c820;
+
+/* The camera of the frame being run: its position first. */
+extern Vec4 *D_2542a0;
+
+/* The camera-facing matrix of the frame being run (built by Begin). */
+extern Matrix D_2542b0;
+
+static inline Vec4 ToVec4(const Vec3 &p)
+{
+    Vec4 r = {0, 0, 0, 0};
+    r.x = p.x;
+    r.y = p.y;
+    r.z = p.z;
+    return r;
+}
+
+static inline Vec4 operator+(const Vec4 &a, const Vec4 &b)
+{
+    Vec4 r;
+    f_027dc8(&r, &a, &b);
+    return r;
+}
+
+static inline void Sub(Vec4 *d, Vec4 a, const Vec4 &b)
+{
+    f_027e0c(d, &a, &b);
+}
+
+static inline Vec4 operator-(Vec4 a, const Vec4 &b)
+{
+    Vec4 r;
+    f_027e0c(&r, &a, &b);
+    return r;
 }
 
 /* A course event as loaded from the event file. */
@@ -16,9 +103,16 @@ struct Event {
     int flags;
     int m8;
     int m12;
-    float x, y, z;
+    Vec3 pos;
     int obj;
+    Vec3 m32;           /* the rotation when flag 1 is set */
+    Vec3 m44;
 };
+
+/* The event's rotation (zero without flag 1) and scale (one without flag 2), from the event
+   data's own object file. */
+extern "C" Vec3 f_0dacd4(Event *ev);
+extern "C" Vec3 f_0dad14(Event *ev);
 
 /* The work record of a running event job. */
 struct EventWork {
@@ -77,10 +171,103 @@ public:
     static void Release(EventWork *w);
 };
 
+/* @draft 0x0cfc6c us _ZN8CEvent004Eval
+   WHAT IT DOES: Asks to run while the event's object is in view and within its draw radius
+   of the camera: nearer objects and objects further along the course score higher.
+   DIFFERS: retail copies the event position into the slot the visibility centre used (16),
+   this build gives the copy a slot of its own (+4 B of frame code). */
+float CEvent00::Eval(EventWork *w)
+{
+    EvData *d = D_23c820.Events();
+    Event *ev = w->ev;
+    int n = ev->obj;
+    EvObject *o = &d->objs[n];
+    Vec4 *box = o->boxes;
+    float r2, dist, l2;
+    Vec4 p = {0, 0, 0, 0};
+    Vec4 c;
+
+    p.x = ev->pos.x;
+    p.y = ev->pos.y;
+    p.z = ev->pos.z;
+    f_027dc8(&c, box, &p);
+    if (!f_0cc8c8(D_2542a0, c, box->w))
+        return -1.0f;
+    ev = w->ev;
+    o = &d->objs[n];
+    r2 = o->radius;
+    dist = o->dist;
+    r2 = r2 * r2;
+    {
+        Vec4 q = ToVec4(ev->pos);
+        Sub(&q, q, *D_2542a0);
+        l2 = f_027ebc(&q, &q);
+    }
+    if (r2 < l2)
+        return -1.0f;
+    return (dist + 0.999f) - l2 / 2000.0f / 2000.0f / 1000.0f / 1000.0f;
+}
+
+/* @implements 0x0cfe10 us _ZN8CEvent003Run
+   WHAT IT DOES: Draws the event's object at the event's position, rotated and scaled as the
+   event says, and returns what the draw returns. */
+int CEvent00::Run(EventWork *w, int arg)
+{
+    Event *ev = w->ev;
+    Vec4 p;
+    Matrix m;
+    int obj;
+
+    p.x = ev->pos.x;
+    p.y = ev->pos.y;
+    p.z = ev->pos.z;
+    p.w = 1.0f;
+    obj = ev->obj;
+    f_028c70();
+    f_02842c();
+    f_0287cc(p.x, p.y, p.z);
+    if (w->ev->flags & 1) {
+        Vec3 r = f_0dacd4(w->ev);
+        f_02853c(r.z);
+        f_0284fc(r.y);
+        f_0284bc(r.x);
+    }
+    if (w->ev->flags & 2) {
+        Vec3 s = f_0dad14(w->ev);
+        f_02884c(s.x, s.y, s.z);
+    }
+    f_028d94(&m);
+    f_028ca8();
+    return f_0fed54(obj, &m, arg, -1);
+}
+
 /* @implements 0x0cff30 us _ZN8CEvent007Release
    WHAT IT DOES: Nothing to release. */
 void CEvent00::Release(EventWork *w)
 {
+}
+
+/* @implements 0x0d00dc us _ZN8CEvent013Run
+   WHAT IT DOES: Draws the event's object facing the camera (scaled first when the event
+   says) at the event's position, and returns what the draw returns. */
+int CEvent01::Run(EventWork *w, int arg)
+{
+    Event *ev = w->ev;
+    Matrix m;
+
+    if (ev->flags & 2) {
+        Vec3 s = f_0dad14(ev);
+        f_02842c();
+        f_028748(&D_2542b0);
+        f_02884c(s.x, s.y, s.z);
+        f_028d94(&m);
+        ev = w->ev;
+    } else
+        m = D_2542b0;
+    m.m[3][0] = ev->pos.x;
+    m.m[3][1] = ev->pos.y;
+    m.m[3][2] = ev->pos.z;
+    return f_0fed54(ev->obj, &m, arg, -1);
 }
 
 /* @implements 0x0d01c0 us _ZN8CEvent017Release
