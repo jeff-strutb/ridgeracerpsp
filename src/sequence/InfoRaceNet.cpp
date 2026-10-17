@@ -7,6 +7,11 @@
    session's end of race. It owns a ranking checker (src/race/CheckRanking.cpp). */
 
 extern "C" {
+void f_0ee584(void *);
+void f_0ee624(void *);
+void f_037d50(void *);
+void f_082f38(void *);
+float f_0eede0(int count, int n, float x);
 void f_0ede54(void *);
 void f_0edec0(void *);
 int f_0ee6b8(void *);
@@ -24,6 +29,29 @@ struct RaceSetup {
 };
 extern RaceSetup D_23f7f0;
 
+/* The race's lap timing block (see src/sequence/InfoTimeAttack.cpp). */
+struct RaceLaps {
+    int m0[99][3];
+    char m1188[1216];
+    int m2404;  /* sectors per lap */
+};
+
+/* The race result (see src/sequence/SingleRaceModeJob.cpp). */
+struct Tri {
+    int v[3];
+};
+struct RaceResult {
+    int m0;
+    int m4[29];
+    int time[14];
+    float lap[3];
+    int me;
+    int best[3];
+    Tri rec[3];
+};
+extern RaceResult D_240800;
+extern char D_241760[];
+
 /* @implements 0x0f088c us f_0f088c
    WHAT IT DOES: The sort comparator of two ints (ascending): *a - *b. (Its user, 0x0f178c, is
    not transcribed yet, so it is kept external here to be emitted.) */
@@ -33,8 +61,11 @@ extern "C" int f_0f088c(const void *a, const void *b)
 }
 
 /* The race information record shared by the sequences. */
+struct RaceLaps;
 struct RaceInfo {
-    int m0[8];
+    int m0[6];
+    int m24;
+    int m28;
     int m32;
     int m36;
     int m40;
@@ -45,12 +76,15 @@ struct RaceInfo {
     int m60[11];
     int m104;
     int m108;   /* the player's laps */
-    int m112[5];
+    int m112;   /* the player's place */
+    int m116[4];
     int m132;   /* race time */
     int m136;   /* finishing time */
     int m140;
     float m144;
-    int m148[18];
+    int m148[13];
+    RaceLaps *m200;
+    int m204[4];
     int m220;
 };
 extern RaceInfo *D_2408f0;
@@ -58,18 +92,31 @@ extern RaceInfo *D_2407fc;
 
 /* A member of the network session (40 bytes). */
 struct NetMember {
-    char m0[28];
+    char m0[9];
+    char m9;
+    char m10;
+    char m11[17];
     int m28;    /* finishing time (-2 none yet, -1 retired) */
     int m32;
     float m36;
 };
 
 /* The network session (src/system/NetSession.cpp). */
+struct NetState {
+    char m0[9];
+    signed char m9;
+    char m10[74];
+};
 struct CNetSession {
-    char m0[168];
+    char m0[4];
+    int m4;
+    char m8[76];
+    NetState state;
     NetMember member[8];
     NetMember *Me() { return &member[0]; }
+    NetState *State() { return &state; }
     int f_086afc();
+    int f_086c50();
 };
 extern CNetSession D_241810;
 
@@ -94,6 +141,8 @@ struct CDirector {
     ~CDirector() { f_0edec0(this); }
     int f_0ee6b8() { return ::f_0ee6b8(this); }
     void f_0ee788() { ::f_0ee788(this); }
+    void f_0ee584() { ::f_0ee584(this); }
+    void f_0ee624() { ::f_0ee624(this); }
     char m0[36];
 };
 
@@ -204,6 +253,72 @@ int CInfoRaceNet::f_038a54()
 void CInfoRaceNet::f_038a64()
 {
     f_0f1474();
+}
+
+/* @implements 0x0f1474 us _ZN7RacePSP12CInfoRaceNet8f_0f1474Ev
+   WHAT IT DOES: the end of the race: outside the replay writes the ranking into the race
+   result, frees the ranking checker and the object at +80, and, outside the replay, notes
+   the frame the race ended on and fills the race result: the final phase, the player's
+   place, each lap's time from the player's sector times (sectors 2 or 3 a lap; -1 for a lap
+   not timed), each lap's time converted for display and no sector times. Then ends the
+   session's race: clears the player's member's flag, marks it ended (3), tells the session
+   and, when it is not hosting, marks its own state ended too and tells the members. */
+void CInfoRaceNet::f_0f1474()
+{
+    if (m24 == 0)
+        director.f_0ee584();
+    director.f_0ee624();
+    if (m80)
+        f_037d50(m80);
+    if (m24 == 0) {
+        if (m28 < 0)
+            m28 = m4[3];
+        RaceInfo *ri = D_2408f0;
+        RaceResult *r = &D_240800;
+        D_240800.m0 = ri->m56;
+        r->me = ri->m112;
+        r->best[2] = r->best[1] = r->best[0] = -1;
+        RaceLaps *l = ri->m200;
+        if (l->m2404 == 2) {
+            if (l->m0[0][0] >= 0 && l->m0[0][1] >= 0) {
+                r->best[0] = l->m0[0][1] - l->m0[ri->m36][0];
+                if (l->m0[1][0] >= 0 && l->m0[1][1] >= 0) {
+                    r->best[1] = l->m0[1][1] - l->m0[0][1];
+                    if (l->m0[2][0] >= 0 && l->m0[2][1] >= 0)
+                        r->best[2] = l->m0[2][1] - l->m0[1][1];
+                }
+            }
+        } else if (l->m2404 == 3) {
+            if (l->m0[0][0] >= 0 && l->m0[0][1] >= 0 && l->m0[0][2] >= 0) {
+                r->best[0] = l->m0[0][2] - l->m0[ri->m36][0];
+                if (l->m0[1][0] >= 0 && l->m0[1][1] >= 0 && l->m0[1][2] >= 0) {
+                    r->best[1] = l->m0[1][2] - l->m0[0][2];
+                    if (l->m0[2][0] >= 0 && l->m0[2][1] >= 0 && l->m0[2][2] >= 0)
+                        r->best[2] = l->m0[2][2] - l->m0[1][2];
+                }
+            }
+        }
+        for (int i = 0; i < D_2407fc->m36; i++) {
+            if (D_240800.best[i] > 0)
+                D_240800.lap[i] = f_0eede0(D_240800.best[i], 1, D_23f7f0.m8);
+            else
+                D_240800.lap[i] = 0;
+        }
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 3; j++)
+                D_240800.rec[i].v[j] = -1;
+    }
+    f_082f38(D_241760);
+    CNetSession *net = &D_241810;
+    NetMember *me = net->Me();
+    NetState *st = net->State();
+    me->m10 = 3;
+    me->m9 = 0;
+    net->f_086afc();
+    if (net->m4 == 0) {
+        st->m9 = 3;
+        net->f_086c50();
+    }
 }
 
 /* @implements 0x0f1770 us CInfoRaceNet8f_038a78
