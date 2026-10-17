@@ -153,7 +153,10 @@ struct EvShared {
     EvSharedVt *vt;
     int m4;
     int ref;
-    int m12[5];
+    int m12;
+    int *hidden;        /* +16: per part, nonzero to skip it */
+    Vec4 *offsets;      /* +20: per part, its offset */
+    int m24[2];
     int angle;          /* +32: a turning angle, 65536 to the turn */
     int m36[3];
     Vec4 m48[4];        /* its placement matrix, the last row its offset */
@@ -1083,6 +1086,103 @@ int CEvent23::Run(EventWork *w, int arg)
    WHAT IT DOES: Nothing to release. */
 void CEvent23::Release(EventWork *w)
 {
+}
+
+/* @draft 0x0d1ca0 us _ZN8CEvent184Eval
+   WHAT IT DOES: Takes the shared object on the job's first frame (building it when this is
+   the first taker) and scores like type 2.
+   DIFFERS: as type 2's. */
+float CEvent18::Eval(EventWork *w)
+{
+    EvObject *o;
+    float r2, dist, l2, r;
+    Vec4 c;
+
+    if (w->m16 == 0) {
+        EvShared *sh = w->shared->p;
+        if (++sh->ref == 1)
+            sh->vt->Init(sh);
+    }
+    Event *ev = w->ev;
+    o = &D_23c820.m12144.objs[ev->obj];
+    r2 = o->radius;
+    dist = o->dist;
+    r2 = r2 * r2;
+    Vec4 q = ToVec4(ev->pos);
+    c = q;
+    f_027e0c(&q, &c, D_2542a0);
+    l2 = f_027ebc(&q, &q);
+    if (r2 < l2)
+        r = -1.0f;
+    else
+        r = (dist + 0.999f) - l2 / 2000.0f / 2000.0f / 1000.0f / 1000.0f;
+    return r;
+}
+
+/* An angle in radians wrapped to one turn through the 16-bit angle, and its reverse. */
+static inline float WrapAngle(float a)
+{
+    return (float)((int)(a * 65536.0f / 6.2831855f) & 0xffff) * 6.2831855f * 1.52587890625e-05f;
+}
+
+static inline float ReverseAngle(float a)
+{
+    return (float)(0xffff - (int)(a * 65536.0f / 6.2831855f)) * 6.2831855f * 1.52587890625e-05f;
+}
+
+/* @implements 0x0d1df0 us _ZN8CEvent183Run
+   WHAT IT DOES: Draws each of the shared object's two parts that is not hidden: at the event's
+   position and rotation, then at the part's offset with the rotation undone (scaled when the
+   event says), facing the camera. */
+int CEvent18::Run(EventWork *w, int arg)
+{
+    int obj = w->ev->obj;
+    EvShared *sh = w->shared->p;
+    Matrix m;
+    int i;
+
+    for (i = 0; i < 2; i++) {
+        int *h = &sh->hidden[i];
+        if (*h > 0)
+            continue;
+        f_028c70();
+        f_02842c();
+        f_0287cc(w->ev->pos.x, w->ev->pos.y, w->ev->pos.z);
+        if (w->ev->flags & 1) {
+            Vec3 r = f_0dacd4(w->ev);
+            f_02853c(WrapAngle(r.z));
+            f_0284fc(WrapAngle(r.y));
+            f_0284bc(WrapAngle(r.x));
+        }
+        {
+            Vec4 *o = &sh->offsets[i];
+            f_0287cc(o->x, o->y, o->z);
+        }
+        if (w->ev->flags & 1) {
+            Vec3 r = f_0dacd4(w->ev);
+            f_0284bc(ReverseAngle(r.x));
+            f_0284fc(ReverseAngle(r.y));
+            f_02853c(ReverseAngle(r.z));
+        }
+        if (w->ev->flags & 2) {
+            Vec3 sc = f_0dad14(w->ev);
+            f_02884c(sc.x, sc.y, sc.z);
+        }
+        f_028748(&D_2542b0);
+        f_028d94(&m);
+        f_028ca8();
+        arg = f_0fed54(obj, &m, arg, -1);
+    }
+    return arg;
+}
+
+/* @implements 0x0d20a8 us _ZN8CEvent187Release
+   WHAT IT DOES: Lets go of the shared object, complaining when the count goes below zero. */
+void CEvent18::Release(EventWork *w)
+{
+    EvShared *sh = w->shared->p;
+    if (--sh->ref < 0)
+        f_126f1c("CEventJobWorkBase  Refrence Counter Overflow!!");
 }
 
 /* @implements 0x0d20ec us _ZN8CEvent324Eval
