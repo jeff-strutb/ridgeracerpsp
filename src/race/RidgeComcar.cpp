@@ -25,7 +25,36 @@ void f_0bdbdc(void *car);
 void f_0b73b4(void *car, int a);
 void f_0b7ff4(void *car);
 float f_0c2b7c(void *o);
+void f_0a5e88(Vec4 *out, Vec4 *a, Vec4 *b);
+float f_0a65c4(Vec4 *v);
 }
+
+struct Mat34 {
+    float m[3][4];
+    Mat34 &f_09ff44();
+    Mat34 &f_0a082c(Angle a, int i, int j);
+};
+
+struct Mat43p {
+    float m[4][4];
+    Mat43p &f_0a2db0();
+};
+
+/* A course line point: the lateral offset and the heading (65536 to a turn). */
+struct CourseLine {
+    float f;
+    short h;
+    short pad;
+};
+
+/* A position and its Euler angles. */
+struct Pose {
+    Vec4 pos;
+    float rx;
+    float heading;
+    float rz;
+    float rw;
+};
 
 extern void *D_2456d0;
 extern int D_245ec8;
@@ -36,6 +65,8 @@ struct CourseAreas {
     char p0[8];
     int m8;                /* sections */
     float f_0e2260(int i);
+    float f_0e26dc(float d);
+    void f_0e2d10(float x, float d, float *px, float *py, float *pz);
     int Count() { return m8; }
 };
 struct MapMgr {
@@ -78,10 +109,16 @@ struct ParamCopy {
 
 /* The car's physics record (+5792, 1888 bytes). */
 struct Phys {
-    float x, y, z;         /* 0 */
-    char p12[8];
-    float m20;             /* 20: heading */
-    char p24[360];
+    Pose cur;              /* 0 */
+    Pose prev;             /* 32 */
+    char p64[128];
+    Vec4 m192;             /* 192: velocity per second */
+    char p208[16];
+    Vec4 m224;             /* 224: velocity */
+    char p240[96];
+    Vec4 m336;             /* 336: previous velocity */
+    Vec4 m352;             /* 352: previous velocity per second */
+    char p368[16];
     Vec4 m384;             /* 384 */
     char p400[28];
     int m428;              /* 428: section */
@@ -100,7 +137,9 @@ struct Phys {
     int m488;
     int m492;              /* 492: total distance */
     int m496;
-    char p500[480];
+    char p500[268];
+    Mat43p m768;           /* 768: body matrix */
+    char p832[148];
     float m980;            /* 980: ground height */
     char p984[76];
     float m1060;           /* 1060 */
@@ -124,7 +163,9 @@ struct Drive {
     float m80;
     char p84[40];
     float m124;            /* heading */
-    char p128[24];
+    int m128;
+    char p132[16];
+    float m148;
     float m152;
     CarParam *m156;        /* the parameter block in use */
     ParamCopy m160;        /* 160 */
@@ -278,7 +319,7 @@ public:
     char p10080[4];
     float m10084;
     char p10088[28];
-    void *m10116;          /* 10116 */
+    CourseLine *m10116;    /* 10116: the course line */
     int m10120;
     int m10124;
     int m10128;
@@ -347,13 +388,13 @@ void CRidgeComcar::f_0c0900()
 void CRidgeComcar::f_0c0908()
 {
     Vec4 v;
-    v.x = phys.x;
-    v.y = -(phys.y - phys.m980);
-    v.z = -phys.z;
+    v.x = phys.cur.pos.x;
+    v.y = -(phys.cur.pos.y - phys.m980);
+    v.z = -phys.cur.pos.z;
     v.w = 1.0f;
     f_0a5e1c(&v, 1000.0f);
     m2128 = v.x;
-    m2136 = phys.m20;
+    m2136 = phys.cur.heading;
     m2132 = v.z;
 }
 
@@ -379,9 +420,9 @@ void CRidgeComcar::f_0c0984(int i, CarRow *tab)
     Angle a;
     a.a = m2136;
     f_099b98(&a);
-    *(Angle *)&phys.m20 = a;
+    *(Angle *)&phys.cur.heading = a;
     Angle b;
-    b.a = phys.m20 + 1.5707964f;
+    b.a = phys.cur.heading + 1.5707964f;
     f_099b98(&b);
     d->m124 = b.a;
     if (3.1415927f < b.a)
@@ -423,9 +464,9 @@ void CRidgeComcar::f_0c0b3c(Spec *s)
     Angle a;
     a.a = D_23c820.Areas()->f_0e2260((int)m9572);
     f_099b98(&a);
-    *(Angle *)&phys.m20 = a;
+    *(Angle *)&phys.cur.heading = a;
     Angle b;
-    b.a = phys.m20 + 1.5707964f;
+    b.a = phys.cur.heading + 1.5707964f;
     f_099b98(&b);
     d->m124 = b.a;
     if (3.1415927f < b.a)
@@ -682,10 +723,92 @@ void CRidgeComcar::f_0c1438()
 }
 
 /* @draft 0x0c145c us f_0c145c
-   WHAT IT DOES: Course following.
-   DIFFERS: not yet transcribed. */
+   WHAT IT DOES: Moves the computer car along the course line (skipped while replayed): keeps
+   the previous pose and velocities, advances the distance by a * (frame scale * b + c) and
+   lets the course areas wrap it, looks up the course line point (lateral offset and heading)
+   for the new section, places the car there (scaled by 1/1000, y and z flipped), sets its
+   heading, velocity and course heading (a quarter turn on, wrapped into -pi..pi, plus the
+   pending steer), rebuilds the body matrix from the angles and the position, and derives the
+   per-second velocity and the speed.
+   DIFFERS: register choice for the course line lookup (retail loads the table into v1 and
+   the scaled index into v0, here swapped) and retail loads the heading before the quarter
+   turn constant. */
 void CRidgeComcar::f_0c145c(float a, float b, float c)
 {
+    CourseAreas *ar = D_23c820.Areas();
+    Phys *p = &phys;
+    Vec4 v = {0.0f, 0.0f, 0.0f, 0.0f};
+
+    if (m9912 == 2)
+        return;
+    m2256 = m2144;
+    m2260 = m2140;
+    Drive *d = (Drive *)((char *)this + 7092);
+    p->prev = p->cur;
+    p->m336 = p->m224;
+    p->m352 = p->m192;
+    float step = a * (m9928 * b + c);
+    float dist = m2144 + step;
+    dist = ar->f_0e26dc(dist);
+    int sec = (int)dist;
+    CourseLine *e = &m10116[sec];
+    float x = e->f;
+    float h = (float)-e->h * 9.58738e-05f;
+    p->m432 = p->m428;
+    p->m428 = sec;
+    m2136 = h;
+    ar->f_0e2d10(x, dist, &v.x, &v.y, &v.z);
+    m2140 = v.y;
+    m2148 = x;
+    m2144 = dist;
+    v.y = -v.y;
+    v.z = -v.z;
+    v.w = 1.0f;
+    f_0a5e1c(&v, 0.001f);
+    p->cur.pos = v;
+    float hh = h;
+    f_099b98((Angle *)&hh);
+    Vec4 *vel = &p->m224;
+    vel->x = 0.0f;
+    *(Angle *)&phys.cur.heading = *(Angle *)&hh;
+    vel->z = step;
+    vel->w = 1.0f;
+    vel->y = 0.0f;
+    f_0a5e1c(vel, 59.999996f);
+    Angle k;
+    k.a = phys.cur.heading + 1.5707964f;
+    f_099b98(&k);
+    d->m124 = k.a;
+    if (3.1415927f < k.a)
+        d->m124 = k.a - 6.2831855f;
+    else if (k.a < -3.1415927f)
+        d->m124 = k.a + 6.2831855f;
+    d->m124 = d->m124 + d->m148;
+    d->m148 = 0.0f;
+    d->m128 = 0;
+    p->m768.f_0a2db0();
+    Mat34 rot;
+    rot.f_09ff44();
+    Angle m;
+    m.a = -p->cur.rz;
+    f_099b98(&m);
+    rot.f_0a082c(m, 0, 1);
+    Angle n;
+    n.a = -p->cur.rx;
+    f_099b98(&n);
+    rot.f_0a082c(n, 1, 2);
+    Angle o;
+    o.a = -p->cur.heading;
+    f_099b98(&o);
+    rot.f_0a082c(o, 2, 0);
+    *(Mat34 *)p->m768.m = rot;
+    Vec4 *tr = (Vec4 *)p->m768.m[3];
+    *tr = p->cur.pos;
+    Vec4 t;
+    f_0a5e88(&t, &p->cur.pos, &p->prev.pos);
+    p->m192 = t;
+    f_0a5e1c(&p->m192, 60.0f);
+    p->m1096 = f_0a65c4(&p->m192);
 }
 
 /* @draft 0x0c1860 us f_0c1860
