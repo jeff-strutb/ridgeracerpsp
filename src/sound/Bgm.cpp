@@ -126,31 +126,21 @@ public:
     unsigned char m313; /* paused */
 };
 
-/* @draft 0x0961e0 us _ZN6Stream4CBgmC2Ev
-   WHAT IT DOES: Makes the music stream with no track (base object constructor).
-   DRAFT: bytes match; the base constructor and destructor (0x09450c, 0x094574) have no rows
-   in config/us/symbols.csv, so their references do not resolve yet. */
-/* @draft 0x096234 us _ZN6Stream4CBgmC1Ev
-   WHAT IT DOES: The same (complete object constructor).
-   DRAFT: bytes match; the base constructor and destructor (0x09450c, 0x094574) have no rows
-   in config/us/symbols.csv, so their references do not resolve yet. */
+/* @implements 0x0961e0 us _ZN6Stream4CBgmC2Ev
+   WHAT IT DOES: Makes the music stream with no track (base object constructor). */
+/* @implements 0x096234 us _ZN6Stream4CBgmC1Ev
+   WHAT IT DOES: The same (complete object constructor). */
 CBgm::CBgm()
 {
     f_096d38();
 }
 
-/* @draft 0x096288 us _ZN6Stream4CBgmD2Ev
-   WHAT IT DOES: Forgets the stream channel and data (base object destructor).
-   DRAFT: bytes match; the base destructor (0x094574) has no row in config/us/symbols.csv,
-   so its reference does not resolve yet. */
-/* @draft 0x0962bc us _ZN6Stream4CBgmD1Ev
-   WHAT IT DOES: The same (complete object destructor).
-   DRAFT: bytes match; the base destructor (0x094574) has no row in config/us/symbols.csv,
-   so its reference does not resolve yet. */
-/* @draft 0x0962f0 us _ZN6Stream4CBgmD0Ev
-   WHAT IT DOES: The same, then frees the object (deleting destructor).
-   DRAFT: bytes match; the base destructor (0x094574) has no row in config/us/symbols.csv,
-   so its reference does not resolve yet. */
+/* @implements 0x096288 us _ZN6Stream4CBgmD2Ev
+   WHAT IT DOES: Forgets the stream channel and data (base object destructor). */
+/* @implements 0x0962bc us _ZN6Stream4CBgmD1Ev
+   WHAT IT DOES: The same (complete object destructor). */
+/* @implements 0x0962f0 us _ZN6Stream4CBgmD0Ev
+   WHAT IT DOES: The same, then frees the object (deleting destructor). */
 CBgm::~CBgm()
 {
     m8 = -1;
