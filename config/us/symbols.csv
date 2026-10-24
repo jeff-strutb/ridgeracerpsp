@@ -45,3 +45,5 @@ addr,name,evidence
 0x08d160,_ZN11CMpegFeederD1Ev,destructor called before operator delete of D_242b8c in the movie player destructor at 0x08b32c; byte exact in src/system/MpegFeeder.cpp
 0x164c48,__gedf2,libgcc double compare: in f_091e9c the compiler's call for a double `>=` (distance against 15.0) comes where retail calls 0x164c48 and its result is tested with bgez
 0x07ac08,_ZN6Select14CStartMenuData4InitEv,the start menu settings reset its constructors at 0x07aad8 and 0x07ab2c call directly (vtable slot at 0x1a6a28); byte exact in src/sequence/StartMenuData.cpp
+0x09450c,_ZN6Stream11CStreamBaseC2Ev,base constructor called first by the Stream::CBgm constructors (0x0961e0 and 0x096234) before they store their own vptr; byte exact in src/sound/StreamBase.cpp
+0x094574,_ZN6Stream11CStreamBaseD2Ev,base destructor called by the Stream::CBgm destructors (0x096288, 0x0962bc, 0x0962f0) and on the constructors' cleanup paths; byte exact in src/sound/StreamBase.cpp
