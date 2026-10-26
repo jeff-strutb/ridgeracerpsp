@@ -36,6 +36,7 @@ float f_0e26dc(void *obj, float x);
 void f_0e2d10(void *obj, float *a, float *b, float *c, float x, float y);
 void f_0a5e1c(void *v, float len);
 void f_0a5e88(void *out, void *v, void *phys);
+void f_0a6bf4(void *out, void *m, void *v);
 void f_0a6c18(void *out, void *m, void *v);
 float f_09a9dc(float x, float z);
 }
@@ -231,7 +232,8 @@ struct Vec4Out {
 extern "C" float f_0fe064(void *car, int k)
 {
     char *ph = (char *)car + 5792;
-    char *g = D_23c820 + 12240;
+    char *base = (char *)&D_23c820;
+    char *g = base + 12240;
     short h = HR(ph, 468);
     float t = FR(car, 2144) + (float)(h != 0 ? -k : k);
     float r = f_0e26dc(g, t);
@@ -249,4 +251,172 @@ extern "C" float f_0fe064(void *car, int k)
     Vec4Out tmp = o;
     f_0a6c18(&o, ph + 576, &tmp);
     return f_09a9dc(o.z, o.x);
+}
+
+/* @draft 0x0fe674 us f_0fe674
+   WHAT IT DOES: The car's brake and slip step. When the mode word at +9916 is 2 and the
+   word at +9912 is zero, the block first takes the slip from the wheel record at +144 of the
+   sub-block (against 1000 and 2000) and the lateral limit, runs the transform f_0a6bf4 on the
+   physics block and copies its result into +192..+204, and records a state at +1804 (0, 1 or
+   2) from the ratio. Then, for any mode, the decay at +104 is applied: while it is above zero
+   it is reduced by 0.0166667 and the level at +24 is set from its ratio to +100, clamped to 0
+   and 1.0 by the speed at +108. */
+extern "C" void f_0fe674(void *car)
+{
+    char *ph = (char *)car + 5792;
+    char *s = (char *)car + 7816;
+    if (WR(car, 9916) == 2 && WR(car, 9912) == 0) {
+        char *p = *(char **)s;
+        float f3 = FR(s, 40);
+        float f0 = FR(p, 144) - 1000.0f;
+        if (f0 < f3) {
+            float f1 = f3 - f0;
+            if (!(f1 < 1000.0f))
+                f1 = 1000.0f;
+            f0 = f1 * 0.0010000000475f;
+            f0 = f0 * 3.0f;
+            FR(s, 104) = f0;
+            FR(s, 100) = f0;
+        }
+        char *q = *(char **)s;
+        f0 = FR(q, 144) - 2000.0f;
+        float f20 = 0.0f;
+        if (WR(s, 16) == 0) {
+            float f1 = f3 - f0;
+            if (0.0f <= f1 && f1 <= 1.0f) {
+                f20 = f1 / 1000.0f;
+                float f2 = 1.0f;
+                if (f20 < 1.0f)
+                    f2 = f20;
+                f2 = f2 * 0.5f;
+                f20 = f2 + 0.5f;
+                f1 = FR(s, 80) * 0.3199999928f * f20;
+                FR(ph, 232) = f1;
+                FR(ph, 1096) = f1;
+                char tmp[16];
+                f_0a6bf4(tmp, ph + 768, ph + 224);
+                WR(ph, 192) = WR(tmp, 0);
+                WR(ph, 196) = WR(tmp, 4);
+                WR(ph, 200) = WR(tmp, 8);
+                WR(ph, 204) = WR(tmp, 12);
+                f1 = 1.0f - f20;
+                FR(s, 104) = FR(s, 104) * f1;
+            }
+        }
+        if (f20 <= 0.0f) {
+            WR(car, 1804) = 0;
+        } else {
+            WR(car, 1804) = (1.0f <= f20) ? 1 : 2;
+        }
+    }
+    if (0.0f < FR(s, 104)) {
+        float f2 = FR(s, 104);
+        float f1 = f2 / FR(s, 100);
+        float f0 = f2 - 0.0166666675f;
+        FR(s, 104) = f0;
+        FR(s, 24) = 1.0f - f1;
+        if (f0 < 0.0f) {
+            FR(s, 104) = 0.0f;
+            FR(s, 24) = 1.0f;
+        }
+        if (0.0f < FR(s, 108)) {
+            FR(s, 24) = 1.0f;
+            FR(s, 104) = 0.0f;
+        }
+    }
+}
+
+/* @draft 0x0fe2a8 us f_0fe2a8
+   WHAT IT DOES: The car's tyre and slip step over the 3 bit field b11 of the drive bits. The
+   sub-block's ratio (+120) is set from b11 / 7 and its timer (+124) rises toward it (clamped
+   to that ratio); the ratio is then divided into the timer to give the slip factor. When the
+   flag at +1020 is set, the sub-block's force (+128) is formed from the wheel record at +176,
+   the speed at +1096 (clamped to 0..1) and the timer, and the car's value at +856 is advanced.
+   The length of the vector at +224 sets the lateral grip and the fade of the car's values at
+   +10096, +1728, +1732 and +1736/+1740, which depend on the timer at +124 being zero. */
+extern "C" float sqrtf(float);
+
+extern "C" void f_0fe2a8(void *car, void *bp)
+{
+    DriveBits *bits = (DriveBits *)bp;
+    char *ph = (char *)car + 5792;
+    char *s = (char *)car + 7816;
+    char *s2 = *(char **)s;
+    float f2 = (float)bits->b11 / 7.0f;
+    FR(s, 120) = f2;
+    float f20;
+    if (bits->b11 == 0) {
+        FR(s, 124) = 0.0f;
+        f20 = FR(s, 124);
+    } else {
+        float sum = FR(s, 124) + 0.0833333358f;
+        FR(s, 124) = sum;
+        float f1 = sum < f2 ? sum : f2;
+        FR(s, 124) = f1;
+        f20 = f1 / FR(s, 120);
+    }
+    if (WR(ph, 1020) != 0) {
+        float x = FR(ph, 1096);
+        if (x < 0.0f)
+            x = -x;
+        float m = x < 1.0f ? x : 1.0f;
+        float c = 0.0f < m ? m : 0.0f;
+        float v = FR(s2, 176) * 9.8000001907f * c * FR(s, 124);
+        FR(s, 128) = v;
+        if (0.0f < FR(ph, 232))
+            FR(s, 128) = -v;
+        FR(ph, 856) = FR(ph, 856) + FR(s, 128);
+    }
+    float sq = FR(ph, 224) * FR(ph, 224) + FR(ph, 228) * FR(ph, 228) + FR(ph, 232) * FR(ph, 232);
+    float len = __builtin_sqrtf(sq);
+    if (len != len)
+        len = sqrtf(sq);
+    float g2;
+    if (!(len < 2.7777779102f)) {
+        float g = len - 1.6666679382f;
+        if (55.555599212f < g)
+            g = 1.0f;
+        else
+            g = g * 0.0240000002f;
+        g2 = g;
+    } else {
+        g2 = 0.0f;
+    }
+    float f6 = g2 * g2;
+    if (0.0f < f20)
+        FR(car, 10096) = FR(car, 10096) + (f20 * 5.0f) * g2;
+    float f3 = FR(car, 10096);
+    if (!(f3 < 20.0f)) {
+        f3 = f3 - 20.0f;
+        if (80.0f < f3)
+            f3 = 1.0f;
+        else
+            f3 = f3 * 0.0125000002f;
+    }
+    float f4 = f3;
+    float z = 0.0f;
+    float t0 = z * g2;
+    float t1 = (z * 1.5f) * f6;
+    float t2 = (z + z) + t0;
+    float t3 = t2 + t1;
+    if (30.0f < f4)
+        t3 = t3 + 0.2f;
+    float d = f4 - t3;
+    FR(car, 10096) = d;
+    float q = (d - 50.0f) * 0.02f;
+    float qc = q < 0.0f ? 0.0f : q;
+    float h = 1.0f < qc ? 1.0f : qc;
+    FR(car, 1728) = h * 0.8999999762f;
+    FR(car, 1732) = h * 0.3499999940f;
+    if (FR(s, 124) == q) {
+        float a = FR(car, 1736);
+        float b = a * 0.1299999952f + 0.0599999987f;
+        FR(car, 1740) = q;
+        float na = a - b;
+        FR(car, 1736) = 0.0f < na ? na : 0.0f;
+    } else {
+        float b = FR(car, 1736) + 0.2099999934f;
+        FR(car, 1740) = 1.0f;
+        FR(car, 1736) = b < 1.0f ? b : 1.0f;
+    }
 }
