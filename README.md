@@ -1,4 +1,4 @@
-# Ridge Racer (PSP): decompilation
+# Ridge Racer (PSP): bit-exact decompilation
 
 **Started October 12, 2026.** The retail executable is mapped and its compiler is identified. A per-function grader compiles C++ and C with that compiler and compares them to the original bytes, and a rebuilt `BOOT.BIN` holding every matched function is byte-identical to retail.
 
