@@ -71,6 +71,8 @@ struct CarPhys {
     char p617[23];
 };
 extern "C" {
+void f_0a7118(void *a, void *b, int c, int d, int e, float f, float g, float h);
+void f_0a7118_2(void *a, void *b, int c, int d, int e, float f, float g) __asm__("f_0a7118");
 void f_0a6fb4(CarPhys *p);
 void f_0a9158(CarPhys *p);
 void f_0a9248(CarPhys *p);
@@ -96,6 +98,11 @@ int f_0af5e8(void *t, const short *key);
 
 /* The state of the car's MapMgr sub-object used by the two track lookups. */
 extern char D_23c820[];
+extern char D_245430[];
+extern int D_2456a0;
+void f_0aa3f8(CarPhys *p);
+void f_0ab0fc(CarPhys *p);
+void f_0ab2a4(CarPhys *p);
 extern int D_1ac174[];
 
 
@@ -367,4 +374,121 @@ extern "C" void f_0aea84(CarPhys *p)
     float t = p->m16;
     p->m28 = p->m20 - p->m28;
     p->m24 = f_0af380(&t, &p->m24);
+}
+
+/* @draft 0x0a742c us f_0a742c
+   WHAT IT DOES: Builds a four-float vector from three float arguments (its last word a plain 1.0) and calls the shared lookup f_0a7118 with it.
+   Remaining difference: the 1.0 constant is loaded at the top of the function; retail loads it after the first argument moves. */
+extern "C" void f_0a742c(void *a0, int a1, int a2, float x, float y, float z, float w, float u)
+{
+    float v[4];
+    v[0] = x;
+    v[1] = y;
+    v[2] = z;
+    v[3] = 1.0f;
+    f_0a7118(a0, v, a1, a2, -1, w, u, z);
+}
+
+/* @implements 0x0a747c us f_0a747c
+   WHAT IT DOES: Builds a four-float vector from two floats, with a zero second word and a plain 1.0 last word, and calls the shared lookup f_0a7118 with it. */
+extern "C" void f_0a747c(void *a0, int a1, int a2, float x, float y, float z, float w)
+{
+    float v[4];
+    v[0] = x;
+    v[2] = y;
+    v[3] = 1.0f;
+    v[1] = 0.0f;
+    f_0a7118_2(a0, v, a1, a2, -1, z, w);
+}
+
+/* @draft 0x0aa374 us f_0aa374
+   WHAT IT DOES: Runs four passes over the car's per-wheel records: each pass copies a few values from the record into the car, runs the step f_0aa3f8 and stores its results back into the record, moving on to the next record.
+   Remaining difference: the loop body order of the loads and stores differs (14 of 33 words). */
+extern "C" void f_0aa374(CarPhys *p)
+{
+    char *q = (char *)p;
+    int k = 3;
+    do {
+        p->m148 = *(float *)(q + 192);
+        p->m152 = *(float *)(q + 208);
+        p->m156 = *(int *)(q + 256);
+        p->m160 = *(int *)(q + 272);
+        k--;
+        f_0aa3f8(p);
+        *(float *)(q + 304) = p->m140;
+        *(float *)(q + 288) = p->m136;
+        *(float *)(q + 320) = p->m168;
+        q += 4;
+    } while (k >= 0);
+}
+
+/* @draft 0x0ab074 us f_0ab074
+   WHAT IT DOES: Runs four passes over the car's per-wheel records: each pass numbers the record in a global, copies its values into the car, runs f_0ab0fc and stores the result back.
+   Remaining difference: the loop is 144 bytes against retail 136; the loop test and global store are laid out differently. */
+extern "C" void f_0ab074(CarPhys *p)
+{
+    char *q = (char *)p;
+    int k = 0;
+    do {
+        int a = *(int *)(q + 256);
+        int b = *(int *)(q + 272);
+        float c = *(float *)(q + 304);
+        float d = *(float *)(q + 320);
+        D_2456a0 = k;
+        k++;
+        p->m156 = a;
+        p->m140 = c;
+        p->m160 = b;
+        f_0ab0fc(p);
+        p->m168 = d;
+        *(float *)(q + 336) = p->m144;
+        q += 4;
+    } while (k < 4);
+}
+
+/* @draft 0x0ab220 us f_0ab220
+   WHAT IT DOES: Runs four passes over the car's per-wheel records: each pass copies two values into the car, runs f_0ab2a4 and stores its results back, the short result going into a packed list.
+   Remaining difference: the loop body order differs (12 of 33 words). */
+extern "C" void f_0ab220(CarPhys *p)
+{
+    char *q = (char *)p;
+    unsigned short *o = (unsigned short *)((char *)p + 368);
+    int k = 3;
+    do {
+        p->m148 = *(float *)(q + 192);
+        p->m152 = *(float *)(q + 208);
+        k--;
+        f_0ab2a4(p);
+        *(float *)(q + 336) = p->m144;
+        *o++ = p->m184;
+        *(int *)(q + 376) = p->m188;
+        q += 4;
+    } while (k >= 0);
+}
+
+/* @draft 0x0ab43c us f_0ab43c
+   WHAT IT DOES: Copies the record with index i into the car, runs f_0ab2a4 and stores the car's results back into that record.
+   Remaining difference: the record and list pointers are formed in a different order (21 of 28 words). */
+extern "C" void f_0ab43c(CarPhys *p, int i)
+{
+    char *q = (char *)p + 4 * i;
+    unsigned short *o = (unsigned short *)((char *)p + 2 * i + 368);
+    p->m148 = *(float *)(q + 192);
+    p->m152 = *(float *)(q + 208);
+    f_0ab2a4(p);
+    *(int *)(q + 376) = p->m188;
+    *o = p->m184;
+    *(float *)(q + 336) = p->m144;
+}
+
+/* @draft 0x0af2cc us f_0af2cc
+   WHAT IT DOES: Calls one of two routines on a global table entry: f_0a6f88 when the first argument is 1 and the second is 0xffff, and f_0a6fac when the first is 0 and the second is 0xffff.
+   Remaining difference: the global address is written as a split pointer; the two conditional calls are laid out differently (14 of 29 words). */
+extern "C" void f_0af2cc(int a, int b)
+{
+    int s0 = b == 0xffff;
+    if (s0 && a == 1)
+        f_0a6f88((CarPhys *)((char *)&D_245430 - 13984));
+    if (s0 && a == 0)
+        f_0a6fac();
 }
