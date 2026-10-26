@@ -8,6 +8,10 @@ struct Vec2 {
 };
 
 /* A plane kept as a Vec4: normal in x and z (y is zero), and the constant in w. */
+struct V4 {
+    float a[4];
+};
+
 struct Plane {
     float x, y, z, w;
 };
@@ -19,10 +23,12 @@ struct StateObj {
 };
 
 extern "C" {
-int f_0b2120(int a, int b, int c, float *out);
+int f_0b2120_3(int a, int b, int c, float *out) __asm__("f_0b2120");
 extern const float D_1ac7e0;
-void f_0b2f18(int a, int b, int c, int d, void *x, void *y);
-void f_0b6710(int a, int b, int c, int d, int e, int f, int g, void *h);
+void f_0b2f18(int a, int b, int c, int d, int e, int f, int g, int h, float x, float y, void *s, void *t);
+/* The caller at 0x0b6738 passes no floats: it sees the routine through an alias with eight
+   integer arguments. */
+void f_0b6710_8(int a, int b, int c, int d, int e, int f, int g, int h) __asm__("f_0b6710");
 }
 
 static inline Vec2 operator-(const Vec2 &a, const Vec2 &b)
@@ -83,41 +89,44 @@ Vec2 f_0b17ac(const Vec2 *a, const Vec2 *b, const Vec2 *c)
     return n * d;
 }
 
-/* @draft 0x0b1b28 us f_0b1b28
-   WHAT IT DOES: Returns the z component of the cross product of the vectors from the first
-   point to the second and to the third point.
-   Remaining difference: retail is 128 bytes: it stores the differences to a 64-byte frame and
-   reloads them in an interleaved order; this draft is 56 bytes. */
-float f_0b1b28(const Vec2 *a, const Vec2 *b, const Vec2 *c)
+/* The difference of two points given by address; retail wraps the subtraction in a second
+   by-value layer, which gives each result its own stack slot. */
+static inline Vec2 Diff(const Vec2 *a, const Vec2 *b)
 {
-    float dx1 = b->x - a->x;
-    float dy1 = b->y - a->y;
-    float dx2 = c->x - a->x;
-    float dy2 = c->y - a->y;
-    return dx1 * dy2 - dy1 * dx2;
+    return *a - *b;
 }
 
-/* @draft 0x0b1ba8 us f_0b1ba8
+static inline float Cross(Vec2 a, Vec2 b)
+{
+    return a.x * b.y - a.y * b.x;
+}
+
+/* @implements 0x0b1b28 us f_0b1b28
+   WHAT IT DOES: Returns the z component of the cross product of the vectors from the first
+   point to the second and to the third point. */
+float f_0b1b28(const Vec2 *a, const Vec2 *b, const Vec2 *c)
+{
+    return Cross(Diff(b, a), Diff(c, a));
+}
+
+/* @implements 0x0b1ba8 us f_0b1ba8
    WHAT IT DOES: Stores a value into the object's state word at offset 4, adding 112 when the
    flag is clear.
-   Remaining difference: word 0 (xori of the flag) differs; the flag is taken as unsigned char
-   with !(flag & 1), which matches the size. */
-void f_0b1ba8(StateObj *o, int v, unsigned char flag)
+   Retail computes (flag ^ 1) & 1. */
+void f_0b1ba8(StateObj *o, int v, int flag)
 {
-    if (!(flag & 1))
+    if ((flag ^ 1) & 1)
         v += 112;
     o->m4 = v;
 }
 
-/* @draft 0x0b20d8 us f_0b20d8
+/* @implements 0x0b20d8 us f_0b20d8
    WHAT IT DOES: Computes a plane from the first three arguments through the routine at
-   0x0b2120 and stores it at the fourth argument: normal x, zero, normal z, and a constant of 1.0.
-   Remaining difference: the two stores at offsets 12 and 8 come in the other order in retail
-   (word 0x18 differs). */
+   0x0b2120 and stores it at the fourth argument: normal x, zero, normal z, and a constant of 1.0. */
 int f_0b20d8(int a, int b, int c, float *out)
 {
     float t[2];
-    int r = f_0b2120(a, b, c, t);
+    int r = f_0b2120_3(a, b, c, t);
     out[0] = t[0];
     out[1] = 0.0f;
     out[2] = t[1];
@@ -125,16 +134,14 @@ int f_0b20d8(int a, int b, int c, float *out)
     return r;
 }
 
-/* @draft 0x0b6710 us f_0b6710
-   WHAT IT DOES: Calls the routine at 0x0b2f18 with two local 8-byte buffers as its last two
-   arguments.
-   Remaining difference: retail's frame is 64 bytes with the return address at 48 and the
-   buffers at 16 and 32; this draft is 32 bytes. */
-void f_0b6710(int a, int b, int c, int d, int e, int f, int g, void *h)
+/* @implements 0x0b6710 us f_0b6710
+   WHAT IT DOES: Calls the routine at 0x0b2f18 with its own eight integer arguments and two
+   floats passed on, and two local 16-byte buffers as the last two arguments. */
+void f_0b6710(int a, int b, int c, int d, int e, int f, int g, int h, float x, float y)
 {
-    float x[4], y[4];
+    V4 p, q;
 
-    f_0b2f18(a, b, c, d, x, y);
+    f_0b2f18(a, b, c, d, e, f, g, h, x, y, &p, &q);
 }
 
 /* @implements 0x0b6738 us f_0b6738
@@ -144,7 +151,7 @@ void f_0b6738(int a, int b, int c, int d, int e, int f, int g, void *h)
 {
     float buf[4];
 
-    f_0b6710(a, b, c, d, e, f, g, buf);
+    f_0b6710_8(a, b, c, d, e, f, g, (int)buf);
 }
 
 /* An angle in radians, passed by value in an integer register. */
@@ -429,5 +436,303 @@ int f_0b1e9c(const PlaneList *o, const PlaneRec *q, PlaneRec *out, PlaneRec *seg
         seg1->z = e->w;
         seg1->w = 1.0f;
     }
+    return found;
+}
+
+extern "C" {
+float f_09a86c(float y, float x);
+}
+
+/* A point on the ground plane: x, an unused height and z. */
+struct Pt3 {
+    float x, y, z;
+};
+
+static inline float Len2(const Vec2 &v)
+{
+    return __builtin_sqrtf(v.x * v.x + v.y * v.y);
+}
+
+/* @draft 0x0b2a00 us f_0b2a00
+   WHAT IT DOES: Walks the segment from the first point to the second against every edge of the
+   list. For each edge that the segment crosses (both ends of the segment on opposite sides of
+   the edge and both ends of the edge on opposite sides of the segment) it finds the crossing
+   (the segment scaled by the ratio of the two end distances; for a parallel edge it takes the
+   nearer end of the edge), and keeps the longest such offset, pushed on by five units. The best
+   offset goes to the first output as (x, 0, z); when one was found, the normal of its edge
+   (the edge direction turned a quarter) goes to the second output as (x, 0, z, 1.0), and the
+   result is 1, otherwise 0.
+   Remaining difference: not yet compared word by word against retail; the stack temporaries of
+   the by-value vectors are not matched. */
+extern "C" int f_0b2a00(const PlaneList *o, const Pt3 *pa, const Pt3 *pb, Pt3 *out, PlaneRec *outn)
+{
+    Vec2 B;
+    B.x = pb->x;
+    B.y = pb->z;
+    Vec2 A;
+    A.x = pa->x;
+    A.y = pa->z;
+    Vec2 best;
+    best.x = 0.0f;
+    best.y = 0.0f;
+    float bestLen = 0.0f;
+    int found = 0;
+    int bestIdx = 0;
+    int i = 0;
+    if (o->m0 != 0) {
+        do {
+            const PlaneRec *e = o->m8[i];
+            float dx = B.x - A.x;
+            float dy = B.y - A.y;
+            float t1 = dx * (e->y - B.y) + dy * (B.x - e->x);
+            float t2 = dx * (e->w - B.y) + dy * (B.x - e->z);
+            if (t1 * t2 > 0.0f)
+                goto next;
+            {
+                float u1 = (e->x - e->z) * (B.y - e->y) + (e->y - e->w) * (e->x - B.x);
+                float u2 = (e->x - e->z) * (A.y - e->y) + (e->y - e->w) * (e->x - A.x);
+                if (u1 * u2 > 0.0f)
+                    goto next;
+                float a1 = u1 < 0.0f ? -u1 : u1;
+                float a2 = u2 < 0.0f ? -u2 : u2;
+                Vec2 r;
+                if (a1 != 0.0f || a2 != 0.0f) {
+                    float s = a2 / (a1 + a2);
+                    r.y = dy * s;
+                    r.x = dx * s;
+                } else if (B.x == A.x) {
+                    float z0 = e->y - B.y;
+                    float z1 = e->w - B.y;
+                    r.y = z0;
+                    if (z0 < z1)
+                        r.x = e->x - B.x;
+                    else
+                        r.x = e->z - B.x;
+                } else {
+                    float x0 = e->x - B.x;
+                    float x1 = e->z - B.x;
+                    r.x = x0;
+                    if (x0 < x1)
+                        r.y = e->y - B.y;
+                    else
+                        r.y = e->w - B.y;
+                }
+                if (!(bestLen < Len2(r)))
+                    goto next;
+                bestLen = Len2(r);
+                best = r;
+                float l = Len2(best);
+                Vec2 n;
+                n.x = best.x * (1.0f / l);
+                n.y = best.y * (1.0f / l);
+                best.x = n.x * 5.0f + r.x;
+                best.y = n.y * 5.0f + r.y;
+                found = 1;
+                bestIdx = i;
+            }
+        next:
+            i++;
+        } while (i < o->m0);
+    }
+    out->x = best.x;
+    out->z = best.y;
+    out->y = 0.0f;
+    if (found == 1) {
+        const PlaneRec *e = o->m8[bestIdx];
+        Vec2 d;
+        d.x = e->z - e->x;
+        d.y = e->w - e->y;
+        float l = Len2(d);
+        float s = 1.0f / l;
+        Vec2 u;
+        u.y = d.y * s;
+        u.x = d.x * s;
+        Angle ang;
+        ang.a = f_09a86c(u.y, u.x);
+        f_099b98(&ang);
+        Vec2 v;
+        v.x = 0.0f;
+        v.y = 1.0f;
+        f_09b394(ang, &v.x, &v.y);
+        outn->x = v.x;
+        outn->y = 0.0f;
+        outn->z = v.y;
+        outn->w = 1.0f;
+    }
+    return found;
+}
+
+extern "C" {
+float f_09a07c(float a);
+}
+
+/* Tests whether the segment A to B crosses the edge e (its two ends on opposite sides of the
+   segment and the segment's ends on opposite sides of the edge). On a crossing it returns 1 and
+   the distances of the segment's two ends from the edge's line. */
+static inline int CrossesEdge(const PlaneRec *e, const Vec2 &A, const Vec2 &B, float &a1, float &a2)
+{
+    float dx = B.x - A.x;
+    float dy = B.y - A.y;
+    float t1 = dx * (e->y - B.y) + dy * (B.x - e->x);
+    float t2 = dx * (e->w - B.y) + dy * (B.x - e->z);
+    if (t1 * t2 > 0.0f)
+        return 0;
+    float u1 = (e->x - e->z) * (B.y - e->y) + (e->y - e->w) * (e->x - B.x);
+    float u2 = (e->x - e->z) * (A.y - e->y) + (e->y - e->w) * (e->x - A.x);
+    if (u1 * u2 > 0.0f)
+        return 0;
+    a1 = u1 < 0.0f ? -u1 : u1;
+    a2 = u2 < 0.0f ? -u2 : u2;
+    return 1;
+}
+
+/* @draft 0x0b2120 us f_0b2120
+   WHAT IT DOES: Slides a displacement along the edges of the list. It walks the segment from
+   the first point to the second against every edge, keeping the longest crossing offset (as in
+   0x0b2a00, pushed on by the float argument). The offset is stored to the in-out vector; when
+   a crossing was found, the vector's angle against the crossing edge decides whether the
+   neighbouring edge (the next vertex pair or the previous) also blocks the shifted segment,
+   and if so the offset is scaled back to that edge and pushed on again. The in-out vector is
+   finally increased by the offset. Returns whether a crossing was found.
+   Remaining difference: not yet compared word by word against retail; stack temporaries of the
+   by-value vectors not matched. */
+extern "C" int f_0b2120(const PlaneList *o, const Pt3 *pa, const Pt3 *pb, Vec2 *out, float eps)
+{
+    Vec2 B;
+    B.x = pb->x;
+    B.y = pb->z;
+    Vec2 A;
+    A.x = pa->x;
+    A.y = pa->z;
+    Vec2 best;
+    best.x = 0.0f;
+    best.y = 0.0f;
+    float bestLen = 0.0f;
+    int found = 0;
+    int bestIdx = 0;
+    int i = 0;
+    if (o->m0 != 0) {
+        do {
+            const PlaneRec *e = o->m8[i];
+            float a1, a2;
+            if (CrossesEdge(e, A, B, a1, a2)) {
+                float dx = B.x - A.x;
+                float dy = B.y - A.y;
+                Vec2 r;
+                if (a1 != 0.0f || a2 != 0.0f) {
+                    float s = a2 / (a1 + a2);
+                    r.y = dy * s;
+                    r.x = dx * s;
+                } else if (B.x == A.x) {
+                    float z0 = e->y - B.y;
+                    float z1 = e->w - B.y;
+                    r.y = z0;
+                    if (z0 < z1)
+                        r.x = e->x - B.x;
+                    else
+                        r.x = e->z - B.x;
+                } else {
+                    float x0 = e->x - B.x;
+                    float x1 = e->z - B.x;
+                    r.x = x0;
+                    if (x0 < x1)
+                        r.y = e->y - B.y;
+                    else
+                        r.y = e->w - B.y;
+                }
+                if (bestLen < Len2(r)) {
+                    bestLen = Len2(r);
+                    best = r;
+                    float l = Len2(best);
+                    Vec2 n;
+                    n.x = best.x * (1.0f / l);
+                    n.y = best.y * (1.0f / l);
+                    best.x = n.x * eps + r.x;
+                    best.y = n.y * eps + r.y;
+                    found = 1;
+                    bestIdx = i;
+                }
+            }
+            i++;
+        } while (i < o->m0);
+    }
+    out->x = best.x;
+    out->y = best.y;
+    if (found == 0)
+        return found;
+
+    const PlaneRec *e = o->m8[bestIdx];
+    Vec2 d;
+    d.x = e->z - e->x;
+    d.y = e->w - e->y;
+    float edgeAng = f_09a9dc(d.y, d.x);
+    Vec2 v;
+    v.x = -out->x;
+    v.y = -out->y;
+    float vAng = -f_09a9dc(v.y, v.x);
+    float vLen = Len2(v);
+    Angle diff;
+    diff.a = vAng - -edgeAng;
+    f_099b98(&diff);
+    if (diff.a < 0.0f)
+        diff.a = -diff.a;
+    float along = vLen * f_09a07c(diff.a);
+    Vec2 slide;
+    slide.x = along;
+    slide.y = 0.0f;
+    Angle t1;
+    t1.a = edgeAng;
+    f_099b98(&t1);
+    f_09b394(t1, &slide.x, &slide.y);
+    Vec2 push;
+    push.x = 0.0f;
+    push.y = eps;
+    Angle t2;
+    t2.a = edgeAng;
+    f_099b98(&t2);
+    f_09b394(t2, &push.x, &push.y);
+    best.x = slide.x + push.x;
+    best.y = slide.y + push.y;
+
+    const PlaneRec *n;
+    Angle da;
+    if (diff.a < 1.5707963705062866f) {
+        n = (const PlaneRec *)((const char *)e + 8);
+        da.a = -f_09a9dc(n->w - n->y, n->z - n->x) - -edgeAng;
+    } else {
+        n = (const PlaneRec *)((const char *)e - 8);
+        da.a = -edgeAng + f_09a9dc(n->w - n->y, n->z - n->x);
+    }
+    f_099b98(&da);
+    if (da.a < -1.5717964172363281f)
+        da.a = da.a + 3.1415927410125732f;
+    if (da.a > 1.5717964172363281f)
+        da.a = da.a - 3.1415927410125732f;
+    if (da.a < 0.0f) {
+        Vec2 nB;
+        nB.x = pa->x + out->x;
+        nB.y = pa->z + out->y;
+        Vec2 nA;
+        nA.x = nB.x + best.x;
+        nA.y = nB.y + best.y;
+        float c1, c2;
+        if (CrossesEdge(n, nA, nB, c1, c2)) {
+            float ratio = c1 / (c1 + c2);
+            best.y = best.y * ratio;
+            best.x = best.x * ratio;
+            Vec2 neg;
+            neg.x = -best.x;
+            neg.y = -best.y;
+            float l = Len2(neg);
+            float s = 1.0f / l;
+            Vec2 u;
+            u.y = neg.y * s;
+            u.x = neg.x * s;
+            best.y = best.y + u.y * eps;
+            best.x = best.x + u.x * eps;
+        }
+    }
+    out->x = out->x + best.x;
+    out->y = out->y + best.y;
     return found;
 }

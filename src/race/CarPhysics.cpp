@@ -100,9 +100,11 @@ int f_0af5e8(void *t, const short *key);
 extern char D_23c820[];
 extern char D_245430[];
 extern int D_2456a0;
+extern "C" {
 void f_0aa3f8(CarPhys *p);
 void f_0ab0fc(CarPhys *p);
 void f_0ab2a4(CarPhys *p);
+}
 extern int D_1ac174[];
 
 
@@ -282,32 +284,32 @@ extern "C" void f_0a79bc(CarPhys *p)
     }
 }
 
-/* @draft 0x0a853c us f_0a853c
-   WHAT IT DOES: Looks up the car's position on the track: stores the lookup's short result and the table entry for the car's key.
-   Remaining difference: the retail pointer to the track sub-object is built as lui plus a 15696 low part, then a plain +12256; this form is not reproduced. */
+/* @implements 0x0a853c us f_0a853c
+   WHAT IT DOES: Looks up the car's position on the track: stores the lookup's short result and the table entry for the car's key.*/
 extern "C" void f_0a853c(CarPhys *p)
 {
     float v[4];
     v[0] = p->m0;
-    v[2] = p->m4;
     v[1] = p->m12;
+    v[2] = p->m4;
     v[3] = 1.0f;
-    void *s = (char *)&D_23c820; s = (char *)s + 27952;
+    char *b = (char *)&D_23c820;
+    char *s = b + 12256;
     p->m92 = f_0aff7c(s, v);
     p->m104 = f_0af5e8(s, &p->m92);
 }
 
-/* @draft 0x0a85b4 us f_0a85b4
-   WHAT IT DOES: The second track lookup: the same as f_0a853c with the second lookup routine.
-   Remaining difference: the same track sub-object pointer as f_0a853c. */
+/* @implements 0x0a85b4 us f_0a85b4
+   WHAT IT DOES: The second track lookup: the same as f_0a853c with the second lookup routine.*/
 extern "C" void f_0a85b4(CarPhys *p)
 {
     float v[4];
     v[0] = p->m0;
-    v[2] = p->m4;
     v[1] = p->m12;
+    v[2] = p->m4;
     v[3] = 1.0f;
-    void *s = (char *)&D_23c820; s = (char *)s + 27952;
+    char *b = (char *)&D_23c820;
+    char *s = b + 12256;
     p->m92 = f_0af788(s, v);
     p->m104 = f_0af5e8(s, &p->m92);
 }
@@ -514,9 +516,8 @@ extern "C" void f_0a737c(CarPhys *p, float x, float y, float z, float w)
     p->m28 = p->m20 = p->m24 = 0.0f;
 }
 
-/* @draft 0x0a78f0 us f_0a78f0
-   WHAT IT DOES: Copies the height and the second height into their stored copies, runs the height copy, then looks up the car's track position with the lookup chosen by the car's flag, and stores the short result and the table entry for the car's key.
-   Remaining difference: the track sub-object address (lui/addiu of the symbol plus 15696, then 12256) is a relocation with the constant folded into its addend; the branch layout also differs (15 of 44 words). */
+/* @implements 0x0a78f0 us f_0a78f0
+   WHAT IT DOES: Copies the height and the second height into their stored copies, runs the height copy, then looks up the car's track position with the lookup chosen by the car's flag, and stores the short result and the table entry for the car's key. */
 extern "C" void f_0a78f0(CarPhys *p)
 {
     p->m24 = p->m16;
@@ -528,13 +529,12 @@ extern "C" void f_0a78f0(CarPhys *p)
     v[1] = p->m12;
     v[2] = p->m4;
     v[3] = 1.0f;
-    char *s = (char *)&D_23c820 + 15696;
-    __asm__("" : "+r"(s));
-    s += 12256;
-    if (p->m116 == 0)
-        p->m92 = f_0af788(s, v);
-    else
+    char *b = (char *)&D_23c820;
+    char *s = b + 12256;
+    if (p->m116 != 0)
         p->m92 = f_0aff7c(s, v);
+    else
+        p->m92 = f_0af788(s, v);
     p->m104 = f_0af5e8(s, &p->m92);
 }
 
@@ -564,9 +564,8 @@ extern "C" void f_0a881c(CarPhys *p)
     f_0aea84(p);
 }
 
-/* @draft 0x0a8f0c us f_0a8f0c
-   WHAT IT DOES: Compares the car's height and its stored height with a given value, each wrapped by the track length, and returns -1 when the difference is above 500, 1 when it is below -500, and 0 otherwise.
-   Remaining difference: first run. */
+/* @implements 0x0a8f0c us f_0a8f0c
+   WHAT IT DOES: Compares the car's height and its stored height with a given value, each wrapped by the track length, and returns -1 when the difference is above 500, 1 when it is below -500, and 0 otherwise.*/
 extern "C" int f_0a8f0c(CarPhys *p, float x)
 {
     float a;
@@ -615,8 +614,7 @@ extern "C" void f_0a88ac(CarPhys *p)
     p->m20 = p->m140;
     p->m100 = p->m164;
     p->m16 = p->m136;
-    char *d = (char *)&D_23c820 + 15696;
-    __asm__("" : "+r"(d));
+    char *d = (char *)&D_23c820;
     p->m112 = f_0d5f78(d + 12144, (int)p->m136);
     char *s2 = d + 12256;
     char *s5 = d + 12240;
@@ -642,4 +640,34 @@ extern "C" void f_0a88ac(CarPhys *p)
     }
     f_0aea0c(p);
     f_0aea84(p);
+}
+
+extern "C" {
+unsigned short f_0b0500(void *p, const float *v, float *h, int *o);
+unsigned short f_0afc38(void *p, const float *v, float *h, int *o);
+float f_0af478(const float *a);
+}
+
+/* @draft 0x0ab2a4 us f_0ab2a4
+   WHAT IT DOES: Looks up the track piece under the wheel position with the lookup chosen by the car's flag, stores the short result, and stores the piece number (the offset into the table, halved and divided by 6 via the 0xaaaaaaab multiply) or zero and the car height when nothing is found. */
+extern "C" void f_0ab2a4(CarPhys *p)
+{
+    char *b = (char *)&D_23c820;
+    char *s = b + 12352;
+    float v[4];
+    int o[4];
+    v[0] = *(float *)((char *)p + 148);
+    v[1] = p->m12;
+    v[2] = *(float *)((char *)p + 152);
+    v[3] = 1.0f;
+    if (p->m116 == 0)
+        *(short *)((char *)p + 184) = f_0afc38(s, v, &p->m144, o + 4);
+    else
+        *(short *)((char *)p + 184) = f_0b0500(s, v, &p->m144, o + 4);
+    if (*(unsigned short *)((char *)p + 184) != 0xffff) {
+        *(int *)((char *)p + 188) = ((o[4] - *(int *)(s + 80)) >> 1) * (int)0xaaaaaaab;
+    } else {
+        *(int *)((char *)p + 188) = 0;
+        p->m144 = p->m12;
+    }
 }

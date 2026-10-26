@@ -228,7 +228,9 @@ void f_0af678(PolySet *p, void *data)
     unsigned int m, k, g;
     char *v0;
     char *s0;
-    Vec4 sum;
+    struct W4 {
+        int a, b, c, d;
+    } sum;
 
     PF(char *, p, 52) = a3;
     PF(unsigned int, p, 48) = n;
@@ -251,11 +253,11 @@ void f_0af678(PolySet *p, void *data)
     PF(float, p, 32) = *(float *)(s0 + 12);
     PF(float, p, 36) = *(float *)(s0 + 16);
     PF(float, p, 40) = *(float *)(s0 + 20);
-    f_0a5e6c(&sum, (Vec4 *)p, (Vec4 *)((char *)p + 32));
-    PF(float, p, 16) = sum.x;
-    PF(float, p, 20) = sum.y;
-    PF(float, p, 24) = sum.z;
-    PF(float, p, 28) = sum.w;
+    f_0a5e6c((Vec4 *)&sum, (Vec4 *)p, (Vec4 *)((char *)p + 32));
+    PF(int, p, 16) = sum.a;
+    PF(int, p, 20) = sum.b;
+    PF(int, p, 24) = sum.c;
+    PF(int, p, 28) = sum.d;
     g = *(unsigned int *)(s0 + 24);
     PF(unsigned int, p, 84) = g;
     PF(char *, p, 88) = s0 + 28;
@@ -341,23 +343,76 @@ static unsigned short tri_id(const char *blk, const Rec *r, int i)
 /* @draft 0x0af788 us f_0af788
    WHAT IT DOES: Returns the id of the triangle of the set under a point (x, z), or 0xffff when
    the point is outside the set.
-   Remaining difference: size 164 vs 572; the grid walk is 408 bytes short, so the descent loop and the triangle loop are not yet matched. */
+   Remaining difference: size 556 vs 572; the result is returned in v0 where retail keeps it in a0 and moves it at the epilogue; the grid walk is otherwise written out inline as retail. */
 unsigned short f_0af788(PolySet *p, const Vec4 *v)
 {
-    const Rec *r;
+    int t2 = (int)PF(unsigned int, p, 76);
+    float x, z;
+    Vec4 org, cs;
+    int t3;
+    const char *tab;
+    char *rb;
+    Rec *r;
     char *blk;
     int i;
+    unsigned short sid;
+    unsigned short r2;
 
-    if (cell_walk(p, v, &r, &blk) != 1)
-        return 0xffff;
+    if (t2 <= 0)
+        goto none;
+    x = v->x;
+    if (PF(float, p, 16) < x)
+        goto none;
+    if (x < PF(float, p, 0))
+        goto none;
+    z = v->z;
+    if (PF(float, p, 24) < z)
+        goto none;
+    if (z < PF(float, p, 8))
+        goto none;
+    org = PF(Vec4, p, 0);
+    cs = PF(Vec4, p, 32);
+    t2 = t2 - 1;
+    t3 = 0;
+    tab = PF(const char *, p, 80);
+    rb = PF(char *, p, 88);
+    do {
+        r = (Rec *)(tab + 6 * t2);
+        blk = rb + 32 * r->idx;
+        t3++;
+        if (r->n0 == 0)
+            break;
+        {
+            unsigned short a1 = r->base;
+            int ix, iz, sub;
+            cs.x = cs.x * 0.25f;
+            cs.z = cs.z * 0.25f;
+            ix = (int)((x - org.x) / cs.x);
+            iz = (int)((z - org.z) / cs.z);
+            org.x = org.x + cs.x * (float)ix;
+            org.z = org.z + cs.z * (float)iz;
+            sub = ix + 4 * iz;
+            if (sub != 0)
+                a1 = (unsigned short)(((unsigned short *)blk)[sub - 1] + r->base);
+            t2 = (short)a1;
+            if (t2 < 0)
+                goto none;
+        }
+    } while (t3 < 100);
     if (r->n1 <= 0)
-        return 0xffff;
+        goto none;
     for (i = 0; i < r->n1; i++) {
-        unsigned short sid = tri_id(blk, r, i);
+        if (i == 0)
+            sid = r->base;
+        else
+            sid = (unsigned short)(((unsigned short *)blk)[i - 1] + r->base);
         if (f_0b0910(p, v, &sid))
-            return sid;
+            goto done;
     }
+    none:
     return 0xffff;
+done:
+    return sid;
 }
 
 /* @draft 0x0af9c4 us f_0af9c4
@@ -417,17 +472,22 @@ unsigned short f_0afc38(PolySet *p, const Vec4 *v, float *h, const Rec **rec)
 /* @draft 0x0afebc us f_0afebc
    WHAT IT DOES: Walks the triangles of one cell record and returns the first id whose triangle
    holds the point, or 0xffff for none.
-   Remaining difference: size 180 vs 192; 40/48 words differ from +0x20 (the loop body is 12 bytes short). */
+   Remaining difference: size 192 vs 192; 21/48 words differ from +0x1c (the record pointer is held in t3 where retail uses a2, and the loop-top moves are placed differently). */
 unsigned short f_0afebc(PolySet *p, const Vec4 *v, const Rec **recp)
 {
     const Rec *rec = *recp;
     char *blk = PF(char *, p, 88) + 32 * rec->idx;
     int i;
+    unsigned short sid;
 
     if (rec->n1 <= 0)
         return 0xffff;
     for (i = 0; i < rec->n1; i++) {
-        unsigned short sid = tri_id(blk, rec, i);
+        unsigned short base = rec->base;
+        unsigned short x = base;
+        if (i != 0)
+            x = (unsigned short)(((unsigned short *)blk)[i - 1] + base);
+        sid = x;
         if (f_0b0910(p, v, &sid))
             return sid;
         rec = *recp;
@@ -545,7 +605,7 @@ unsigned short f_0b0500(PolySet *p, const Vec4 *v, float *h, const Rec **rec)
    running deltas from the cell's table); each triangle that holds the point is tested by
    the height of its plane, and the one nearest the point's y (within 2000 units) is returned,
    or 0xffff for none.
-   Remaining difference: size 304 vs 316; 71/79 words differ from +0x18 (the loop body is 12 bytes short). */
+   Remaining difference: size 316 vs 316; 25/79 words differ from +0x24 (register allocation and slot filling around the id build). */
 unsigned short f_0b07d4(PolySet *p, const Vec4 *v, const Rec **recp)
 {
     const Rec *rec = *recp;
@@ -557,7 +617,12 @@ unsigned short f_0b07d4(PolySet *p, const Vec4 *v, const Rec **recp)
     if (rec->n1 <= 0)
         return 0xffff;
     for (i = 0; i < rec->n1; i++) {
-        unsigned short sid = tri_id(blk, rec, i);
+        unsigned short base = rec->base;
+        unsigned short x = base;
+        unsigned short sid;
+        if (i != 0)
+            x = (unsigned short)(((unsigned short *)blk)[i - 1] + base);
+        sid = x;
         if (f_0b0910(p, v, &sid)) {
             float d = f_0b0ae0(p, v, (const Cell *)(PF(const char *, p, 64) + 24 * (unsigned int)sid)) - v->y;
             if (d < 0.0f)

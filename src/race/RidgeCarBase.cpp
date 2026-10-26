@@ -29,8 +29,35 @@ void f_0a6d4c(void *out, void *m, void *v);
 void f_0be874(void *list, void *car);
 void f_099b98(float *a);
 void f_0a5e1c(void *v, float len);
+
+void f_0e2f9c(void *m, float a, float b, int i, float *o1, float *o2);
+int f_0e2690(void *m, int i);
+float f_0e2260(void *m, int i);
+float f_09a9dc(float x, float z);
+void f_0a6bf4(void *out, void *m, void *v);
+float f_0c2bd0(float a, float b);
 }
 
+struct MapMgr {
+    char m0[12240];
+    char m12240[1];
+};
+extern MapMgr D_23c820;
+struct CTable {
+    int m0;
+    int m4;
+    int count;
+    int m12[3];
+    int *index;
+};
+extern CTable D_240740;
+extern unsigned char D_24063c[];
+extern const int D_1a211c[];
+extern "C" {
+char *f_0368e8(CTable *t, const char *field, char *rec, int a, int i);
+char *f_036984(CTable *t, char *key, int i, int *index, int count);
+void *memcpy(void *d, const void *s, unsigned int n) throw();
+}
 extern char D_1acab8[];
 extern char D_245ec0[];
 
@@ -554,4 +581,111 @@ extern "C" void f_0bb220(void *cp, void *spec)
     INT(ph, 1272) = 0;
     char *q = *(char **)(c + 8048);
     FLT(c, 9892) = 1.0f / FLT(q, 16);
+}
+
+/* @draft 0x0b708c us f_0b708c
+   WHAT IT DOES: Builds the heading vector from the physics record (y and z negated, w 1.0),
+   scales it to length 1000, asks the course manager for the road segment, then steps the
+   segment index forward until it matches the stored one, and stores the resulting distance
+   (102 per step, less the manager's word at +8 when the car's word at +2212 is negative) at
+   +496 and +472 of the record before calling f_0b6e44.
+   Remaining difference: 23 of 77 words; retail schedules move a0,sp after the c[5792] load (here hoisted), the 1000.0 constant load and the D_23c820 base differ in position, and trunc.w.s uses f0 not f1. */
+extern "C" void f_0b708c(void *cp)
+{
+    char *c = (char *)cp;
+    char *ph = c + 5792;
+    MapMgr *mp = &D_23c820;
+    char *mm = mp->m12240;
+    int dist = 0;
+    int j = 0;
+    FloatBits v[4];
+    float o[2];
+    v[2].i = INT(ph, 8);
+    v[1].i = INT(ph, 4);
+    v[2].f = -v[2].f;
+    v[1].f = -v[1].f;
+    v[0].i = INT(c, 5792);
+    v[3].f = 1.0f;
+    f_0a5e1c(v, 1000.0f);
+    f_0e2f9c(mm, v[0].f, v[2].f, INT(ph, 428), &o[0], &o[1]);
+    int idx = f_0e2690(mm, (int)o[1]);
+    INT(ph, 428) = idx;
+    INT(ph, 432) = idx;
+    for (;;) {
+        dist += 102;
+        if (INT(ph, 428) == j)
+            break;
+        j++;
+        j = f_0e2690(mm, j);
+    }
+    if (INT(c, 2212) < 0)
+        dist -= INT(mm, 8) * 102;
+    INT(ph, 472) = dist;
+    INT(ph, 496) = dist;
+    INT(ph, 492) = 0;
+    f_0b6e44(c);
+}
+
+/* @draft 0x0b8884 us f_0b8884
+   WHAT IT DOES: Finds the car's heading angles: the angle of the velocity and of the body's
+   direction in the physics record (+960, +964), then, against the road direction at the
+   course position, sets the two flags at +468 and +464 when the car points more than a quarter
+   turn away from the road, and stores the lateral offset term at +1024.
+   Remaining difference: retail copies the first abs() result into a second register ($f2) before the negate; here it is negated in place (45 of 89 words, size 352 vs 356). */
+extern "C" void f_0b8884(void *cp)
+{
+    char *c = (char *)cp;
+    char *ph = c + 5792;
+    FloatBits t[4];
+    FloatBits u[4];
+    FLT(ph, 960) = f_09a9dc(FLT(c, 6656), FLT(c, 6664));
+    f_0a6bf4(u, c + 6416, c + 5984);
+    t[0].i = u[0].i;
+    t[2].i = u[2].i;
+    t[1].i = u[1].i;
+    t[3].i = u[3].i;
+    FLT(ph, 964) = f_09a9dc(t[2].f, t[0].f);
+    MapMgr *mp = &D_23c820;
+    float road = f_0e2260(mp->m12240, (int)FLT(c, 2144));
+    float a = f_0c2bd0(f_09a9dc(-t[0].f, t[2].f), road);
+    float b = a < 0.0f ? -a : a;
+    if (1.5707963705f < b)
+        *(short *)(ph + 468) = 1;
+    else
+        *(short *)(ph + 468) = 0;
+    float d = f_0c2bd0(FLT(ph, 20), road);
+    if (d < 0.0f)
+        d = -d;
+    if (1.5707963705f < d)
+        INT(ph, 464) = 1;
+    else
+        INT(ph, 464) = 0;
+    FLT(ph, 1024) = -FLT(c, 2140) * 0.0010000000474974513f - FLT(ph, 4);
+}
+
+/* @draft 0x0b94b0 us f_0b94b0
+   WHAT IT DOES: Reads the car's drift and nitro tuning values from the game database: when the
+   car has a record key (+92) it finds that record, then copies the "DriftType", "Grade",
+   "NitroFreq", "NitroTrigger" and "CorneringLossRatio" fields into +9696, +9700, +9704, +9708
+   and +9724 of the car.
+   Remaining difference: retail keeps the record pointer in a stack slot stored once (sw v0,0(sp)) with the no-key arm out of line and a different saved register order; this build is 416 bytes against 404 (50 of 104 words). */
+extern "C" void f_0b94b0(void *cp)
+{
+    char *c = (char *)cp;
+    char *volatile rec;
+    if (INT(c, 92) != 0)
+        rec = f_036984(&D_240740, *(char **)(c + 92), 0, D_240740.index, D_240740.count);
+    else
+        rec = 0;
+    int n = D_1a211c[1];
+    memcpy(D_24063c, f_0368e8(&D_240740, "DriftType", rec, 0, 0), n);
+    INT(c, 9696) = D_24063c[0];
+    memcpy(D_24063c, f_0368e8(&D_240740, "Grade", rec, 0, 0), n);
+    INT(c, 9700) = D_24063c[0];
+    memcpy(D_24063c, f_0368e8(&D_240740, "NitroFreq", rec, 0, 0), n);
+    INT(c, 9704) = D_24063c[0];
+    memcpy(D_24063c, f_0368e8(&D_240740, "NitroTrigger", rec, 0, 0), n);
+    INT(c, 9708) = D_24063c[0];
+    memcpy(D_24063c, f_0368e8(&D_240740, "CorneringLossRatio", rec, 0, 0), D_1a211c[4]);
+    FLT(c, 9724) = *(float *)D_24063c;
 }
