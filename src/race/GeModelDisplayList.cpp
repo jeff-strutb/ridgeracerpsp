@@ -80,14 +80,175 @@ extern "C" unsigned int *f_0fea50(const Mat43 *m, unsigned int *p, unsigned int 
     return q;
 }
 
+/* The model table at D_23c820 (its entries are 64 bytes, indexed by the model number). */
+extern "C" char D_23c820[];
+extern "C" unsigned int D_27f0b0;
+extern "C" unsigned int *D_27f0b4_ptr;
+extern "C" unsigned int D_1b0550[];
+extern "C" unsigned int *f_0249a0(void *info, unsigned int *p);
+extern "C" unsigned int *f_0fea50(const Mat43 *m, unsigned int *p, unsigned int flags);
+extern "C" unsigned int *f_0fed1c(unsigned int *p);
+extern "C" float floorf(float x);
+
+struct Vec3f {
+    float x, y, z;
+};
+
+/* A part's sub-record: a texture key, and a count of 16 byte units at offset 12. */
+struct SubRec {
+    unsigned int key;
+    unsigned int w4;
+    unsigned int w8;
+    unsigned short size;
+};
+
+/* A part record: a type word (its high nibble and low 24 bits go into the list), a position
+   record (type 1 and 3 read floats from it), a count and an array of sub-record pointers. */
+struct Part {
+    unsigned int w0;
+    Vec3f *pos;
+    unsigned int w8;
+    unsigned int count;
+    SubRec *sub[1];
+};
+
+struct PartList {
+    unsigned int n;
+    Part *parts[1];
+};
+
+struct Holder {
+    char p0[8];
+    PartList *list;
+};
+
+/* A model entry (64 bytes): flags at offset 4, the holder at offset 16. */
+struct Entry {
+    char p0[4];
+    unsigned int flags;
+    char p8[8];
+    Holder *holder;
+    char pad[40];
+};
+
+/* The table at D_23c820 + 27840 whose entries array is at offset 4. */
+struct ModelTable {
+    char p0[4];
+    Entry *entries;
+};
+
+/* @draft 0x0fed54 us f_0fed54
+   WHAT IT DOES: Writes one model's display list at a place given by a matrix and a clip word:
+   the world matrix (through f_0fea50, with the model's flags), then for each part of the
+   model a texture or sub-record block, and for position type 1 and 3 parts the float position
+   is wrapped by the table's modulus (trunc, div, floor) before being written as two commands.
+   Ends with the f_0fed1c tail. Not yet exact. */
+extern "C" unsigned int *f_0fed54(int idx, const Mat43 *mat, unsigned int *p, unsigned int clip)
+{
+    ModelTable *tb = (ModelTable *)(D_23c820 + 27840);
+    Entry *e = (Entry *)((char *)tb->entries + (idx << 6));
+    PartList *list = e->holder->list;
+    unsigned int i;
+
+    p = f_0fea50(mat, p, e->flags);
+    for (i = 0; i < list->n; i++) {
+        Part *pt = list->parts[i];
+        if (pt != (Part *)D_27f0b4_ptr) {
+            *p++ = 0x10000000 | ((pt->w0 >> 24) & 0xf) << 16;
+            *p++ = (pt->w0 & 0x00ffffff) | 0x0a000000;
+            D_27f0b4_ptr = (unsigned int *)pt;
+        }
+        for (unsigned int j = 0; j < pt->count; j++) {
+            SubRec *sr = pt->sub[j];
+            if (sr->key != D_27f0b0) {
+                p = f_0249a0(sr, p);
+                D_27f0b0 = sr->key;
+            }
+            *p++ = 0x1e000000;
+            *p++ = 0x0a000000 | (((unsigned int)sr + sr->size * 16 + 96) & 0x00ffffff);
+        }
+    }
+    return f_0fed1c(p);
+}
+
+/* @draft 0x0ff0ec us f_0ff0ec
+   WHAT IT DOES: Writes a model's display list placed at a screen point: the world matrix
+   (through f_0fea50), a position command pair from the two float arguments (x, y), the clip
+   word as two region commands, then the part and sub-record blocks as in f_0fed54, and the
+   f_0fed1c tail. Not yet exact. */
+extern "C" unsigned int *f_0ff0ec(int idx, const Mat43 *mat, unsigned int *p, unsigned int clip, float x, float y)
+{
+    ModelTable *tb = (ModelTable *)(D_23c820 + 27840);
+    Entry *e = (Entry *)((char *)tb->entries + (idx << 6));
+    PartList *list = e->holder->list;
+    unsigned int i;
+
+    p = f_0fea50(mat, p, e->flags);
+    *p++ = 0x4a000000 | ((unsigned int)(*(int *)&x) >> 8);
+    *p++ = 0x4b000000 | ((unsigned int)(*(int *)&y) >> 8);
+    *p++ = 0xc0000000 | (clip & 0x00ffffff);
+    for (i = 0; i < list->n; i++) {
+        Part *pt = list->parts[i];
+        if (pt != (Part *)D_27f0b4_ptr) {
+            *p++ = 0x10000000 | ((pt->w0 >> 24) & 0xf) << 16;
+            *p++ = (pt->w0 & 0x00ffffff) | 0x0a000000;
+            D_27f0b4_ptr = (unsigned int *)pt;
+        }
+        for (unsigned int j = 0; j < pt->count; j++) {
+            SubRec *sr = pt->sub[j];
+            if (sr->key != D_27f0b0) {
+                p = f_0249a0(sr, p);
+                D_27f0b0 = sr->key;
+            }
+            *p++ = 0x1e000001;
+            *p++ = 0x0a000000 | (((unsigned int)sr + sr->size * 16 + 96) & 0x00ffffff);
+        }
+    }
+    return f_0fed1c(p);
+}
+
+/* @draft 0x0ff388 us f_0ff388
+   WHAT IT DOES: Like f_0fed54 but the position comes from the matrix argument's floats: they
+   are wrapped by the table's modulus (trunc, div, floor, with the table's divisor at offset
+   13004) and written as two commands, then the part and sub-record blocks, then a 0x1b word
+   and the f_0fed1c tail. Not yet exact. */
+extern "C" unsigned int *f_0ff388(int idx, const Mat43 *mat, unsigned int *p, unsigned int clip)
+{
+    ModelTable *tb = (ModelTable *)(D_23c820 + 27840);
+    Entry *e = (Entry *)((char *)tb->entries + (idx << 6));
+    PartList *list = e->holder->list;
+    unsigned int i;
+
+    p = f_0fea50(mat, p, e->flags);
+    *p++ = 0x5c000000 | (clip & 0x00ffffff);
+    *p++ = 0x5d000000 | (clip >> 24);
+    for (i = 0; i < list->n; i++) {
+        Part *pt = list->parts[i];
+        if (pt != (Part *)D_27f0b4_ptr) {
+            *p++ = 0x10000000 | ((pt->w0 >> 24) & 0xf) << 16;
+            *p++ = (pt->w0 & 0x00ffffff) | 0x0a000000;
+            D_27f0b4_ptr = (unsigned int *)pt;
+        }
+        for (unsigned int j = 0; j < pt->count; j++) {
+            SubRec *sr = pt->sub[j];
+            if (sr->key != D_27f0b0) {
+                p = f_0249a0(sr, p);
+                D_27f0b0 = sr->key;
+            }
+            *p++ = 0x1e000000;
+            *p++ = 0x0a000000 | (((unsigned int)sr + sr->size * 16 + 96) & 0x00ffffff);
+        }
+    }
+    *p++ = 0x1b000000;
+    return f_0fed1c(p);
+}
+
 /* @implements 0x0fed1c us f_0fed1c
    WHAT IT DOES: Writes three GE commands at the list pointer: a clip region command (0x5c)
    with 0xffffff, a 0x5d command with 0xff, and a 0x20 command with 1; returns the pointer past
    them. */
 extern "C" unsigned int *f_0fed1c(unsigned int *p)
 {
-    /* Each step is its own statement, so the pointer is stepped in place between the stores
-       (with *p++ the steps fold into store offsets). */
     *p = 0x5cffffff;
     p++;
     *p = 0x5d0000ff;
