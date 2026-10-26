@@ -284,11 +284,10 @@ float CEngineSound::f_0c8694(int sel, Sample *s)
     return v * (s->b92 / 100.0f);
 }
 
-/* @draft 0x0c9a80 us _ZN12CEngineSound8f_0c9a80Ev
+/* @implements 0x0c9a80 us _ZN12CEngineSound8f_0c9a80Ev
    WHAT IT DOES: Steps the player's car's view state with the camera's inside flag
    (0 outside, 1 going inside, 2 going outside), then takes the race's forced view if
-   one is set; other cars take the forced view or their own. 
-   DRAFT: the final view fallback loads m166 with lhu and stores in a different order (retail lh into the stored register). */
+   one is set; other cars take the forced view or their own. */
 void CEngineSound::f_0c9a80()
 {
     CRaceView *g = &D_23be80;
@@ -315,9 +314,9 @@ void CEngineSound::f_0c9a80()
         int v = g->m16;
 
         m164 = v;
-        if (!v) {
-            v = m166;
-            m164 = v;
+        if (v == 0) {
+            int w = m166;
+            m164 = w;
         }
     }
 }
