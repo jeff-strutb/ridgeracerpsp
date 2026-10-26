@@ -125,22 +125,21 @@ public:
 
 using namespace Component;
 
-/* @draft 0x0edc98 us f_0edc98
+/* @implements 0x0edc98 us f_0edc98
    WHAT IT DOES: Compares record a with record b in the first order (by the first finishing
-   time): returns nonzero when b is ahead of a.
-   Remaining difference: retail keeps b in a1 and loads the lap into v0 (moved into a1 in the
-   call slot); this build copies b into v0 first. Argument order and locals do not change it. */
+   time): returns nonzero when b is ahead of a. */
 extern "C" int f_0edc98(Entry *a, Entry *b)
 {
-    return a->f_0edcf0(b->lap, b->time, b->done, b->dist);
+    int lap = b->lap;
+    return a->f_0edcf0(lap, b->time, b->done, b->dist);
 }
 
 /* @draft 0x0edcc4 us f_0edcc4
-   WHAT IT DOES: The same comparison in the second order (by the second finishing time).
-   Remaining difference: the same register choice for b as 0x0edc98. */
+   WHAT IT DOES: The same comparison in the second order (by the second finishing time). */
 extern "C" int f_0edcc4(Entry *a, Entry *b)
 {
-    return a->f_0edcf0(b->lap, b->time2, b->done, b->dist);
+    int lap = b->lap;
+    return a->f_0edcf0(lap, b->time2, b->done, b->dist);
 }
 
 /* @implements 0x0edcf0 us f_0edcf0

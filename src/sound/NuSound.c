@@ -80,18 +80,19 @@ int f_110d74(signed char ch);
 int f_110d98(signed char ch);
 int f_10d1dc(void);
 
-/* @draft 0x10bd70 us f_10bd70
-   WHAT IT DOES: Whether language slot i (under 6) of a configuration record is lang.
-   DRAFT: control flow matches; retail keeps the result in a1 and lang in v1 (here the
-   other way round) and adds i+p rather than p+i. */
-int f_10bd70(int a, char lang, unsigned int i, SoundLang *p)
+/* @implements 0x10bd70 us f_10bd70
+   WHAT IT DOES: Whether language slot i (under 6) of a configuration record is lang. */
+int f_10bd70(int a, signed char lang, unsigned int i, SoundLang *p)
 {
-    int r = 0;
+    int v = lang;
 
+    lang = 0;
     if (i < 6)
-        if (p != 0)
-            r = p->lang[i] == lang;
-    return r;
+        if (p != 0) {
+            signed char *q = (signed char *)(i + (unsigned int)p);
+            lang = (q[34] ^ v) == 0;
+        }
+    return lang;
 }
 
 /* @implements 0x10bd9c us f_10bd9c
@@ -193,18 +194,17 @@ int f_10bf14(void)
 
 /* @draft 0x10bf1c us f_10bf1c
    WHAT IT DOES: Sets the output mode (0 or 1).
-   DRAFT: retail keeps 0x80000000 in v0 and sets v0 = 0 after the call; this keeps the
-   result in a1 (two words longer). Switch, guard-first and else-return forms tried. */
+   DRAFT: branch shape and size match; retail copies the argument with move v0,a0 before
+   seh and schedules the epilogue differently. Switch, || and held-result forms tried. */
 int f_10bf1c(short mode)
 {
-    if (mode == 0) {
-        f_110778(0);
-        return 0;
-    } else if (mode == 1) {
-        f_110778(0);
-        return 0;
-    }
-    return 0x80000000;
+    if (mode == 0)
+        goto call;
+    if (mode != 1)
+        return 0x80000000;
+call:
+    f_110778(0);
+    return 0;
 }
 
 /* @implements 0x10bf58 us f_10bf58
@@ -216,8 +216,8 @@ short f_10bf58(void)
 
 /* @draft 0x10bf78 us f_10bf78
    WHAT IT DOES: Sets the master volume (not negative).
-   DRAFT: one swapped pair; retail sets $f12 before a1 for the f_10ddac call. Float-first
-   prototypes and a short temporary tried. */
+   DRAFT: one swapped pair; retail sets $f12 before a1 for the f_10ddac call. Float
+   temporaries and a short local for the pan tried. */
 int f_10bf78(float vol)
 {
     if (vol < 0.0f)
