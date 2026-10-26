@@ -1,0 +1,3776 @@
+/* The SWG player (retail 0x0451b4 to 0x06b7b4): a Flash-style movie and ActionScript runtime
+   (ASContextImpl, its number, string and property handler classes, movie clip properties such
+   as _x, _alpha and _currentframe, key names and the Math object), with the std::basic_string
+   and std::vector instantiations it uses. Each part below was written separately in its own
+   namespace; the functions keep C linkage under their retail addresses. */
+
+/* ---- swgA ---- */
+/* TU 117 fragment by worker swgA: retail 0x0451b4..0x04d19c (the Flash/ActionScript
+   player range, C++ with exceptions). This fragment transcribes the functions up to
+   64 bytes in that range: small getters and setters, vtable stores, empty and
+   forwarding destructors, and thin wrappers around the movie-clip and property
+   handlers. Callees outside this fragment are declared extern "C" with their retail
+   addresses. */
+
+namespace swgA {
+
+extern "C" {
+
+extern int D_241000;
+extern char D_1a3998[];
+
+void f_04d8a4(void);
+void f_118738(int, int);
+void f_1166d4(int);
+void f_0221e8(int);
+void f_023198(void *, int);
+void f_04670c(void *);
+void f_0467ec(void *);
+void f_07d76c(void *);
+void f_07d89c(void *);
+void f_07d948(void *);
+void f_07da28(void *);
+int f_07dacc(void *, int, int, int);
+void f_0454d4(void *);
+void f_15ba88(void *);
+void f_15bd20(void *, float);
+void f_15bee8(void *, int);
+void f_15bbac(void *, void *);
+void f_15c07c(void *, int, int);
+void f_15c870(void *, int, int);
+void f_15ca34(void *, int, int);
+void f_15d2e4(void *, int, int, int);
+void f_15d0ac(void *, int, int, int);
+void f_15d124(void *, int, int, int);
+void f_15cef8(void *, int, int);
+void f_15ced4(void *, int, int);
+void f_046878(char *);
+void f_046c78(char *);
+void f_04a610(void *);
+void f_04a620(void *);
+void _ZdlPv(void *);
+
+/* @implements 0x0453d0 us f_0453d0
+   WHAT IT DOES: if the global at D_241000 is set, calls f_04d8a4. */
+void f_0453d0(void) {
+    if (D_241000) f_04d8a4();
+}
+
+/* @implements 0x04559c us f_04559c
+   WHAT IT DOES: calls f_118738(7, 1), then f_1166d4(1) and f_1166d4(6). */
+void f_04559c(void) {
+    f_118738(7, 1);
+    f_1166d4(1);
+    f_1166d4(6);
+}
+
+/* @implements 0x0455cc us f_0455cc
+   WHAT IT DOES: calls f_0221e8(4). */
+void f_0455cc(void) {
+    f_0221e8(4);
+}
+
+/* @implements 0x04637c us f_04637c
+   WHAT IT DOES: passes its second argument to f_023198 with a zero second argument. */
+void f_04637c(void *self, void *x) {
+    (void)self;
+    f_023198(x, 0);
+}
+
+/* @implements 0x04639c us f_04639c
+   WHAT IT DOES: returns immediately. */
+void f_04639c(void *self) {
+    (void)self;
+}
+
+/* @implements 0x046684 us f_046684
+   WHAT IT DOES: zeroes the words at offsets 24, 0 and 4 of the object, then calls f_04670c on it. */
+void f_046684(int *s) {
+    s[0] = 0;
+    s[1] = 0;
+    s[6] = 0;
+    f_04670c(s);
+}
+
+/* @implements 0x0466ac us f_0466ac
+   WHAT IT DOES: zeroes the words at offsets 24, 0 and 4 of the object, then calls f_04670c on it. */
+void f_0466ac(int *s) {
+    s[0] = 0;
+    s[1] = 0;
+    s[6] = 0;
+    f_04670c(s);
+}
+
+/* @implements 0x0466d4 us f_0466d4
+   WHAT IT DOES: calls f_0467ec on the object. */
+void f_0466d4(void *s) {
+    f_0467ec(s);
+}
+
+/* @implements 0x0466f0 us f_0466f0
+   WHAT IT DOES: calls f_0467ec on the object. */
+void f_0466f0(void *s) {
+    f_0467ec(s);
+}
+
+/* @implements 0x04686c us f_04686c
+   WHAT IT DOES: stores the value into the word at offset 408 of the object the first word points to. */
+void f_04686c(char **self, int v) {
+    *(int *)(*self + 408) = v;
+}
+
+/* @implements 0x046878 us f_046878
+   WHAT IT DOES: calls f_07d76c with the object pointer loaded from the first word of the object. */
+void f_046878(char *s) {
+    f_07d76c(*(void **)s);
+}
+
+/* @implements 0x0468e8 us f_0468e8
+   WHAT IT DOES: sets the byte flag at offset 908 and calls f_07d89c on the object held in the first word. */
+void f_0468e8(char *s) {
+    void *o = *(void **)s;
+    s[908] = 1;
+    f_07d89c(o);
+}
+
+/* @implements 0x046910 us f_046910
+   WHAT IT DOES: sets the byte flag at offset 908 and calls f_07d948 on the object held in the first word. */
+void f_046910(char *s) {
+    void *o = *(void **)s;
+    s[908] = 1;
+    f_07d948(o);
+}
+
+/* @implements 0x046938 us f_046938
+   WHAT IT DOES: sets the byte flag at offset 908 and calls f_07da28 on the object held in the first word. */
+void f_046938(char *s) {
+    void *o = *(void **)s;
+    s[908] = 1;
+    f_07da28(o);
+}
+
+/* @implements 0x046960 us f_046960
+   WHAT IT DOES: calls f_07dacc on the object with the arguments rotated, and stores its result through the pointer argument a2. */
+void f_046960(char *s, int a1, int *a2, int a3, int t0) {
+    *a2 = f_07dacc(*(void **)s, a3, a1, t0);
+}
+
+/* @implements 0x046c78 us f_046c78
+   WHAT IT DOES: clears the byte flag at offset 908 and the word at offset 20. */
+void f_046c78(char *s) {
+    *(int *)(s + 20) = 0;
+    s[908] = 0;
+}
+
+/* @implements 0x046c84 us f_046c84
+   WHAT IT DOES: returns the word at offset 20 of the object. */
+int f_046c84(char *s) {
+    return *(int *)(s + 20);
+}
+
+/* @implements 0x049b38 us f_049b38
+   WHAT IT DOES: sets the word at offset 8 to -1, calls f_046c78 on the object at offset 24, then calls f_0454d4 on the sub-object at offset 12. */
+void f_049b38(char *s) {
+    *(int *)(s + 8) = -1;
+    f_046c78(*(char **)(s + 24));
+    f_0454d4(s + 12);
+}
+
+/* @implements 0x049b74 us f_049b74
+   WHAT IT DOES: calls f_1166d4(1). */
+void f_049b74(void) {
+    f_1166d4(1);
+}
+
+/* @draft 0x04a500 us f_04a500
+   WHAT IT DOES: calls the function pointer in the word at offset 8 with the object, returning its result, or returns zero if the pointer is null.
+   Remaining difference: retail is 48 bytes, not 40. Its not-taken arm keeps a dead move of the second argument into a0 and repeats the epilogue, so the returns are not merged.
+*/
+int f_04a500(char *s, void *a1) {
+    int (*fp)(void *) = *(int (**)(void *))(s + 8);
+    (void)a1;
+    if (fp) return fp(s);
+    return 0;
+}
+
+/* @draft 0x04a530 us f_04a530
+   WHAT IT DOES: calls the function pointer in the word at offset 12 with the object, returning its result, or returns zero if the pointer is null.
+   Remaining difference: retail is 48 bytes, not 40. Its not-taken arm keeps a dead move of the second argument into a0 and repeats the epilogue, so the returns are not merged.
+*/
+int f_04a530(char *s, void *a1) {
+    int (*fp)(void *) = *(int (**)(void *))(s + 12);
+    (void)a1;
+    if (fp) return fp(s);
+    return 0;
+}
+
+/* @implements 0x04a560 us f_04a560
+   WHAT IT DOES: stores the vtable address D_1a3998 into the first word of the object. */
+void f_04a560(void **self) {
+    *self = D_1a3998;
+}
+
+/* @implements 0x04a570 us f_04a570
+   WHAT IT DOES: stores the vtable address D_1a3998 into the first word of the object. */
+void f_04a570(void **self) {
+    *self = D_1a3998;
+}
+
+/* @implements 0x04a580 us f_04a580
+   WHAT IT DOES: stores the vtable address D_1a3998 into the first word of the object. */
+void f_04a580(void **self) {
+    *self = D_1a3998;
+}
+
+/* @implements 0x04a590 us f_04a590
+   WHAT IT DOES: stores the vtable address D_1a3998 into the first word of the object. */
+void f_04a590(void **self) {
+    *self = D_1a3998;
+}
+
+/* @implements 0x04a5a0 us f_04a5a0
+   WHAT IT DOES: deleting destructor: stores the vtable address D_1a3998 into the object and calls operator delete on it. */
+void f_04a5a0(void **self) {
+    *self = D_1a3998;
+    _ZdlPv(self);
+}
+
+/* @implements 0x04a5c8 us f_04a5c8
+   WHAT IT DOES: returns immediately. */
+void f_04a5c8(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04a5d0 us f_04a5d0
+   WHAT IT DOES: returns immediately. */
+void f_04a5d0(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04a5d8 us f_04a5d8
+   WHAT IT DOES: calls f_04a620 on the object. */
+void f_04a5d8(void *s) {
+    f_04a620(s);
+}
+
+/* @implements 0x04a5f4 us f_04a5f4
+   WHAT IT DOES: calls f_04a620 on the object. */
+void f_04a5f4(void *s) {
+    f_04a620(s);
+}
+
+/* @implements 0x04a610 us f_04a610
+   WHAT IT DOES: returns immediately. */
+void f_04a610(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04a618 us f_04a618
+   WHAT IT DOES: returns immediately. */
+void f_04a618(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04a620 us f_04a620
+   WHAT IT DOES: sets the byte flag at offset 24 and clears the words at offsets 0 to 20 and 28 of the object. */
+void f_04a620(void *obj) {
+    char *s = (char *)obj;
+    int *p = (int *)obj;
+    p[0] = 0;
+    p[1] = 0;
+    p[2] = 0;
+    p[3] = 0;
+    p[4] = 0;
+    p[5] = 0;
+    p[7] = 0;
+    s[24] = 1;
+}
+
+/* @implements 0x04ad30 us f_04ad30
+   WHAT IT DOES: clears the word at offset 16 and calls f_15ba88 on the object held in the first word. */
+void f_04ad30(char *s) {
+    void *o = *(void **)s;
+    *(int *)(s + 16) = 0;
+    f_15ba88(o);
+}
+
+/* @implements 0x04b234 us f_04b234
+   WHAT IT DOES: returns immediately. */
+void f_04b234(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04b23c us f_04b23c
+   WHAT IT DOES: stores the argument into the word at offset 20 of the record at offset 224 of the object the first word points to. */
+void f_04b23c(char *s, int a1) {
+    char *p = *(char **)s;
+    char *q = *(char **)(p + 224);
+    *(int *)(q + 20) = a1;
+}
+
+/* @implements 0x04b24c us f_04b24c
+   WHAT IT DOES: returns the word at offset 20 of the record at offset 224 of the object the first word points to. */
+int f_04b24c(char *s) {
+    char *p = *(char **)s;
+    char *q = *(char **)(p + 224);
+    return *(int *)(q + 20);
+}
+
+/* @implements 0x04b25c us f_04b25c
+   WHAT IT DOES: calls f_046878 on the object pointer at offset 24 of the record at offset 224 of the object the first word points to. */
+void f_04b25c(char *s) {
+    char *p = *(char **)s;
+    char *q = *(char **)(p + 224);
+    f_046878(*(char **)(q + 24));
+}
+
+/* @implements 0x04b280 us f_04b280
+   WHAT IT DOES: returns the word at offset 24 of the record at offset 224 of the object the first word points to. */
+int f_04b280(char *s) {
+    char *p = *(char **)s;
+    char *q = *(char **)(p + 224);
+    return *(int *)(q + 24);
+}
+
+/* @implements 0x04b290 us f_04b290
+   WHAT IT DOES: calls f_15bd20 on the object with the constant 1.0f. */
+void f_04b290(char *s) {
+    f_15bd20(*(void **)s, 1.0f);
+}
+
+/* @implements 0x04b2b4 us f_04b2b4
+   WHAT IT DOES: calls f_15bee8 on the object with a zero second argument. */
+void f_04b2b4(char *s) {
+    f_15bee8(*(void **)s, 0);
+}
+
+/* @implements 0x04b2d4 us f_04b2d4
+   WHAT IT DOES: when the argument is non-zero, sets the byte at offset 1 of the object held in the first word to 1; otherwise clears the byte at offset 1 of the object itself. */
+void f_04b2d4(char *s, int a1) {
+    char *p = *(char **)s;
+    if (a1) {
+        p[1] = 1;
+    } else {
+        p[1] = 0;
+    }
+}
+
+struct L04b2f0 {
+    int a;
+    float b;
+    float c;
+    bool d;
+};
+
+/* @implements 0x04b2f0 us f_04b2f0
+   WHAT IT DOES: builds a local record {1, x, y, false} from its two float arguments and passes it to f_15bbac with the object. */
+
+void f_04b2f0(char *s, float x, float y) {
+    L04b2f0 l;
+    l.a = 1;
+    l.b = x;
+    l.c = y;
+    l.d = false;
+    f_15bbac(*(void **)s, &l);
+}
+
+/* @implements 0x04b324 us f_04b324
+   WHAT IT DOES: calls f_15c07c on the object with the constant 3 and the argument. */
+void f_04b324(char *s, int a1) {
+    f_15c07c(*(void **)s, 3, a1);
+}
+
+/* @implements 0x04b348 us f_04b348
+   WHAT IT DOES: calls f_15c870 on the object with the argument and a zero third argument. */
+void f_04b348(char *s, int a1) {
+    f_15c870(*(void **)s, a1, 0);
+}
+
+/* @implements 0x04b444 us f_04b444
+   WHAT IT DOES: calls f_15ca34 on the object with the argument and a zero third argument. */
+void f_04b444(char *s, int a1) {
+    f_15ca34(*(void **)s, a1, 0);
+}
+
+/* @implements 0x04b4b4 us f_04b4b4
+   WHAT IT DOES: calls f_15d2e4 on the object with the argument, the second argument truncated to a byte, and a zero fourth argument. */
+void f_04b4b4(char *s, int a1, int a2) {
+    f_15d2e4(*(void **)s, a1, (unsigned char)a2, 0);
+}
+
+/* @implements 0x04b528 us f_04b528
+   WHAT IT DOES: calls f_15d0ac on the object with the three arguments, the last one as a boolean. */
+void f_04b528(char *s, int a1, int a2, int a3) {
+    f_15d0ac(*(void **)s, a1, a2, a3 != 0);
+}
+
+/* @implements 0x04b5a8 us f_04b5a8
+   WHAT IT DOES: calls f_15d124 on the object with the three arguments, the last one as a boolean. */
+void f_04b5a8(char *s, int a1, int a2, int a3) {
+    f_15d124(*(void **)s, a1, a2, a3 != 0);
+}
+
+/* @implements 0x04b644 us f_04b644
+   WHAT IT DOES: calls f_15cef8 on the object with the argument and the second argument as a boolean. */
+void f_04b644(char *s, int a1, int a2) {
+    f_15cef8(*(void **)s, a1, a2 != 0);
+}
+
+/* @implements 0x04b6b4 us f_04b6b4
+   WHAT IT DOES: calls f_15ced4 on the object with the argument and the second argument as a boolean. */
+void f_04b6b4(char *s, int a1, int a2) {
+    f_15ced4(*(void **)s, a1, a2 != 0);
+}
+
+/* @implements 0x04b8a0 us f_04b8a0
+   WHAT IT DOES: when the record at offset 228 of the object the first word points to is present and the word at offset 8 of the object is set, stores the two arguments into that record at offsets 12 and 8. */
+void f_04b8a0(char *s, int a1, int a2) {
+    char *p = *(char **)s;
+    char *q = *(char **)(p + 228);
+    if (!q) return;
+    if (!*(void **)(s + 8)) return;
+    *(int *)(q + 8) = a1;
+    *(int *)(q + 12) = a2;
+}
+
+/* @implements 0x04b95c us f_04b95c
+   WHAT IT DOES: calls f_04a610 on the object. */
+void f_04b95c(void *s) {
+    f_04a610(s);
+}
+
+/* @implements 0x04b978 us f_04b978
+   WHAT IT DOES: calls f_04a610 on the object. */
+void f_04b978(void *s) {
+    f_04a610(s);
+}
+
+/* @implements 0x04b994 us f_04b994
+   WHAT IT DOES: calls f_04a620 on the object, then clears the words at offsets 48, 36 and 40. */
+void f_04b994(char *s) {
+    f_04a620(s);
+    *(int *)(s + 36) = 0;
+    *(int *)(s + 40) = 0;
+    *(int *)(s + 48) = 0;
+}
+
+/* @implements 0x04c07c us f_04c07c
+   WHAT IT DOES: when the count at offset 32 is at least the index, stores the second argument at offset 168 of the element of the 172-byte array at offset 36. */
+void f_04c07c(char *s, int a1, int a2) {
+    if (*(int *)(s + 32) >= a1) {
+        char *e = *(char **)(s + 36) + a1 * 172;
+        *(int *)(e + 168) = a2;
+    }
+}
+
+/* @implements 0x04c104 us f_04c104
+   WHAT IT DOES: when the count at offset 32 is at least the index, stores the second argument at offset 132 of the element of the 172-byte array at offset 36. */
+void f_04c104(char *s, int a1, int a2) {
+    if (*(int *)(s + 32) >= a1) {
+        char *e = *(char **)(s + 36) + a1 * 172;
+        *(int *)(e + 132) = a2;
+    }
+}
+
+/* @implements 0x04c130 us f_04c130
+   WHAT IT DOES: when the count at offset 32 is at least the index, stores the third and second arguments at offsets 160 and 156 of the element of the 172-byte array at offset 36. */
+void f_04c130(char *s, int a1, int a2, int a3) {
+    if (*(int *)(s + 32) >= a1) {
+        char *e = *(char **)(s + 36) + a1 * 172;
+        *(int *)(e + 156) = a2;
+        *(int *)(e + 160) = a3;
+    }
+}
+
+/* @implements 0x04c248 us f_04c248
+   WHAT IT DOES: when the count at offset 32 is at least the index, stores the second argument as a byte at offset 136 of the element of the 172-byte array at offset 36. */
+void f_04c248(char *s, int a1, int a2) {
+    unsigned char b = (unsigned char)a2;
+    if (*(int *)(s + 32) >= a1) {
+        char *e = *(char **)(s + 36) + a1 * 172;
+        *(unsigned char *)(e + 136) = b;
+    }
+}
+
+/* @implements 0x04c388 us f_04c388
+   WHAT IT DOES: when the count at offset 32 is at least the index, reads the floats at offsets 8 and 12 of the element of the 172-byte array at offset 36 and stores them through the two pointer arguments when those are non-null. */
+void f_04c388(char *s, int a1, float *a2, float *a3) {
+    if (*(int *)(s + 32) >= a1) {
+        char *e = *(char **)(s + 36) + a1 * 172;
+        float f0 = *(float *)(e + 8);
+        float f1 = *(float *)(e + 12);
+        if (a2) *a2 = f0;
+        if (a3) *a3 = f1;
+    }
+}
+
+/* @implements 0x04d110 us f_04d110
+   WHAT IT DOES: when the count at offset 32 is at least the index, stores the second argument at offset 124 of the element of the 172-byte array at offset 36. */
+void f_04d110(char *s, int a1, int a2) {
+    if (*(int *)(s + 32) >= a1) {
+        char *e = *(char **)(s + 36) + a1 * 172;
+        *(int *)(e + 124) = a2;
+    }
+}
+
+/* @implements 0x04d13c us f_04d13c
+   WHAT IT DOES: returns the word at offset 124 of the element of the 172-byte array at offset 36, or -1 when the index is past the count at offset 32. */
+int f_04d13c(char *s, int a1) {
+    int r = -1;
+    if (*(int *)(s + 32) >= a1) {
+        char *e = *(char **)(s + 36) + a1 * 172;
+        r = *(int *)(e + 124);
+    }
+    return r;
+}
+
+/* @implements 0x04d16c us f_04d16c
+   WHAT IT DOES: when the count at offset 32 is at least the index, sets the byte flag at offset 164 of the element of the 172-byte array at offset 36 to 1. */
+void f_04d16c(char *s, int a1) {
+    if (*(int *)(s + 32) >= a1) {
+        char *e = *(char **)(s + 36) + a1 * 172;
+        *(unsigned char *)(e + 164) = 1;
+    }
+}
+
+}  // extern "C"
+
+}  // namespace swgA
+
+/* ---- swgB ---- */
+/* TU 117 fragment swgB: retail 0x04d19c..0x04ffc4 (Flash/ActionScript player, ASContext and
+   property-handler classes). Small accessors, vtable stores, empty destructors and thunks first,
+   then the larger bodies. */
+
+#define FLD(T, p, o) (*(T *)((char *)(p) + (o)))
+
+namespace swgB {
+
+extern "C" {
+
+extern char D_1a3ad0[];
+extern char D_1a3ab0[];
+extern char D_1a47f0[];
+extern char D_1a47c0[];
+extern char D_1a4828[];
+extern char D_1a3810[];
+
+void f_1166d4(int);
+void f_021750(void);
+void f_04d68c(int, int);
+void *f_04dfa0(void *);
+void f_04e4b4(void *);
+void f_05d6dc(void *);
+void f_05e2c4(void *);
+void _ZdlPv(void *);
+void f_021720(void);
+void f_116898(int);
+void f_118e30(int, int, int, int, int);
+void f_0466ac(void *);
+void f_0466f0(void *);
+void f_05e1b4(void *);
+void f_04e930(void *, char *);
+void f_04ed28(char *);
+void f_04e6d0(char *);
+void f_04ee08(char *, char *);
+void f_04ee68(char *, char *);
+int sceKernelCpuSuspendIntr(void);
+void sceKernelCpuResumeIntr(int);
+extern int D_291424;
+extern char D_291400[];
+extern char D_24100c[];
+extern char D_1a3760[];
+extern char D_1a4480[];
+
+/* @implements 0x04d19c us f_04d19c
+   WHAT IT DOES: when the index a1 is not below the count at +32, sets the byte at +164 of the
+   172-byte entry a1 in the array at +36 to 2. */
+void f_04d19c(void *self, int a1) {
+    if (!(FLD(int, self, 32) < a1)) {
+        unsigned char *b = (unsigned char *)FLD(char *, self, 36) + a1 * 172;
+        b[164] = 2;
+    }
+}
+
+/* @implements 0x04d3b4 us f_04d3b4
+   WHAT IT DOES: calls f_1166d4(1) and then f_021750(). */
+void f_04d3b4(void) {
+    f_1166d4(1);
+    f_021750();
+}
+
+/* @implements 0x04d708 us f_04d708
+   WHAT IT DOES: calls f_04d68c(1, 0xffff). */
+void f_04d708(void) {
+    f_04d68c(1, 0xffff);
+}
+
+/* @implements 0x04d728 us f_04d728
+   WHAT IT DOES: calls f_04d68c(0, 0xffff). */
+void f_04d728(void) {
+    f_04d68c(0, 0xffff);
+}
+
+/* @implements 0x04d748 us f_04d748
+   WHAT IT DOES: stores the vtable address D_1a3ad0 into the object (constructor body with no
+   base or members). */
+void f_04d748(void *self) {
+    *(void **)self = D_1a3ad0;
+}
+
+/* @implements 0x04d758 us f_04d758
+   WHAT IT DOES: stores the vtable address D_1a3ad0 into the object, then frees the object
+   with operator delete (deleting destructor). */
+void f_04d758(void *self) {
+    *(void **)self = D_1a3ad0;
+    _ZdlPv(self);
+}
+
+/* @implements 0x04d780 us f_04d780
+   WHAT IT DOES: stores the second argument at offset 4 of the object. */
+void f_04d780(void *self, int v) {
+    FLD(int, self, 4) = v;
+}
+
+/* @implements 0x04d788 us f_04d788
+   WHAT IT DOES: stores the second argument at offset 4 of the object. */
+void f_04d788(void *self, int v) {
+    FLD(int, self, 4) = v;
+}
+
+/* @implements 0x04d790 us f_04d790
+   WHAT IT DOES: stores the second argument at offset 4 of the object. */
+void f_04d790(void *self, int v) {
+    FLD(int, self, 4) = v;
+}
+
+/* @implements 0x04d798 us f_04d798
+   WHAT IT DOES: stores the vtable address D_1a3ab0 into the object. */
+void f_04d798(void *self) {
+    *(void **)self = D_1a3ab0;
+}
+
+/* @implements 0x04d7a8 us f_04d7a8
+   WHAT IT DOES: stores the vtable address D_1a3ab0 into the object, then frees the object
+   with operator delete (deleting destructor). */
+void f_04d7a8(void *self) {
+    *(void **)self = D_1a3ab0;
+    _ZdlPv(self);
+}
+
+/* @implements 0x04d7d0 us f_04d7d0
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04d7d0(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04d7d8 us f_04d7d8
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04d7d8(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04d7e0 us f_04d7e0
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04d7e0(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04d7e8 us f_04d7e8
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04d7e8(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04d7f0 us f_04d7f0
+   WHAT IT DOES: returns 0. */
+int f_04d7f0(void) {
+    return 0;
+}
+
+/* @implements 0x04d7f8 us f_04d7f8
+   WHAT IT DOES: returns 0. */
+int f_04d7f8(void) {
+    return 0;
+}
+
+/* @implements 0x04d800 us f_04d800
+   WHAT IT DOES: returns the float constant 0.0. */
+float f_04d800(void) {
+    return 0.0f;
+}
+
+/* @implements 0x04d80c us f_04d80c
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04d80c(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04d814 us f_04d814
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04d814(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04d81c us f_04d81c
+   WHAT IT DOES: returns 1. */
+int f_04d81c(void) {
+    return 1;
+}
+
+/* @implements 0x04d824 us f_04d824
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04d824(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04db8c us f_04db8c
+   WHAT IT DOES: stores the vtable address D_1a47f0 into the object. */
+void f_04db8c(void *self) {
+    *(void **)self = D_1a47f0;
+}
+
+/* @implements 0x04db9c us f_04db9c
+   WHAT IT DOES: stores the vtable address D_1a47f0 into the object, then frees it with
+   operator delete (deleting destructor). */
+void f_04db9c(void *self) {
+    *(void **)self = D_1a47f0;
+    _ZdlPv(self);
+}
+
+/* @implements 0x04dbc4 us f_04dbc4
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dbc4(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dbcc us f_04dbcc
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dbcc(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dbd4 us f_04dbd4
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dbd4(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dbdc us f_04dbdc
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dbdc(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dbe4 us f_04dbe4
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dbe4(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dbec us f_04dbec
+   WHAT IT DOES: stores the vtable address D_1a47f0 into the object. */
+void f_04dbec(void *self) {
+    *(void **)self = D_1a47f0;
+}
+
+/* @implements 0x04dbfc us f_04dbfc
+   WHAT IT DOES: stores the vtable address D_1a47f0 into the object, then frees it with
+   operator delete (deleting destructor). */
+void f_04dbfc(void *self) {
+    *(void **)self = D_1a47f0;
+    _ZdlPv(self);
+}
+
+/* @implements 0x04dc24 us f_04dc24
+   WHAT IT DOES: sets the word at offset 32 of the object to 0. */
+void f_04dc24(void *self) {
+    FLD(int, self, 32) = 0;
+}
+
+/* @implements 0x04dc2c us f_04dc2c
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dc2c(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dc34 us f_04dc34
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dc34(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dc3c us f_04dc3c
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dc3c(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dc44 us f_04dc44
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dc44(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dc4c us f_04dc4c
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dc4c(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dc54 us f_04dc54
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dc54(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dc5c us f_04dc5c
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dc5c(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dc64 us f_04dc64
+   WHAT IT DOES: stores the vtable address D_1a47c0 into the object, then frees it with
+   operator delete (deleting destructor). */
+void f_04dc64(void *self) {
+    *(void **)self = D_1a47c0;
+    _ZdlPv(self);
+}
+
+/* @implements 0x04dc8c us f_04dc8c
+   WHAT IT DOES: stores the vtable address D_1a47c0 into the object. */
+void f_04dc8c(void *self) {
+    *(void **)self = D_1a47c0;
+}
+
+/* @implements 0x04dc9c us f_04dc9c
+   WHAT IT DOES: returns 0. */
+int f_04dc9c(void *self) {
+    (void)self;
+    return 0;
+}
+
+/* @implements 0x04dca4 us f_04dca4
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dca4(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dcac us f_04dcac
+   WHAT IT DOES: returns 0. */
+int f_04dcac(void *self) {
+    (void)self;
+    return 0;
+}
+
+/* @implements 0x04dcb4 us f_04dcb4
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dcb4(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dcbc us f_04dcbc
+   WHAT IT DOES: stores the vtable address D_1a4828 into the object. */
+void f_04dcbc(void *self) {
+    *(void **)self = D_1a4828;
+}
+
+/* @implements 0x04dccc us f_04dccc
+   WHAT IT DOES: stores the vtable address D_1a4828 into the object, then frees it with
+   operator delete (deleting destructor). */
+void f_04dccc(void *self) {
+    *(void **)self = D_1a4828;
+    _ZdlPv(self);
+}
+
+/* @implements 0x04dcf4 us f_04dcf4
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dcf4(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dcfc us f_04dcfc
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dcfc(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dd04 us f_04dd04
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dd04(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04dd0c us f_04dd0c
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04dd0c(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04de00 us f_04de00
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04de00(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04de08 us f_04de08
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04de08(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04df90 us f_04df90
+   WHAT IT DOES: returns 0. */
+int f_04df90(void *self) {
+    (void)self;
+    return 0;
+}
+
+/* @implements 0x04df98 us f_04df98
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04df98(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04e638 us f_04e638
+   WHAT IT DOES: if the second argument is non-null, passes it to f_04e4b4. */
+void f_04e638(void *self, void *a1) {
+    (void)self;
+    if (a1) {
+        f_04e4b4(a1);
+    }
+}
+
+/* @draft 0x04e65c us f_04e65c
+   WHAT IT DOES: walks a range of 56-byte records from the first argument to the second; each
+   record whose word at +12 does not equal the word at +16 advances that word by 36 until it
+   does.
+   Remaining difference: 12/17 words differ, first at +0x0; size 68 vs 56. */
+void f_04e65c(char *a0, char *a1) {
+    while (a0 != a1) {
+        int end = FLD(int, a0, 16);
+        int cur = FLD(int, a0, 12);
+        if (cur == end) {
+            a0 += 56;
+        } else {
+            cur += 36;
+            while (cur != end) {
+                cur += 36;
+            }
+            a0 += 56;
+        }
+    }
+}
+
+/* @draft 0x04e694 us f_04e694
+   WHAT IT DOES: allocates a 12-byte node, stores it in the object at +4, and makes it a
+   self-linked node (its words at 0 and +4 point at itself).
+   Remaining difference: 4/15 words differ, first at +0x24; size 52 vs 60. */
+void f_04e694(void *self) {
+    void *p = f_04dfa0((void *)12);
+    FLD(void *, self, 4) = p;
+    FLD(void *, p, 4) = p;
+    *(void **)p = p;
+}
+
+/* @draft 0x04e8c0 us f_04e8c0
+   WHAT IT DOES: stores the vtable address D_1a3ab0 into the object.
+   Remaining difference: 3/6 words differ, first at +0x8; size 16 vs 24. */
+void f_04e8c0(void *self) {
+    *(void **)self = D_1a3ab0;
+}
+
+/* @draft 0x04ebf4 us f_04ebf4
+   WHAT IT DOES: allocates a node for the pointer a1+4, stores that pointer in the node and
+   returns the node address plus 4.
+   Remaining difference: 10/15 words differ, first at +0x0; size 52 vs 60. */
+char *f_04ebf4(void *a0, char *a1) {
+    (void)a0;
+    char *s0 = a1 + 4;
+    char *v0 = (char *)f_04dfa0(s0);
+    *(char **)v0 = s0;
+    return v0 + 4;
+}
+
+/* @draft 0x04eec0 us f_04eec0
+   WHAT IT DOES: stores the vtable address D_1a3810 into the object, then calls the base
+   destructor f_05d6dc.
+   Remaining difference: 4/10 words differ, first at +0xc; size 40 vs 40. */
+void f_04eec0(void *self) {
+    *(void **)self = D_1a3810;
+    f_05d6dc(self);
+}
+
+/* @draft 0x04eee8 us f_04eee8
+   WHAT IT DOES: calls f_04e4b4 on the object; a throw() function, so the exception path is
+   __cxa_call_unexpected.
+   Remaining difference: 4/14 words differ, first at +0x0; size 56 vs 56. */
+void f_04eee8(void *self) throw() {
+    f_04e4b4(self);
+}
+
+/* @implements 0x04f1cc us f_04f1cc
+   WHAT IT DOES: returns 13. */
+int f_04f1cc(void *self) {
+    (void)self;
+    return 13;
+}
+
+/* @draft 0x04f1d4 us f_04f1d4
+   WHAT IT DOES: returns the string "propertyhandler".
+   Remaining difference: the code matches, but in the whole object file the literal is followed by
+   another part's "sound..." string where retail has a zero word; the literals between 0x04ffc4
+   and 0x05c698 are not written yet. */
+const char *f_04f1d4(void *self) {
+    (void)self;
+    return "propertyhandler";
+}
+
+/* @implements 0x04f228 us f_04f228
+   WHAT IT DOES: returns 0. */
+int f_04f228(void *self) {
+    (void)self;
+    return 0;
+}
+
+/* @implements 0x04f230 us f_04f230
+   WHAT IT DOES: returns the word at offset 40 of the object. */
+int f_04f230(void *self) {
+    return FLD(int, self, 40);
+}
+
+/* @implements 0x04f238 us f_04f238
+   WHAT IT DOES: returns the word at offset 4 of the object. */
+int f_04f238(void *self) {
+    return FLD(int, self, 4);
+}
+
+/* @implements 0x04f240 us f_04f240
+   WHAT IT DOES: stores the second argument at offset 4 of the object. */
+void f_04f240(void *self, int v) {
+    FLD(int, self, 4) = v;
+}
+
+/* @implements 0x04f858 us f_04f858
+   WHAT IT DOES: calls f_05e2c4 on the object's sub-object at offset 8. */
+void f_04f858(char *self) {
+    f_05e2c4(self + 8);
+}
+
+/* @implements 0x04ff50 us f_04ff50
+   WHAT IT DOES: returns 0. */
+int f_04ff50(void *self) {
+    (void)self;
+    return 0;
+}
+
+/* @implements 0x04ff58 us f_04ff58
+   WHAT IT DOES: returns 0. */
+int f_04ff58(void *self) {
+    (void)self;
+    return 0;
+}
+
+/* @implements 0x04ff60 us f_04ff60
+   WHAT IT DOES: calls the virtual function in vtable slot 23 of the object and returns its
+   int result converted to double. */
+double f_04ff60(void *self) {
+    void **vt = *(void ***)self;
+    int r = ((int (*)(void *))vt[23])(self);
+    return (double)r;
+}
+
+/* @implements 0x04ff8c us f_04ff8c
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04ff8c(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04ff94 us f_04ff94
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04ff94(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04ff9c us f_04ff9c
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04ff9c(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04ffa4 us f_04ffa4
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04ffa4(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04ffac us f_04ffac
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04ffac(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04ffb4 us f_04ffb4
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04ffb4(void *self) {
+    (void)self;
+}
+
+/* @implements 0x04ffbc us f_04ffbc
+   WHAT IT DOES: empty body (an empty virtual function). */
+void f_04ffbc(void *self) {
+    (void)self;
+}
+
+/* @draft 0x04d1cc us f_04d1cc
+   WHAT IT DOES: returns early when the index a1 exceeds the count at +32; otherwise takes the entry a1
+   (172 bytes each, array at +36) and writes the difference of two float pairs into a2 and a3 when
+   those pointers are non-null.
+   Remaining difference: 20/22 words differ, first at +0x8; size 84 vs 88. */
+void f_04d1cc(char *self, int a1, float *a2, float *a3) {
+    if (FLD(int, self, 32) < a1) {
+        return;
+    }
+    char *p = FLD(char *, self, 36) + a1 * 172;
+    if (a2) {
+        *a2 = FLD(float, p, 96) - FLD(float, p, 92);
+    }
+    if (a3) {
+        *a3 = FLD(float, p, 116) - FLD(float, p, 108);
+    }
+}
+
+/* @implements 0x04d350 us f_04d350
+   WHAT IT DOES: calls f_021720, then f_116898 with the values 5, 7, 9, 10 and 1, then f_118e30
+   with (0, 2, 3, 0, 0), and finally f_1166d4(4). */
+void f_04d350(void) {
+    f_021720();
+    f_116898(5);
+    f_116898(7);
+    f_116898(9);
+    f_116898(10);
+    f_116898(1);
+    f_118e30(0, 2, 3, 0, 0);
+    f_1166d4(4);
+}
+
+/* @draft 0x04d648 us f_04d648
+   WHAT IT DOES: clears the word at +48; if the pointer at +36 is non-null, passes it to f_04e4b4;
+   then clears the pointer at +36.
+   Remaining difference: 10/17 words differ, first at +0x18; size 60 vs 68. */
+void f_04d648(char *self) {
+    void *v = FLD(void *, self, 36);
+    FLD(int, self, 48) = 0;
+    if (v) {
+        f_04e4b4(v);
+    }
+    FLD(void *, self, 36) = 0;
+}
+
+/* @draft 0x04d68c us f_04d68c
+   WHAT IT DOES: calls f_0466ac on the global D_24100c when a0 is 1 and a1 is 0xffff; calls f_0466f0
+   on it when a0 is 0 and a1 is 0xffff.
+   Remaining difference: 2/31 words differ, first at +0x1c; size 124 vs 124. */
+void f_04d68c(int a0, int a1) {
+    if (a0 == 1 && a1 == 0xffff) {
+        f_0466ac(D_24100c);
+    }
+    if (a0 == 0 && a1 == 0xffff) {
+        f_0466f0(D_24100c);
+    }
+}
+
+/* @draft 0x04d82c us f_04d82c
+   WHAT IT DOES: returns the bit index of the most significant set bit of a0 (a normalising shift
+   search), compared against a limit at D_291424; returns 0 for a0 == 0 and -1 when the result
+   reaches the limit.
+   Remaining difference: 31/31 words differ, first at +0x0; size 124 vs 120. */
+int f_04d82c(int a0) {
+    unsigned a2 = ((unsigned)(a0 - 256) >> 16) & 8;
+    if (a0 == 0) {
+        return 0;
+    }
+    unsigned x = (unsigned)a0 << a2;
+    unsigned a1 = ((x - 4096u) >> 16) & 4;
+    x <<= a1;
+    unsigned v = (x - 16384u) >> 16;
+    a2 += a1;
+    a1 = v & 2;
+    unsigned y = x << a1;
+    unsigned w = (y >> 14) & ~(y >> 15);
+    a2 += a1;
+    int r = (int)(w - a2) + 13;
+    return (r < D_291424) ? r : -1;
+}
+
+/* @draft 0x04e6d0 us f_04e6d0
+   WHAT IT DOES: if the word at +8 is non-zero, runs f_04e930 on the node at +4 and relinks the
+   node at +4 to itself (clears its +4 and +8 links, sets its +12 to itself); then passes the node
+   at +4 to f_04e4b4.
+   Remaining difference: 26/31 words differ, first at +0x10; size 88 vs 124. */
+void f_04e6d0(char *s) {
+    if (FLD(int, s, 8) != 0) {
+        f_04e930(s, FLD(char *, FLD(char *, s, 4), 4));
+        void *v = FLD(void *, s, 4);
+        FLD(int, s, 8) = 0;
+        *(void **)((char *)v + 8) = v;
+        FLD(int, FLD(void *, s, 4), 4) = 0;
+        v = FLD(void *, s, 4);
+        *(void **)((char *)v + 12) = v;
+    }
+    f_04e4b4(FLD(void *, s, 4));
+}
+
+/* @draft 0x04e8d8 us f_04e8d8
+   WHAT IT DOES: sets the vtable address D_1a3760 into the object, runs f_04e6d0 on the sub-object at
+   +8 and then the base destructor f_04e8c0 on the object.
+   Remaining difference: 19/22 words differ, first at +0xc; size 60 vs 88. */
+void f_04e8d8(char *a0) {
+    *(void **)a0 = D_1a3760;
+    f_04e6d0(a0 + 8);
+    f_04e8c0(a0);
+}
+
+/* @implements 0x04e930 us f_04e930
+   WHAT IT DOES: walks a singly linked list of nodes starting at a1 (link at +8, child at +12): for each
+   node recurses on its child, runs f_04ed28 on the node's +32 sub-object and frees the node with
+   f_04e4b4. */
+void f_04e930(void *s2, char *s1) {
+    if (s1) {
+        do {
+            f_04e930(s2, FLD(char *, s1, 12));
+            char *s0 = FLD(char *, s1, 8);
+            f_04ed28(s1 + 32);
+            f_04e4b4(s1);
+            s1 = s0;
+        } while (s1);
+    }
+}
+
+/* @draft 0x04e990 us f_04e990
+   WHAT IT DOES: sets the vtable address D_1a3760 into the object, runs f_04e6d0 on the sub-object at +8
+   and then the base destructor f_04e8c0 on the object.
+   Remaining difference: 19/22 words differ, first at +0xc; size 60 vs 88. */
+void f_04e990(char *a0) {
+    *(void **)a0 = D_1a3760;
+    f_04e6d0(a0 + 8);
+    f_04e8c0(a0);
+}
+
+/* @draft 0x04e9e8 us f_04e9e8
+   WHAT IT DOES: sets the vtable address D_1a3760, runs f_04e6d0 on the sub-object at +8, the base
+   destructor f_04e8c0 on the object and then frees the object at -4 with f_04e4b4.
+   Remaining difference: 20/25 words differ, first at +0xc; size 72 vs 100. */
+void f_04e9e8(char *a0) {
+    *(void **)a0 = D_1a3760;
+    f_04e6d0(a0 + 8);
+    f_04e8c0(a0);
+    f_04e4b4(a0 - 4);
+}
+
+/* @draft 0x04ea4c us f_04ea4c
+   WHAT IT DOES: clears the word at +4, allocates a 36-byte node, links the object's +4 and +8 to it
+   and makes the node self-linked (+4 and +12 point at itself).
+   Remaining difference: 13/21 words differ, first at +0x20; size 72 vs 84. */
+void f_04ea4c(char *a0) {
+    FLD(int, a0, 4) = 0;
+    char *v0 = (char *)f_04dfa0((void *)36);
+    FLD(void *, a0, 4) = v0;
+    FLD(int, v0, 4) = 0;
+    void *v3 = FLD(void *, a0, 4);
+    FLD(int, a0, 8) = 0;
+    FLD(void *, v3, 8) = v3;
+    char *a = FLD(char *, a0, 4);
+    *(int *)v0 = 0;
+    FLD(void *, a, 12) = a;
+}
+
+/* @draft 0x04ec30 us f_04ec30
+   WHAT IT DOES: sets the vtable address D_1a3810 into the object, calls f_05d6dc on the object, then
+   frees the object at -4 with f_04e4b4.
+   Remaining difference: 8/17 words differ, first at +0x8; size 60 vs 68. */
+void f_04ec30(char *a0) {
+    *(void **)a0 = D_1a3810;
+    f_05d6dc(a0);
+    f_04e4b4(a0 - 4);
+}
+
+/* @draft 0x04ed28 us f_04ed28
+   WHAT IT DOES: releases the reference-counted object at +4: decrements its count at +0 and, when
+   it reaches zero, frees it with f_04e4b4 and calls its virtual slot 1; then clears the object's
+   +0 and +4 links.
+   Remaining difference: 23/30 words differ, first at +0x0; size 112 vs 120. */
+void f_04ed28(char *s) {
+    char *p = FLD(char *, s, 4);
+    if (p) {
+        int v = FLD(int, p, 0) - 1;
+        FLD(int, p, 0) = v;
+        if (v == 0) {
+            f_04e4b4(p);
+            void *a = FLD(void *, s, 0);
+            if (a) {
+                void **vt = *(void ***)a;
+                ((void (*)(void *))vt[1])(a);
+            }
+        }
+        FLD(void *, s, 0) = 0;
+        FLD(void *, s, 4) = 0;
+    }
+}
+
+/* @draft 0x04eda0 us f_04eda0
+   WHAT IT DOES: walks the circular list headed at the word at +4 of the argument; for each node runs
+   f_04ed28 on its +8 sub-object and frees the node with f_04e4b4; then makes the head self-linked.
+   Remaining difference: 25/27 words differ, first at +0x0; size 108 vs 104. */
+void f_04eda0(char *a0) {
+    char *v0 = FLD(char *, a0, 4);
+    char *s1 = FLD(char *, v0, 0);
+    if (s1 != v0) {
+        do {
+            char *s0 = s1;
+            char *next = FLD(char *, s1, 0);
+            f_04ed28(s1 + 8);
+            f_04e4b4(s0);
+            s1 = next;
+        } while (s1 != FLD(char *, a0, 4));
+    }
+    FLD(void *, v0, 4) = v0;
+    *(void **)v0 = v0;
+}
+
+/* @implements 0x04ee08 us f_04ee08
+   WHAT IT DOES: recursively destroys a tree of nodes (child at +12, link at +8): for each node in the
+   chain it recurses on the child, runs f_04ed28 on the node's +36 sub-object and frees the node. */
+void f_04ee08(char *s2, char *s1) {
+    if (s1) {
+        do {
+            f_04ee08(s2, FLD(char *, s1, 12));
+            char *s0 = FLD(char *, s1, 8);
+            f_04ed28(s1 + 36);
+            f_04e4b4(s1);
+            s1 = s0;
+        } while (s1);
+    }
+}
+
+/* @implements 0x04ee68 us f_04ee68
+   WHAT IT DOES: recursively destroys a chain of nodes (child at +12, link at +8): recurses on the child,
+   then frees the node with f_04e4b4. */
+void f_04ee68(char *s2, char *s1) {
+    if (s1) {
+        do {
+            f_04ee68(s2, FLD(char *, s1, 12));
+            char *s0 = FLD(char *, s1, 8);
+            f_04e4b4(s1);
+            s1 = s0;
+        } while (s1);
+    }
+}
+
+/* @draft 0x04f1e0 us f_04f1e0
+   WHAT IT DOES: allocates a 12-byte block, stores the vtable address D_1a4480 at its +4, the size 12 at its
+   +0 and clears the word at +8; returns the address of its +4 sub-object.
+   Remaining difference: 12/18 words differ, first at +0x0; size 64 vs 72. */
+void *f_04f1e0(void) {
+    char *p = (char *)f_04dfa0((void *)12);
+    char *a1 = p + 4;
+    FLD(void *, p, 4) = D_1a4480;
+    FLD(int, p, 0) = 12;
+    FLD(int, a1, 4) = 0;
+    return a1;
+}
+
+/* @draft 0x04f7ec us f_04f7ec
+   WHAT IT DOES: loads a reference-counted pair through f_05e1b4 into a local, stores the pair in the
+   object (incrementing the count of the second when present), releases the local with f_04ed28 and
+   returns the object; a null first word clears both fields.
+   Remaining difference: 20/27 words differ, first at +0x0; size 100 vs 108. */
+char *f_04f7ec(char *self) {
+    void *t[2];
+    f_05e1b4(t);
+    if (t[0]) {
+        FLD(void *, self, 0) = t[0];
+        FLD(void *, self, 4) = t[1];
+        if (t[1]) {
+            FLD(int, t[1], 0) += 1;
+        }
+    } else {
+        FLD(void *, self, 0) = 0;
+        FLD(void *, self, 4) = 0;
+    }
+    f_04ed28((char *)t);
+    return self;
+}
+
+/* @draft 0x04fd68 us f_04fd68
+   WHAT IT DOES: suspends interrupts, increments the counter at +8 of the global D_291400, resumes
+   interrupts, stores the address of the global's +12 sub-object into the pointer argument and returns
+   that argument.
+   Remaining difference: 26/29 words differ, first at +0x0; size 84 vs 116. */
+void *f_04fd68(void *a0) {
+    char *s0 = (char *)D_291400;
+    int st = sceKernelCpuSuspendIntr();
+    FLD(int, s0, 8) += 1;
+    sceKernelCpuResumeIntr(st);
+    *(void **)a0 = s0 + 12;
+    return a0;
+}
+
+}  // extern "C"
+
+}  // namespace swgB
+
+#undef FLD
+
+/* ---- swgC ---- */
+/* TU 117 fragment, retail 0x04ffc4 to 0x05c698 (swgC worker): Flash/ActionScript player
+   functions in the SWG object model. Most are trivial: empty hooks, zero or constant
+   getters, field getters at fixed offsets, and wrappers that pass a .rodata name string
+   to a shared callee. The larger ones build small stack temporaries and call the
+   list, string and property helpers. Only the functions of 128 bytes or less are transcribed so far (44 of 123 in the range). */
+
+namespace swgC {
+
+extern "C" {
+
+extern const char D_1a2e88[];
+extern const char D_1a2f6c[];
+extern const char D_1a2f74[];
+extern const char D_1a2f7c[];
+extern const char D_1a2f84[];
+extern const char D_1a2f8c[];
+extern const char D_1a2f94[];
+extern const char D_1a2f9c[];
+extern const char D_1a2fa4[];
+extern const char D_1a2fac[];
+extern const char D_1a2fb4[];
+extern const char D_1a2fbc[];
+extern const char D_1a2fdc[];
+extern const char D_1a2fe4[];
+
+void f_05fce4(void *self, const char *name);
+void f_0602c0(void *self, const char *name);
+void f_060b14(void *self, void *arg, int flag);
+void f_04e4b4(void *p);
+void *f_04dfa0(void *p);
+void f_061458(void *obj, void *pair);
+void f_0613e8(void *out, void *obj, int *a, void *b);
+void f_050018(void);
+void f_05f64c(void *out, void *obj, int *a);
+void f_05e394(void *out, void *obj, int *a, void *b);
+void f_060c80(void *out, void *a, void *obj);
+void f_05da50(void *obj);
+void *f_061620(char *s, char *end, int len, int z);
+unsigned int strlen(const char *s);
+
+/* @implements 0x04ffc4 us f_04ffc4
+   WHAT IT DOES: Empty hook (returns at once); the object is not used. */
+void f_04ffc4(void *p)
+{
+    (void)p;
+}
+
+/* @implements 0x04ffcc us f_04ffcc
+   WHAT IT DOES: Empty hook (returns at once); the object is not used. */
+void f_04ffcc(void *p)
+{
+    (void)p;
+}
+
+/* @implements 0x04ffd4 us f_04ffd4
+   WHAT IT DOES: Empty hook (returns at once); the object is not used. */
+void f_04ffd4(void *p)
+{
+    (void)p;
+}
+
+/* @implements 0x04ffdc us f_04ffdc
+   WHAT IT DOES: Empty hook (returns at once); the object is not used. */
+void f_04ffdc(void *p)
+{
+    (void)p;
+}
+
+/* @implements 0x04ffe4 us f_04ffe4
+   WHAT IT DOES: Empty hook (returns at once); the object is not used. */
+void f_04ffe4(void *p)
+{
+    (void)p;
+}
+
+/* @implements 0x04ffec us f_04ffec
+   WHAT IT DOES: Empty hook (returns at once); the object is not used. */
+void f_04ffec(void *p)
+{
+    (void)p;
+}
+
+/* @implements 0x04fff4 us f_04fff4
+   WHAT IT DOES: Returns 1 when the two words are equal, else 0. */
+int f_04fff4(int a, int b)
+{
+    return a == b;
+}
+
+/* @implements 0x050000 us f_050000
+   WHAT IT DOES: Returns zero; the object is not used. */
+int f_050000(void *p)
+{
+    (void)p;
+    return 0;
+}
+
+/* @implements 0x050008 us f_050008
+   WHAT IT DOES: Returns zero; the object is not used. */
+int f_050008(void *p)
+{
+    (void)p;
+    return 0;
+}
+
+/* @implements 0x050010 us f_050010
+   WHAT IT DOES: Returns the word at +56 of the object (a field read). */
+int f_050010(int *p)
+{
+    return *(int *)((char *)p + 56);
+}
+
+/* @implements 0x050718 us f_050718
+   WHAT IT DOES: Returns zero; the object is not used. */
+int f_050718(void *p)
+{
+    (void)p;
+    return 0;
+}
+
+/* @implements 0x050738 us f_050738
+   WHAT IT DOES: Returns the constant 8; the object is not used. */
+int f_050738(void *p)
+{
+    (void)p;
+    return 8;
+}
+
+/* @implements 0x05074c us f_05074c
+   WHAT IT DOES: Returns zero; the object is not used. */
+int f_05074c(void *p)
+{
+    (void)p;
+    return 0;
+}
+
+/* @implements 0x050740 us f_050740
+   WHAT IT DOES: Returns the .rodata name "object" (the ActionScript type name). */
+const char *f_050740(void *p)
+{
+    (void)p;
+    return D_1a2e88;
+}
+
+/* @implements 0x05a3e0 us f_05a3e0
+   WHAT IT DOES: Returns the address of the sub-object at offset 52 of the object. */
+char *f_05a3e0(char *p)
+{
+    return p + 52;
+}
+
+/* Empty-bodied local whose destructor is inline: it makes the calls below sit in an
+   EH region (the landing pad only resumes unwinding), as in retail. */
+struct Guard4 {
+    int w[4];
+    ~Guard4() {}
+};
+
+/* @implements 0x050720 us f_050720
+   WHAT IT DOES: Zeroes the two words of the object through a temporary and returns the object. */
+struct Pair2 {
+    int a, b;
+};
+
+void *f_050720(Pair2 *p)
+{
+    Pair2 t = {0, 0};
+    *p = t;
+    return p;
+}
+
+/* @implements 0x05a360 us f_05a360
+   WHAT IT DOES: Returns the element at index i of the array held at +32 of the object
+   (elements are 56 bytes). */
+char *f_05a360(char *p, int i)
+{
+    return *(char **)(p + 32) + i * 56;
+}
+
+/* @implements 0x0502a0 us f_0502a0
+   WHAT IT DOES: Calls f_050018 with no arguments. */
+void f_0502a0(void)
+{
+    f_050018();
+}
+
+/* @implements 0x059188 us f_059188
+   WHAT IT DOES: Calls f_060b14 with the object and argument, flag 1. */
+void f_059188(void *p, void *arg)
+{
+    f_060b14(p, arg, 1);
+}
+
+/* @implements 0x0591a4 us f_0591a4
+   WHAT IT DOES: Calls f_060b14 with the object and argument, flag 0. */
+void f_0591a4(void *p, void *arg)
+{
+    f_060b14(p, arg, 0);
+}
+
+/* @implements 0x0541f8 us f_0541f8
+   WHAT IT DOES: Passes the name string D_1a2f6c to f_05fce4 for this object. */
+void f_0541f8(void *p)
+{
+    f_05fce4(p, D_1a2f6c);
+}
+
+/* @implements 0x054218 us f_054218
+   WHAT IT DOES: Passes the name string D_1a2f74 to f_05fce4 for this object. */
+void f_054218(void *p)
+{
+    f_05fce4(p, D_1a2f74);
+}
+
+/* @implements 0x054238 us f_054238
+   WHAT IT DOES: Passes the name string D_1a2f7c to f_05fce4 for this object. */
+void f_054238(void *p)
+{
+    f_05fce4(p, D_1a2f7c);
+}
+
+/* @implements 0x054258 us f_054258
+   WHAT IT DOES: Passes the name string D_1a2f84 to f_05fce4 for this object. */
+void f_054258(void *p)
+{
+    f_05fce4(p, D_1a2f84);
+}
+
+/* @implements 0x054278 us f_054278
+   WHAT IT DOES: Passes the name string D_1a2f8c to f_05fce4 for this object. */
+void f_054278(void *p)
+{
+    f_05fce4(p, D_1a2f8c);
+}
+
+/* @implements 0x054298 us f_054298
+   WHAT IT DOES: Passes the name string D_1a2f94 to f_05fce4 for this object. */
+void f_054298(void *p)
+{
+    f_05fce4(p, D_1a2f94);
+}
+
+/* @implements 0x0542b8 us f_0542b8
+   WHAT IT DOES: Passes the name string D_1a2f9c to f_05fce4 for this object. */
+void f_0542b8(void *p)
+{
+    f_05fce4(p, D_1a2f9c);
+}
+
+/* @implements 0x0542d8 us f_0542d8
+   WHAT IT DOES: Passes the name string D_1a2fa4 to f_05fce4 for this object. */
+void f_0542d8(void *p)
+{
+    f_05fce4(p, D_1a2fa4);
+}
+
+/* @implements 0x0542f8 us f_0542f8
+   WHAT IT DOES: Passes the name string D_1a2fac to f_05fce4 for this object. */
+void f_0542f8(void *p)
+{
+    f_05fce4(p, D_1a2fac);
+}
+
+/* @implements 0x054318 us f_054318
+   WHAT IT DOES: Passes the name string D_1a2fb4 to f_05fce4 for this object. */
+void f_054318(void *p)
+{
+    f_05fce4(p, D_1a2fb4);
+}
+
+/* @implements 0x054338 us f_054338
+   WHAT IT DOES: Passes the name string D_1a2fbc to f_05fce4 for this object. */
+void f_054338(void *p)
+{
+    f_05fce4(p, D_1a2fbc);
+}
+
+/* @implements 0x05504c us f_05504c
+   WHAT IT DOES: Passes the name string D_1a2fdc to f_0602c0 for this object. */
+void f_05504c(void *p)
+{
+    f_0602c0(p, D_1a2fdc);
+}
+
+/* @implements 0x05506c us f_05506c
+   WHAT IT DOES: Passes the name string D_1a2fe4 to f_0602c0 for this object. */
+void f_05506c(void *p)
+{
+    f_0602c0(p, D_1a2fe4);
+}
+
+/* @implements 0x059cb0 us f_059cb0
+   WHAT IT DOES: Calls f_04e4b4 with the pointer 4 bytes below the argument. */
+void f_059cb0(void *p, char *q)
+{
+    Guard4 g;
+    (void)p;
+    f_04e4b4(q - 4);
+}
+
+/* @implements 0x05a3b0 us f_05a3b0
+   WHAT IT DOES: Packs the object and its argument into a two-word temporary and passes
+   the temporary to f_061458 with the sub-object at +44. */
+void f_05a3b0(void *p, void *q)
+{
+    void *tmp[2];
+    tmp[0] = p;
+    tmp[1] = q;
+    f_061458((char *)p + 44, tmp);
+}
+
+/* @draft 0x052f4c us f_052f4c
+   WHAT IT DOES: Passes the sub-object at +328 and the value chain +328 -> +4 -> +4 to
+   f_05f64c, with the output buffer at sp+16.    Remaining difference: store order: retail stores the b word to sp+32 before the buf word to sp+0; ours emits the buf store first (2 of 14 words differ, first at +0x20).
+   */
+void f_052f4c(char *p)
+{
+    char *q = p + 328;
+    int buf[4];
+    int out[4];
+    int b;
+    int v = *(int *)(q + 4);
+    buf[0] = v;
+    b = *(int *)(v + 4);
+    buf[0] = b;
+    f_05f64c(out, q, &b);
+}
+
+/* @draft 0x05a378 us f_05a378
+   WHAT IT DOES: Passes the sub-object at +44, its word at +4 and the argument (by
+   address) to f_0613e8 with a 16-byte output buffer.    Remaining difference: frame layout: retail places the argument copy at sp+32 above a 16-byte buffer; ours places it at sp+20 (6 of 14 words differ).
+   */
+void f_05a378(char *p, int arg)
+{
+    char *q = p + 44;
+    int out[4];
+    int v = *(int *)(q + 4);
+    f_0613e8(out, q, &v, &arg);
+}
+
+/* @implements 0x059c74 us f_059c74
+   WHAT IT DOES: Calls f_04dfa0 to allocate a block, stores the pointer 4 bytes past the
+   argument at its start, and returns the block advanced by 4. */
+void *f_059c74(void *p, char *q)
+{
+    Guard4 g;
+    char *s = q + 4;
+    char **r = (char **)f_04dfa0(s);
+    *r = s;
+    (void)p;
+    return (char *)r + 4;
+}
+
+/* @draft 0x052b14 us f_052b14
+   WHAT IT DOES: Passes the output buffer, obj+328, the word at obj+328+4 and the
+   sub-object at obj+296+index*8 to f_05e394.    Remaining difference: argument setup order: retail sets a2 (sp+16) before a0 (sp); ours the reverse (2 of 16 words differ, first at +0x24).
+   */
+void f_052b14(char *p, int idx)
+{
+    char *q = p + 328;
+    int out[4];
+    int v = *(int *)(q + 4);
+    f_05e394(out, q, &v, p + 296 + idx * 8);
+}
+
+/* @draft 0x052dbc us f_052dbc
+   WHAT IT DOES: Passes the chain obj+328 -> +4 -> +4 value and its advanced pointer to
+   f_05e394.    Remaining difference: store/load order: retail loads the inner word before storing the outer one to sp+16; ours stores first (2 of 16 words differ, first at +0x20).
+   */
+void f_052dbc(char *p)
+{
+    char *q = p + 328;
+    int x = *(int *)(q + 4);
+    int out[4];
+    out[0] = x;
+    int v = *(int *)(x + 4);
+    out[0] = v;
+    f_05e394(out, q, &x, (char *)v + 8);
+}
+
+/* @draft 0x059848 us f_059848
+   WHAT IT DOES: Reads the chain obj+44 -> +4 -> word 0, passes the value and the
+   pointer to f_060c80, then calls f_05da50 on the sub-object at +44.    Remaining difference: 11 of 19 words differ, first at +0x1c: the stack layout of the chain temporaries is not matched (size 76 vs 72).
+   */
+void f_059848(char *p)
+{
+    char *s0 = p + 44;
+    int out[4];
+    void *x = *(void **)(*(char **)(s0 + 4));
+    void *y = *(void **)x;
+    out[0] = (int)y;
+    f_060c80(out, &x, p);
+    f_05da50(s0);
+}
+
+/* @draft 0x05a30c us f_05a30c
+   WHAT IT DOES: Returns the element at index idx (44-byte records) of the array at +16 of
+   the object, or null when idx is negative or not below the element count (the count is
+   (end - begin) / 4 computed with a multiply by the constant 0xba2e8ba3).    Remaining difference: all 21 words differ: the constant-division count and branch order are not matched yet (size 76 vs 84).
+   */
+char *f_05a30c(char *p, int idx)
+{
+    char *r = 0;
+    if (idx >= 0) {
+        int begin = *(int *)(p + 12 + 4);
+        int end = *(int *)(p + 12 + 8);
+        int n = (end - begin) >> 2;
+        if (idx < n * (int)0xba2e8ba3) {
+            char *base = *(char **)(p + 16);
+            r = base + idx * 44;
+        }
+    }
+    return r;
+}
+
+/* @implements 0x05a3e8 us f_05a3e8
+   WHAT IT DOES: Calls f_061620 with the string and its end (strlen, or -1 for a null
+   string), the length argument and 0, and stores the result in the first word of out. */
+void f_05a3e8(void *out, char *s, int len)
+{
+    char *end = (char *)-1;
+    if (s)
+        end = s + strlen(s);
+    *(void **)out = f_061620(s, end, len, 0);
+}
+
+/* @draft 0x052720 us f_052720
+   WHAT IT DOES: Passes the sub-object at +340 and the value chain at +340 -> +4 -> +4
+   to f_05f64c, then calls virtual slot 9 of the object reached through the +340 chain
+   (obj+4 -> +4 -> +8).    Remaining difference: 5 of 26 words differ, first at +0x28: the store/load order in the second half of the chain and the virtual-call setup.
+   */
+void f_052720(char *p)
+{
+    char *s0 = p + 340;
+    int buf[4];
+    int out[4];
+    int b;
+    int a = *(int *)(s0 + 4);
+    buf[0] = a;
+    b = *(int *)(a + 4);
+    buf[0] = b;
+    f_05f64c(out, s0, &b);
+    int c = *(int *)(s0 + 4);
+    b = c;
+    int d = *(int *)(c + 4);
+    void *obj = *(void **)(d + 8);
+    b = d;
+    void **vt = *(void ***)obj;
+    ((void (*)(void *))vt[9])(obj);
+}
+
+
+}
+}
+
+/* ---- swgD ---- */
+/* TU 117 fragment, retail 0x05c698 to 0x0624e4 (swgD worker): small Flash/ActionScript
+   player functions in the SWG object model: vtable-pointer stores, getters and setters of
+   object fields, deleting destructors that store a class vtable and call operator delete,
+   and a few list and table helpers. Functions are in retail address order. */
+
+void operator delete(void *);
+
+namespace swgD {
+
+extern "C" {
+
+extern char D_1a4888[];
+extern char D_1a4878[];
+extern char D_1a4828[];
+extern char D_1a47f0[];
+extern char D_1a47c0[];
+extern char D_1a4678[];
+extern char D_1a4868[];
+extern char D_1a3278[];
+
+void f_04ed28(void *);
+void f_04e4b4(void *);
+extern "C" void *memset(void *, int, unsigned int);
+void *f_04dfa0(unsigned);
+void f_04e8c0(void *);
+void f_05db84(void *);
+void f_060920(void *);
+
+/* @implements 0x05fad4 us f_05fad4
+   WHAT IT DOES: Returns the word at +24 of the object (a field read). */
+int f_05fad4(int *p)
+{
+    return p[6];
+}
+
+/* @implements 0x0602b8 us f_0602b8
+   WHAT IT DOES: Returns zero; the object is not used. */
+int f_0602b8(void *p)
+{
+    (void)p;
+    return 0;
+}
+
+/* @implements 0x0604d4 us f_0604d4
+   WHAT IT DOES: Empty function. */
+void f_0604d4(void *p)
+{
+    (void)p;
+}
+
+/* @implements 0x0622a8 us f_0622a8
+   WHAT IT DOES: Returns the constant 11. */
+int f_0622a8(void *p)
+{
+    (void)p;
+    return 11;
+}
+
+/* @implements 0x0622b0 us f_0622b0
+   WHAT IT DOES: Returns the name string "sound". */
+const char *f_0622b0(void *p)
+{
+    (void)p;
+    return "sound";
+}
+
+/* @implements 0x05ca08 us f_05ca08
+   WHAT IT DOES: Stores the vtable pointer of one class of the Flash object family into the
+   object's first word. */
+void f_05ca08(void **p)
+{
+    *(char **)p = D_1a4888;
+}
+
+/* @implements 0x05ca40 us f_05ca40
+   WHAT IT DOES: Stores the vtable pointer of another class of the family into the first word. */
+void f_05ca40(void **p)
+{
+    *(char **)p = D_1a4878;
+}
+
+/* @implements 0x05caf4 us f_05caf4
+   WHAT IT DOES: Stores the vtable pointer of another class of the family into the first word. */
+void f_05caf4(void **p)
+{
+    *(char **)p = D_1a4828;
+}
+
+/* @implements 0x05cb2c us f_05cb2c
+   WHAT IT DOES: Stores the vtable pointer of another class of the family into the first word. */
+void f_05cb2c(void **p)
+{
+    *(char **)p = D_1a47f0;
+}
+
+/* @implements 0x05cb64 us f_05cb64
+   WHAT IT DOES: Stores the vtable pointer of another class of the family into the first word. */
+void f_05cb64(void **p)
+{
+    *(char **)p = D_1a47c0;
+}
+
+/* @implements 0x05cb9c us f_05cb9c
+   WHAT IT DOES: Stores the vtable pointer of another class of the family into the first word. */
+void f_05cb9c(void **p)
+{
+    *(char **)p = D_1a4678;
+}
+
+/* @implements 0x062408 us f_062408
+   WHAT IT DOES: Reads element i of the int array held at +20 of the object. */
+int f_062408(int *p, int i)
+{
+    int *a = (int *)p[5];
+    return a[i];
+}
+
+/* @implements 0x06241c us f_06241c
+   WHAT IT DOES: Reads element i of the int array held at +24 of the object. */
+int f_06241c(int *p, int i)
+{
+    int *a = (int *)p[6];
+    return a[i];
+}
+
+/* @implements 0x062430 us f_062430
+   WHAT IT DOES: Writes v into element i of the int array held at +20 of the object. */
+void f_062430(int *p, int i, int v)
+{
+    int *a = (int *)p[5];
+    a[i] = v;
+}
+
+/* @implements 0x05daec us f_05daec
+   WHAT IT DOES: Calls f_04ed28 on the object. */
+void f_05daec(void *p)
+{
+    f_04ed28(p);
+}
+
+/* @implements 0x05db68 us f_05db68
+   WHAT IT DOES: Calls f_04ed28 on the sub-object at +16 of the object. */
+void f_05db68(char *p)
+{
+    f_04ed28(p + 16);
+}
+
+/* @implements 0x05ca18 us f_05ca18
+   WHAT IT DOES: Deleting destructor of a class of the family: stores its vtable pointer and
+   frees the object with operator delete. */
+void f_05ca18(void **p)
+{
+    *(char **)p = D_1a4888;
+    operator delete(p);
+}
+
+/* @implements 0x05ca50 us f_05ca50
+   WHAT IT DOES: Deleting destructor of another class of the family: stores its vtable and
+   frees the object. */
+void f_05ca50(void **p)
+{
+    *(char **)p = D_1a4878;
+    operator delete(p);
+}
+
+/* @implements 0x05cb04 us f_05cb04
+   WHAT IT DOES: Deleting destructor of another class of the family: stores its vtable and
+   frees the object. */
+void f_05cb04(void **p)
+{
+    *(char **)p = D_1a4828;
+    operator delete(p);
+}
+
+/* @implements 0x05cb3c us f_05cb3c
+   WHAT IT DOES: Deleting destructor of another class of the family: stores its vtable and
+   frees the object. */
+void f_05cb3c(void **p)
+{
+    *(char **)p = D_1a47f0;
+    operator delete(p);
+}
+
+/* @implements 0x05cb74 us f_05cb74
+   WHAT IT DOES: Deleting destructor of another class of the family: stores its vtable and
+   frees the object. */
+void f_05cb74(void **p)
+{
+    *(char **)p = D_1a47c0;
+    operator delete(p);
+}
+
+/* @implements 0x05cbac us f_05cbac
+   WHAT IT DOES: Deleting destructor of another class of the family: stores its vtable and
+   frees the object. */
+void f_05cbac(void **p)
+{
+    *(char **)p = D_1a4678;
+    operator delete(p);
+}
+
+/* @draft 0x05dc90 us f_05dc90
+   WHAT IT DOES: Copies the two-word link of a list node and, when the node is not empty,
+   bumps the count word of the node it now points at.    Remaining difference: the two loads and two stores are scheduled in another order (retail loads the high word first and stores p[1] before the loop; GCC stores p[0] first, with v2 in a1 and not v0). */
+void f_05dc90(int *p, int *q)
+{
+    int v3 = q[1];
+    p[1] = v3;
+    int v2 = q[0];
+    p[0] = v2;
+    if (v3)
+        ((int *)v3)[0]++;
+}
+
+/* @implements 0x062444 us f_062444
+   WHAT IT DOES: Calls virtual slot 5 (+20) of the object held in the sub-object at +4. */
+void f_062444(int *p, int a1, int a2, int a3, int a4, unsigned char a5)
+{
+    int *s = (int *)p[1];
+    void (*fn)(int *, int, int, int, int, unsigned char) =
+        (void (*)(int *, int, int, int, int, unsigned char))((int **)s)[0][5];
+    fn(s, a1, a2, a3, a4, a5);
+}
+
+/* @draft 0x05f4a0 us f_05f4a0
+   WHAT IT DOES: Releases the object at +4 through f_04e4b4 when that pointer is non-null.    Remaining difference: retail has an EH landing pad (_Unwind_Resume) and a frame of 16 bytes with beqzl; an empty local guard object gives the pad but a 32-byte frame and a different branch. */
+void f_05f4a0(int *p)
+{
+    if (p[1])
+        f_04e4b4((void *)p[1]);
+}
+
+/* @draft 0x0604dc us f_0604dc
+   WHAT IT DOES: Releases the object at +4 through f_04e4b4 when that pointer is non-null.    Remaining difference: same as f_05f4a0: the EH landing pad and the beqzl branch shape are not reproduced. */
+void f_0604dc(int *p)
+{
+    if (p[1])
+        f_04e4b4((void *)p[1]);
+}
+
+/* @draft 0x06050c us f_06050c
+   WHAT IT DOES: Releases the object at +4 through f_04e4b4 when that pointer is non-null.    Remaining difference: same as f_05f4a0: the EH landing pad and the beqzl branch shape are not reproduced. */
+void f_06050c(int *p)
+{
+    if (p[1])
+        f_04e4b4((void *)p[1]);
+}
+
+/* @draft 0x060670 us f_060670
+   WHAT IT DOES: Releases the object at +4 through f_04e4b4 when that pointer is non-null.    Remaining difference: same as f_05f4a0: the EH landing pad and the beqzl branch shape are not reproduced. */
+void f_060670(int *p)
+{
+    if (p[1])
+        f_04e4b4((void *)p[1]);
+}
+
+/* @implements 0x05ca78 us f_05ca78
+   WHAT IT DOES: Sets the vtable pointer, walks the 8-byte-stride node chain from the field at +16
+   up to the end at +20, then sets the vtable pointer of a related class. */
+void f_05ca78(int *p)
+{
+    int *end = (int *)p[5];
+    int *cur = (int *)p[4];
+    p[0] = (int)D_1a4868;
+    if (cur != end) {
+        do {
+            cur += 2;
+        } while (cur != end);
+    }
+    p[0] = (int)D_1a4878;
+}
+
+/* @implements 0x0623d0 us f_0623d0
+   WHAT IT DOES: Swaps the buffer pointers at +20 and +24 of the object and zeroes the buffer
+   at +24 (word count at +8, four bytes each). */
+void *f_0623d0(int *p)
+{
+    int *buf = (int *)p[6];
+    int old = p[5];
+    p[5] = (int)buf;
+    p[6] = old;
+    return memset(buf, 0, p[2] << 2);
+}
+
+/* @implements 0x0618ec us f_0618ec
+   WHAT IT DOES: Copies n words from the source to the destination and returns the end of the
+   destination. */
+int *f_0618ec(int *d, int n, int *s)
+{
+    if (n != 0) {
+        do {
+            *d = *s;
+            n--;
+            d++;
+        } while (n != 0);
+    }
+    return d;
+}
+
+/* @implements 0x0606a0 us f_0606a0
+   WHAT IT DOES: Calls f_04ed28 on each 8-byte element from first up to last. */
+void f_0606a0(char *first, char *last)
+{
+    char *p = first;
+    if (p != last) {
+        do {
+            f_04ed28(p);
+            p += 8;
+        } while (p != last);
+    }
+}
+
+/* @draft 0x05f1f4 us f_05f1f4
+   WHAT IT DOES: Looks up the first tree node whose unsigned key at +16 is not less than the
+   given key (a lower bound on the map's tree from its header). Writes the node to the result
+   slot and returns the slot.    Remaining difference: retail keeps a move v0,a0 in the delay slot of the empty-tree branch and an andi on the comparison result; the body is 64 bytes against retail's 68. */
+int **f_05f1f4(int **out, int **map, unsigned *key)
+{
+    int *y = (int *)map[1];
+    int *x = (int *)y[1];
+    unsigned k = *key;
+    while (x) {
+        unsigned char lt = (unsigned)x[4] < k;
+        if (lt) {
+            x = (int *)x[3];
+        } else {
+            y = x;
+            x = (int *)x[2];
+        }
+    }
+    *out = (int *)y;
+    return out;
+}
+
+/* @draft 0x05f954 us f_05f954
+   WHAT IT DOES: Same lower-bound tree lookup as f_05f1f4, with the key read from the
+   pointer argument.    Remaining difference: same tree lookup as f_05f1f4: the same 4-byte shortfall and the branch layout differ. */
+int **f_05f954(int **out, int **map, unsigned *key)
+{
+    int *y = (int *)map[1];
+    int *x = (int *)y[1];
+    unsigned k = *key;
+    while (x) {
+        unsigned char lt = (unsigned)x[4] < k;
+        if (lt) {
+            x = (int *)x[3];
+        } else {
+            y = x;
+            x = (int *)x[2];
+        }
+    }
+    *out = (int *)y;
+    return out;
+}
+
+/* @implements 0x05caac us f_05caac
+   WHAT IT DOES: Deleting destructor of a class of the family: sets the vtable pointer, walks
+   the node chain from +16 up to +20 in 8-byte steps, sets the final vtable pointer and frees
+   the object. */
+void f_05caac(int *p)
+{
+    int *end = (int *)p[5];
+    int *cur = (int *)p[4];
+    p[0] = (int)D_1a4868;
+    if (cur != end) {
+        do {
+            cur += 2;
+        } while (cur != end);
+    }
+    p[0] = (int)D_1a4878;
+    operator delete(p);
+}
+
+/* @draft 0x05daa4 us f_05daa4
+   WHAT IT DOES: Constructor of a small holder object: stores the first argument in word 0, zeroes
+   word 1, and when the argument is non-zero allocates a 4-byte cell holding 1 and points word 1
+   at it.    Remaining difference: retail saves s0 and uses a 32-byte frame with an EH landing pad for the allocated cell; ours has no frame and no landing pad. */
+void f_05daa4(int *p, int a1)
+{
+    p[0] = a1;
+    p[1] = 0;
+    if (a1) {
+        int *q = (int *)f_04dfa0(4);
+        *q = 1;
+        p[1] = (int)q;
+    }
+}
+
+/* @draft 0x05f524 us f_05f524
+   WHAT IT DOES: Copies a six-word record from the source into the destination, taking the
+   sixth word from the second argument, and bumps the count word of that last pointer when it
+   is non-null.    Remaining difference: the loads of the source words are scheduled in a different order than retail's (t0 first, then the pointer word). */
+void f_05f524(int *d, int *s, int *t)
+{
+    int *u = (int *)t[1];
+    d[1] = s[1];
+    d[0] = s[0];
+    d[2] = s[2];
+    d[3] = s[3];
+    d[4] = t[0];
+    d[5] = (int)u;
+    if (u)
+        u[0]++;
+}
+
+/* @implements 0x05c790 us f_05c790
+   WHAT IT DOES: Links the node found at the pointer in the third argument into the list whose
+   head is the node's first word, stores the result in the return slot and calls f_04e4b4 on
+   that node. */
+int *f_05c790(int *p, int a1, int **a2)
+{
+    int *x = a2[0];
+    int *n = (int *)x[0];
+    int *v = (int *)x[1];
+    (void)a1;
+    n[1] = (int)v;
+    v[0] = (int)n;
+    f_04e4b4(x);
+    p[0] = (int)n;
+    return p;
+}
+
+/* @draft 0x061c38 us f_061c38
+   WHAT IT DOES: Copies the nodes of a range into a destination array, bumping the count of
+   each copied node's shared pointer, and returns the end of the destination.    Remaining difference: the copy loop's store order and the null test on the destination are not the retail shape; the first differing word is at +0x10. */
+int *f_061c38(int *f, int *l, int *d)
+{
+    if (f != l) {
+        do {
+            if (d) {
+                int *q = (int *)f[1];
+                d[0] = f[0];
+                d[1] = (int)q;
+                if (q)
+                    q[0]++;
+            }
+            f += 2;
+            d += 2;
+        } while (f != l);
+    }
+    return d;
+}
+
+/* @implements 0x06246c us f_06246c
+   WHAT IT DOES: Calls virtual slot 6 of the object held in the sub-object at +4. */
+void f_06246c(int *p)
+{
+    int *s = (int *)p[1];
+    void (*fn)(int *) = (void (*)(int *))((int **)s)[0][6];
+    fn(s);
+}
+
+/* @implements 0x062494 us f_062494
+   WHAT IT DOES: Calls virtual slot 7 of the object held in the sub-object at +4. */
+void f_062494(int *p)
+{
+    int *s = (int *)p[1];
+    void (*fn)(int *) = (void (*)(int *))((int **)s)[0][7];
+    fn(s);
+}
+
+/* @implements 0x0624bc us f_0624bc
+   WHAT IT DOES: Calls virtual slot 12 of the object held in the sub-object at +4. */
+void f_0624bc(int *p)
+{
+    int *s = (int *)p[1];
+    void (*fn)(int *) = (void (*)(int *))((int **)s)[0][12];
+    fn(s);
+}
+
+} /* extern "C" */
+
+} /* namespace swgD */
+
+/* ---- swgE ---- */
+/* TU 117 fragment swgE: retail 0x0624e4 to 0x065008. ActionScript value objects (SWG):
+   the Undefined, Boolean, Integer, Float, Null, String and StackPosValue classes, their
+   vtables at 0x1a3f00..0x1a4480, the type-name getters, the value setters and the
+   copy-and-new helpers. Each object word at 0 is the vptr; the value fields sit at +8. */
+
+namespace swgE {
+
+#define W(o, off) (*(int *)((char *)(o) + (off)))
+#define B(o, off) (*(unsigned char *)((char *)(o) + (off)))
+
+typedef int (*vfn_t)(void *);
+typedef double (*dfn_t)(void *);
+
+/* Link node of the sibling list (the m0 word is the list head at *a1). */
+struct Lnk {
+    Lnk *m0;
+    Lnk *m4;
+    Lnk *m8;
+    Lnk *m12;
+};
+
+struct Tmp16 {
+    int w[4];
+    ~Tmp16() {}
+};
+
+#define DBL(o, off) (*(double *)((char *)(o) + (off)))
+
+extern "C" {
+
+extern char D_1a3280[];
+extern char D_1a3288[];
+extern char D_1a3294[];
+extern char D_1a32a0[];
+extern char D_1a32ac[];
+extern char D_1a32c4[];
+extern char D_1a32d0[];
+extern char D_1a3360[];
+extern char D_1a3368[];
+extern char D_1a3f00[];
+extern char D_1a4060[];
+extern char D_1a4110[];
+extern char D_1a4270[];
+extern char D_1a4320[];
+extern char D_1a4480[];
+
+void f_04e8c0(void *self);
+void f_05db44(void *self);
+void *f_05db08(unsigned int size);
+void f_164e34(long long v);
+int f_164ab0(long long a, long long b);
+
+/* @implements 0x062504 us f_062504
+   WHAT IT DOES: Returns the word at +32 of the object (the element count of its array). */
+int f_062504(void *o)
+{
+    return W(o, 32);
+}
+
+/* @implements 0x062520 us f_062520
+   WHAT IT DOES: Clears the word at +32. */
+void f_062520(void *o)
+{
+    W(o, 32) = 0;
+}
+
+/* @implements 0x062638 us f_062638
+   WHAT IT DOES: Virtual type tag returning 9. */
+int f_062638(void *o)
+{
+    return 9;
+}
+
+/* @implements 0x062fd0 us f_062fd0
+   WHAT IT DOES: Virtual type tag returning 1. */
+int f_062fd0(void *o)
+{
+    return 1;
+}
+
+/* @implements 0x063024 us f_063024
+   WHAT IT DOES: Empty virtual function. */
+void f_063024(void *o)
+{
+}
+
+/* @implements 0x063120 us f_063120
+   WHAT IT DOES: Virtual type tag returning 12. */
+int f_063120(void *o)
+{
+    return 12;
+}
+
+/* @implements 0x063194 us f_063194
+   WHAT IT DOES: Virtual type tag returning 4. */
+int f_063194(void *o)
+{
+    return 4;
+}
+
+/* @implements 0x063238 us f_063238
+   WHAT IT DOES: Returns the byte flag at +8. */
+int f_063238(void *o)
+{
+    return B(o, 8);
+}
+
+/* @implements 0x063240 us f_063240
+   WHAT IT DOES: Returns the byte flag at +8 (the same as its neighbour). */
+int f_063240(void *o)
+{
+    return B(o, 8);
+}
+
+/* @implements 0x0634a0 us f_0634a0
+   WHAT IT DOES: Virtual type tag returning 3. */
+int f_0634a0(void *o)
+{
+    return 3;
+}
+
+/* @implements 0x06351c us f_06351c
+   WHAT IT DOES: Virtual function returning 0. */
+int f_06351c(void *o)
+{
+    return 0;
+}
+
+/* @implements 0x0638e4 us f_0638e4
+   WHAT IT DOES: Virtual type tag returning 10. */
+int f_0638e4(void *o)
+{
+    return 10;
+}
+
+/* @implements 0x063958 us f_063958
+   WHAT IT DOES: Virtual type tag returning 6. */
+int f_063958(void *o)
+{
+    return 6;
+}
+
+/* @implements 0x063e14 us f_063e14
+   WHAT IT DOES: Virtual type tag returning 5. */
+int f_063e14(void *o)
+{
+    return 5;
+}
+
+/* @implements 0x063ec4 us f_063ec4
+   WHAT IT DOES: Returns the word at +8 (the integer value). */
+int f_063ec4(void *o)
+{
+    return W(o, 8);
+}
+
+/* @implements 0x0642ac us f_0642ac
+   WHAT IT DOES: Virtual type tag returning 7. */
+int f_0642ac(void *o)
+{
+    return 7;
+}
+
+/* @implements 0x064b90 us f_064b90
+   WHAT IT DOES: Virtual type tag returning 2. */
+int f_064b90(void *o)
+{
+    return 2;
+}
+
+/* @implements 0x064c0c us f_064c0c
+   WHAT IT DOES: Virtual function returning 0. */
+int f_064c0c(void *o)
+{
+    return 0;
+}
+
+/* @implements 0x062640 us f_062640
+   WHAT IT DOES: Returns the type-name string "array". */
+const char *f_062640(void *o)
+{
+    return D_1a3280;
+}
+
+/* @implements 0x062fd8 us f_062fd8
+   WHAT IT DOES: Returns the type-name string "stackpos". */
+const char *f_062fd8(void *o)
+{
+    return D_1a3288;
+}
+
+/* @implements 0x063128 us f_063128
+   WHAT IT DOES: Returns the type-name string "function". */
+const char *f_063128(void *o)
+{
+    return D_1a32a0;
+}
+
+/* @implements 0x06319c us f_06319c
+   WHAT IT DOES: Returns the type-name string "boolean". */
+const char *f_06319c(void *o)
+{
+    return D_1a32ac;
+}
+
+/* @implements 0x0634a8 us f_0634a8
+   WHAT IT DOES: Returns the type-name string "undefined". */
+const char *f_0634a8(void *o)
+{
+    return D_1a3294;
+}
+
+/* @implements 0x0638ec us f_0638ec
+   WHAT IT DOES: Returns the type-name string "movieclip". */
+const char *f_0638ec(void *o)
+{
+    return D_1a32c4;
+}
+
+/* @implements 0x063960 us f_063960
+   WHAT IT DOES: Returns the type-name string "number". */
+const char *f_063960(void *o)
+{
+    return D_1a32d0;
+}
+
+/* @implements 0x063e1c us f_063e1c
+   WHAT IT DOES: Returns the type-name string "number" (the same as f_063960). */
+const char *f_063e1c(void *o)
+{
+    return D_1a32d0;
+}
+
+/* @implements 0x0642b4 us f_0642b4
+   WHAT IT DOES: Returns the type-name string "string". */
+const char *f_0642b4(void *o)
+{
+    return D_1a3360;
+}
+
+/* @implements 0x064b98 us f_064b98
+   WHAT IT DOES: Returns the type-name string "null". */
+const char *f_064b98(void *o)
+{
+    return D_1a3368;
+}
+
+/* @implements 0x063a68 us f_063a68
+   WHAT IT DOES: Returns the 64-bit value stored at +8 (two words, +8 and +12). */
+long long f_063a68(void *o)
+{
+    return *(long long *)((char *)o + 8);
+}
+
+/* @implements 0x063eb8 us f_063eb8
+   WHAT IT DOES: Returns whether the integer at +8 is nonzero. */
+int f_063eb8(void *o)
+{
+    return W(o, 8) != 0;
+}
+
+/* @implements 0x063ecc us f_063ecc
+   WHAT IT DOES: Increments the integer at +8. */
+void f_063ecc(void *o)
+{
+    W(o, 8)++;
+}
+
+/* @implements 0x063edc us f_063edc
+   WHAT IT DOES: Decrements the integer at +8. */
+void f_063edc(void *o)
+{
+    W(o, 8)--;
+}
+
+/* @implements 0x06250c us f_06250c
+   WHAT IT DOES: Returns element i of the pointer array at +28. */
+int f_06250c(void *o, int i)
+{
+    return ((int *)W(o, 28))[i];
+}
+
+/* @implements 0x0624e4 us f_0624e4
+   WHAT IT DOES: Appends a word to the pointer array at +28 and bumps the count at +32. */
+void f_0624e4(void *o, void *v)
+{
+    int n = W(o, 32);
+    ((void **)W(o, 28))[n] = v;
+    W(o, 32) = n + 1;
+}
+
+/* @implements 0x063a48 us f_063a48
+   WHAT IT DOES: Passes the 64-bit value at +8 to f_164e34. */
+void f_063a48(void *o)
+{
+    f_164e34(*(long long *)((char *)o + 8));
+}
+
+/* @implements 0x062f70 us f_062f70
+   WHAT IT DOES: Destructor of the StackPosValue class: sets its vtable and runs the base destructor. */
+void f_062f70(void *o)
+{
+    *(void **)o = D_1a3f00;
+    f_04e8c0(o);
+}
+
+/* @implements 0x062f98 us f_062f98
+   WHAT IT DOES: Deleting destructor of the StackPosValue class: runs the base destructor and frees the object. */
+void f_062f98(void *o)
+{
+    *(void **)o = D_1a3f00;
+    f_04e8c0(o);
+    f_05db44(o);
+}
+
+/* @implements 0x063134 us f_063134
+   WHAT IT DOES: Destructor of the Boolean class: sets its vtable and runs the base destructor. */
+void f_063134(void *o)
+{
+    *(void **)o = D_1a4060;
+    f_04e8c0(o);
+}
+
+/* @implements 0x06315c us f_06315c
+   WHAT IT DOES: Deleting destructor of the Boolean class. */
+void f_06315c(void *o)
+{
+    *(void **)o = D_1a4060;
+    f_04e8c0(o);
+    f_05db44(o);
+}
+
+/* @implements 0x063440 us f_063440
+   WHAT IT DOES: Destructor of the Undefined class: sets its vtable and runs the base destructor. */
+void f_063440(void *o)
+{
+    *(void **)o = D_1a4110;
+    f_04e8c0(o);
+}
+
+/* @implements 0x063468 us f_063468
+   WHAT IT DOES: Deleting destructor of the Undefined class. */
+void f_063468(void *o)
+{
+    *(void **)o = D_1a4110;
+    f_04e8c0(o);
+    f_05db44(o);
+}
+
+/* @implements 0x0638f8 us f_0638f8
+   WHAT IT DOES: Destructor of the Float class: sets its vtable and runs the base destructor. */
+void f_0638f8(void *o)
+{
+    *(void **)o = D_1a4270;
+    f_04e8c0(o);
+}
+
+/* @implements 0x063920 us f_063920
+   WHAT IT DOES: Deleting destructor of the Float class. */
+void f_063920(void *o)
+{
+    *(void **)o = D_1a4270;
+    f_04e8c0(o);
+    f_05db44(o);
+}
+
+/* @implements 0x063db4 us f_063db4
+   WHAT IT DOES: Destructor of the Integer class: sets its vtable and runs the base destructor. */
+void f_063db4(void *o)
+{
+    *(void **)o = D_1a4320;
+    f_04e8c0(o);
+}
+
+/* @implements 0x063ddc us f_063ddc
+   WHAT IT DOES: Deleting destructor of the Integer class. */
+void f_063ddc(void *o)
+{
+    *(void **)o = D_1a4320;
+    f_04e8c0(o);
+    f_05db44(o);
+}
+
+/* @implements 0x064b30 us f_064b30
+   WHAT IT DOES: Destructor of the Null class: sets its vtable and runs the base destructor. */
+void f_064b30(void *o)
+{
+    *(void **)o = D_1a4480;
+    f_04e8c0(o);
+}
+
+/* @implements 0x064b58 us f_064b58
+   WHAT IT DOES: Deleting destructor of the Null class. */
+void f_064b58(void *o)
+{
+    *(void **)o = D_1a4480;
+    f_04e8c0(o);
+    f_05db44(o);
+}
+
+/* @implements 0x0634b4 us f_0634b4
+   WHAT IT DOES: Allocates an 8-byte Undefined object, sets its vtable and clears its second word. */
+void *f_0634b4(void)
+{
+    void *p = f_05db08(8);
+    *(void **)p = D_1a4110;
+    W(p, 4) = 0;
+    return p;
+}
+
+/* @implements 0x064ba4 us f_064ba4
+   WHAT IT DOES: Allocates an 8-byte Null object, sets its vtable and clears its second word. */
+void *f_064ba4(void)
+{
+    void *p = f_05db08(8);
+    *(void **)p = D_1a4480;
+    W(p, 4) = 0;
+    return p;
+}
+
+/* @draft 0x062fe4 us f_062fe4
+   WHAT IT DOES: Allocates a 12-byte StackPosValue, copies the word at +8 of the source and clears +4.
+   Remaining difference: the prologue. Retail reserves a 32-byte frame (s0 at 16, ra at 20); this source gives 16. */
+void *f_062fe4(void *o)
+{
+    void *p = f_05db08(12);
+    W(p, 8) = W(o, 8);
+    *(void **)p = D_1a3f00;
+    W(p, 4) = 0;
+    return p;
+}
+
+/* @implements 0x0631a8 us f_0631a8
+   WHAT IT DOES: Allocates a 12-byte Boolean, copies the flag byte at +8 of the source and clears +4. */
+void *f_0631a8(void *o)
+{
+    void *p = f_05db08(12);
+    B(p, 8) = B(o, 8);
+    *(void **)p = D_1a4060;
+    W(p, 4) = 0;
+    return p;
+}
+
+/* @implements 0x063320 us f_063320
+   WHAT IT DOES: Virtual call on the argument (slot 22); the flag at +8 becomes the nonzero test of its XOR with the result. */
+void f_063320(void *o, void *a)
+{
+    int r = ((vfn_t *)*(void **)a)[22](a);
+    B(o, 8) = (B(o, 8) ^ r) != 0;
+}
+
+/* @implements 0x063360 us f_063360
+   WHAT IT DOES: Virtual call on the argument (slot 22); returns whether the flag at +8 equals its result. */
+int f_063360(void *o, void *a)
+{
+    int r = ((vfn_t *)*(void **)a)[22](a);
+    return B(o, 8) == r;
+}
+
+/* @implements 0x063a08 us f_063a08
+   WHAT IT DOES: Passes the 64-bit value at +8 and zero to f_164ab0 and returns whether it is nonzero. */
+int f_063a08(void *o)
+{
+    int res = 0;
+    if (f_164ab0(*(long long *)((char *)o + 8), 0))
+        res = 1;
+    return res;
+}
+
+/* @implements 0x063e28 us f_063e28
+   WHAT IT DOES: Allocates a 12-byte Integer, copies the word at +8 of the source and clears +4. */
+void *f_063e28(void *o)
+{
+    void *p = f_05db08(12);
+    W(p, 8) = W(o, 8);
+    *(void **)p = D_1a4320;
+    W(p, 4) = 0;
+    return p;
+}
+
+/* @implements 0x063f64 us f_063f64
+   WHAT IT DOES: Virtual call on the argument (slot 23); multiplies the integer at +8 by the result. */
+void f_063f64(void *o, void *a)
+{
+    int r = ((vfn_t *)*(void **)a)[23](a);
+    W(o, 8) = W(o, 8) * r;
+}
+
+/* @implements 0x0641f8 us f_0641f8
+   WHAT IT DOES: Virtual call on the argument (slot 23); returns whether the integer at +8 equals its result. */
+int f_0641f8(void *o, void *a)
+{
+    int r = ((vfn_t *)*(void **)a)[23](a);
+    return W(o, 8) == r;
+}
+
+/* @implements 0x064274 us f_064274
+   WHAT IT DOES: Virtual call on the argument (slot 23); returns whether its result is less than the integer at +8. */
+int f_064274(void *o, void *a)
+{
+    int r = ((vfn_t *)*(void **)a)[23](a);
+    return r < W(o, 8);
+}
+
+/* @implements 0x063eec us f_063eec
+   WHAT IT DOES: Virtual call on the argument (slot 23); adds its result to the integer at +8. */
+void f_063eec(void *o, void *a)
+{
+    int r = ((vfn_t *)*(void **)a)[23](a);
+    W(o, 8) = W(o, 8) + r;
+}
+
+/* @implements 0x063f28 us f_063f28
+   WHAT IT DOES: Virtual call on the argument (slot 23); subtracts its result from the integer at +8. */
+void f_063f28(void *o, void *a)
+{
+    int r = ((vfn_t *)*(void **)a)[23](a);
+    W(o, 8) = W(o, 8) - r;
+}
+
+/* @implements 0x06405c us f_06405c
+   WHAT IT DOES: Virtual call on the argument (slot 23); ANDs the integer at +8 with its result. */
+void f_06405c(void *o, void *a)
+{
+    int r = ((vfn_t *)*(void **)a)[23](a);
+    W(o, 8) = W(o, 8) & r;
+}
+
+/* @implements 0x064098 us f_064098
+   WHAT IT DOES: Virtual call on the argument (slot 23); ORs the integer at +8 with its result. */
+void f_064098(void *o, void *a)
+{
+    int r = ((vfn_t *)*(void **)a)[23](a);
+    W(o, 8) = W(o, 8) | r;
+}
+
+/* @implements 0x0640d4 us f_0640d4
+   WHAT IT DOES: Virtual call on the argument (slot 23); XORs the integer at +8 with its result. */
+void f_0640d4(void *o, void *a)
+{
+    int r = ((vfn_t *)*(void **)a)[23](a);
+    W(o, 8) = W(o, 8) ^ r;
+}
+
+/* @implements 0x064110 us f_064110
+   WHAT IT DOES: Virtual call on the argument (slot 23); shifts the integer at +8 left by its result. */
+void f_064110(void *o, void *a)
+{
+    int r = ((vfn_t *)*(void **)a)[23](a);
+    W(o, 8) = W(o, 8) << r;
+}
+
+/* @implements 0x06414c us f_06414c
+   WHAT IT DOES: Virtual call on the argument (slot 23); shifts the integer at +8 right (arithmetic) by its result. */
+void f_06414c(void *o, void *a)
+{
+    int r = ((vfn_t *)*(void **)a)[23](a);
+    W(o, 8) = W(o, 8) >> r;
+}
+
+/* @implements 0x064238 us f_064238
+   WHAT IT DOES: Virtual call on the argument (slot 23); returns whether the integer at +8 is less than its result. */
+int f_064238(void *o, void *a)
+{
+    int r = ((vfn_t *)*(void **)a)[23](a);
+    return W(o, 8) < r;
+}
+
+
+#define DBL(o, off) (*(double *)((char *)(o) + (off)))
+
+typedef int (*vfn_t)(void *);
+typedef double (*dfn_t)(void *);
+
+extern char D_1a32b4[];
+extern char D_1a32bc[];
+extern char D_1a331c[];
+extern char D_1a32d8[];
+extern char D_1a3320[];
+extern double D_1a4d18;
+extern double D_1a4d20;
+extern char D_1a4270[];
+extern char D_1a3f00[];
+
+void f_05a3e8(void *self, const char *s, void *tmp);
+int f_15e1f0(void *a, void *b);
+int f_161d88(void *a, void *b);
+int f_164a28(double a, double b);
+int f_164b38(double a, double b);
+int f_164c48(double a, double b);
+int f_15fb50(void *a, int b);
+int sprintf(char *buf, const char *fmt, ...);
+int iprintf(const char *fmt, ...);
+double __adddf3(double a, double b);
+double __subdf3(double a, double b);
+double __muldf3(double a, double b);
+void f_0604dc(void *self);
+void f_04e8d8(void *self);
+void *f_05db08(unsigned int size);
+
+/* @implements 0x063a74 us f_063a74
+   WHAT IT DOES: Adds the constant double at D_1a4d18 to the double value at +8. */
+void f_063a74(void *o)
+{
+    DBL(o, 8) = __adddf3(DBL(o, 8), D_1a4d18);
+}
+
+/* @implements 0x063ab8 us f_063ab8
+   WHAT IT DOES: Subtracts the constant double at D_1a4d20 from the double value at +8. */
+void f_063ab8(void *o)
+{
+    DBL(o, 8) = __subdf3(DBL(o, 8), D_1a4d20);
+}
+
+/* @implements 0x063248 us f_063248
+   WHAT IT DOES: Virtual call on the argument (slot 22); the flag at +8 becomes the OR of its old value and the result, as a bool. */
+void f_063248(void *o, void *a)
+{
+    unsigned char b = B(o, 8);
+    int r = ((vfn_t *)*(void **)a)[22](a);
+    B(o, 8) = (b | r) != 0;
+}
+
+/* @implements 0x063290 us f_063290
+   WHAT IT DOES: Virtual call on the argument (slot 22); the flag at +8 becomes the AND of its old value and the result, as a bool. */
+void f_063290(void *o, void *a)
+{
+    unsigned char b = B(o, 8);
+    int r = ((vfn_t *)*(void **)a)[22](a);
+    B(o, 8) = (b & r) != 0;
+}
+
+/* @implements 0x0632d8 us f_0632d8
+   WHAT IT DOES: Virtual call on the argument (slot 22); the flag at +8 becomes the OR of its old value and the result, as a bool (the same as f_063248). */
+void f_0632d8(void *o, void *a)
+{
+    unsigned char b = B(o, 8);
+    int r = ((vfn_t *)*(void **)a)[22](a);
+    B(o, 8) = (b | r) != 0;
+}
+
+/* @draft 0x06396c us f_06396c
+   WHAT IT DOES: Allocates a 16-byte Float, copies the two value words at +8 and +12 of the source and clears +4.
+   Remaining difference: instruction order after the allocation; retail loads the source words and the vptr in a different interleaving. */
+void *f_06396c(void *o)
+{
+    void *p = f_05db08(16);
+    int a = W(o, 8);
+    int b = W(o, 12);
+    W(p, 8) = a;
+    W(p, 12) = b;
+    *(void **)p = D_1a4270;
+    W(p, 4) = 0;
+    return p;
+}
+
+/* @implements 0x064014 us f_064014
+   WHAT IT DOES: Virtual call on the argument (slot 23); the integer at +8 becomes its remainder modulo the result. */
+void f_064014(void *o, void *a)
+{
+    int r = ((vfn_t *)*(void **)a)[23](a);
+    W(o, 8) = W(o, 8) % r;
+}
+
+/* @implements 0x064cfc us f_064cfc
+   WHAT IT DOES: Moves the sibling node at +12 of this node into the position of this node in the list whose head is at *a1, and relinks its child. */
+void f_064cfc(Lnk *self, Lnk **head)
+{
+    Lnk *n = self->m12;
+    Lnk *c = n->m8;
+    self->m12 = c;
+    if (c)
+        c->m4 = self;
+    n->m4 = self->m4;
+    if (self == *head) {
+        *head = n;
+    } else {
+        Lnk *p = self->m4;
+        if (self == p->m8)
+            p->m8 = n;
+        else
+            p->m12 = n;
+    }
+    n->m8 = self;
+    self->m4 = n;
+}
+
+/* @implements 0x064d44 us f_064d44
+   WHAT IT DOES: Mirror of f_064cfc: moves the node at +8 of this node into its position in the list whose head is at *a1. */
+void f_064d44(Lnk *self, Lnk **head)
+{
+    Lnk *n = self->m8;
+    Lnk *c = n->m12;
+    self->m8 = c;
+    if (c)
+        c->m4 = self;
+    n->m4 = self->m4;
+    if (self == *head) {
+        *head = n;
+    } else {
+        Lnk *p = self->m4;
+        if (self == p->m12)
+            p->m12 = n;
+        else
+            p->m8 = n;
+    }
+    n->m12 = self;
+    self->m4 = n;
+}
+
+/* @implements 0x0633a0 us f_0633a0
+   WHAT IT DOES: If the flag at +8 is clear, asks the argument (slot 22) and returns 1 when it is nonzero; otherwise returns 0. */
+int f_0633a0(void *o, void *a)
+{
+    int res = 0;
+    if (B(o, 8) == 0) {
+        if (((vfn_t *)*(void **)a)[22](a))
+            res = 1;
+    }
+    return res;
+}
+
+/* @draft 0x0633f0 us f_0633f0
+   WHAT IT DOES: If the flag at +8 is set, asks the argument (slot 22) and returns 1 when it is nonzero; otherwise returns 0.
+   Remaining difference: one word, the branch on the call result; retail uses beqzl (a zero result skips the li), the source gives bnel. */
+int f_0633f0(void *o, void *a)
+{
+    int res = 0;
+    if (B(o, 8) != 0) {
+        int r = ((vfn_t *)*(void **)a)[22](a);
+        if (r)
+            res = 1;
+    }
+    return res;
+}
+
+/* @implements 0x063afc us f_063afc
+   WHAT IT DOES: Adds the double returned by the argument (slot 24) to the double value at +8. */
+void f_063afc(void *o, void *a)
+{
+    double r = ((dfn_t *)*(void **)a)[24](a);
+    DBL(o, 8) = __adddf3(DBL(o, 8), r);
+}
+
+/* @implements 0x063b4c us f_063b4c
+   WHAT IT DOES: Subtracts the double returned by the argument (slot 24) from the double value at +8. */
+void f_063b4c(void *o, void *a)
+{
+    double r = ((dfn_t *)*(void **)a)[24](a);
+    DBL(o, 8) = __subdf3(DBL(o, 8), r);
+}
+
+/* @implements 0x063b9c us f_063b9c
+   WHAT IT DOES: Multiplies the double value at +8 by the double returned by the argument (slot 24). */
+void f_063b9c(void *o, void *a)
+{
+    double r = ((dfn_t *)*(void **)a)[24](a);
+    DBL(o, 8) = __muldf3(DBL(o, 8), r);
+}
+
+/* @implements 0x063ca0 us f_063ca0
+   WHAT IT DOES: Returns 1 when the double at +8 equals the double returned by the argument (slot 24). */
+int f_063ca0(void *o, void *a)
+{
+    int res = 0;
+    double r = ((dfn_t *)*(void **)a)[24](a);
+    if (f_164a28(DBL(o, 8), r) == 0)
+        res = 1;
+    return res;
+}
+
+/* @implements 0x063cfc us f_063cfc
+   WHAT IT DOES: Returns 1 when the double at +8 is less than the double returned by the argument (slot 24). */
+int f_063cfc(void *o, void *a)
+{
+    int res = 0;
+    double r = ((dfn_t *)*(void **)a)[24](a);
+    if (f_164c48(DBL(o, 8), r) < 0)
+        res = 1;
+    return res;
+}
+
+/* @implements 0x063d58 us f_063d58
+   WHAT IT DOES: Returns 1 when the double at +8 is greater than the double returned by the argument (slot 24). */
+int f_063d58(void *o, void *a)
+{
+    int res = 0;
+    double r = ((dfn_t *)*(void **)a)[24](a);
+    if (f_164b38(DBL(o, 8), r) > 0)
+        res = 1;
+    return res;
+}
+
+/* @implements 0x063524 us f_063524
+   WHAT IT DOES: Returns whether the argument and this object give the same value for the slot-6 query. */
+int f_063524(void *o, void *a)
+{
+    int ra = ((vfn_t *)*(void **)a)[6](a);
+    int rt = ((vfn_t *)*(void **)o)[6](o);
+    return ra == rt;
+}
+
+/* @implements 0x064c14 us f_064c14
+   WHAT IT DOES: Same as f_063524: returns whether the argument and this object give the same slot-6 result. */
+int f_064c14(void *o, void *a)
+{
+    int ra = ((vfn_t *)*(void **)a)[6](a);
+    int rt = ((vfn_t *)*(void **)o)[6](o);
+    return ra == rt;
+}
+
+/* @implements 0x0639b4 us f_0639b4
+   WHAT IT DOES: Formats the double value at +8 of the argument with "%g" and sets this object from the string. */
+void *f_0639b4(void *o, void *a)
+{
+    char buf[32];
+    Tmp16 t;
+    sprintf(buf, D_1a32d8, DBL(a, 8));
+    f_05a3e8(o, buf, &t);
+    return o;
+}
+
+/* @implements 0x063e68 us f_063e68
+   WHAT IT DOES: Formats the integer at +8 of the argument with "%d" and sets this object from the string. */
+void *f_063e68(void *o, void *a)
+{
+    char buf[32];
+    Tmp16 t;
+    sprintf(buf, D_1a331c, W(a, 8));
+    f_05a3e8(o, buf, &t);
+    return o;
+}
+
+/* @implements 0x063fa4 us f_063fa4
+   WHAT IT DOES: Integer division of the value at +8 by the argument (slot 23); a zero divisor prints a warning and sets 0x7fffffff. */
+void f_063fa4(void *o, void *a)
+{
+    int r = ((vfn_t *)*(void **)a)[23](a);
+    if (r == 0) {
+        iprintf(D_1a3320, W(o, 8));
+        W(o, 8) = 0x7fffffff;
+    } else {
+        W(o, 8) = W(o, 8) / r;
+    }
+}
+
+
+
+
+
+/* @implements 0x06302c us f_06302c
+   WHAT IT DOES: Sets this object from the string "undefined" through f_05a3e8, with a temporary whose destructor is empty, and returns the object. */
+void *f_06302c(void *o)
+{
+    Tmp16 t;
+    f_05a3e8(o, D_1a3294, &t);
+    return o;
+}
+
+/* @implements 0x0634e0 us f_0634e0
+   WHAT IT DOES: Sets this object from the string "undefined" through f_05a3e8 (the same as f_06302c) and returns the object. */
+void *f_0634e0(void *o)
+{
+    Tmp16 t;
+    f_05a3e8(o, D_1a3294, &t);
+    return o;
+}
+
+/* @implements 0x064bd0 us f_064bd0
+   WHAT IT DOES: Sets this object from the string "null" through f_05a3e8 and returns the object. */
+void *f_064bd0(void *o)
+{
+    Tmp16 t;
+    f_05a3e8(o, D_1a3368, &t);
+    return o;
+}
+
+}  /* extern "C" */
+
+}  /* namespace swgE */
+
+/* ---- swgF ---- */
+/* TU 117 fragment swgF: retail 0x065008..0x06b6fc (Flash/ActionScript player, SWG).
+   Covers the small helpers and wrappers in that range: fill and copy loops, the
+   reference-counted node link helpers, the AS object constructor wrappers that
+   forward a constant tag, and the node allocators. */
+
+namespace swgF {
+
+extern "C" {
+void *f_15f754(void *);
+void *f_15f6f8(void *);
+void *f_15f798(void *);
+void *f_15f6dc(void *);
+void *f_15fb50(void *, unsigned);
+void f_05e394(void *, void *, void *, void *);
+void f_05df24(void *, void *);
+extern char D_1a4320;
+extern char D_1a4270;
+extern unsigned D_1a4d38;
+extern unsigned D_1a4d3c;
+extern unsigned D_1a4d40;
+extern unsigned D_1a4d44;
+extern unsigned D_1a4d58;
+extern unsigned D_1a4d5c;
+extern unsigned D_1a4d60;
+extern unsigned D_1a4d64;
+extern unsigned D_1a4d70;
+extern unsigned D_1a4d74;
+extern unsigned D_1a4d78;
+extern unsigned D_1a4d7c;
+void f_05e4a8(void *, void *);
+void *f_04dfa0(unsigned n);
+void f_0698e4(void *self, void *a1, void *a2, unsigned tag);
+void *f_05db08(unsigned n);
+void f_05daa4(void *self, void *a1);
+void f_069ea0(void *a0, void *a1);
+void *f_061620(void *a0, void *a1, void *a2, void *a3);
+void f_04e4b4(void *self);
+void _Unwind_Resume(void *e);
+}
+
+/* @implements 0x06547c us f_06547c
+   WHAT IT DOES: fills n consecutive words at dst with the word at src and returns the advanced destination pointer. */
+extern "C" unsigned *f_06547c(unsigned *dst, unsigned n, const unsigned *src) {
+    while (n != 0) {
+        *dst = *src;
+        dst++;
+        n--;
+    }
+    return dst;
+}
+
+/* @draft 0x06544c us f_06544c
+   Remaining difference: the retail copy keeps the running destination in a stack slot (stored at entry and exit) and the loop has a 48-byte shape; this body is 36 bytes.
+   WHAT IT DOES: copies the words from src into the range [first, last) with a running pointer kept in a stack slot. */
+extern "C" void f_06544c(unsigned *first, unsigned *last, const unsigned *src) {
+    unsigned *cur = first;
+    if (first == last) {
+        return;
+    }
+    do {
+        *cur = *src;
+        cur++;
+    } while (cur != last);
+}
+
+/* @implements 0x0698b8 us f_0698b8
+   WHAT IT DOES: forwards to the shared constructor helper with tag 0 and returns the object pointer. */
+extern "C" void *f_0698b8(void *self, void *a1, void *a2) {
+    f_0698e4(self, a1, a2, 0);
+    return self;
+}
+
+/* @implements 0x069a20 us f_069a20
+   WHAT IT DOES: forwards to the shared constructor helper with tag 1 and returns the object pointer. */
+extern "C" void *f_069a20(void *self, void *a1, void *a2) {
+    f_0698e4(self, a1, a2, 1);
+    return self;
+}
+
+/* @implements 0x069a4c us f_069a4c
+   WHAT IT DOES: forwards to the shared constructor helper with tag 2 and returns the object pointer. */
+extern "C" void *f_069a4c(void *self, void *a1, void *a2) {
+    f_0698e4(self, a1, a2, 2);
+    return self;
+}
+
+/* @implements 0x069a78 us f_069a78
+   WHAT IT DOES: forwards to the shared constructor helper with tag 3 and returns the object pointer. */
+extern "C" void *f_069a78(void *self, void *a1, void *a2) {
+    f_0698e4(self, a1, a2, 3);
+    return self;
+}
+
+/* @implements 0x069aa4 us f_069aa4
+   WHAT IT DOES: forwards to the shared constructor helper with tag 4 and returns the object pointer. */
+extern "C" void *f_069aa4(void *self, void *a1, void *a2) {
+    f_0698e4(self, a1, a2, 4);
+    return self;
+}
+
+/* @draft 0x0655a4 us f_0655a4
+   Remaining difference: retail returns through a restored frame of 56 bytes with the ra reload scheduled after the null test; this body is 60 bytes.
+   WHAT IT DOES: allocates a 12-byte node and, when the node is non-null, stores the first word of the source at its third word. Returns nothing. */
+extern "C" void f_0655a4(void *unused, unsigned *src) {
+    unsigned *node = (unsigned *)f_04dfa0(12);
+    if (node + 2 != 0) {
+        node[2] = *src;
+    }
+}
+
+/* @implements 0x065634 us f_065634
+   WHAT IT DOES: calls f_061620 with the arguments rotated one slot and a zero fourth argument, then stores the result word at offset 0 of the object. */
+extern "C" void f_065634(void **self, void *a1, void *a2, void *a3) {
+    *self = f_061620(a1, a2, a3, 0);
+}
+
+/* @draft 0x065a5c us f_065a5c
+   Remaining difference: retail tests the count before the loop and the loop is 68 bytes; this loop body is 64 bytes and the order of the reference-count update differs.
+   WHAT IT DOES: copies n two-word entries from src to dst, skipping the stores when the destination entry is null, and bumps the reference count word of each non-null second word. Returns the advanced destination. */
+extern "C" unsigned *f_065a5c(unsigned *dst, unsigned n, const unsigned *src) {
+    if (n == 0) {
+        return dst;
+    }
+    do {
+        if (dst != 0) {
+            unsigned a = src[0];
+            unsigned b = src[1];
+            dst[0] = a;
+            dst[1] = b;
+            if (b != 0) {
+                (*(unsigned *)b)++;
+            }
+        }
+        n--;
+        dst += 2;
+    } while (n != 0);
+    return dst;
+}
+
+/* @draft 0x065aec us f_065aec
+   Remaining difference: same as f_065a5c: the retail loop is 68 bytes; this loop body is 64 bytes.
+   WHAT IT DOES: copies n two-word entries from src to dst, skipping the stores when the destination entry is null, and bumps the reference count word of each non-null second word. Returns the advanced destination. */
+extern "C" unsigned *f_065aec(unsigned *dst, unsigned n, const unsigned *src) {
+    if (n == 0) {
+        return dst;
+    }
+    do {
+        if (dst != 0) {
+            unsigned a = src[0];
+            unsigned b = src[1];
+            dst[0] = a;
+            dst[1] = b;
+            if (b != 0) {
+                (*(unsigned *)b)++;
+            }
+        }
+        n--;
+        dst += 2;
+    } while (n != 0);
+    return dst;
+}
+
+/* @draft 0x065008 us f_065008
+   Remaining difference: retail stores the source pair in the other order and reloads the second word; the body is 88 bytes against 92.
+   WHAT IT DOES: allocates a 16-byte node, copies the two-word pair from the source into the node at offset 8 and bumps the reference count when the second word is non-null. Returns the node. */
+extern "C" void *f_065008(void *unused, unsigned *src) {
+    unsigned *node = (unsigned *)f_04dfa0(16);
+    unsigned *p = node + 2;
+    if (p != 0) {
+        unsigned b = src[1];
+        p[1] = b;
+        node[2] = src[0];
+        if (b != 0) {
+            (*(unsigned *)b)++;
+        }
+    }
+    return node;
+}
+
+/* @draft 0x066fe0 us f_066fe0
+   Remaining difference: retail keeps the sub-object pointer in a register and stores the pair through it; the store offsets are the same but the schedule is 68 bytes against 64.
+   WHAT IT DOES: allocates a 24-byte node and, when the node's sub-pair slot is non-null, copies the two-word source pair into it at offset 16. Returns the node. */
+extern "C" void *f_066fe0(void *unused, unsigned *src) {
+    unsigned *node = (unsigned *)f_04dfa0(24);
+    unsigned *p = node + 4;
+    if (p != 0) {
+        node[4] = src[0];
+        p[1] = src[1];
+    }
+    return node;
+}
+
+/* @implements 0x069e5c us f_069e5c
+   WHAT IT DOES: calls f_069ea0 with the two sub-object fields of the source object (the field at +40 offset by 364, and the field at +52) and then clears the reference-count link of this object through f_05daa4. Returns this. */
+extern "C" void *f_069e5c(void *self, unsigned *obj) {
+    f_069ea0((void *)(obj[10] + 364), (void *)obj[13]);
+    f_05daa4(self, 0);
+    return self;
+}
+
+/* @implements 0x0687b8 us f_0687b8
+   WHAT IT DOES: calls virtual slot 9 on the object held at +44 of the source, passes the result to f_15f754, then clears this object's link through f_05daa4. Returns this. */
+extern "C" void *f_0687b8(void *self, unsigned *obj) {
+    void *v = (void *)obj[11];
+    void *r = ((void *(*)(void *))((void **)*(void **)v)[9])(v);
+    f_15f754(r);
+    f_05daa4(self, 0);
+    return self;
+}
+
+/* @implements 0x068898 us f_068898
+   WHAT IT DOES: calls virtual slot 9 on the object held at +44 of the source, passes the result to f_15f6f8, then clears this object's link through f_05daa4. Returns this. */
+extern "C" void *f_068898(void *self, unsigned *obj) {
+    void *v = (void *)obj[11];
+    void *r = ((void *(*)(void *))((void **)*(void **)v)[9])(v);
+    f_15f6f8(r);
+    f_05daa4(self, 0);
+    return self;
+}
+
+/* @implements 0x0688e8 us f_0688e8
+   WHAT IT DOES: calls virtual slot 9 on the object held at +44 of the source, passes the result to f_15f798, then clears this object's link through f_05daa4. Returns this. */
+extern "C" void *f_0688e8(void *self, unsigned *obj) {
+    void *v = (void *)obj[11];
+    void *r = ((void *(*)(void *))((void **)*(void **)v)[9])(v);
+    f_15f798(r);
+    f_05daa4(self, 0);
+    return self;
+}
+
+/* @implements 0x068ab8 us f_068ab8
+   WHAT IT DOES: calls virtual slot 9 on the object held at +44 of the source, passes the result to f_15f6dc, then clears this object's link through f_05daa4. Returns this. */
+extern "C" void *f_068ab8(void *self, unsigned *obj) {
+    void *v = (void *)obj[11];
+    void *r = ((void *(*)(void *))((void **)*(void **)v)[9])(v);
+    f_15f6dc(r);
+    f_05daa4(self, 0);
+    return self;
+}
+
+/* @implements 0x068938 us f_068938
+   WHAT IT DOES: calls virtual slot 9 on the object held at +44 of the source, passes the result to f_15fb50 with a flag of 1, then clears this object's link through f_05daa4. Returns this. */
+extern "C" void *f_068938(void *self, unsigned *obj) {
+    void *v = (void *)obj[11];
+    void *r = ((void *(*)(void *))((void **)*(void **)v)[9])(v);
+    f_15fb50(r, 1);
+    f_05daa4(self, 0);
+    return self;
+}
+
+/* @draft 0x067e14 us f_067e14
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+   WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320, zeroes its two words after the vtable and hands it to f_05daa4 together with this. Returns this. */
+extern "C" void *f_067e14(void *self) {
+    unsigned *n = (unsigned *)f_05db08(12);
+    n[0] = (unsigned)&D_1a4320;
+    n[1] = 0;
+    n[2] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @draft 0x067e68 us f_067e68
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+   WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320, zeroes its two words after the vtable and hands it to f_05daa4 together with this. Returns this. */
+extern "C" void *f_067e68(void *self) {
+    unsigned *n = (unsigned *)f_05db08(12);
+    n[0] = (unsigned)&D_1a4320;
+    n[1] = 0;
+    n[2] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @draft 0x069ad0 us f_069ad0
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+   WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320 and tag 38 in its third word, hands it to f_05daa4 together with this, and returns this. */
+extern "C" void *f_069ad0(void *self) {
+    unsigned *n = (unsigned *)f_05db08(12);
+    n[0] = (unsigned)&D_1a4320;
+    n[2] = 38;
+    n[1] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @draft 0x069b28 us f_069b28
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+   WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320 and tag 40 in its third word, hands it to f_05daa4 together with this, and returns this. */
+extern "C" void *f_069b28(void *self) {
+    unsigned *n = (unsigned *)f_05db08(12);
+    n[0] = (unsigned)&D_1a4320;
+    n[2] = 40;
+    n[1] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @draft 0x069b80 us f_069b80
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+   WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320 and tag 39 in its third word, hands it to f_05daa4 together with this, and returns this. */
+extern "C" void *f_069b80(void *self) {
+    unsigned *n = (unsigned *)f_05db08(12);
+    n[0] = (unsigned)&D_1a4320;
+    n[2] = 39;
+    n[1] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @draft 0x069bd8 us f_069bd8
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+   WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320 and tag 37 in its third word, hands it to f_05daa4 together with this, and returns this. */
+extern "C" void *f_069bd8(void *self) {
+    unsigned *n = (unsigned *)f_05db08(12);
+    n[0] = (unsigned)&D_1a4320;
+    n[2] = 37;
+    n[1] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @draft 0x069c30 us f_069c30
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+   WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320 and tag 32 in its third word, hands it to f_05daa4 together with this, and returns this. */
+extern "C" void *f_069c30(void *self) {
+    unsigned *n = (unsigned *)f_05db08(12);
+    n[0] = (unsigned)&D_1a4320;
+    n[2] = 32;
+    n[1] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @draft 0x069c88 us f_069c88
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+   WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320 and tag 8 in its third word, hands it to f_05daa4 together with this, and returns this. */
+extern "C" void *f_069c88(void *self) {
+    unsigned *n = (unsigned *)f_05db08(12);
+    n[0] = (unsigned)&D_1a4320;
+    n[2] = 8;
+    n[1] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @draft 0x069ce0 us f_069ce0
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted; the byte or pointer stores are ordered as the listing has them.
+   WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320, takes the byte at offset 328 of the object held at +56 of the source as its tag word, hands it to f_05daa4 together with this, and returns this. */
+extern "C" void *f_069ce0(void *self, unsigned *obj) {
+    unsigned *n = (unsigned *)f_05db08(12);
+    unsigned char *src = (unsigned char *)obj[14];
+    n[0] = (unsigned)&D_1a4320;
+    n[2] = (unsigned)(int)(signed char)src[328];
+    n[1] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @implements 0x069e08 us f_069e08
+   WHAT IT DOES: calls f_05e394 with two stack temporaries, the first receiving the sub-object at +40 offset by 364 and the second holding that sub-object's second word, and the object's field at +52, then clears this object's link through f_05daa4. Returns this. */
+extern "C" void *f_069e08(void *self, unsigned *obj) {
+    unsigned L1[4];
+    unsigned L2[4];
+    unsigned *sub = (unsigned *)(obj[10] + 364);
+    L2[0] = sub[1];
+    f_05e394(L1, sub, L2, (void *)obj[13]);
+    f_05daa4(self, 0);
+    return self;
+}
+
+/* @draft 0x06a534 us f_06a534
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted; the byte or pointer stores are ordered as the listing has them.
+   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d38 and D_1a4d3c after it, hands it to f_05daa4 together with this, and returns this. */
+extern "C" void *f_06a534(void *self) {
+    unsigned *n = (unsigned *)f_05db08(16);
+    n[0] = (unsigned)&D_1a4270;
+    n[2] = D_1a4d38;
+    n[3] = D_1a4d3c;
+    n[1] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @draft 0x06a7b8 us f_06a7b8
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted; the byte or pointer stores are ordered as the listing has them.
+   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d40 and D_1a4d44 after it, hands it to f_05daa4 together with this, and returns this. */
+extern "C" void *f_06a7b8(void *self) {
+    unsigned *n = (unsigned *)f_05db08(16);
+    n[0] = (unsigned)&D_1a4270;
+    n[2] = D_1a4d40;
+    n[3] = D_1a4d44;
+    n[1] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @draft 0x06a8f0 us f_06a8f0
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d58 and D_1a4d5c after it, hands it to f_05daa4 together with this, and returns this. */
+extern "C" void *f_06a8f0(void *self) {
+    unsigned *n = (unsigned *)f_05db08(16);
+    n[0] = (unsigned)&D_1a4270;
+    n[2] = D_1a4d58;
+    n[3] = D_1a4d5c;
+    n[1] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @draft 0x06aa50 us f_06aa50
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d60 and D_1a4d64 after it, hands it to f_05daa4 together with this, and returns this. */
+extern "C" void *f_06aa50(void *self) {
+    unsigned *n = (unsigned *)f_05db08(16);
+    n[0] = (unsigned)&D_1a4270;
+    n[2] = D_1a4d60;
+    n[3] = D_1a4d64;
+    n[1] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @draft 0x06aecc us f_06aecc
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d70 and D_1a4d74 after it, hands it to f_05daa4 together with this, and returns this. */
+extern "C" void *f_06aecc(void *self) {
+    unsigned *n = (unsigned *)f_05db08(16);
+    n[0] = (unsigned)&D_1a4270;
+    n[2] = D_1a4d70;
+    n[3] = D_1a4d74;
+    n[1] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @draft 0x06af34 us f_06af34
+   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d78 and D_1a4d7c after it, hands it to f_05daa4 together with this, and returns this. */
+extern "C" void *f_06af34(void *self) {
+    unsigned *n = (unsigned *)f_05db08(16);
+    n[0] = (unsigned)&D_1a4270;
+    n[2] = D_1a4d78;
+    n[3] = D_1a4d7c;
+    n[1] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @draft 0x066e94 us f_066e94
+   Remaining difference: retail wraps the sub-object call in a try block with a catch that calls f_04e4b4 and rethrows; this body has no EH region (80 bytes against 112).
+   Remaining difference: the retail landing pad (catch, call f_04e4b4, rethrow) is not emitted; the body is the same.
+   WHAT IT DOES: allocates a 20-byte node, and when its sub-object at offset 16 is non-null, calls f_05e4a8 on that sub-object with the source argument. Returns the node. */
+extern "C" void *f_066e94(void *unused, void *a1) {
+    unsigned *n = (unsigned *)f_04dfa0(20);
+    unsigned *p = n + 4;
+    if (p != 0) {
+        f_05e4a8(p, a1);
+    }
+    return n;
+}
+
+/* @draft 0x066e1c us f_066e1c
+   Remaining difference: retail copies the six source words in its own register order; this body is 124 bytes against 120.
+   WHAT IT DOES: allocates a 40-byte node and, when its sub-object at offset 16 is non-null, copies the source's first five words and a sixth pointer into it, bumping that pointer's reference count when non-null. Returns the node. */
+extern "C" void *f_066e1c(void *unused, unsigned *src) {
+    unsigned *n = (unsigned *)f_04dfa0(40);
+    unsigned *p = n + 4;
+    if (p != 0) {
+        unsigned w5 = src[5];
+        p[1] = src[1];
+        n[4] = src[0];
+        n[6] = src[2];
+        n[7] = src[3];
+        n[8] = src[4];
+        n[9] = w5;
+        if (w5 != 0) {
+            (*(unsigned *)w5)++;
+        }
+    }
+    return n;
+}
+
+/* @implements 0x0672b0 us f_0672b0
+   WHAT IT DOES: when the object at +228 of the source's child is non-null, calls its virtual slot 23 on the object at +52 and passes that result to its virtual slot 6, then clears this object's link through f_05daa4. Returns this. */
+extern "C" void *f_0672b0(void *self, unsigned *obj) {
+    unsigned *s = (unsigned *)((unsigned *)obj[14])[57];
+    if (s != 0) {
+        void *o = (void *)((unsigned *)obj[13])[0];
+        void *r = ((void *(*)(void *))((void **)*(void **)o)[23])(o);
+        ((void (*)(void *, void *))((void **)*(void **)s)[6])(s, r);
+    }
+    f_05daa4(self, 0);
+    return self;
+}
+
+/* @implements 0x067320 us f_067320
+   WHAT IT DOES: when the object at +228 of the source's child is non-null, calls its virtual slot 23 on the object at +52 and passes that result to its virtual slot 8, then clears this object's link through f_05daa4. Returns this. */
+extern "C" void *f_067320(void *self, unsigned *obj) {
+    unsigned *s = (unsigned *)((unsigned *)obj[14])[57];
+    if (s != 0) {
+        void *o = (void *)((unsigned *)obj[13])[0];
+        void *r = ((void *(*)(void *))((void **)*(void **)o)[23])(o);
+        ((void (*)(void *, void *))((void **)*(void **)s)[8])(s, r);
+    }
+    f_05daa4(self, 0);
+    return self;
+}
+/* @draft 0x065aa0 us f_065aa0
+   Remaining difference: not yet compared word by word.
+   WHAT IT DOES: copies the two-word entries from [first, last) to dst, bumping the reference count of each non-null second word; returns the advanced dst. */
+struct SwgFPair {
+    unsigned w0;
+    unsigned *w1;
+};
+
+extern "C" SwgFPair *f_065aa0(SwgFPair *first, SwgFPair *last, SwgFPair *dst) {
+    if (first == last) {
+        return dst;
+    }
+    SwgFPair *cur = first;
+    do {
+        if (dst != 0) {
+            dst->w0 = cur->w0;
+            dst->w1 = cur->w1;
+            if (cur->w1 != 0) {
+                *cur->w1 = *cur->w1 + 1;
+            }
+        }
+        cur++;
+        dst++;
+    } while (cur != last);
+    return dst;
+}
+} /* namespace swgF */
