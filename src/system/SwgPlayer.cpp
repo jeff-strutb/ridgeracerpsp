@@ -546,6 +546,8 @@ void f_04d16c(char *s, int a1) {
 
 namespace swgB {
 
+struct GuardE { ~GuardE() {} };
+
 extern "C" {
 
 extern char D_1a3ad0[];
@@ -968,6 +970,7 @@ void f_04e65c(char *a0, char *a1) {
    self-linked node (its words at 0 and +4 point at itself).
    Remaining difference: 4/15 words differ, first at +0x24; size 52 vs 60. */
 void f_04e694(void *self) {
+    GuardE g;
     void *p = f_04dfa0((void *)12);
     FLD(void *, self, 4) = p;
     FLD(void *, p, 4) = p;
@@ -3266,6 +3269,13 @@ extern unsigned D_1a4d70;
 extern unsigned D_1a4d74;
 extern unsigned D_1a4d78;
 extern unsigned D_1a4d7c;
+extern unsigned D_1a4d48;
+extern unsigned D_1a4d4c;
+extern unsigned D_1a4d50;
+extern unsigned D_1a4d54;
+extern char D_1d2ec8;
+extern char D_1d2f00;
+extern char D_1d3018;
 void f_05e4a8(void *, void *);
 void *f_04dfa0(unsigned n);
 void f_0698e4(void *self, void *a1, void *a2, unsigned tag);
@@ -3491,8 +3501,13 @@ extern "C" void *f_068938(void *self, unsigned *obj) {
    Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
    Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
    WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320, zeroes its two words after the vtable and hands it to f_05daa4 together with this. Returns this. */
+struct SwgFScope {
+    ~SwgFScope() {}
+};
+
 extern "C" void *f_067e14(void *self) {
     unsigned *n = (unsigned *)f_05db08(12);
+    SwgFScope guard;
     n[0] = (unsigned)&D_1a4320;
     n[1] = 0;
     n[2] = 0;
@@ -3748,7 +3763,7 @@ extern "C" void *f_067320(void *self, unsigned *obj) {
     return self;
 }
 /* @draft 0x065aa0 us f_065aa0
-   Remaining difference: not yet compared word by word.
+   Remaining difference: retail keeps the loop cursor and the next pointer in two registers (two moves per iteration) and the body is 76 bytes; this body is 72 bytes with one register.
    WHAT IT DOES: copies the two-word entries from [first, last) to dst, bumping the reference count of each non-null second word; returns the advanced dst. */
 struct SwgFPair {
     unsigned w0;
@@ -3773,4 +3788,654 @@ extern "C" SwgFPair *f_065aa0(SwgFPair *first, SwgFPair *last, SwgFPair *dst) {
     } while (cur != last);
     return dst;
 }
+
+/* @implements 0x0655dc us f_0655dc
+   WHAT IT DOES: walks a singly linked list of nodes (next at +8, child at +12), recursing into each child and then releasing the node through f_04e4b4. */
+extern "C" void f_0655dc(void *self, unsigned *node) {
+    while (node != 0) {
+        f_0655dc(self, (unsigned *)node[3]);
+        unsigned *next = (unsigned *)node[2];
+        f_04e4b4(node);
+        node = next;
+    }
+}
+
+/* @draft 0x066f04 us f_066f04
+   Remaining difference: not yet compared word by word.
+   WHAT IT DOES: allocates a 36-byte record and, when the record's inner pointer is not null, copies five words from the source record into its words 4 through 8. */
+extern "C" void f_066f04(void *unused, unsigned *src) {
+    (void)unused;
+    unsigned *q = (unsigned *)((char *)f_04dfa0(36) + 16);
+    if (q != 0) {
+        q[4] = src[4];
+        q[3] = src[3];
+        q[0] = src[0];
+        q[1] = src[1];
+        q[2] = src[2];
+    }
+}
+/* @draft 0x0659fc us f_0659fc
+   Remaining difference: the retail loop keeps the cursor in v0 across iterations and only spills it around the call; this volatile cursor reloads it at the loop head and the prologue order differs.
+   WHAT IT DOES: calls f_05df24 on every 8-byte element from first up to last, passing the arg each time, and returns last. */
+extern "C" void *f_0659fc(void *first, void *last, void *arg) {
+    void *volatile cur = first;
+    while (cur != last) {
+        f_05df24(cur, arg);
+        cur = (void *)((char *)cur + 8);
+    }
+    return cur;
+}
+
+/* @draft 0x06a820 us f_06a820
+   Remaining difference: the 8-byte _Unwind_Resume landing pad (the cleanup for the 16-byte record) is not modelled, and the compiler picks a different register for the first rodata word (a0 where retail uses a2).
+   WHAT IT DOES: allocates a 16-byte record, stores the vtable at word 0 and two rodata words at words 2 and 3, clears word 1, and hands it to f_05daa4 together with self; returns self. */
+extern "C" void *f_06a820(void *self) {
+    unsigned *n = (unsigned *)f_05db08(16);
+    unsigned w2 = D_1a4d48;
+    unsigned w3 = D_1a4d4c;
+    n[0] = (unsigned)&D_1a4270;
+    n[2] = w2;
+    n[3] = w3;
+    n[1] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+
+/* @draft 0x06a888 us f_06a888
+   Remaining difference: the 8-byte _Unwind_Resume landing pad (the cleanup for the 16-byte record) is not modelled, and the compiler picks a different register for the first rodata word (a0 where retail uses a2).
+   WHAT IT DOES: allocates a 16-byte record, stores the vtable at word 0 and two rodata words at words 2 and 3, clears word 1, and hands it to f_05daa4 together with self; returns self. */
+extern "C" void *f_06a888(void *self) {
+    unsigned *n = (unsigned *)f_05db08(16);
+    unsigned w2 = D_1a4d50;
+    unsigned w3 = D_1a4d54;
+    n[0] = (unsigned)&D_1a4270;
+    n[2] = w2;
+    n[3] = w3;
+    n[1] = 0;
+    f_05daa4(self, n);
+    return self;
+}
+/* @draft 0x065d94 us f_065d94
+   Remaining difference: not yet compared word by word.
+   WHAT IT DOES: looks up the pointer-to-member entry in table D_1d2ec8 at the index in desc+12, applies its this-adjustment to obj, dispatches through the pointer directly or through the vtable when the adjustment's low bit is set, and returns self. */
+extern "C" void *f_065d94(void *self, unsigned char *obj, void *a2, unsigned *desc) {
+    unsigned *e = (unsigned *)((char *)&D_1d2ec8 + desc[3] * 8);
+    unsigned adj = e[1];
+    unsigned ptr = e[0];
+    volatile unsigned adjSlot = adj;
+    unsigned char *thisp = obj + ((int)adj >> 1);
+    void *fn;
+    if ((*(volatile unsigned char *)&adjSlot & 1) != 0) {
+        unsigned *vt = *(unsigned **)thisp;
+        fn = *(void **)((char *)vt + ptr);
+    } else {
+        fn = (void *)ptr;
+    }
+    ((void (*)(void *, void *, void *, void *))fn)(self, thisp, a2, thisp);
+    return self;
+}
+
+/* @draft 0x0663f0 us f_0663f0
+   Remaining difference: not yet compared word by word.
+   WHAT IT DOES: looks up the pointer-to-member entry in table D_1d2f00 at the index in desc+12, applies its this-adjustment to obj, dispatches through the pointer directly or through the vtable when the adjustment's low bit is set, and returns self. */
+extern "C" void *f_0663f0(void *self, unsigned char *obj, void *a2, unsigned *desc) {
+    unsigned *e = (unsigned *)((char *)&D_1d2f00 + desc[3] * 8);
+    unsigned adj = e[1];
+    unsigned ptr = e[0];
+    volatile unsigned adjSlot = adj;
+    unsigned char *thisp = obj + ((int)adj >> 1);
+    void *fn;
+    if ((*(volatile unsigned char *)&adjSlot & 1) != 0) {
+        unsigned *vt = *(unsigned **)thisp;
+        fn = *(void **)((char *)vt + ptr);
+    } else {
+        fn = (void *)ptr;
+    }
+    ((void (*)(void *, void *, void *, void *))fn)(self, thisp, a2, thisp);
+    return self;
+}
+
+/* @draft 0x066728 us f_066728
+   Remaining difference: not yet compared word by word.
+   WHAT IT DOES: looks up the pointer-to-member entry in table D_1d3018 at the index in desc+12, applies its this-adjustment to obj, dispatches through the pointer directly or through the vtable when the adjustment's low bit is set, and returns self. */
+extern "C" void *f_066728(void *self, unsigned char *obj, void *a2, unsigned *desc) {
+    unsigned *e = (unsigned *)((char *)&D_1d3018 + desc[3] * 8);
+    unsigned adj = e[1];
+    unsigned ptr = e[0];
+    volatile unsigned adjSlot = adj;
+    unsigned char *thisp = obj + ((int)adj >> 1);
+    void *fn;
+    if ((*(volatile unsigned char *)&adjSlot & 1) != 0) {
+        unsigned *vt = *(unsigned **)thisp;
+        fn = *(void **)((char *)vt + ptr);
+    } else {
+        fn = (void *)ptr;
+    }
+    ((void (*)(void *, void *, void *, void *))fn)(self, thisp, a2, thisp);
+    return self;
+}
+
 } /* namespace swgF */
+
+/* ---- swg2b ---- */
+/* TU 117 fragment by worker swg2b: retail 0x05c8d0..0x05dc90 range (C++ with exceptions).
+   Partial: only the functions analysed so far are transcribed, all as drafts. */
+
+namespace swg2b {
+
+extern "C" {
+
+void f_04e4b4(void *p);
+void *f_04dfa0(void *n);
+void f_04ed28(void *s);
+void f_04eee8(void *s, void *tag);
+void f_05daa4(void *s, int z);
+void f_05c7dc(void *a, void *b);
+void f_05c950(void *a, char *e1, char *e2, char *b, char *e3);
+void f_05daa4(void *s, int z);
+int sceKernelCpuSuspendIntr(void);
+void sceKernelCpuResumeIntr(int);
+
+}
+
+struct G2 {
+    int w[4];
+    ~G2() {}
+};
+
+struct Pr {
+    void *a;
+    void *b;
+    Pr() {}
+    Pr(const Pr &o) {
+        a = o.a;
+        b = o.b;
+        if (b) ++*(int *)b;
+    }
+    ~Pr();
+};
+
+extern "C" {
+
+/* @implements 0x05db44 us f_05db44
+   WHAT IT DOES: calls f_04e4b4 on the pointer minus 4.
+   Remaining difference: not yet compared. */
+void f_05db44(char *a0) {
+    G2 g;
+    f_04e4b4(a0 - 4);
+}
+
+/* @implements 0x05db08 us f_05db08
+   WHAT IT DOES: allocates a node through f_04dfa0 for the pointer at +4, stores that pointer in it
+   and returns the node address plus 4.
+   Remaining difference: not yet compared. */
+void *f_05db08(char *a0) {
+    G2 g;
+    char *s0 = a0 + 4;
+    char **v0 = (char **)f_04dfa0(s0);
+    *v0 = s0;
+    return (char *)v0 + 4;
+}
+
+/* @draft 0x05da50 us f_05da50
+   WHAT IT DOES: frees each node of the circular list headed at +4 with f_04e4b4, then makes the
+   head self-linked.
+   Remaining difference: not yet compared. */
+void f_05da50(char *a0) {
+    char *head = *(char **)(a0 + 4);
+    char *s0 = *(char **)head;
+    if (s0 != head) {
+        do {
+            char *nx = *(char **)s0;
+            f_04e4b4(s0);
+            s0 = nx;
+            head = *(char **)(a0 + 4);
+        } while (s0 != head);
+    }
+    *(char **)head = head;
+    *(char **)(head + 4) = head;
+}
+
+/* @draft 0x05dcb8 us f_05dcb8
+   WHAT IT DOES: compares two keys whose word at +4 may be -1 (empty); when both are set returns
+   the signed less-than of the +4 words, otherwise decides by the +12 words.
+   Remaining difference: not yet compared. */
+int f_05dcb8(char *a0, char *a1) {
+    int v1 = *(int *)(a0 + 4);
+    if (v1 != -1) {
+        int v0 = *(int *)(a1 + 4);
+        if (v0 != -1) return v1 < v0;
+        return 1;
+    }
+    if (*(int *)(a1 + 4) != -1) return 0;
+    return (unsigned)*(int *)(a0 + 12) < (unsigned)*(int *)(a1 + 12);
+}
+
+/* @draft 0x05db84 us f_05db84
+   WHAT IT DOES: reads the object at the first word of *a0, decrements its counter at -4 inside an
+   interrupt-disabled section, and calls f_04eee8 when the old counter was zero or less.
+   Remaining difference: not yet compared. */
+void f_05db84(char **a0) {
+    G2 g;
+    char *s0 = *a0;
+    char *s2 = s0 - 12;
+    int intr = sceKernelCpuSuspendIntr();
+    int s1 = *(int *)(s0 - 4);
+    *(int *)(s0 - 4) = *(int *)(s0 - 4) - 1;
+    sceKernelCpuResumeIntr(intr);
+    if (s1 <= 0) f_04eee8(s2, &g);
+}
+
+/* @draft 0x05c8d0 us f_05c8d0
+   WHAT IT DOES: appends the string at *a1 to the string at *a0 (rep layout: length at -12,
+   capacity at -8), growing through f_05c7dc when the capacity is too small.
+   Remaining difference: not yet compared. */
+void f_05c8d0(char **a0, char **a1) {
+    char *A = *a0;
+    char *B = *a1;
+    if ((unsigned)*(int *)(A - 8) < (unsigned)(*(int *)(B - 12) + *(int *)(A - 12))) {
+        f_05c7dc(a0, a1);
+        B = *a1;
+        A = *a0;
+    }
+    char *endA = A + *(int *)(A - 12);
+    char *endB = B + *(int *)(B - 12);
+    f_05c950(a0, endA, endA, B, endB);
+}
+
+/* @draft 0x052788 us f_052788
+   WHAT IT DOES: releases the reference slot at this + index*8 + 296 and reloads it from the
+   node held at +332 of the object, bumping the refcount of the new block.
+   Remaining difference: not yet compared. */
+void f_052788(char *a0, unsigned a1) {
+    char *s3 = a0 + (a1 << 3);
+    char *s1 = s3 + 296;
+    char *v0 = *(char **)(a0 + 332);
+    char *s0 = *(char **)(v0 + 4);
+    char *s2 = s0 + 8;
+    if (s1 == s2) return;
+    f_04ed28(s1);
+    *(char **)s1 = *(char **)(s0 + 8);
+    char *v1 = *(char **)(s2 + 4);
+    if (v1) {
+        *(char **)(s1 + 4) = v1;
+        ++*(int *)v1;
+    }
+}
+
+/* @draft 0x05cbd4 us f_05cbd4
+   WHAT IT DOES: advances a tree iterator (node word at *a0, parent at +4, left at +8, right at
+   +12) to its in-order successor, as _Rb_tree_increment does.
+   Remaining difference: not yet compared. */
+void f_05cbd4(char **a0) {
+    char *x = *a0;
+    if (*(char **)(x + 12)) {
+        *a0 = *(char **)(x + 12);
+        while (*(char **)(*a0 + 8)) *a0 = *(char **)(*a0 + 8);
+        return;
+    }
+    char *y = *(char **)(x + 4);
+    if (x == *(char **)(y + 12)) {
+        *a0 = y;
+        for (;;) {
+            y = *(char **)(y + 4);
+            char *xx = *a0;
+            if (xx != *(char **)(y + 12)) break;
+            *a0 = y;
+        }
+        if (*(char **)(*a0 + 12) != y) *a0 = y;
+        return;
+    }
+    if (*(char **)(x + 12) != y) *a0 = y;
+}
+
+/* @draft 0x05de94 us f_05de94
+   WHAT IT DOES: when the object at +4 of a0 is non-null, copies the pair at a2 into a local
+   (taking a reference), calls its virtual slot 45 with a0 as this, and releases the local.
+   Remaining difference: not yet compared. */
+int f_05de94(char *a0, void *a1, Pr *a2) {
+    char *obj = *(char **)(a0 + 4);
+    if (!obj) return 0;
+    Pr tmp(*a2);
+    typedef int (*vf)(void *, void *, void *, void *);
+    int s0 = ((vf)(*(void ***)obj)[45])(obj, a0, a1, &tmp);
+    return s0 != 0;
+}
+
+/* @draft 0x05dbf4 us f_05dbf4
+   WHAT IT DOES: when the object at +4 of a1 is non-null, asks its virtual slot 44 for a pair,
+   stores that pair in the object at a0 (with a reference) or clears a0 through f_05daa4.
+   Remaining difference: not yet compared. */
+void *f_05dbf4(char *s0, char *a1, void *a2) {
+    char *obj = *(char **)(a1 + 4);
+    if (!obj) {
+        f_05daa4(s0, 0);
+        return s0;
+    }
+    Pr tmp;
+    typedef void (*vf)(void *, void *, void *, void *);
+    ((vf)(*(void ***)obj)[44])(&tmp, obj, a1, a2);
+    if (!tmp.a) {
+        f_04ed28(&tmp);
+        f_05daa4(s0, 0);
+        return s0;
+    }
+    *(void **)s0 = tmp.a;
+    *(void **)(s0 + 4) = tmp.b;
+    if (tmp.b) ++*(int *)tmp.b;
+    f_04ed28(&tmp);
+    return s0;
+}
+
+}
+
+Pr::~Pr() {
+    f_04ed28(this);
+}
+
+}
+
+/* ---- swg2c ---- */
+/* TU 117 fragment swg2c: retail 0x05df24..0x061cc8 (the Flash/ActionScript player range,
+   C++ with exceptions). Shared-pointer style copy and release helpers, list and vector
+   helpers, and the ASContextImpl property hook trace and insert wrappers. Callees outside
+   this fragment are declared extern "C" with their retail addresses. */
+
+namespace swg2c {
+
+extern "C" {
+
+extern char D_1a43d0[];
+extern char D_1a3134[];
+extern char D_1a30d0[];
+
+void *f_04dfa0(void *);
+void f_04e4b4(void *);
+void f_04e8c0(void *);
+void f_04ed28(char *);
+void f_05db84(void *);
+char *f_05f708(char *, char *, char *, int);
+void f_05f774(char *, char *, int, int);
+void f_060920(void *, unsigned, unsigned, unsigned);
+void *memmove(void *, const void *, unsigned);
+int iprintf(const char *, ...);
+void _Unwind_Resume(void *);
+void *f_065008(void *, void *);
+void *f_0655a4(void *, void *);
+unsigned char f_05dcb8(char *, void *);
+void f_05db44(void *);
+
+/* @draft 0x061c7c us f_061c7c
+   WHAT IT DOES: copies the 8-byte entries from the first argument up to the second into the
+   destination array, bumping the reference count of each copied second word. */
+void *f_061c7c(char *first, char *last, char *d) {
+    if (first == last) return d;
+    char *p = first;
+    do {
+        if (d) {
+            char *s = *(char **)(p + 4);
+            *(char **)(d + 4) = s;
+            *(char **)d = *(char **)p;
+            if (s) (*(int *)s)++;
+        }
+        p += 8;
+        d += 8;
+    } while (p != last);
+    return d;
+}
+
+/* @draft 0x060ac4 us f_060ac4
+   WHAT IT DOES: if the count stored at -4 of the buffer is positive, calls f_060920 on the
+   object with zero arguments; then stores -1 at -4 of the buffer. */
+void f_060ac4(char **s) {
+    char *v = *s;
+    if (*(int *)(v - 4) > 0) {
+        f_060920(s, 0, 0, 0);
+        v = *s;
+    }
+    *(int *)(v - 4) = -1;
+}
+
+/* @draft 0x05f4d0 us f_05f4d0
+   WHAT IT DOES: clears the word at +4 of the object, allocates a 24-byte self-linked list head
+   and stores it at +4, then clears the word at +8 and links the head to itself.
+   Remaining difference: landing pad not yet reproduced. */
+void f_05f4d0(char *self) {
+    *(void **)(self + 4) = 0;
+    void *n = f_04dfa0((void *)24);
+    *(void **)(self + 4) = n;
+    *(void **)((char *)n + 4) = 0;
+    *(void **)(self + 8) = 0;
+    *(void **)((char *)n + 8) = n;
+    *(void **)n = 0;
+    *(void **)((char *)n + 12) = n;
+}
+
+/* @draft 0x061b28 us f_061b28
+   WHAT IT DOES: stores the vtable address D_1a43d0 into the object, constructs the sub-object at
+   +28 with f_05db84, then runs the base destructor f_04e8c0 on the object.
+   Remaining difference: landing pad not yet reproduced. */
+void f_061b28(char *s) {
+    *(void **)s = D_1a43d0;
+    f_05db84(s + 28);
+    f_04e8c0(s);
+}
+
+/* @draft 0x061be0 us f_061be0
+   WHAT IT DOES: allocates n four-byte elements and copies the bytes from the first pointer up to
+   the second into them with memmove; returns the new block. */
+void *f_061be0(void *self, unsigned n, char *first, char *last) {
+    (void)self;
+    unsigned count = (unsigned)(last - first);
+    void *d = f_04dfa0((void *)(n << 2));
+    memmove(d, first, count);
+    return d;
+}
+
+/* @draft 0x05f64c us f_05f64c
+   WHAT IT DOES: moves the node at the pointer held in the third argument into the object
+   given first: takes the node's next link, relinks the neighbour, runs f_04ed28 on the node's
+   sub-object, frees the node with f_04e4b4, and stores the link into the first argument. */
+void *f_05f64c(char *self, int unused, char **pp) {
+    (void)unused;
+    char *s0 = *pp;
+    char *s1 = *(char **)s0;
+    *(char **)(s1 + 4) = *(char **)(s0 + 4);
+    f_04ed28(s0 + 8);
+    *(char **)(*(char **)(s0 + 4)) = s1;
+    f_04e4b4(s0);
+    *(char **)self = s1;
+    return self;
+}
+
+/* @implements 0x05e264 us f_05e264
+   WHAT IT DOES: property hook trace: reports the value at +8 of the object through iprintf,
+   choosing the format from the sign of that value and whether it matches the argument. */
+void f_05e264(char *self, int a1) {
+    char **t = (char **)self;
+    int v1 = *(int *)(self + 8);
+    int lim = -v1 - 1;
+    int v0 = a1 < lim;
+    if (v1 < 0) {
+        if (v0) iprintf(D_1a3134, *t, -v1, a1);
+    } else {
+        if (v1 != a1) iprintf(D_1a30d0, *t, v1, a1);
+    }
+}
+
+/* @draft 0x05f6a8 us f_05f6a8
+   WHAT IT DOES: inserts the value (third argument) at index i of the vector held at the object:
+   with i below the element count it calls f_05f708 at the element pointer, otherwise f_05f774
+   with the end pointer and the excess count.
+   Remaining difference: draft from the listing, not yet compared. */
+void f_05f6a8(char *self, unsigned i, int x) {
+    char *begin = *(char **)(self + 4);
+    char *end = *(char **)(self + 8);
+    unsigned count = (unsigned)(end - begin) >> 2;
+    char *pos = begin + (i << 2);
+    if (i < count) {
+        f_05f708(self, pos, end, x);
+    } else {
+        f_05f774(self, end, (int)(i - count), x);
+    }
+}
+
+/* @draft 0x05df24 us f_05df24
+   WHAT IT DOES: copy assignment of a reference-counted pointer pair: when the source is a
+   different object, releases this object with f_04ed28, copies the two words from the source
+   and bumps the count of the second word's target. */
+void *f_05df24(char *self, char *o) {
+    if (self != o) {
+        f_04ed28(self);
+        char *v1 = *(char **)(o + 4);
+        *(char **)(self + 4) = v1;
+        *(char **)self = *(char **)o;
+        if (v1) (*(int *)v1)++;
+    }
+    return self;
+}
+
+/* @draft 0x061b80 us f_061b80
+   WHAT IT DOES: stores the vtable address D_1a43d0 into the object, constructs the sub-object at
+   +28 with f_05db84 and runs the base destructor f_04e8c0, then calls f_05db44 on the object.
+   Remaining difference: landing pad not yet reproduced. */
+void f_061b80(char *s) {
+    *(void **)s = D_1a43d0;
+    f_05db84(s + 28);
+    f_04e8c0(s);
+    f_05db44(s);
+}
+
+/* @implements 0x05f708 us f_05f708
+   WHAT IT DOES: erases the range from the second pointer up to the third from the vector (the
+   first argument): moves the tail down with memmove, then lowers the end pointer at +8 by the
+   erased byte count rounded to whole words; returns the first pointer. */
+char *f_05f708(char *self, char *pos, char *end, int x) {
+    (void)x;
+    char *v = *(char **)(self + 8);
+    memmove(pos, end, (unsigned)(v - end));
+    int n = (((int)(end - pos)) >> 2) << 2;
+    *(char **)(self + 8) = *(char **)(self + 8) - n;
+    return pos;
+}
+
+/* @draft 0x05df80 us f_05df80
+   WHAT IT DOES: compares two tagged values: when both keys at +4 are not -1 it returns whether
+   they are equal; otherwise it returns 0 unless both are -1, and then compares the words at +12.
+   Remaining difference: branch shape not yet matched. */
+int f_05df80(char *self, char *o) {
+    int a = *(int *)(self + 4);
+    if (a != -1) {
+        int b = *(int *)(o + 4);
+        if (b != -1) return (a ^ b) == 0;
+        return 0;
+    }
+    if (*(int *)(o + 4) != -1) return 0;
+    return *(int *)(self + 12) == *(int *)(o + 12);
+}
+
+/* @implements 0x05e394 us f_05e394
+   WHAT IT DOES: allocates a node from the two arguments with f_065008 and links it into the
+   list before the node the third argument points to, then stores the node into the first
+   argument and returns that.
+   Remaining difference: draft from the listing, not yet compared. */
+char *f_05e394(char *self, void *a1, char **pp, void *a3) {
+    char *n = (char *)f_065008(a1, a3);
+    *(char **)n = *pp;
+    *(char **)(n + 4) = *(char **)(*pp + 4);
+    *(char **)(*(char **)(*pp + 4)) = n;
+    *(char **)(*pp + 4) = n;
+    *(char **)self = n;
+    return self;
+}
+
+/* @draft 0x05f56c us f_05f56c
+   WHAT IT DOES: lower-bound search in the tree whose header is the second argument: walks from
+   the root (the header's +4 word) comparing node keys at +16 with the key pointed to by the
+   third argument; stores the best node, or the header when there is none, into the first
+   argument and returns it.
+   Remaining difference: draft from the listing, not yet compared. */
+char *f_05f56c(char *res, char *hdr, unsigned *key) {
+    char *head = *(char **)(hdr + 4);
+    char *node = *(char **)(head + 4);
+    char *best = head;
+    while (node) {
+        if (*(unsigned *)(node + 16) < *key) {
+            node = *(char **)(node + 12);
+        } else {
+            best = node;
+            node = *(char **)(node + 8);
+        }
+    }
+    if (best != head && !(*key < *(unsigned *)(best + 16))) {
+        *(char **)res = best;
+    } else {
+        *(char **)res = head;
+    }
+    return res;
+}
+
+/* @draft 0x05f5dc us f_05f5dc
+   WHAT IT DOES: lower-bound search in the same tree form as f_05f56c (a second copy of the
+   same walk): stores the best node, or the header, into the first argument and returns it.
+   Remaining difference: draft from the listing, not yet compared. */
+char *f_05f5dc(char *res, char *hdr, unsigned *key) {
+    char *head = *(char **)(hdr + 4);
+    char *node = *(char **)(head + 4);
+    char *best = head;
+    while (node) {
+        if (*(unsigned *)(node + 16) < *key) {
+            node = *(char **)(node + 12);
+        } else {
+            best = node;
+            node = *(char **)(node + 8);
+        }
+    }
+    if (best != head && !(*key < *(unsigned *)(best + 16))) {
+        *(char **)res = best;
+    } else {
+        *(char **)res = head;
+    }
+    return res;
+}
+
+/* @implements 0x0613e8 us f_0613e8
+   WHAT IT DOES: same node insertion as f_05e394, allocating through f_0655a4 instead of
+   f_065008: builds a node from the two arguments, links it before the node the third argument
+   points to, stores it into the first argument and returns that. */
+char *f_0613e8(char *self, void *a1, char **pp, void *a3) {
+    char *n = (char *)f_0655a4(a1, a3);
+    *(char **)n = *pp;
+    *(char **)(n + 4) = *(char **)(*pp + 4);
+    *(char **)(*(char **)(*pp + 4)) = n;
+    *(char **)(*pp + 4) = n;
+    *(char **)self = n;
+    return self;
+}
+
+/* @draft 0x05dff0 us f_05dff0
+   WHAT IT DOES: tree search for the key pointer in the third argument from the root (the
+   second argument's header at +4, its own root at +4); walks right when the node test
+   f_05dcb8 is true and left otherwise, keeping the last left-turn node; stores it into the
+   first argument and returns that.
+   Remaining difference: draft from the listing, not yet compared. */
+char *f_05dff0(char *self, char *a1, void *a2) {
+    char *s1 = *(char **)(a1 + 4);
+    char *s0 = *(char **)(s1 + 4);
+    if (s0) {
+        do {
+            if (f_05dcb8(s0 + 16, a2)) {
+                s0 = *(char **)(s0 + 12);
+            } else {
+                s1 = s0;
+                s0 = *(char **)(s0 + 8);
+            }
+        } while (s0);
+    }
+    *(char **)self = s1;
+    return self;
+}
+
+}  // extern "C"
+
+}  // namespace swg2c
