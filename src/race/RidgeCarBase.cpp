@@ -25,13 +25,24 @@ void f_0bd234(void *o, float a, float b);
 void f_0a5ea4(void *out, void *m, float f);
 float f_0a65c4(void *v);
 void f_0bc954(void *o, float a, float b, float c, float d, float e, float g, float h);
+void f_0a6d4c(void *out, void *m, void *v);
+void f_0be874(void *list, void *car);
+void f_099b98(float *a);
+void f_0a5e1c(void *v, float len);
 }
 
 extern char D_1acab8[];
+extern char D_245ec0[];
 
 /* A field of the car at a byte offset. */
 #define FLT(p, o) (*(float *)((char *)(p) + (o)))
 #define INT(p, o) (*(int *)((char *)(p) + (o)))
+/* A word read as an integer or as a float (the retail code copies these through integer registers). */
+union FloatBits {
+    float f;
+    int i;
+};
+
 #define CHR(p, o) (*(signed char *)((char *)(p) + (o)))
 
 /* The base object (its constructor and destructor are in another object file). */
@@ -388,4 +399,159 @@ extern "C" float f_0bb40c(void *cp, float *v)
     float r = m < 2.0f ? 2.0f : m;
     FLT(c, 160) = r;
     return r;
+}
+
+/* @draft 0x0b9b8c us f_0b9b8c
+   WHAT IT DOES: When the car's state at +128 is not 1, sets four vectors in the physics record
+   at +64 (each 16 bytes): each is a matrix row transformed by f_0a6d4c, with y and z negated,
+   w set to 1.0, then scaled by f_0a5e1c to length 1000. Then calls f_0be874 on the list at
+   D_245ec0 and returns the word at +1888; returns 0 otherwise.
+   Remaining difference: retail sets r = 0 (move a1,zero) before the state test and keeps it in a1; GCC sinks it into the else path, so the size is 232 against 236. */
+extern "C" int f_0b9b8c(void *cp)
+{
+    char *c = (char *)cp;
+    int r = 0;
+    if (INT(c, 128) != 1) {
+        char *p = c + 5792;
+        float one = 1.0f;
+        for (int n = 0; n < 4; n++) {
+            int o[3];
+            f_0a6d4c(o, c + 6560, p + 64);
+            INT(p, 136) = o[2];
+            INT(p, 132) = o[1];
+            INT(p, 128) = o[0];
+            FLT(p, 132) = -FLT(p, 132);
+            FLT(p, 136) = -FLT(p, 136);
+            FLT(p, 140) = one;
+            f_0a5e1c(p + 128, 1000.0f);
+            p += 16;
+        }
+        f_0be874(D_245ec0, c);
+        r = INT(c, 1888);
+    }
+    return r;
+}
+
+/* @draft 0x0bb154 us f_0bb154
+   WHAT IT DOES: Builds a vector from the car's words at +144, +148 and +152 (the last two
+   negated, the w component 1.0), normalises it to length 0.001 with f_0a5e1c and stores it in
+   the physics record. Then stores the truncated word at +2144 into the record at +428, adds the
+   word at +980 of the record to the float at +4 of the record, and writes the result of
+   f_099b98 on the word at +2136 to +20 of the record.
+   Remaining difference: retail reloads the word at +5796 after the three copies and keeps the
+   truncated word in $f2; this build loads +5796 early and uses $f3 (18 of 51 words differ). */
+extern "C" void f_0bb154(void *cp)
+{
+    char *c = (char *)cp;
+    char *ph = c + 5792;
+    FloatBits v[4];
+    v[0].i = INT(c, 144);
+    v[1].i = INT(c, 148);
+    v[2].i = INT(c, 152);
+    v[1].f = -v[1].f;
+    v[2].f = -v[2].f;
+    v[3].f = 1.0f;
+    f_0a5e1c(v, 0.001f);
+    INT(ph, 0) = v[0].i;
+    int k = (int)FLT(c, 2144);
+    INT(ph, 12) = v[3].i;
+    INT(ph, 4) = v[1].i;
+    INT(ph, 8) = v[2].i;
+    FLT(c, 5796) = FLT(c, 5796) + FLT(c, 6772);
+    INT(ph, 428) = k;
+    FloatBits t;
+    t.f = FLT(c, 2136);
+    f_099b98(&t.f);
+    INT(c, 5812) = t.i;
+}
+
+/* @draft 0x0b9d28 us f_0b9d28
+   WHAT IT DOES: When the second argument is zero, reads the word at +9912, runs f_0b9e0c
+   when that word is 2 and the first argument is 0, then stores the first argument at +7948
+   and +9912 and the old word at +9916. Otherwise stores the old word at +9916 and switches on
+   the first argument: case 0 sets +9912 and +9916 to 2, case 2 runs f_0b9e0c and clears
+   +9912 when the word is 2, case 4 sets +9912 to 1; then stores the word at +7948.
+   Remaining difference: the register assignment (retail keeps the record pointer in s0, this build in s1); 40 of 55 words differ, size 212 against 220. */
+extern "C" void f_0b9d28(void *cp, int a1, int a2)
+{
+    char *c = (char *)cp;
+    if (a2 == 0) {
+        int m = INT(c, 9912);
+        if (a1 == 0 && m == 2) {
+            f_0b9e0c(c);
+            m = INT(c, 9912);
+        }
+        INT(c, 7948) = a1;
+        INT(c, 9916) = m;
+        INT(c, 9912) = a1;
+        return;
+    }
+    int m = INT(c, 9912);
+    INT(c, 9916) = m;
+    switch (a1) {
+    case 0:
+        INT(c, 9912) = 2;
+        INT(c, 9916) = 2;
+        m = 2;
+        break;
+    case 2:
+        if (m == 2) {
+            f_0b9e0c(c);
+            m = 0;
+            INT(c, 9912) = 0;
+        }
+        break;
+    case 4:
+        INT(c, 9912) = 1;
+        m = 1;
+        break;
+    default:
+        break;
+    }
+    INT(c, 7948) = m;
+}
+
+/* @draft 0x0bb220 us f_0bb220
+   WHAT IT DOES: Takes the spec record (the second argument). Stores 1.0 divided by its word at
+   +12 at +9888 and stores the word at +12 at +1060 of the physics record. Then runs four
+   records of 368 bytes from +8336 (each takes its +16 word into +36 and +40, adds the spec's
+   +16 word to it, and sets +24 and +28 from the spec's +20 and +24 words scaled by 9.8 / 0.3
+   and +32 to 10.0). Sets +1080 and +1072 to the physics record's +1060 times 9.8, calls
+   f_0bb40c on +7816 with the spec's +28, stores the spec's +208 record at +8048, scales its
+   +212 word by 1/3.6 when its +236 word is 0 (then sets that word to 1), and sets +9892 to
+   1.0 divided by the word at +16 of that record.
+   Remaining difference: size 292 against 304 and the prologue register order differs (70 of 76 words differ). */
+extern "C" void f_0bb220(void *cp, void *spec)
+{
+    char *c = (char *)cp;
+    char *s = (char *)spec;
+    char *ph = c + 5792;
+    float inv = 1.0f / FLT(s, 12);
+    FLT(ph, 1060) = FLT(s, 12);
+    *(void **)(ph + 1104) = spec;
+    FLT(c, 9888) = inv;
+    char *p = c + 8336;
+    for (int i = 3; i >= 0; i--) {
+        float v = FLT(p, 16);
+        FLT(p, 36) = v;
+        FLT(p, 40) = v;
+        FLT(p, 16) = v + FLT(s, 16);
+        FLT(p, 24) = FLT(s, 20) * 9.8f / 0.3f;
+        FLT(p, 28) = FLT(s, 24) * 9.8f / 0.3f;
+        FLT(p, 32) = 10.0f;
+        p += 368;
+    }
+    float t = FLT(ph, 1060) * 9.8f;
+    FLT(ph, 1080) = t;
+    FLT(ph, 1072) = t;
+    f_0bb40c(c + 7816, (float *)(s + 28));
+    char *a = s + 208;
+    *(void **)(c + 8048) = a;
+    if (INT(a, 28) == 0) {
+        INT(a, 28) = 1;
+        FLT(a, 4) = FLT(a, 4) * 0.2777779996f;
+    }
+    INT(ph, 1272) = 0;
+    char *q = *(char **)(c + 8048);
+    FLT(c, 9892) = 1.0f / FLT(q, 16);
 }
