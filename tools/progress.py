@@ -69,6 +69,8 @@ def tiers():
                 t3.add(int(r['addr'], 16))
     claims = set()
     for path in glob.glob(os.path.join(ROOT, 'src/**/*.c*'), recursive=True):
+        if os.path.relpath(path, ROOT).startswith('src/control/'):
+            continue  # a control copy's @implements must not promote a filed @draft at its address
         for m in re.finditer(r'@implements\s+0x([0-9a-fA-F]+)\s+us', open(path).read()):
             claims.add(int(m.group(1), 16))
     rows = []
