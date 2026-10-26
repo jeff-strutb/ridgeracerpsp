@@ -2,7 +2,7 @@
 
 **Started October 12, 2026.** The retail executable is mapped and its compiler is identified. A per-function grader compiles C++ and C with that compiler and compares them to the original bytes, and a rebuilt `BOOT.BIN` holding every matched function is byte-identical to retail.
 
-4,058 game functions are now filed and byte-exact, 32.8% of the game's code (see [Current Status](#current-status)): startup and the main loop, loading and saving, every menu and mode job, race setup, the screen manager, graphics, textures, sound, the radio and its DJ, models, vectors and transforms, the controller, wireless play, race events, the race HUD, much of the race effects and part of the Flash-style movie player.
+4,178 game functions are now filed and byte-exact, 33.3% of the game's code (see [Current Status](#current-status)): startup and the main loop, loading and saving, every menu and mode job, race setup, the screen manager, graphics, textures, sound, the radio and its DJ, models, vectors and transforms, the controller, wireless play, race events, the race HUD, much of the race effects and part of the Flash-style movie player.
 
 **Maintainer:** Jeffrey Wilbur, Strut B, LLC\
 **Contact:** [retro@strutb.com](mailto:retro@strutb.com)
@@ -168,7 +168,7 @@ The checker is mutation-tested. A global moved by 4 bytes, a one-character chang
 
 It must report 0 differing bytes.
 
-It currently places 4,058 functions from 238 sources with 0 differing bytes. Its self-test adds the control set's EXACT functions (4,071 in all) and also produces a byte-identical file. A planted wrong global in a filed source fails it.
+It currently places 4,178 functions from 244 sources with 0 differing bytes. Its self-test adds the control set's EXACT functions (4,188 in all) and also produces a byte-identical file. A planted wrong global in a filed source fails it.
 
 ### Architecture
 
