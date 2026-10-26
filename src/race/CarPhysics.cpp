@@ -21,10 +21,10 @@ struct CarPhys {
     int m52;
     int m56;
     int m60;
-    int m64;
-    int m68;
-    int m72;
-    int m76;
+    float m64;
+    float m68;
+    float m72;
+    float m76;
     int m80;
     int m84;
     int m88;
@@ -491,4 +491,155 @@ extern "C" void f_0af2cc(int a, int b)
         f_0a6f88((CarPhys *)((char *)&D_245430 - 13984));
     if (s0 && a == 0)
         f_0a6fac();
+}
+
+extern float D_2456b0;
+
+/* @draft 0x0a737c us f_0a737c
+   WHAT IT DOES: Sets up the car physics state from four float arguments: the position and height, with the mode and index fields reset and the stored copies cleared.
+   Remaining difference: store order (first run). */
+extern "C" void f_0a737c(CarPhys *p, float x, float y, float z, float w)
+{
+    f_0a6fb4(p);
+    p->m84 = -1;
+    p->m0 = x;
+    p->m12 = y;
+    p->m4 = z;
+    p->m64 = p->m8 = 0.0f;
+    p->m116 = 1;
+    p->m68 = p->m76 = 1.0f;
+    p->m72 = 0.0f;
+    p->m117 = 0;
+    p->m120 = p->m128 = p->m16 = w;
+    p->m28 = p->m20 = p->m24 = 0.0f;
+}
+
+/* @draft 0x0a78f0 us f_0a78f0
+   WHAT IT DOES: Copies the height and the second height into their stored copies, runs the height copy, then looks up the car's track position with the lookup chosen by the car's flag, and stores the short result and the table entry for the car's key.
+   Remaining difference: the track sub-object address (lui/addiu of the symbol plus 15696, then 12256) is a relocation with the constant folded into its addend; the branch layout also differs (15 of 44 words). */
+extern "C" void f_0a78f0(CarPhys *p)
+{
+    p->m24 = p->m16;
+    p->m28 = p->m20;
+    f_0ae9f8(p);
+    f_099b98((char *)p + 8);
+    float v[4];
+    v[0] = p->m0;
+    v[1] = p->m12;
+    v[2] = p->m4;
+    v[3] = 1.0f;
+    char *s = (char *)&D_23c820 + 15696;
+    __asm__("" : "+r"(s));
+    s += 12256;
+    if (p->m116 == 0)
+        p->m92 = f_0af788(s, v);
+    else
+        p->m92 = f_0aff7c(s, v);
+    p->m104 = f_0af5e8(s, &p->m92);
+}
+
+/* @draft 0x0a881c us f_0a881c
+   WHAT IT DOES: Copies the height and the first height into their stored copies, resets the car's mode and index fields and the four per-wheel arrays, then runs the two steps f_0aea0c and f_0aea84.
+   Remaining difference: first run. */
+extern "C" void f_0a881c(CarPhys *p)
+{
+    p->m24 = p->m16;
+    p->m28 = p->m20;
+    f_099b98((char *)p + 8);
+    p->m108 = 0;
+    p->m120 = p->m16;
+    p->m100 = -1;
+    char *w = (char *)p;
+    short *sh = (short *)((char *)p + 392);
+    int k = 3;
+    do {
+        k--;
+        *(int *)(w + 400) = 0;
+        *sh++ = -1;
+        *(float *)(w + 336) = p->m12;
+        *(int *)(w + 376) = 0;
+        w += 4;
+    } while (k >= 0);
+    f_0aea0c(p);
+    f_0aea84(p);
+}
+
+/* @draft 0x0a8f0c us f_0a8f0c
+   WHAT IT DOES: Compares the car's height and its stored height with a given value, each wrapped by the track length, and returns -1 when the difference is above 500, 1 when it is below -500, and 0 otherwise.
+   Remaining difference: first run. */
+extern "C" int f_0a8f0c(CarPhys *p, float x)
+{
+    float a;
+    float b;
+    if (p->m16 < x)
+        a = (p->m16 + D_2456b0) - x;
+    else
+        a = p->m16 - x;
+    if (p->m128 < x)
+        b = (p->m128 + D_2456b0) - x;
+    else
+        b = p->m128 - x;
+    float d = a - b;
+    if (500.0f < d)
+        return -1;
+    if (d < -500.0f)
+        return 1;
+    return 0;
+}
+
+extern "C" {
+int f_0d5f78(void *d, int v);
+unsigned short f_0af9c4(void *p, const float *v, const float *h);
+unsigned short f_0b0234(void *p, const float *v, const float *h);
+void f_0aa748(CarPhys *p);
+void f_0ab370(CarPhys *p);
+}
+
+/* @draft 0x0a88ac us f_0a88ac
+   WHAT IT DOES: Updates the car's stored position and height, runs the track step f_0aa748, reads the track lookups for the car's position and copies the result into the car, then runs the wheel step when the lookup result is the sentinel and the two drive steps.
+   Remaining difference: first run; the ordering of the stored copies and the lookup pointer arithmetic are not yet matched. */
+extern "C" void f_0a88ac(CarPhys *p)
+{
+    float saved12 = p->m12;
+    int savedIdx = p->m104;
+    p->m24 = p->m16;
+    p->m28 = p->m20;
+    f_0ae9f8(p);
+    p->m148 = p->m0;
+    p->m152 = p->m4;
+    if ((short)p->m100 < 0)
+        p->m164 = -1;
+    else
+        p->m164 = p->m100;
+    f_0aa748(p);
+    p->m20 = p->m140;
+    p->m100 = p->m164;
+    p->m16 = p->m136;
+    char *d = (char *)&D_23c820 + 15696;
+    __asm__("" : "+r"(d));
+    p->m112 = f_0d5f78(d + 12144, (int)p->m136);
+    char *s2 = d + 12256;
+    char *s5 = d + 12240;
+    float v[4];
+    v[0] = p->m0;
+    v[1] = p->m12;
+    v[2] = p->m4;
+    v[3] = 1.0f;
+    if (p->m116 == 0)
+        p->m92 = f_0af9c4(s2, v, &p->m12);
+    else
+        p->m92 = f_0b0234(s2, v, &p->m12);
+    p->m104 = f_0af5e8(s2, &p->m92);
+    if ((unsigned short)p->m92 == 0xffff) {
+        f_0ab370(p);
+        p->m12 = p->m144;
+        p->m92 = p->m184;
+        p->m104 = f_0af5e8(s5 + 112, &p->m92);
+    }
+    if ((unsigned short)p->m92 == 0xffff) {
+        p->m12 = saved12;
+        p->m104 = savedIdx;
+    }
+    f_0aea0c(p);
+    f_0aea84(p);
 }
