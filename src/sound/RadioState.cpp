@@ -259,16 +259,21 @@ int CState::f_0f8964()
     return e->m6;
 }
 
-/* @draft 0x0f897c us f_0f897c
-   REMAINING DIFFERENCE: retail keeps the result in t0 through the loop (set to 1 in the match
-   branch's slot and back to 0 after the loop); here the inline search's result is copied
-   through v0 and v1.
+/* @implements 0x0f897c us f_0f897c
    WHAT IT DOES: Tells whether the node being played holds the script with the given id. */
 int CState::f_0f897c(unsigned short id)
 {
     int r = 0;
-    if (m64.e[0].ent)
-        r = Has(id);
+    if (m64.e[0].ent) {
+        for (int i = 0; i < m56; i++) {
+            if (m64.e[i].ent->m4 == id) {
+                r = 1;
+                goto done;
+            }
+        }
+        r = 0;
+    }
+done:
     return r;
 }
 
@@ -770,8 +775,7 @@ int CState::f_0f959c()
     return r;
 }
 
-/* @draft 0x0f95c8 us f_0f95c8
-   REMAINING DIFFERENCE: the next script's entry and its file count swap v0 and v1.
+/* @implements 0x0f95c8 us f_0f95c8
    WHAT IT DOES: The sound file after the current one: the script's next file, else the next
    script's first file; -1 if none. */
 short CState::f_0f95c8()
@@ -786,10 +790,14 @@ short CState::f_0f95c8()
             r = m64.e[j].rec[k];
         } else {
             j = j + 1;
-            if (j < m56 && m64.e[j].ent->m10)
-                r = m64.e[j].rec[0];
-            else
+            if (j < m56) {
+                if (m64.e[j].ent->m10)
+                    r = m64.e[j].rec[0];
+                else
+                    r = -1;
+            } else {
                 r = -1;
+            }
         }
     } else {
         r = -1;
