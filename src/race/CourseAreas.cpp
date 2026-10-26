@@ -186,11 +186,11 @@ float CourseAreas::f_0e229c(float d)
 
 /* @draft 0x0e2334 us CourseAreas8f_0e2334
    WHAT IT DOES: Returns the ground height at a sideways offset (-32 to 31) and a distance.
-   DIFFERS: 35/39 words differ, first at +0x0 (not yet worked). */
+   DIFFERS: 23/39 words differ, first at +0x28 (k lands in a1, retail a2). */
 float CourseAreas::f_0e2334(float a, float d)
 {
-    int k = (int)a;
     RoadPoint *p = &road[(int)f_0e26dc(d)];
+    int k = (int)a;
 
     if (k < -32)
         k = -32;
