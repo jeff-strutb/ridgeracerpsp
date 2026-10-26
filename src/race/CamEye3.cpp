@@ -257,15 +257,14 @@ void CCamEye3::f_0c4c20()
     m748 = 0.78539819f;
 }
 
-/* @draft 0x0c56f0 us _ZN7CamCtrl8CCamEye38f_07f5e0EPi
-   DRAFT: two words: retail loads the view pointer before the previous view pointer; reading
-   the previous view after the stores reorders the stores instead.
+/* @implements 0x0c56f0 us _ZN7CamCtrl8CCamEye38f_07f5e0EPi
    WHAT IT DOES: Starts the camera: marks its view, marks the previous camera's view and sets
    a far distance of 300. */
 void CCamEye3::f_07f5e0(int *arg)
 {
     E3View *v = View();
-    E3View *o = (E3View *)param.v[1];
+    E3View **pp = (E3View **)&param.v[1];
+    E3View *o = *pp;
     v->m668 = 1;
     v->m672 = 1;
     v->m664 = 1;
