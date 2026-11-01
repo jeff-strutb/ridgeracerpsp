@@ -7713,3 +7713,775 @@ E44 *f_060d18(char *v, E44 *first, E44 *last) {
 }
 }
 }
+
+/* ---- swg4c ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 wave 3, worker swg4c */
+namespace swg4c {
+extern "C" {
+
+void f_15f12c(void *, int);
+void f_04e4b4(void *);
+struct Tmp16 { int w[4]; ~Tmp16() {} };
+
+struct Lsn { virtual void a0(); virtual void a1(); virtual void a2(); virtual void a3(); virtual void a4(); virtual void a5(); virtual void a6(void *); };
+struct Own { virtual void v0(); virtual void v1(); };
+struct Cfg { char pad[40]; unsigned fl; };
+struct Cf0 { int p0, p1, p2; Cfg *cfg; char pad[216]; Lsn *lsn; };
+struct Par { int p0; Cf0 *c; };
+struct Obj { virtual void v0(); int p[3]; Own *own; char pad[312]; int x; };
+
+/* @draft 0x05a258 us f_05a258
+   WHAT IT DOES: calls f_15f12c(obj,1), invokes the object's first virtual slot, then if a flag in the owner's config is set and the object has a field at 332 notifies the owner's listener through virtual slot 6, releases the object kept at +16 through its slot 1 and finishes with f_04e4b4. */
+void f_05a258(Par *self, Obj *o) {
+    Tmp16 t;
+    f_15f12c(o, 1);
+    Own *k = o->own;
+    o->v0();
+    if ((self->c->cfg->fl & 1) && o->x) self->c->lsn->a6(o);
+    if (k) k->v1();
+    f_04e4b4(o);
+}
+
+void *f_04dfa0(unsigned);
+void *memmove(void *, const void *, unsigned);
+void f_1312d4(const char *);
+extern char D_1a3074[];
+
+/* @draft 0x05b780 us f_05b780
+   WHAT IT DOES: vector reserve: throws when n exceeds the maximum size; when the capacity is below n allocates a new block, memmoves the old elements, frees the old block and sets begin, end and capacity. */
+void f_05b780(char *v, unsigned n) {
+    if (n > 0x3fffffff) f_1312d4(D_1a3074);
+    char *b = *(char **)(v + 4);
+    if ((unsigned)((*(char **)(v + 12) - b) >> 2) < n) {
+        char *e = *(char **)(v + 8);
+        char *nb = (char *)f_04dfa0(n * 4);
+        unsigned cnt = e - b;
+        memmove(nb, b, cnt);
+        if (*(char **)(v + 4)) f_04e4b4(*(char **)(v + 4));
+        *(char **)(v + 12) = nb + n * 4;
+        *(char **)(v + 8) = nb + (cnt >> 2) * 4;
+        *(char **)(v + 4) = nb;
+    }
+}
+
+int sceKernelCpuSuspendIntr(void);
+void sceKernelCpuResumeIntr(int);
+void f_04eee8(void *s, void *tag);
+char *f_05e404(unsigned *, void *, unsigned);
+extern char D_1a309c[];
+struct G2 { int w[4]; ~G2() {} };
+
+/* @implements 0x05c7dc us f_05c7dc
+   WHAT IT DOES: string reserve: returns when the rep already has enough capacity and is unshared; otherwise throws on a size above the maximum, clones the rep to the larger capacity with f_05e404, drops the old rep's reference under interrupt suspend (freeing it when it hits zero) and installs the new data pointer. */
+void f_05c7dc(char **self, unsigned n) {
+    unsigned *rep = (unsigned *)(*self - 12);
+    if (!(rep[1] < n) && (int)rep[2] <= 0) return;
+    if (n > 0x3ffffffc) f_1312d4(D_1a309c);
+    unsigned *r0 = (unsigned *)(*self - 12);
+    unsigned len = r0[0];
+    if (n < len) n = len;
+    G2 g;
+    char *nd = f_05e404(r0, &g, n - len);
+    char *s0 = *self;
+    char *s2 = s0 - 12;
+    int intr = sceKernelCpuSuspendIntr();
+    volatile int *c = (volatile int *)(s0 - 4);
+    int s1 = *c;
+    *c += -1;
+    sceKernelCpuResumeIntr(intr);
+    if (s1 <= 0) f_04eee8(s2, &g);
+    *self = nd;
+}
+
+/* @draft 0x05fadc us f_05fadc
+   WHAT IT DOES: string assignment: when the two handles differ, takes a copy of the source (sharing its rep by bumping the count under interrupt suspend, or cloning an unshareable one with f_05e404), drops the old rep's reference (freeing it at zero) and installs the new data pointer; returns the destination. */
+char **f_05fadc(char **self, char **a) throw() {
+    char *s0 = *a;
+    char *rp = s0 - 12;
+    if (*self - 12 != rp) {
+        char *r;
+        G2 g; G2 g1;
+        if (*(int *)(rp + 8) < 0) {
+            r = f_05e404((unsigned *)rp, &g, 0);
+        } else {
+            int st = sceKernelCpuSuspendIntr();
+            volatile int *c = (volatile int *)(s0 - 4);
+            int o = *c; (void)o;
+            *c += 1;
+            sceKernelCpuResumeIntr(st);
+            r = s0;
+        }
+        char *d0 = *self;
+        char *d2 = d0 - 12;
+        int intr = sceKernelCpuSuspendIntr();
+        volatile int *c = (volatile int *)(d0 - 4);
+        int s1 = *c;
+        *c += -1;
+        sceKernelCpuResumeIntr(intr);
+        if (s1 <= 0) f_04eee8(d2, &g);
+        *self = r;
+    }
+    return self;
+}
+
+char *f_061be0(unsigned, char *, char *);
+
+struct Vec { int pad; int *b, *e, *c; };
+
+/* @draft 0x05b858 us f_05b858
+   WHAT IT DOES: vector assignment: when the source differs, either allocates a new block of the source's size via f_061be0 and frees the old one, or memmoves the source elements over the existing storage (the head over the used part and the tail past the end); sets the end pointer and returns this. */
+Vec *f_05b858(Vec *self, Vec *x) {
+    if (x != self) {
+        unsigned n = x->e - x->b;
+        if ((unsigned)(self->c - self->b) < n) {
+            int *nb = (int *)f_061be0(n, (char *)x->b, (char *)x->e);
+            if (self->b) f_04e4b4(self->b);
+            self->b = nb;
+            self->c = nb + n;
+        } else {
+            unsigned sz = self->e - self->b;
+            if (sz < n) {
+                memmove(self->b, x->b, sz * 4);
+                memmove(self->e, x->b + (self->e - self->b), (x->e - x->b - (self->e - self->b)) * 4);
+            } else {
+                memmove(self->b, x->b, (x->e - x->b) * 4);
+            }
+        }
+        self->e = self->b + n;
+    }
+    return self;
+}
+
+struct Str {
+    char *p;
+    Str() {}
+    ~Str() {
+        G2 g;
+        char *s0 = p;
+        char *s2 = s0 - 12;
+        int intr = sceKernelCpuSuspendIntr();
+        volatile int *c = (volatile int *)(s0 - 4);
+        int s1 = *c;
+        *c += -1;
+        sceKernelCpuResumeIntr(intr);
+        if (s1 <= 0) f_04eee8(s2, &g);
+    }
+};
+unsigned strlen(const char *);
+extern char D_291400[];
+void f_061a08(Str *, unsigned, unsigned, const char *, unsigned);
+void f_05c8d0(Str *, Str *);
+
+/* @draft 0x05a44c us f_05a44c
+   WHAT IT DOES: string concatenation of a C string and a string: starts the result as a shared empty rep (bumping its count under interrupt suspend), reserves the combined length, copies the C string in with f_061a08 and appends the second string with f_05c8d0. */
+Str f_05a44c(const char *s, Str &b) throw() {
+    unsigned n = strlen(s);
+    Str r;
+    {
+        char *e = D_291400;
+        int st = sceKernelCpuSuspendIntr();
+        volatile int *c = (volatile int *)(e + 8);
+        int o = *c; (void)o;
+        *c += 1;
+        sceKernelCpuResumeIntr(st);
+        r.p = e + 12;
+    }
+    f_05c7dc(&r.p, n + *(unsigned *)(b.p - 12));
+    f_061a08(&r, *(unsigned *)(r.p - 12), 0, s, n);
+    f_05c8d0(&r, &b);
+    return r;
+}
+
+int f_05dcb8(void *, void *);
+void f_064c6c(char **);
+void f_064d8c(int *, char *, char *, char *, void *);
+struct InsRes { int a, b; };
+InsRes *f_061528(InsRes *, char *, void *);
+
+/* @draft 0x05e068 us f_05e068
+   WHAT IT DOES: ordered-tree unique insert with a position hint: when the hint is the leftmost node or the end, or the key falls between the hint's predecessor and the hint, inserts there with f_064d8c; otherwise falls back to the plain unique insert f_061528 and stores its iterator in *out. */
+int *f_05e068(int *out, char *t, char **pos, void *key) {
+    char *hd = *(char **)(t + 4);
+    if (*pos == *(char **)(hd + 8)) {
+        if (*(int *)(t + 8) != 0 && f_05dcb8(key, *pos + 16) & 0xff) {
+            f_064d8c(out, t, *pos, *pos, key);
+            return out;
+        }
+    } else if (*pos == hd) {
+        if (f_05dcb8(*(char **)(*pos + 12) + 16, key) & 0xff) {
+            f_064d8c(out, t, 0, *(char **)(*(char **)(t + 4) + 12), key);
+            return out;
+        }
+    } else {
+        char *before = *pos;
+        f_064c6c(&before);
+        if ((f_05dcb8(before + 16, key) & 0xff) && (f_05dcb8(key, *pos + 16) & 0xff)) {
+            if (*(int *)(before + 12) == 0) f_064d8c(out, t, 0, before, key);
+            else f_064d8c(out, t, *pos, *pos, key);
+            return out;
+        }
+    }
+    InsRes r;
+    f_061528(&r, t, key);
+    *out = r.a;
+    return out;
+}
+
+void f_06523c(int *, char *, char *, char *, void *);
+InsRes *f_0616fc(InsRes *, char *, void *);
+
+/* @draft 0x05e834 us f_05e834
+   WHAT IT DOES: ordered-tree unique insert with a position hint: when the hint is the leftmost node or the end, or the key falls between the hint's predecessor and the hint, inserts there with f_06523c; otherwise falls back to the plain unique insert f_0616fc and stores its iterator in *out. */
+int *f_05e834(int *out, char *t, char **pos, void *key) {
+    char *hd = *(char **)(t + 4);
+    if (*pos == *(char **)(hd + 8)) {
+        if (*(int *)(t + 8) != 0 && f_05dcb8(key, *pos + 16) & 0xff) {
+            f_06523c(out, t, *pos, *pos, key);
+            return out;
+        }
+    } else if (*pos == hd) {
+        if (f_05dcb8(*(char **)(*pos + 12) + 16, key) & 0xff) {
+            f_06523c(out, t, 0, *(char **)(*(char **)(t + 4) + 12), key);
+            return out;
+        }
+    } else {
+        char *before = *pos;
+        f_064c6c(&before);
+        if ((f_05dcb8(before + 16, key) & 0xff) && (f_05dcb8(key, *pos + 16) & 0xff)) {
+            if (*(int *)(before + 12) == 0) f_06523c(out, t, 0, before, key);
+            else f_06523c(out, t, *pos, *pos, key);
+            return out;
+        }
+    }
+    InsRes r;
+    f_0616fc(&r, t, key);
+    *out = r.a;
+    return out;
+}
+}
+}
+
+/* ---- swg5a ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 fragment by worker swg5a. */
+namespace swg5a {
+
+struct Cn { int a, b; float x, y; int c; };
+struct Gp { unsigned a, b, c, d; };
+struct Msg { int t; char c; };
+extern "C" {
+extern Gp D_24518c;
+extern char D_1d8910;
+void f_04325c(void *);
+void f_04316c(void *);
+int f_04311c(void *);
+void f_04afc8(int *);
+int f_04320c(void *);
+void f_15bbac(void *, void *);
+void *f_021b38(int);
+void f_116dfc(int, int, int, int, void *);
+extern float D_1a2b08;
+void f_046620(void *, int);
+void f_0455e8(float, float, float, float, void *, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int);
+void f_0455cc(void *);
+void f_1166d4(int);
+void f_11839c(int);
+void f_116898(int);
+void f_0454d4(void *);
+static inline unsigned cv4(float f) { return (unsigned)(f * D_1a2b08); }
+void f_1181c0(unsigned);
+extern float D_1a2b5c, D_1a2af8, D_1a2b00;
+static inline unsigned cv3(float f) { return (unsigned)(f * D_1a2b00); }
+static inline unsigned cv2(float f) { return (unsigned)(f * D_1a2af8); }
+static inline unsigned cv(float f) { return (unsigned)(f * D_1a2b5c); }
+
+/* @draft 0x04ca04 us f_04ca04
+   WHAT IT DOES: builds the four corner points of entry a1 from its source rectangle interpolated by (sx,sy), offsets them by (dx,dy), and stores the scaled min x at +80 and max x plus one at +84. */
+void f_04ca04(char *s, int a1, float sx, float sy, float dx, float dy) {
+    if (*(int *)(s + 32) >= a1) {
+    char *e = *(char **)(s + 36) + a1 * 172;
+    float *f = (float *)e;
+    Cn *c = (Cn *)e;
+    float x0 = f[23];
+    f[12] = f[25];
+    f[8] = f[28];
+    float y0 = f[27];
+    float x1 = x0 + (f[24] - x0) * sx;
+    float y1 = y0 + (f[29] - y0) * sy;
+    c[0].x = x0;
+    c[3].x = x1;
+    c[3].y = y1;
+    c[1].x = x1;
+    c[0].y = y0;
+    c[2].y = y1;
+    for (int i = 0; i < 4; i++) {
+        c[i].x += dx;
+        c[i].y += dy;
+    }
+    float lo = f[2];
+    if (f[7] < lo) lo = f[7];
+    if (f[12] < lo) lo = f[12];
+    if (f[17] < lo) lo = f[17];
+    *(int *)(e + 80) = (int)(lo * 0.015625f);
+    float hi = f[2];
+    if (hi < f[7]) hi = f[7];
+    if (hi < f[12]) hi = f[12];
+    if (hi < f[17]) hi = f[17];
+    *(int *)(e + 84) = (int)((hi + 1.0f) * 0.015625f);
+    }
+}
+
+/* @draft 0x04c668 us f_04c668
+   WHAT IT DOES: converts the four floats (r,g,b,a) times a constant to unsigned bytes, packs them into one 32-bit color and stores it into the five vertex color slots of entry a1. */
+void f_04c668(char *s, int a1, float r, float g, float b, float a) {
+    if (*(int *)(s + 32) >= a1) {
+    char *e = *(char **)(s + 36) + a1 * 172;
+    unsigned c = cv(r) & 0xff;
+    c |= (cv(g) & 0xff) << 8;
+    c |= (cv(b) & 0xff) << 16;
+    c |= cv(a) << 24;
+    *(unsigned *)(e + 4) = c;
+    *(unsigned *)(e + 88) = c;
+    *(unsigned *)(e + 64) = c;
+    *(unsigned *)(e + 44) = c;
+    *(unsigned *)(e + 24) = c;
+    }
+}
+
+/* @draft 0x0459d0 us f_0459d0
+   WHAT IT DOES: allocates a 64-byte block, fills four 16-byte vertex records from three arrays of packed words (bytes copied to +4, +8, +12) and a color packed from four float arrays scaled by a constant (bytes at +0), submits it with f_116dfc and returns its ninth argument. */
+int f_0459d0(int a0, unsigned *p0, unsigned *p1, unsigned *p2, float *q0, float *q1, float *q2, float *q3, int r) {
+    unsigned char *t = (unsigned char *)f_021b38(64);
+    unsigned char *d = t;
+    for (int i = 0; i < 4; i++, d += 16) {
+        unsigned v = p0[i];
+        d[6] = v >> 16;
+        d[7] = v >> 24;
+        d[4] = v;
+        d[5] = v >> 8;
+        v = p1[i];
+        d[10] = v >> 16;
+        d[11] = v >> 24;
+        d[8] = v;
+        d[9] = v >> 8;
+        v = p2[i];
+        d[13] = v >> 8;
+        d[14] = v >> 16;
+        d[15] = v >> 24;
+        d[12] = v;
+        unsigned c = cv2(q0[i]) & 0xff;
+        c |= (cv2(q1[i]) & 0xff) << 8;
+        c |= (cv2(q2[i]) & 0xff) << 16;
+        c |= cv2(q3[i]) << 24;
+        d[1] = c >> 8;
+        d[2] = c >> 16;
+        d[3] = c >> 24;
+        d[0] = c;
+    }
+    f_116dfc(4, 0x80019c, 4, 0, t);
+    return r;
+}
+
+/* @draft 0x045c14 us f_045c14
+   WHAT IT DOES: allocates a 32-byte block, fills two 16-byte vertex records from three arrays of packed words (bytes copied to +4, +8, +12) and a color packed from four float arrays scaled by a constant (bytes at +0), submits it with f_116dfc and returns its ninth argument. */
+int f_045c14(int a0, unsigned *p0, unsigned *p1, unsigned *p2, float *q0, float *q1, float *q2, float *q3, int r) {
+    unsigned char *t = (unsigned char *)f_021b38(32);
+    unsigned char *d = t;
+    for (int i = 0; i < 2; i++, d += 16) {
+        unsigned v = p0[i];
+        d[6] = v >> 16;
+        d[7] = v >> 24;
+        d[4] = v;
+        d[5] = v >> 8;
+        v = p1[i];
+        d[10] = v >> 16;
+        d[11] = v >> 24;
+        d[8] = v;
+        d[9] = v >> 8;
+        v = p2[i];
+        d[13] = v >> 8;
+        d[14] = v >> 16;
+        d[15] = v >> 24;
+        d[12] = v;
+        unsigned c = cv3(q0[i]) & 0xff;
+        c |= (cv3(q1[i]) & 0xff) << 8;
+        c |= (cv3(q2[i]) & 0xff) << 16;
+        c |= cv3(q3[i]) << 24;
+        d[1] = c >> 8;
+        d[2] = c >> 16;
+        d[3] = c >> 24;
+        d[0] = c;
+    }
+    f_116dfc(1, 0x80019c, 2, 0, t);
+    return r;
+}
+
+/* @draft 0x04afc8 us f_04afc8
+   WHAT IT DOES: reads the pad state words and the stick axis, then sends one direction/command key code (w, x, a, d, e, c, s, f) through f_15bbac to the target held in a0 according to the held direction bits, followed by q, z, r and v for the button bits 0x1, 0x8, 0x100 and 0x200. */
+void f_04afc8(int *p) {
+    Msg m;
+    unsigned s1 = D_24518c.d;
+    unsigned s5 = D_24518c.a;
+    unsigned s3 = D_24518c.c;
+    void *s4 = (void *)*p;
+    f_04325c(&D_1d8910);
+    int s2 = f_04320c(&D_1d8910);
+    int v1 = s2;
+#define SEND(ch) { m.t = 5; m.c = (ch); f_15bbac(s4, &m); }
+    if (s1 & 0x10) goto W;
+    if (s1 & 0x40) goto X;
+    if (s2 > 0) goto W;
+    if (s2 < 0) goto X;
+    if (s1 & 0x80) { SEND(97) goto T; }
+    if (s1 & 0x20) { SEND(100) goto T; }
+    if (v1 < 0) { SEND(97) goto T; }
+    if (v1 > 0) { SEND(100) goto T; }
+    if ((s3 & 0x1000) && !(s5 & 0xe000)) SEND(101)
+    else if ((s3 & 0x4000) && !(s5 & 0xb000)) SEND(99)
+    else if ((s3 & 0x8000) && !(s5 & 0x7000)) SEND(115)
+    else if ((s3 & 0x2000) && !(s5 & 0xd000)) SEND(102)
+    goto T;
+W:  SEND(119) goto T;
+X:  SEND(120)
+T:
+    if (s3 & 0x1) SEND(113)
+    if (s3 & 0x8) SEND(122)
+    if (s3 & 0x100) SEND(114)
+    if (s3 & 0x200) SEND(118)
+#undef SEND
+}
+
+/* @draft 0x04ad54 us f_04ad54
+   WHAT IT DOES: if the byte at +24 is set defers to f_04afc8; otherwise reads the pad state word and the stick axis and sends one direction/command key code (w, x, a, d, e, c, s, f) through f_15bbac to the target held in a0 according to the held direction bits, followed by q, z, r and v for the button bits 0x1, 0x8, 0x100 and 0x200. */
+void f_04ad54(char *p) {
+    if (p[24]) { f_04afc8((int *)p); return; }
+    Msg m;
+        unsigned s5 = D_24518c.a;
+    unsigned s3 = D_24518c.c;
+    void *s4 = (void *)*(int *)p;
+    f_04316c(&D_1d8910);
+    int s2 = f_04311c(&D_1d8910);
+    int v1 = s2;
+#define SEND(ch) { m.t = 5; m.c = (ch); f_15bbac(s4, &m); }
+    if (s3 & 0x10) goto W;
+    if (s3 & 0x40) goto X;
+    if (s2 > 0) goto W;
+    if (s2 < 0) goto X;
+    if (s3 & 0x80) { SEND(97) goto T; }
+    if (s3 & 0x20) { SEND(100) goto T; }
+    if (v1 < 0) { SEND(97) goto T; }
+    if (v1 > 0) { SEND(100) goto T; }
+    if ((s3 & 0x1000) && !(s5 & 0xe000)) SEND(101)
+    else if ((s3 & 0x4000) && !(s5 & 0xb000)) SEND(99)
+    else if ((s3 & 0x8000) && !(s5 & 0x7000)) SEND(115)
+    else if ((s3 & 0x2000) && !(s5 & 0xd000)) SEND(102)
+    goto T;
+W:  SEND(119) goto T;
+X:  SEND(120)
+T:
+    if (s3 & 0x1) SEND(113)
+    if (s3 & 0x8) SEND(122)
+    if (s3 & 0x100) SEND(114)
+    if (s3 & 0x200) SEND(118)
+#undef SEND
+}
+
+/* @draft 0x0463a4 us f_0463a4
+   WHAT IT DOES: unless the second argument exceeds 480 or the seventh is negative, packs four float components into one 32-bit color, builds a 20-byte record of ten 16-bit values from the integer arguments, passes the color to f_1181c0, submits the record with f_116dfc and returns 0. */
+int f_0463a4(float r, float g, float b, float a, int a0, int x, int p2, int p3, int p4, int p5, int p6, int p7, unsigned s0, unsigned s1, unsigned s2) {
+    if ((x > 480) | (p6 < 0)) return 0;
+    unsigned c = cv4(r) & 0xff;
+    c |= (cv4(g) & 0xff) << 8;
+    c |= (cv4(b) & 0xff) << 16;
+    c |= cv4(a) << 24;
+    unsigned char *t = (unsigned char *)f_021b38(20);
+    unsigned short v0 = p4, v1 = p5, v2 = x, v3 = p2, v4 = p3, v5 = s1, v6 = s2, v7 = p6, v8 = p7, v9 = s0;
+    t[7] = v3 >> 8; t[17] = v8 >> 8; t[9] = v4 >> 8; t[19] = v9 >> 8; t[5] = v2 >> 8;
+    t[15] = v7 >> 8; t[1] = v0 >> 8; t[11] = v5 >> 8; t[3] = v1 >> 8; t[13] = v6 >> 8;
+    t[4] = v2; t[14] = v7; t[6] = v3; t[16] = v8; t[8] = v4; t[18] = v9; t[0] = v0; t[10] = v5; t[2] = v1; t[12] = v6;
+    f_1181c0(c);
+    f_116dfc(6, 0x800102, 2, 0, t);
+    return 0;
+}
+
+/* @draft 0x049b90 us f_049b90
+   WHAT IT DOES: looks up the sprite record of the index at a1+12, scales its width and height by the 2x2 matrix and translation in a2 to get four corner points (with texture coordinates 0..w, 0..h), re-selects the record's palette byte when it changed, and submits the quad through f_0455e8 unless mode (a2+96) is 2; in mode 1 with the +80 field equal to 1 it instead runs the f_0455cc bracket and the virtual call at slot 7 of the object at +28. */
+void f_049b90(char *s2, char *s3, char *s1) {
+    char *a1 = *(char **)(s2 + 4);
+    char *rec = *(char **)(a1 + 40) + *(int *)(s3 + 12) * 12;
+    float m0 = *(float *)(s1 + 0), m1 = *(float *)(s1 + 4);
+    float m4 = *(float *)(s1 + 16), m5 = *(float *)(s1 + 20);
+    float tx = *(float *)(s1 + 48), ty = *(float *)(s1 + 52);
+    int w = *(short *)(rec + 4), h = *(short *)(rec + 6);
+    float fw = (float)w, fh = (float)h;
+    int X[4], Y[4], U[4], V[4];
+    X[0] = (int)tx;
+    Y[0] = (int)ty;
+    X[1] = (int)(fw * m0 + tx);
+    Y[1] = (int)(fw * m1 + ty);
+    X[2] = (int)(fw * m0 + fh * m4 + tx);
+    Y[2] = (int)(fw * m1 + fh * m5 + ty);
+    X[3] = (int)(fh * m4 + tx);
+    Y[3] = (int)(fh * m5 + ty);
+    U[0] = 0; U[1] = w; U[2] = w; U[3] = 0;
+    V[0] = 0; V[1] = 0; V[2] = h; V[3] = h;
+    int pal = ((signed char *)rec)[8];
+    int *tab = *(int **)(a1 + 240);
+    if (*(int *)(s2 + 8) != pal) {
+        *(int *)(s2 + 8) = pal;
+        f_046620(s2 + 12, pal);
+    }
+    int mode = *(int *)(s1 + 96);
+    if (mode == 2) return;
+    if (mode == 1 && (int)*(float *)(s1 + 80) == 1) {
+        if (*(int *)(s2 + 28)) {
+            void *o = s2 + 12;
+            f_0455cc(o);
+            f_1166d4(10);
+            f_1166d4(1);
+            f_11839c(0);
+            void **obj = *(void ***)(s2 + 28);
+            ((void (*)(void *, int))((void **)*obj)[7])(obj, (int)*(float *)(s1 + 84));
+            f_116898(10);
+            f_116898(1);
+            f_0454d4(o);
+        }
+        return;
+    }
+    f_0455e8(*(float *)(s1 + 64), *(float *)(s1 + 68), *(float *)(s1 + 72), *(float *)(s1 + 76), s2 + 12,
+             X[0], Y[0], -1, U[0], V[0],
+             X[1], Y[1], -1, U[1], V[1],
+             X[2], Y[2], -1, U[2], V[2],
+             X[3], Y[3], -1, U[3], V[3],
+             tab[*(int *)(s3 + 12)]);
+}
+
+}
+}
+
+/* ---- swg4b ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 fragment swg4b: untagged functions of the SWG player (rest_b2). */
+namespace swg4b {
+extern "C" {
+void *f_154448(void*,void*,void*,int); void f_05cbd4(void*); extern char D_1a4900[], D_1a3b70[];
+void f_05dd24(void*,void*,void*); void f_05e264(void*,int);
+void *f_04dfa0(unsigned); void f_04ed28(void*); void f_05e394(void*,void*,void*,void*);
+void f_05f64c(void*,void*,void*); void f_05dd24(void*,void*,void*); void f_05e264(void*,int); void f_05dbf4(void*,void*,void*); void f_05dddc(void*,void*,void*);
+extern char D_1a4060[]; extern char D_1a4320[];
+struct Em { ~Em(){} };
+struct H { int *o; int *cnt; ~H(){ f_04ed28(this);} };
+struct PP { void *p; ~PP(){} };
+struct Pair { PP p; int *cnt; Pair(void *o){ p.p=o; cnt=0; if(o){ cnt=(int*)f_04dfa0(4); *cnt=1; } } ~Pair(){ f_04ed28(this);} };
+struct ObB {
+  void *vt; int x; char c;
+  static void *operator new(unsigned n){ unsigned *p=(unsigned*)f_04dfa0(n+4); *p=n+4; return p+1; }
+  static void operator delete(void*) {}
+  ObB(int v){ Em e; vt = D_1a4060; x = 0; c = v; }
+};
+struct ObI {
+  void *vt; int x; int c;
+  static void *operator new(unsigned n){ unsigned *p=(unsigned*)f_04dfa0(n+4); *p=n+4; return p+1; }
+  static void operator delete(void*) {}
+  ObI(int v){ Em e; vt = D_1a4320; x = 0; c = v; }
+};
+extern char D_1a4270[];
+struct ObD {
+  void *vt; int x; double c;
+  static void *operator new(unsigned n){ unsigned *p=(unsigned*)f_04dfa0(n+4); *p=n+4; return p+1; }
+  static void operator delete(void*) {}
+  ObD(double v){ Em e; vt = D_1a4270; x = 0; c = v; }
+};
+struct R { int *a; int *c; ~R(){ f_04ed28(this);} };
+struct It { int *p; It(){} It(const It&o){p=o.p;} };
+
+/* @draft 0x055220 us f_055220
+   WHAT IT DOES: copies the counted handle found two links down the chain at +328 (bumping its refcount), calls f_05f64c with that chain, then calls virtual slot 22 on the handle's object and returns the result.
+   Remaining difference: 2 words (order of the two stack stores before the call). */
+int f_055220(char *p) {
+  H h; volatile int t[4]; int out[4]; int b;
+  char *q = p + 328;
+  int a = *(int*)(q+4);
+  t[0]=a; __asm__ volatile("":::"memory");
+  int *v = *(int**)(a+4);
+  int *c=(int*)v[3]; h.o=(int*)v[2]; h.cnt=c; t[0]=(int)v; if(c) ++*c;
+  t[0]=a;
+  int w=*(int*)(a+4);
+  b=w; t[0]=w;
+  f_05f64c(out,q,&b);
+  void **vt=*(void***)h.o;
+  return ((int(*)(void*))vt[22])(h.o);
+}
+
+/* @draft 0x052b54 us f_052b54
+   WHAT IT DOES: allocates a ref-counted boolean object holding the flag argument, then calls f_05e394 with it and the sub-object at +328, releasing the holder afterwards.
+   Remaining difference: one missing landing pad and vtable/size store order (27 of 50 words). */
+void f_052b54(char *s, int v){
+  char *q = s+328;
+  Pair pr(new ObB(v&0xff));
+  int out[8]; int a;
+  a = *(int*)(q+4);
+  f_05e394(out+4, q, &a, &pr);
+}
+
+/* @draft 0x052cf4 us f_052cf4
+   WHAT IT DOES: like f_052b54 with an integer-valued object: allocates a ref-counted object holding the argument and calls f_05e394 with it.
+   Remaining difference: same as f_052b54. */
+void f_052cf4(char *s, int v){
+  char *q = s+328;
+  Pair pr(new ObI(v));
+  int out[8]; int a;
+  a = *(int*)(q+4);
+  f_05e394(out+4, q, &a, &pr);
+}
+
+/* @draft 0x04f35c us f_04f35c
+   WHAT IT DOES: looks up a key in the map: returns a copy (refcount bumped) of the found handle, or a null handle when absent.
+   Remaining difference: stack slot of the end iterator and prologue order (18 of 51 words). */
+R *f_04f35c(R *out, char *t, void *k) {
+  R r;
+  f_05dbf4(&r, t, k);
+  if (r.a) { out->a = r.a; out->c = r.c; if (r.c) ++*r.c; return out; }
+  char *s = t + 8;
+  It b;
+  f_05dddc(&b, s, k);
+  It e0; e0.p = *(int**)(s+4); It e(e0);
+  if (b.p == e0.p) { out->a = 0; out->c = 0; return out; }
+  out->c = (int*)b.p[9]; out->a = (int*)b.p[8];
+  if (out->c) ++*out->c;
+  return out;
+}
+
+/* @draft 0x052c1c us f_052c1c
+   WHAT IT DOES: like f_052b54 with a double-valued object: allocates a ref-counted object holding the double argument and calls f_05e394 with it.
+   Remaining difference: same as f_052b54. */
+void f_052c1c(char *s, int u, double v){
+  char *q = s+328;
+  Pair pr(new ObD(v));
+  int out[8]; int a;
+  a = *(int*)(q+4);
+  f_05e394(out+4, q, &a, &pr);
+}
+
+static inline bool is2(int x){ return x == 2; }
+/* @draft 0x04f718 us f_04f718
+   WHAT IT DOES: finds the entry for the key in the map at +24; if it exists and its object's kind field is 2, stores three arguments into the player (+44, +52, +48), calls f_05e264 on the object and then virtual slot 43 with kind 2; otherwise returns a null handle.
+   Remaining difference: callee-saved register choice for the two trailing arguments and an extra iterator stack store (38 of 55 words). */
+R *f_04f718(R *out, char *self, int v, void *key, int x, int y) {
+  It b; char *sm = self+24;
+  f_05dd24(&b, sm, key);
+  It e0; e0.p = *(int**)(sm+4); It e(e0);
+  if (b.p != e.p) {
+    int *o = (int*)b.p[8];
+    if (is2(o[1])) {
+      *(int*)(self+44) = v;
+      *(int*)(self+52) = y;
+      *(int*)(self+48) = x;
+      f_05e264(o, x);
+      void **vt = *(void***)self;
+      ((void(*)(R*,void*,int,void*))vt[43])(out, self, 2, (void*)((int*)b.p)[8]);
+      return out;
+    }
+  }
+  out->a = 0; out->c = 0;
+  return out;
+}
+
+/* @draft 0x04f874 us f_04f874
+   WHAT IT DOES: looks up the list for a class tag in the argument object through f_154448 and calls virtual slot 14 of this object for each element, passing the element key and a copy (refcount bumped) of its handle, destroying the copy afterwards.
+   Remaining difference: retail rebuilds the iterator address each pass and has a trailing landing pad (47 of 53 words). */
+void f_04f874(char *self, void *obj) {
+  if (!obj) return;
+  char *r = (char*)f_154448(obj, D_1a4900, D_1a3b70, 0);
+  if (!r) return;
+  int *s0 = *(int**)(r+12);
+  It it; it.p = (int*)s0[2];
+  while (it.p != s0) {
+    int *n = it.p;
+    R h; h.a = (int*)n[8]; h.c = (int*)n[9]; if (h.c) ++*h.c;
+    void **vt = *(void***)self;
+    ((void(*)(void*,void*,R*))vt[14])(self, n+4, &h);
+    f_05cbd4(&it);
+  }
+}
+
+/* @draft 0x0540a0 us f_0540a0
+   WHAT IT DOES: calls virtual slot 25 of the object, then copies the counted handle two links down the chain at +328 (bumping its refcount), calls f_05f64c with that chain, and calls virtual slot 18 of the handle's object with the +328 sub-object.
+   Remaining difference: same stack-store ordering as f_055220. */
+void f_0540a0(char *p) {
+  H h; volatile int t[4]; int out[4]; int b;
+  char *q = p + 328;
+  void **pv = *(void***)p;
+  ((void(*)(void*))pv[25])(p);
+  int a = *(int*)(q+4);
+  t[0]=a; __asm__ volatile("":::"memory");
+  int *v = *(int**)(a+4);
+  int *c=(int*)v[3]; h.o=(int*)v[2]; h.cnt=c; t[0]=(int)v; if(c) ++*c;
+  t[0]=a;
+  int w=*(int*)(a+4);
+  b=w; t[0]=w;
+  f_05f64c(out,q,&b);
+  void **vt=*(void***)h.o;
+  ((void(*)(void*,void*))vt[18])(h.o, q);
+}
+
+/* @draft 0x05414c us f_05414c
+   WHAT IT DOES: same as f_0540a0 but calls virtual slot 19 of the handle's object.
+   Remaining difference: same as f_0540a0. */
+void f_05414c(char *p) {
+  H h; volatile int t[4]; int out[4]; int b;
+  char *q = p + 328;
+  void **pv = *(void***)p;
+  ((void(*)(void*))pv[25])(p);
+  int a = *(int*)(q+4);
+  t[0]=a; __asm__ volatile("":::"memory");
+  int *v = *(int**)(a+4);
+  int *c=(int*)v[3]; h.o=(int*)v[2]; h.cnt=c; t[0]=(int)v; if(c) ++*c;
+  t[0]=a;
+  int w=*(int*)(a+4);
+  b=w; t[0]=w;
+  f_05f64c(out,q,&b);
+  void **vt=*(void***)h.o;
+  ((void(*)(void*,void*))vt[19])(h.o, q);
+}
+
+struct Em2 { ~Em2(){} };
+extern int D_1a2be8[5]; extern const char *D_1a2c08[5];
+unsigned slen(const char*) __asm__("strlen");
+struct E { int a, b, c, d; };
+struct A5 { int v[5]; };
+struct B5 { const char *v[5]; };
+/* @draft 0x04e74c us f_04e74c
+   WHAT IT DOES: copies two five-entry tables from rodata (values and name strings), stores the argument at +60, allocates a 100-byte block (size header 100) kept at +56 and fills five 16-byte records {value, 2, strlen(name) or 0, index}, then a sixth record {0, 1, 0, 0}.
+   Remaining difference: retail keeps a second 16-byte temporary below the record temporary (frame 128 vs 112), the trailing landing pad is missing (91 of 93 words). */
+void f_04e74c(char *self, int arg) {
+  A5 a = *(A5*)D_1a2be8; B5 b = *(B5*)D_1a2c08;
+  *(int*)(self+60) = arg;
+  unsigned *p = (unsigned*)f_04dfa0(100);
+  *p = 100;
+  E *blk = (E*)(p+1);
+  *(E**)(self+56) = blk;
+  E t; int i = 0;
+  do {
+    Em2 em; int x = a.v[i]; const char *s = b.v[i];
+    int len = s ? slen(s) : 0;
+    t.a = x; t.b = 2; t.c = len; t.d = i;
+    blk[i] = t;
+    i++;
+  } while (i < 5);
+  t.b = 1; t.c = 0; t.d = 0;
+  blk[5].a = 0; blk[5].b = t.b; blk[5].c = t.c; blk[5].d = t.d;
+}
+
+}
+}
