@@ -1774,11 +1774,12 @@ void f_052f4c(char *p)
     f_05f64c(out, q, &b);
 }
 
-/* @draft 0x05a378 us f_05a378
+/* @implements 0x05a378 us f_05a378
    WHAT IT DOES: Passes the sub-object at +44, its word at +4 and the argument (by
-   address) to f_0613e8 with a 16-byte output buffer.    Remaining difference: 2 words (the spill of arg at sp+32 sits before addiu a3 in retail, after it in ours); the word buffer is 16 bytes so the frame matches.
-   */
-void f_05a378(char *p, int arg)
+   address) to f_0613e8 with a 16-byte output buffer.
+   The argument is a pointer: as an int its spill to sp+32 shares the int buffer's alias
+   set and sched2 orders it after the addiu of a3. */
+void f_05a378(char *p, char *arg)
 {
     char *q = p + 44;
     int out[4];
@@ -2352,16 +2353,18 @@ int *f_05c790(int *p, int a1, int **a2)
     return p;
 }
 
-/* @draft 0x061c38 us f_061c38
+/* @implements 0x061c38 us f_061c38
    WHAT IT DOES: Copies the nodes of a range into a destination array, bumping the count of
-   each copied node's shared pointer, and returns the end of the destination.    Remaining difference: 2 words, retail loads both words before the first store (lw v1,4 sits before sw v0,0). */
+   each copied node's shared pointer, and returns the end of the destination.
+   The shared pointer is read as an int* (its own alias set), so sched1 may hoist that load
+   above the int store of the first word, while the stores keep their order. */
 int *f_061c38(int *f, int *l, int *d)
 {
     if (f != l) {
         do {
             if (d) {
                 d[0] = f[0];
-                int *q = (int *)f[1];
+                int *q = ((int **)f)[1];
                 d[1] = (int)q;
                 if (q)
                     q[0]++;
@@ -5166,13 +5169,15 @@ void *memcpy(void *, const void *, unsigned);
 extern char D_1a30b4[];
 void f_1312d4(const char *);
 void f_060920(char **, int, int, unsigned);
-/* @draft 0x05c950 us f_05c950
+/* @implements 0x05c950 us f_05c950
    WHAT IT DOES: replaces the character range [b,e) of a string with the source range [sb,se): throws via f_1312d4 when the new length is too large, resizes the gap with f_060920 and copies the source in with memcpy.
-   Remaining difference: string replace(range, range); only the max_size compare constant form differs */
+   The limit is a local (libstdc++'s `__dmax = max_size(); if (__dmax <= __dnew)`): fold cannot
+   canonicalise it to `0x3ffffffb < n`, and cse's constant gives sltu with 0x3ffffffc + beqz. */
 char **f_05c950(char **s, char *b, char *e, char *sb, char *se) {
     unsigned n = se - sb;
     unsigned olen = e - b;
-    if (n >= 0x3ffffffc) f_1312d4(D_1a30b4);
+    unsigned dmax = 0x3ffffffc;
+    if (dmax <= n) f_1312d4(D_1a30b4);
     int off = b - *s;
     f_060920(s, off, olen, n);
     if (n) memcpy(*s + off, sb, n);
@@ -6309,16 +6314,16 @@ void f_063bec(void *o, void *a)
     }
 }
 
-/* @draft 0x062050 us f_062050
-   WHAT IT DOES: string replace: checks the new length against the limit (f_1312d4 on overflow), calls f_060920 to open a gap at the iterator position, memcpy's the new characters in and returns self. */
+/* @implements 0x062050 us f_062050
+   WHAT IT DOES: string replace: checks the new length against the limit (f_1312d4 on overflow), calls f_060920 to open a gap at the iterator position, memcpy's the new characters in and returns self.
+   The limit is held in a local (`__dmax <= __dnew`), as in f_05c950. */
 void *f_062050(char **self, char *i1, char *i2, char *k1, char *k2)
 {
     unsigned n2 = k2 - k1;
     unsigned n1 = i2 - i1;
-    if (n2 < 0x3ffffffcU) {
-    } else {
+    unsigned dmax = 0x3ffffffc;
+    if (dmax <= n2)
         f_1312d4(D_1a30b4);
-    }
     int pos = i1 - *self;
     f_060920(self, pos, n1, n2);
     if (n2)
@@ -13983,5 +13988,551 @@ void f_058d94(char *s) {
     }
 }
 
+}
+}
+
+/* ---- swg9bd ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 fragment swg9bd: large + small untagged functions of the SWG player. */
+namespace swg9bd {
+extern "C" {
+extern char D_1a2ea4[]; /* "_x" */
+extern char D_1a2ea8[]; /* "_y" */
+extern char D_1a2eac[]; /* "_xscale" */
+extern char D_1a2eb4[]; /* "_yscale" */
+extern char D_1a2ebc[]; /* "_currentframe" */
+extern char D_1a2ecc[]; /* "_totalframes" */
+extern char D_1a2edc[]; /* "_alpha" */
+extern char D_1a2ee4[]; /* "_visible" */
+extern char D_1a2f00[]; /* "_rotation" */
+extern char D_1a2f0c[]; /* "_target" */
+extern char D_1a2f14[]; /* "_framesloaded" */
+extern char D_1a2f24[]; /* "_name" */
+extern char D_1a31b0[]; /* "_parent" */
+extern char D_1a3220[]; /* "onKeyDown" */
+extern char D_1a322c[]; /* "onKeyUp" */
+extern char D_1a33c4[]; /* "stop" */
+extern char D_1a33cc[]; /* "attachMovie" */
+extern char D_1a33d8[]; /* "duplicateMovieClip" */
+extern char D_1a33ec[]; /* "getBytesTotal" */
+extern char D_1a33fc[]; /* "getBytesLoaded" */
+extern char D_1a340c[]; /* "gotoAndPlay" */
+extern char D_1a3418[]; /* "globalToLocal" */
+extern char D_1a3428[]; /* "loadMovie" */
+extern char D_1a3434[]; /* "gotoAndStop" */
+extern char D_1a3440[]; /* "localToGlobal" */
+extern char D_1a3450[]; /* "nextFrame" */
+extern char D_1a345c[]; /* "play" */
+extern char D_1a3464[]; /* "prevFrame" */
+extern char D_1a3470[]; /* "removeMovieClip" */
+extern char D_1a3480[]; /* "swapDepths" */
+extern char D_1a348c[]; /* "_xmouse" */
+extern char D_1a3494[]; /* "_ymouse" */
+extern char D_1a349c[]; /* "onLoad" */
+extern char D_1a34a4[]; /* "onUnload" */
+extern char D_1a34b0[]; /* "onEnterFrame" */struct Ent { const char *n; int a, b, id; };
+extern Ent D_291428[36];
+extern char D_291678;
+/* @draft 0x065f60 us f_065f60
+   WHAT IT DOES: on first call fills the 36-entry table at D_291428 (16-byte records: name string, two flag words, sequential id; the movie-clip property and method names _alpha, _currentframe, attachMovie ...) and sets the done byte at D_291678; returns the table address.
+   Remaining difference: store order/scheduling of the table fill. */
+void *f_065f60(void) {
+  Ent *t = D_291428;
+  if (!D_291678) {
+  t[0].n = D_1a2edc; t[0].a = 1; t[0].b = 1; t[0].id = 0;
+  t[1].n = D_1a2ebc; t[1].a = 0; t[1].b = 0; t[1].id = 1;
+  t[2].n = D_1a33cc; t[2].a = 2; t[2].b = -4; t[2].id = 2;
+  t[3].n = D_1a33d8; t[3].a = 2; t[3].b = 2; t[3].id = 3;
+  t[4].n = D_1a2f14; t[4].a = 0; t[4].b = 0; t[4].id = 4;
+  t[5].n = D_1a33fc; t[5].a = 0; t[5].b = 0; t[5].id = 5;
+  t[6].n = D_1a33ec; t[6].a = 0; t[6].b = 0; t[6].id = 6;
+  t[7].n = D_1a3418; t[7].a = 2; t[7].b = 1; t[7].id = 7;
+  t[8].n = D_1a340c; t[8].a = 2; t[8].b = 1; t[8].id = 8;
+  t[9].n = D_1a3434; t[9].a = 2; t[9].b = 1; t[9].id = 9;
+  t[10].n = D_1a3428; t[10].a = 2; t[10].b = 1; t[10].id = 10;
+  t[11].n = D_1a3440; t[11].a = 2; t[11].b = 1; t[11].id = 11;
+  t[12].n = D_1a2f24; t[12].a = 0; t[12].b = 0; t[12].id = 12;
+  t[13].n = D_1a3450; t[13].a = 2; t[13].b = 0; t[13].id = 13;
+  t[14].n = D_1a31b0; t[14].a = 0; t[14].b = 0; t[14].id = 14;
+  t[15].n = D_1a345c; t[15].a = 2; t[15].b = 0; t[15].id = 15;
+  t[16].n = D_1a3464; t[16].a = 2; t[16].b = 0; t[16].id = 16;
+  t[17].n = D_1a3470; t[17].a = 2; t[17].b = 0; t[17].id = 17;
+  t[18].n = D_1a2f00; t[18].a = 1; t[18].b = 1; t[18].id = 18;
+  t[19].n = D_1a33c4; t[19].a = 2; t[19].b = 0; t[19].id = 19;
+  t[20].n = D_1a3480; t[20].a = 2; t[20].b = 1; t[20].id = 20;
+  t[21].n = D_1a2f0c; t[21].a = 0; t[21].b = 0; t[21].id = 21;
+  t[22].n = D_1a2ecc; t[22].a = 0; t[22].b = 0; t[22].id = 22;
+  t[23].n = D_1a2ee4; t[23].a = 1; t[23].b = 1; t[23].id = 23;
+  t[24].n = D_1a2ea4; t[24].a = 1; t[24].b = 1; t[24].id = 24;
+  t[25].n = D_1a348c; t[25].a = 0; t[25].b = 0; t[25].id = 25;
+  t[26].n = D_1a2eac; t[26].a = 1; t[26].b = 1; t[26].id = 26;
+  t[27].n = D_1a2ea8; t[27].a = 1; t[27].b = 1; t[27].id = 27;
+  t[28].n = D_1a3494; t[28].a = 0; t[28].b = 0; t[28].id = 28;
+  t[29].n = D_1a2eb4; t[29].a = 1; t[29].b = 1; t[29].id = 29;
+  t[30].n = D_1a349c; t[30].a = 1; t[30].b = 1; t[30].id = 30;
+  t[31].n = D_1a34a4; t[31].a = 1; t[31].b = 1; t[31].id = 31;
+  t[32].n = D_1a34b0; t[32].a = 1; t[32].b = 1; t[32].id = 32;
+  t[33].n = D_1a3220; t[33].a = 1; t[33].b = 1; t[33].id = 33;
+  t[34].n = D_1a322c; t[34].a = 1; t[34].b = 1; t[34].id = 34;
+  t[35].n = 0; t[35].a = 1; t[35].b = 0; t[35].id = 0;
+    D_291678 = 1;
+  }
+  return t;
+}
+
+/* ---- vector of 56-byte nodes (each holding a vector of 36-byte records) ---- */
+void *f_04dfa0(unsigned); void f_04e4b4(void *);
+void *f_061f88(void *, void *, void *, int);
+struct In9 { int w; char *b, *e, *c; In9() {} In9(const In9 &o) : w(o.w), b(o.b), e(o.e), c(o.c) {} In9 &operator=(const In9 &o) { c = o.c; b = o.b; e = o.e; w = o.w; return *this; } ~In9() { for (char *p = b; p != e; p += 36) { } } };
+struct Nd9 { int f0, f1; In9 v; int g[8]; static void *operator new(unsigned, void *p) throw() { return p; } };
+struct Vc9 { int al; Nd9 *b, *e, *c; };
+/* @draft 0x060f8c us f_060f8c
+   WHAT IT DOES: vector insert-with-reallocation helper (_M_insert_aux) for a vector of 56-byte nodes: with spare capacity it copy-constructs the last node one slot up, shifts the range [pos, end-1) up by one and assigns a copy of the value to pos; otherwise it allocates twice the size (1 when empty), copies [begin,pos), the value and [pos,end) into it (destroying and freeing the new block and rethrowing on an exception), destroys and frees the old block and stores the new begin, end and capacity.
+   Remaining difference: register allocation and copy scheduling (235 of 279 words differ, 1104 vs 1116 bytes); the catch block calls the right helpers. */
+void f_060f8c(Vc9 *v, Nd9 *pos, const Nd9 *x) {
+  if (v->e != v->c) {
+    Nd9 *e = v->e;
+    new (e) Nd9(e[-1]);
+    v->e = e + 1;
+    Nd9 xc = *x;
+    Nd9 *last = e - 1, *dst = e;
+    int n = last - pos;
+    while (n > 0) { --last; --dst; *dst = *last; --n; }
+    *pos = xc;
+    return;
+  }
+  unsigned old = v->e - v->b;
+  unsigned len = old != 0 ? 2 * old : 1;
+  Nd9 *ns = (Nd9 *)f_04dfa0(len * 56);
+  Nd9 *nf = ns;
+  try {
+    nf = (Nd9 *)f_061f88(v->b, pos, nf, 0);
+    new (nf) Nd9(*x);
+    ++nf;
+    nf = (Nd9 *)f_061f88(pos, v->e, nf, 0);
+  } catch (...) {
+    for (Nd9 *p = ns; p != nf; ++p) p->~Nd9();
+    if (ns) f_04e4b4(ns);
+    throw;
+  }
+  for (Nd9 *p = v->b; p != v->e; ++p) p->~Nd9();
+  if (v->b) f_04e4b4(v->b);
+  v->c = ns + len;
+  v->e = nf;
+  v->b = ns;
+}
+extern char D_1a3524[]; /* "abs" */
+extern char D_1a351c[]; /* "acos" */
+extern char D_1a3528[]; /* "asin" */
+extern char D_1a3538[]; /* "atan" */
+extern char D_1a3530[]; /* "atan2" */
+extern char D_1a3544[]; /* "ceil" */
+extern char D_1a3540[]; /* "cos" */
+extern char D_1a3550[];
+extern char D_1a354c[]; /* "exp" */
+extern char D_1a3558[]; /* "floor" */
+extern char D_1a3554[]; /* "log" */
+extern char D_1a3560[]; /* "LOG2E" */
+extern char D_1a3568[]; /* "LOG10E" */
+extern char D_1a3570[]; /* "LN2" */
+extern char D_1a3574[]; /* "LN10" */
+extern char D_1a357c[]; /* "max" */
+extern char D_1a3580[]; /* "min" */
+extern char D_1a3588[]; /* "PI" */
+extern char D_1a3584[]; /* "pow" */
+extern char D_1a358c[]; /* "random" */
+extern char D_1a3598[]; /* "round" */
+extern char D_1a3594[]; /* "sin" */
+extern char D_1a35a8[]; /* "sqrt" */
+extern char D_1a35a0[]; /* "SQRT1_2" */
+extern char D_1a35b4[]; /* "SQRT2" */
+extern char D_1a35b0[]; /* "tan" */
+
+extern Ent D_291750[27];
+extern char D_291670;
+/* @draft 0x0668f4 us f_0668f4
+   WHAT IT DOES: on first call fills the 27-entry table at D_291750 (16-byte records: name string, two flag words, sequential id; the last record is a terminator with a null name) and sets the done byte at D_291670; returns the table address.
+   Remaining difference: store order and scheduling of the table fill (retail walks a per-record pointer for the three number fields). */
+void *f_0668f4(void) {
+  Ent *t = D_291750;
+  if (!D_291670) {
+  t[0].n = D_1a3524; t[0].a = 2; t[0].b = 1; t[0].id = 0;
+  t[1].n = D_1a351c; t[1].a = 2; t[1].b = 1; t[1].id = 1;
+  t[2].n = D_1a3528; t[2].a = 2; t[2].b = 1; t[2].id = 2;
+  t[3].n = D_1a3538; t[3].a = 2; t[3].b = 1; t[3].id = 3;
+  t[4].n = D_1a3530; t[4].a = 2; t[4].b = 2; t[4].id = 4;
+  t[5].n = D_1a3544; t[5].a = 2; t[5].b = 1; t[5].id = 5;
+  t[6].n = D_1a3540; t[6].a = 2; t[6].b = 1; t[6].id = 6;
+  t[7].n = D_1a3550; t[7].a = 0; t[7].b = 0; t[7].id = 7;
+  t[8].n = D_1a354c; t[8].a = 2; t[8].b = 1; t[8].id = 8;
+  t[9].n = D_1a3558; t[9].a = 2; t[9].b = 1; t[9].id = 9;
+  t[10].n = D_1a3554; t[10].a = 2; t[10].b = 1; t[10].id = 10;
+  t[11].n = D_1a3560; t[11].a = 0; t[11].b = 0; t[11].id = 11;
+  t[12].n = D_1a3568; t[12].a = 0; t[12].b = 0; t[12].id = 12;
+  t[13].n = D_1a3570; t[13].a = 0; t[13].b = 0; t[13].id = 13;
+  t[14].n = D_1a3574; t[14].a = 0; t[14].b = 0; t[14].id = 14;
+  t[15].n = D_1a357c; t[15].a = 2; t[15].b = 2; t[15].id = 15;
+  t[16].n = D_1a3580; t[16].a = 2; t[16].b = 2; t[16].id = 16;
+  t[17].n = D_1a3588; t[17].a = 0; t[17].b = 0; t[17].id = 17;
+  t[18].n = D_1a3584; t[18].a = 2; t[18].b = 2; t[18].id = 18;
+  t[19].n = D_1a358c; t[19].a = 2; t[19].b = 0; t[19].id = 19;
+  t[20].n = D_1a3598; t[20].a = 2; t[20].b = 1; t[20].id = 20;
+  t[21].n = D_1a3594; t[21].a = 2; t[21].b = 1; t[21].id = 21;
+  t[22].n = D_1a35a8; t[22].a = 2; t[22].b = 1; t[22].id = 22;
+  t[23].n = D_1a35a0; t[23].a = 0; t[23].b = 0; t[23].id = 23;
+  t[24].n = D_1a35b4; t[24].a = 0; t[24].b = 0; t[24].id = 24;
+  t[25].n = D_1a35b0; t[25].a = 2; t[25].b = 1; t[25].id = 25;
+  t[26].n = 0; t[26].a = 1; t[26].b = 0; t[26].id = 0;
+
+    D_291670 = 1;
+  }
+  return t;
+}
+
+/* ---- vector of 8-byte counted handles: fill insert ---- */
+void f_04ed28(void *);
+void f_05daa4(void *, void *);
+void *f_061c38(void *, void *, void *, int);
+void *f_061c7c(void *, void *, void *, int);
+void *f_065a5c(void *, unsigned, void *, int);
+void *f_065aa0(void *, void *, void *, int);
+void *f_065aec(void *, unsigned, void *, int);
+void f_05df24(void *, void *);
+void f_0659fc(void *, void *, void *);
+void f_0606a0(void *, void *, int);
+struct Hd9 { void *p; int *c; static void *operator new(unsigned, void *q) throw() { return q; } Hd9(void *o) { f_05daa4(this, o); } Hd9(const Hd9 &o) { p = o.p; c = o.c; if (c) ++*c; } ~Hd9() { f_04ed28(this); } };
+struct Hv9 { int al; Hd9 *b, *e, *c; };
+static inline const unsigned &mx9(const unsigned &a, const unsigned &b) { return a < b ? b : a; }
+/* @draft 0x06574c us f_06574c
+   WHAT IT DOES: vector fill-insert (_M_fill_insert) of n copies of a counted handle at pos in a vector of 8-byte handles: with enough spare capacity it copies the value, shifts the tail up (assigning handle by handle) and fills the gap; otherwise it allocates old+max(old,n) elements, copies [begin,pos), the n copies and [pos,end) into it (destroying and freeing on an exception and rethrowing), destroys and frees the old block and stores the new begin, end and capacity.
+   Remaining difference: not yet matched; the fill call and its stack slot at +16 and the register allocation differ. */
+void f_06574c(Hv9 *v, Hd9 *pos, unsigned n, const Hd9 *x) {
+  if (n == 0) return;
+  if ((unsigned)(v->c - v->e) >= n) {
+    Hd9 xc(*x);
+    unsigned after = v->e - pos;
+    Hd9 *old = v->e;
+    if (n < after) {
+      f_061c38(old - n, old, old, 0);
+      v->e += n;
+      Hd9 *s = old - n, *d = old;
+      int k = s - pos;
+      while (k > 0) { --s; --d; f_05df24(d, s); --k; }
+      f_0659fc(pos, pos + n, &xc);
+    } else {
+      f_065a5c(old, n - after, &xc, 0);
+      v->e += n - after;
+      f_065aa0(pos, old, v->e, 0);
+      v->e += after;
+      f_0659fc(pos, old, &xc);
+    }
+    return;
+  }
+  unsigned osz = v->e - v->b;
+  unsigned len = osz + mx9(osz, n);
+  Hd9 *ns = (Hd9 *)f_04dfa0(len * 8);
+  Hd9 *nf = ns;
+  try {
+    nf = (Hd9 *)f_061c7c(v->b, pos, ns, 0);
+    nf = (Hd9 *)f_065aec(nf, n, (void *)x, 0);
+    nf = (Hd9 *)f_061c7c(pos, v->e, nf, 0);
+  } catch (...) {
+    for (Hd9 *q = ns; q != nf; ++q) q->~Hd9();
+    if (ns) f_04e4b4(ns);
+    throw;
+  }
+  f_0606a0(v->b, v->e, 0);
+  if (v->b) f_04e4b4(v->b);
+  v->c = ns + len;
+  v->e = nf;
+  v->b = ns;
+}
+
+/* ---- shared by the keyed-slot setters (0x06297c, 0x0626ec) ---- */
+void f_05db84(void *);
+void f_04e8c0(void *) throw();
+void f_05a3e8(void *, void *, void *);
+void f_05e4a8(void *, void *);
+void f_05daa4(void *, void *);
+void *f_05db08(unsigned);
+int f_15c098(int, int);
+int f_06264c(void *);
+int f_05de94(void *, void *, void *);
+void f_065670(void *, void *, void *);
+extern char D_1a43d0[];
+extern char D_1a4110[];
+extern unsigned char D_1a4d14;
+struct Ar9 { int *o; int k; int pad; int **st; };
+struct St9 { char *p; ~St9() { f_05db84(this); } };
+struct Bs9 { void *vt; int z; char b; int w[4]; ~Bs9() { f_04e8c0(this); } };
+struct Ob9 : Bs9 {
+  St9 s;
+  Ob9(St9 *t) { vt = D_1a43d0; w[1] = -1; z = 0; b = 1; w[0] = 0; w[2] = 0; w[3] = 0; f_05e4a8(&s, t); }
+  ~Ob9() { vt = D_1a43d0; }
+};
+struct Hh9 { int *p; int *c; Hh9() {} ~Hh9() { f_04ed28(this); } };
+/* the slot-index object's name: read from the argument's stream when its index is -1 */
+static inline int slotidx9(Ar9 *a) {
+  int *obj;
+  if (a->k == -1) { int *q = (int *)*a->st; *((char *)q + q[-3]) = D_1a4d14; obj = q; }
+  else obj = a->o;
+  int r = f_15c098(((int *)obj)[1], 7);
+  St9 tmp; char tag[16];
+  f_05a3e8(&tmp, (void *)r, tag);
+  Ob9 o(&tmp);
+  return f_06264c(&o);
+}
+/* @draft 0x06297c us f_06297c
+   WHAT IT DOES: stores the handle a2 under a key: if f_05de94 already accepts it for the key argument it returns 1; otherwise it derives a slot index from the key argument (through a temporary name object), and in the slot vector at +24 either replaces the handle at that index or, when the index is past the end, builds a fresh 8-byte default object (vtable D_1a4110) handle, resizes the vector to index+1 with it, and then assigns the handle; returns 1.
+   Remaining difference: not scored beyond the draft; landing pads and register allocation unchecked. */
+int f_06297c(char *self, Ar9 *a, Hd9 *val) {
+  int found;
+  { Hd9 c(*val); found = f_05de94(self, a, &c); }
+  if (found) return 1;
+  unsigned idx = slotidx9(a);
+  Hv9 *v = (Hv9 *)(self + 24);
+  if (idx < (unsigned)(v->e - v->b)) {
+    f_05df24(v->b + idx, val);
+    return 1;
+  }
+  unsigned *o = (unsigned *)f_05db08(8);
+  o[0] = (unsigned)D_1a4110; o[1] = 0;
+  Hh9 r; f_05daa4(&r, o);
+  unsigned n1 = idx + 1;
+  if (n1 < (unsigned)(v->e - v->b)) f_065670(v, v->b + n1, v->e);
+  else f_06574c(v, v->e, n1 - (v->e - v->b), (Hd9 *)&r);
+  f_05df24(((Hv9 *)(self + 24))->b + idx, val);
+  return 1;
+}
+
+int f_129590(void *, int, int);
+void f_05dbf4(void *, void *, void *);
+/* @draft 0x0626ec us f_0626ec
+   WHAT IT DOES: looks the key argument up with f_05dbf4 and returns a copy of the found counted handle; when nothing is found it parses the key's name (the string of a temporary name object, terminated in place, converted with f_129590 base 0) into a slot index and returns a copy of the handle at that index in the slot vector at +24, or, when the index is past the end, a fresh handle around a new 8-byte default object (vtable D_1a4110).
+   Remaining difference: not scored beyond the draft; landing pads and register allocation unchecked. */
+Hd9 f_0626ec(char *self, Ar9 *a) {
+  Hh9 t;
+  f_05dbf4(&t, self, a);
+  if (t.p) return *(Hd9 *)&t;
+  int *obj;
+  if (a->k == -1) { int *q = (int *)*a->st; *((char *)q + q[-3]) = D_1a4d14; obj = q; }
+  else obj = a->o;
+  int r = f_15c098(((int *)obj)[1], 7);
+  unsigned idx;
+  {
+    St9 tmp; char tag[16];
+    f_05a3e8(&tmp, (void *)r, tag);
+    Ob9 o(&tmp);
+    char *str = o.s.p;
+    *(str + ((int *)str)[-3]) = D_1a4d14;
+    idx = f_129590(str, 0, 0);
+  }
+  Hv9 *v = (Hv9 *)(self + 24);
+  if (idx < (unsigned)(v->e - v->b)) return v->b[idx];
+  unsigned *o = (unsigned *)f_05db08(8);
+  o[0] = (unsigned)D_1a4110; o[1] = 0;
+  return Hd9(o);
+}
+
+/* @draft 0x0606e4 us f_0606e4
+   WHAT IT DOES: vector insert-with-reallocation helper (_M_insert_aux) for a vector of 8-byte counted handles: with spare capacity it copy-constructs the last handle one slot up, shifts the range [pos, end-1) up by one (assigning handle by handle) and assigns a copy of the value to pos; otherwise it allocates twice the size (1 when empty), copies [begin,pos), the value and [pos,end) into it (destroying and freeing the new block and rethrowing on an exception), destroys the old handles, frees the old block and stores the new begin, end and capacity.
+   Remaining difference: not scored beyond the draft; register allocation and the iterator stack slot (+16) unchecked. */
+void f_0606e4(Hv9 *v, Hd9 *pos, const Hd9 *x) {
+  if (v->e != v->c) {
+    Hd9 *e = v->e;
+    new (e) Hd9(e[-1]);
+    v->e = e + 1;
+    Hd9 xc(*x);
+    Hd9 *last = v->e - 2, *dst = v->e - 1;
+    int n = last - pos;
+    while (n > 0) { --dst; --last; f_05df24(dst, last); --n; }
+    f_05df24(pos, &xc);
+    return;
+  }
+  unsigned old = v->e - v->b;
+  unsigned len = old != 0 ? 2 * old : 1;
+  Hd9 *ns = (Hd9 *)f_04dfa0(len * 8);
+  Hd9 *nf = ns;
+  try {
+    nf = (Hd9 *)f_061c7c(v->b, pos, nf, 0);
+    new (nf) Hd9(*x);
+    ++nf;
+    nf = (Hd9 *)f_061c7c(pos, v->e, nf, 0);
+  } catch (...) {
+    for (Hd9 *q = ns; q != nf; ++q) q->~Hd9();
+    if (ns) f_04e4b4(ns);
+    throw;
+  }
+  for (Hd9 *q = v->b; q != v->e; ++q) q->~Hd9();
+  if (v->b) f_04e4b4(v->b);
+  v->c = ns + len;
+  v->e = nf;
+  v->b = ns;
+}
+
+/* ---- vector of 4-byte words: insert-aux ---- */
+void *memmove(void *, const void *, unsigned);
+struct Vi9 { int al; int *b, *e, *c; };
+/* @draft 0x06053c us f_06053c
+   WHAT IT DOES: vector insert-with-reallocation helper (_M_insert_aux) for a vector of 4-byte words: with spare capacity it copies the last word one slot up, memmoves [pos, end-1) up by one word and stores the value at pos; otherwise it allocates twice the size (1 when empty), memmoves [begin,pos) into it, stores the value, memmoves [pos,end) after it, frees the old block and stores the new begin, end and capacity.
+   Remaining difference: not scored beyond the draft. */
+void f_06053c(Vi9 *v, int *pos, const int *x) {
+  if (v->e != v->c) {
+    int *e = v->e;
+    if (e) *e = e[-1];
+    v->e = e + 1;
+    int xc = *x;
+    memmove(e - ((e - 1) - pos), pos, ((e - 1) - pos) * 4);
+    *pos = xc;
+    return;
+  }
+  unsigned old = v->e - v->b;
+  unsigned len = old != 0 ? 2 * old : 1;
+  int *ns = (int *)f_04dfa0(len * 4);
+  int nb = pos - v->b;
+  memmove(ns, v->b, nb * 4);
+  int *nf = ns + nb;
+  if (nf) *nf = *x;
+  ++nf;
+  int tail = v->e - pos;
+  memmove(nf, pos, tail * 4);
+  if (v->b) f_04e4b4(v->b);
+  v->c = ns + len;
+  v->e = nf + tail;
+  v->b = ns;
+}
+
+/* @draft 0x060e40 us f_060e40
+   WHAT IT DOES: vector erase of the range [first, last) in a vector of 56-byte nodes: assigns the tail [last, end) down onto first node by node, destroys the nodes left over at the end, pulls the end pointer back by the number of erased nodes and returns first.
+   Remaining difference: not scored beyond the draft; retail also keeps the copy's end iterator in a stack slot. */
+Nd9 *f_060e40(Vc9 *v, Nd9 *first, Nd9 *last) {
+  Nd9 *e = v->e;
+  int n = e - last;
+  Nd9 *s = last, *d = first;
+  while (n > 0) { *d = *s; ++d; ++s; --n; }
+  for (Nd9 *p = d; p != e; ++p) p->~Nd9();
+  v->e = e - (last - first);
+  return first;
+}
+
+/* ---- key-event dispatch (0x060b14) ---- */
+void f_05e6cc(void *, void *, void *);
+void *f_154448(void *, void *, void *, int);
+void f_161e48(void *, int, void *);
+void f_05e394(void *, void *, void *, void *);
+extern char D_1a3220[]; /* "onKeyDown" */
+extern char D_1a322c[]; /* "onKeyUp" */
+extern char D_1a4900[], D_1a4960[];
+struct Hq9 { int *p; int *c; Hq9() {} ~Hq9() { f_04ed28(this); } };
+struct Vq9 {
+  virtual void s0(); virtual void s1(); virtual void s2(); virtual void s3(); virtual void s4();
+  virtual void s5(); virtual void s6(); virtual void s7(); virtual void s8();
+  virtual void *s9();
+  virtual void s10(); virtual void s11(); virtual void s12();
+  virtual Hq9 s13(void *);
+};
+struct It9 { int *p; It9() {} It9(const It9 &o) { p = o.p; } };
+/* @draft 0x060b14 us f_060b14
+   WHAT IT DOES: builds a key record for "onKeyDown" (a2 non-zero) or "onKeyUp" through f_05e6cc, then walks the list at +368; for each entry asks its object (virtual slot 13) for a handle for the key, casts the handle's object with f_154448 (tags D_1a4900/D_1a4960) and, when that succeeds, takes virtual slot 9 of the entry's object: with a non-null result it calls f_161e48 with the cast object's field +28, otherwise it first records the entry in the map at +340 through f_05e394 and calls f_161e48 with a null value.
+   Remaining difference: not scored beyond the draft. */
+void f_060b14(char *self, void *a1, unsigned char down) {
+  int *end = *(int **)(self + 368);
+  It9 it; it.p = (int *)*end;
+  char key[16];
+  f_05e6cc(key, self, down ? D_1a3220 : D_1a322c);
+  while (it.p != end) {
+    Hq9 r = ((Vq9 *)it.p[2])->s13(key);
+    if (r.p) {
+      char *c = (char *)f_154448(r.p, D_1a4900, D_1a4960, 0);
+      if (c) {
+        void *v = ((Vq9 *)it.p[2])->s9();
+        if (v) f_161e48(a1, *(int *)(c + 28), v);
+        else {
+          int out[4]; int k = ((int *)(self + 340))[1];
+          f_05e394(out, self + 340, &k, it.p + 2);
+          f_161e48(a1, *(int *)(c + 28), 0);
+        }
+      }
+    }
+    it.p = (int *)*it.p;
+  }
+}
+
+/* ---- copy-on-write string: mutate ---- */
+void *f_065060(unsigned, void *);
+void f_04eee8(void *, void *);
+unsigned sceKernelCpuSuspendIntr(void);
+void sceKernelCpuResumeIntr(unsigned);
+void *memcpy(void *, const void *, unsigned);
+struct Em9 { ~Em9() {} };
+/* @draft 0x060920 us f_060920
+   WHAT IT DOES: copy-on-write string _M_mutate(pos, len1, len2): makes room for replacing len1 characters at pos with len2: when the string is shared or too small it allocates a new buffer (f_065060, doubling the capacity when growing past 4068), copies the head and the tail, releases the old buffer (interrupt-safe refcount drop, f_04eee8 when it was the last) and takes the new one; otherwise it moves the tail in place. Then clears the share count, stores the new length and the terminating NUL.
+   Remaining difference: not scored beyond the draft. */
+void f_060920(char **self, unsigned pos, unsigned len1, unsigned len2) {
+  Em9 g;
+  char *d = *self;
+  unsigned old = *(unsigned *)(d - 12);
+  unsigned newsz = old + len2 - len1;
+  unsigned how = old - pos - len1;
+  int *rep = (int *)(d - 12);
+  if (rep[2] > 0 || (unsigned)rep[1] < newsz) {
+    unsigned req = newsz;
+    if ((unsigned)rep[1] < newsz && newsz >= 4068) { unsigned t = rep[1] * 2; req = t < newsz ? newsz : t; }
+    char *r = (char *)f_065060(req, &g);
+    if (pos) memcpy(r + 12, d, pos);
+    if (how) memcpy(r + 12 + pos + len2, d + pos + len1, how);
+    char *s0 = *self; char *s3 = s0 - 12;
+    unsigned intr = sceKernelCpuSuspendIntr();
+    volatile int *c = (volatile int *)(s0 - 4);
+    int s2 = *c; *c += -1;
+    sceKernelCpuResumeIntr(intr);
+    if (s2 <= 0) f_04eee8(s3, &g);
+    *self = r + 12;
+  } else if (how && len1 != len2) {
+    memmove(d + pos + len2, d + pos + len1, how);
+  }
+  d = *self;
+  *(int *)(d - 4) = 0;
+  *(unsigned *)(d - 12) = newsz;
+  d[newsz] = 0;
+}
+
+/* ---- pointer-to-member call on a value object (0x0602c0) ---- */
+void f_05f64c(void *, void *, void *);
+extern char D_1a4320[];
+struct Pa9 { };
+typedef void (Pa9::*Pm9)();
+struct Vz9 {
+  virtual void s0(); virtual void s1(); virtual void s2(); virtual void s3(); virtual void s4(); virtual void s5();
+  virtual int s6(); virtual void s7(); virtual void *s8();
+};
+struct Hz9 { Vz9 *p; int *c; ~Hz9() { f_04ed28(this); } };
+/* @draft 0x0602c0 us f_0602c0
+   WHAT IT DOES: takes the counted handle two links down the chain at +328, builds a counted handle around a value object (a fresh 12-byte zeroed number object, vtable D_1a4320, when virtual slot 6 of the handle's object returns 3, otherwise the result of its virtual slot 8), calls the given pointer-to-member function on that value object, then records the result in the map at +328 through f_05e394.
+   Remaining difference: not scored beyond the draft; temporaries are open-coded and stack slots may differ. */
+void f_0602c0(char *self, const Pm9 &pm) {
+  Pm9 m = pm;
+  char *q = self + 328;
+  Hz9 h;
+  int out[4]; int b;
+  int a = *(int *)(q + 4);
+  int *v = *(int **)(a + 4);
+  h.p = (Vz9 *)v[2]; h.c = (int *)v[3]; if (h.c) ++*h.c;
+  b = *(int *)(a + 4);
+  f_05f64c(out, q, &b);
+  void *obj;
+  if (h.p->s6() == 3) {
+    unsigned *o = (unsigned *)f_05db08(12);
+    o[0] = (unsigned)D_1a4320; o[1] = 0; o[2] = 0;
+    obj = o;
+  } else obj = h.p->s8();
+  Hd9 r(obj);
+  (((Pa9 *)r.p)->*m)();
+  int out2[4]; int a2 = *(int *)(q + 4);
+  f_05e394(out2, q, &a2, &r);
+}
 }
 }
