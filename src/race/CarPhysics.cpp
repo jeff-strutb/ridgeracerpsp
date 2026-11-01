@@ -1351,3 +1351,138 @@ extern "C" float f_0ab4ac(CarPhys *p, const float *x, const float *y, int *s)
         *s = 0;
     return r;
 }
+
+/* A course point viewed as a search node: its position and its heading (65536 steps a turn). */
+struct CourseNode {
+    float x, y, z;
+    short ang;
+    short m14;
+    int m16, m20;
+};
+extern CourseNode *D_23f7f0_nodes __asm__("D_23f7f0");
+
+extern "C" {
+Angle *f_099b98_a(Angle *a) __asm__("f_099b98");
+float f_099efc(float x);
+float f_09a07c(float x);
+int f_0af550(const int *a);
+}
+
+/* The point index i wrapped into the ring. */
+static inline int CourseWrap(int i)
+{
+    return f_0af550(&i);
+}
+
+/* Which side of course point k's heading line the position v lies on (negative: ahead). */
+static inline float CourseSide(const float *v, CourseNode *list, int k)
+{
+    CourseNode *e = &list[k];
+    Angle a;
+    a.a = e->ang * 9.5873802e-05f;
+    float t = f_099b98_a(&a)->a;
+    return (v[1] - e->y) * f_09a07c(t) + (v[0] - e->x) * f_099efc(t);
+}
+
+/* @draft 0x0a98d8 us f_0a98d8
+   WHAT IT DOES: Finds the course segment under the probe point (m148, m152): a binary search over the 16 course points around the car's last point m180, each step testing which side of a point's heading line the probe lies on; the segment's two point indices go into m156 and m160.
+   Remaining difference (46 of 587 words): one register swap: retail keeps the point list in s1 and m180 in s2, here the reverse; the code is otherwise retail's. Not the declaration order. */
+extern "C" void f_0a98d8(CarPhys *p)
+{
+    CourseNode *list = D_23f7f0_nodes;
+    int n = p->m180;
+    float v[2];
+    v[0] = p->m148;
+    v[1] = p->m152;
+    if (CourseSide(v, list, n) < 0.0f) {
+        int kp4 = CourseWrap(n + 4);
+        if (CourseSide(v, list, kp4) < 0.0f) {
+            int kp6 = CourseWrap(n + 6);
+            if (CourseSide(v, list, kp6) < 0.0f) {
+                int kp7 = CourseWrap(n + 7);
+                if (CourseSide(v, list, kp7) < 0.0f) {
+                    p->m156 = kp7;
+                    p->m160 = CourseWrap(n + 8);
+                } else {
+                    p->m156 = CourseWrap(n + 6);
+                    p->m160 = kp7;
+                }
+            } else {
+                int kp5 = CourseWrap(n + 5);
+                if (CourseSide(v, list, kp5) < 0.0f) {
+                    p->m156 = kp5;
+                    p->m160 = CourseWrap(n + 6);
+                } else {
+                    p->m156 = CourseWrap(n + 4);
+                    p->m160 = kp5;
+                }
+            }
+        } else {
+            int kp2 = CourseWrap(n + 2);
+            if (CourseSide(v, list, kp2) < 0.0f) {
+                int kp3 = CourseWrap(n + 3);
+                if (CourseSide(v, list, kp3) < 0.0f) {
+                    p->m156 = kp3;
+                    p->m160 = CourseWrap(n + 4);
+                } else {
+                    p->m156 = CourseWrap(n + 2);
+                    p->m160 = kp3;
+                }
+            } else {
+                int kp1 = CourseWrap(n + 1);
+                if (CourseSide(v, list, kp1) < 0.0f) {
+                    p->m156 = kp1;
+                    p->m160 = CourseWrap(n + 2);
+                } else {
+                    p->m156 = CourseWrap(n);
+                    p->m160 = kp1;
+                }
+            }
+        }
+    } else {
+        int km4 = CourseWrap(n - 4);
+        if (CourseSide(v, list, km4) < 0.0f) {
+            int km2 = CourseWrap(n - 2);
+            if (CourseSide(v, list, km2) < 0.0f) {
+                int km1 = CourseWrap(n - 1);
+                if (CourseSide(v, list, km1) < 0.0f) {
+                    p->m156 = km1;
+                    p->m160 = CourseWrap(n);
+                } else {
+                    p->m156 = CourseWrap(n - 2);
+                    p->m160 = km1;
+                }
+            } else {
+                int km3 = CourseWrap(n - 3);
+                if (CourseSide(v, list, km3) < 0.0f) {
+                    p->m156 = km3;
+                    p->m160 = CourseWrap(n - 2);
+                } else {
+                    p->m156 = CourseWrap(n - 4);
+                    p->m160 = km3;
+                }
+            }
+        } else {
+            int km6 = CourseWrap(n - 6);
+            if (CourseSide(v, list, km6) < 0.0f) {
+                int km5 = CourseWrap(n - 5);
+                if (CourseSide(v, list, km5) < 0.0f) {
+                    p->m156 = km5;
+                    p->m160 = CourseWrap(n - 4);
+                } else {
+                    p->m156 = CourseWrap(n - 6);
+                    p->m160 = km5;
+                }
+            } else {
+                int km7 = CourseWrap(n - 7);
+                if (CourseSide(v, list, km7) < 0.0f) {
+                    p->m156 = km7;
+                    p->m160 = CourseWrap(n - 6);
+                } else {
+                    p->m156 = CourseWrap(n - 8);
+                    p->m160 = km7;
+                }
+            }
+        }
+    }
+}
