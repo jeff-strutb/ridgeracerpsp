@@ -425,28 +425,23 @@ extern "C" void f_0aa374(CarPhys *p)
     }
 }
 
-/* @draft 0x0ab074 us f_0ab074
-   WHAT IT DOES: Runs four passes over the car's per-wheel records: each pass numbers the record in a global, copies its values into the car, runs f_0ab0fc and stores the result back.
-   Remaining difference: the loop is 144 bytes against retail 136; the loop test and global store are laid out differently. */
+/* @implements 0x0ab074 us f_0ab074
+   WHAT IT DOES: Runs four passes over the car's per-wheel records: each pass numbers the record in a global, copies its values into the car, runs f_0ab0fc and stores the result back. */
 extern "C" void f_0ab074(CarPhys *p)
 {
-    char *q = (char *)p;
-    int k = 0;
-    do {
-        int a = *(int *)(q + 256);
-        int b = *(int *)(q + 272);
-        float c = *(float *)(q + 304);
-        float d = *(float *)(q + 320);
-        D_2456a0 = k;
-        k++;
+    for (int i = 0; i < 4; i++) {
+        int a = ((int *)((char *)p + 256))[i];
+        int b = ((int *)((char *)p + 272))[i];
+        float c = ((float *)((char *)p + 304))[i];
+        float d = ((float *)((char *)p + 320))[i];
+        D_2456a0 = i;
         p->m156 = a;
         p->m140 = c;
         p->m160 = b;
-        f_0ab0fc(p);
         p->m168 = d;
-        *(float *)(q + 336) = p->m144;
-        q += 4;
-    } while (k < 4);
+        f_0ab0fc(p);
+        ((float *)((char *)p + 336))[i] = p->m144;
+    }
 }
 
 /* @implements 0x0ab220 us f_0ab220
