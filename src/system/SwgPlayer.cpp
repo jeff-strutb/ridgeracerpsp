@@ -8235,8 +8235,7 @@ void f_049b90(char *s2, char *s3, char *s1) {
     Y[2] = (int)(fw * m1 + fh * m5 + ty);
     X[3] = (int)(fh * m4 + tx);
     Y[3] = (int)(fh * m5 + ty);
-    U[0] = 0; U[1] = w; U[2] = w; U[3] = 0;
-    V[0] = 0; V[1] = 0; V[2] = h; V[3] = h;
+    U[0] = 0; V[0] = 0; U[1] = w; V[1] = 0; U[2] = w; V[2] = h; U[3] = 0; V[3] = h;
     int pal = ((signed char *)rec)[8];
     int *tab = *(int **)(a1 + 240);
     if (*(int *)(s2 + 8) != pal) {
@@ -11822,6 +11821,423 @@ void f_068e6c(char *self, char *obj, unsigned idx)
 void f_06b4a4(void *self, int a1, int a2, int n, unsigned char *p)
 {
     new (self) Fin6b4(a1, a2, n, p);
+}
+}
+}
+
+/* ---- swg8a ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 fragment by worker swg8a. */
+namespace swg8a {
+template <class T> static inline T &Y(void *p, int o) { return *(T *)((char *)p + o); }
+#define VFPU_BEGIN ".set push\n\t.set noreorder\n\t"
+#define VFPU_END "\n\t.set pop"
+static inline float VCos(float a) {
+    float r;
+    __asm__ volatile(VFPU_BEGIN "lv.s S400, %1\n\tvcos.s S401, S400\n\tsv.s S401, %0" VFPU_END : "=m"(r) : "m"(a) : "memory");
+    return r;
+}
+static inline float VSin(float a) {
+    float r;
+    __asm__ volatile(VFPU_BEGIN "lv.s S400, %1\n\tvsin.s S401, S400\n\tsv.s S401, %0" VFPU_END : "=m"(r) : "m"(a) : "memory");
+    return r;
+}
+extern "C" {
+void *f_04dfa0(unsigned);
+void f_04b724(void *);
+int f_15a754(void *);
+void f_04e694(void *, void *);
+void f_15b170(void *, void *, void *, void *, void *, void *, void *, int, int);
+void f_15ba88(void *);
+void f_15ba34(void *, void *);
+void f_04e1a0(void *);
+void *f_154448(void *, void *, void *, int);
+void f_04ea4c(void *, void *, void *);
+void *f_04ebf4(void *, int);
+unsigned strlen(const char *);
+extern int D_1a3958, D_1a3a78, D_1a3a10, D_1a39d0, D_1a3810, D_1a3760, D_1a3698, D_1a35d0;
+extern int D_1a2be8[5], D_1a2c08[5];
+extern char D_1a3b18[], D_1a3b64[];
+extern int D_24100c;
+void f_046620(void *, int);
+void f_04637c(void *, int);
+void f_04639c(void *);
+int f_07dacc(int, int, void *, int);
+void f_0463a4(void *, int, int, int, int, int, int, int, int, int, int, float, float, float, float);
+extern float D_1a2b10, D_1a2b50, D_1a2b54, D_1a2b58, D_1a2b7c, D_1a2b80, D_1a2b84, D_1a2b88, D_1a2b8c, D_1a2b90;
+
+/* @draft 0x04a648 us f_04a648
+   WHAT IT DOES: builds a player movie instance: allocates its three holder objects (when not supplied), creates the 332-byte movie object, optionally builds a 68-byte text-style record with five 16-byte entries from two constant tables, and copies the two index arrays of the source data into the holder.
+   Remaining difference: transcribed with plain pointer arithmetic; exception landing pads and exact register allocation not reproduced. */
+int f_04a648(char *out, char *data, int x, int unused, char *t0, char *t1, char *t2) {
+    f_04b724(out);
+    if (!data || !f_15a754(data)) return 0;
+    int *s6 = (int *)f_04dfa0(80);
+    s6[0] = (int)&D_1a3958;
+    Y<int>(s6, 16) = 0; Y<int>(s6, 20) = 0; Y<int>(s6, 24) = 0;
+    Y<int>(s6, 32) = 0; Y<int>(s6, 36) = 0; Y<int>(s6, 40) = 0;
+    char buf[64];
+    f_04e694((char *)s6 + 44, buf);
+    char *h2;
+    if (!t2) {
+        Y<int>(out, 4) = 1;
+        h2 = 0;
+        char *p = (char *)f_04dfa0(32);
+        if (p) {
+            h2 = p;
+            Y<int>(p, 0) = (int)&D_1a3a78;
+            Y<int>(p, 24) = (int)&D_24100c;
+            Y<int>(p, 20) = 0;
+        }
+        Y<int>(h2, 28) = Y<int>(out, 28);
+    } else {
+        h2 = t2;
+        Y<int>(out, 4) = 0;
+    }
+    char *s1;
+    if (!t1) {
+        Y<int>(out, 8) = 1;
+        s1 = 0;
+        char *p = (char *)f_04dfa0(16);
+        if (p) { s1 = p; Y<int>(p, 0) = (int)&D_1a3a10; }
+        Y<int>(s1, 12) = 0; Y<int>(s1, 8) = 0;
+    } else {
+        s1 = t1;
+        Y<int>(out, 8) = 0;
+    }
+    char *s4;
+    if (!t0) {
+        Y<int>(out, 12) = 1;
+        s4 = 0;
+        char *p = (char *)f_04dfa0(28);
+        if (p) { s4 = p; Y<int>(p, 0) = (int)&D_1a39d0; }
+        Y<int>(s4, 16) = 0;
+        Y<int>(s4, 20) = 0;
+        Y<int>(s4, 16) = Y<int>(out, 28);
+        Y<int>(s4, 8) = 0; Y<int>(s4, 12) = 0; Y<int>(s4, 24) = 0;
+    } else {
+        s4 = t0;
+        Y<int>(out, 12) = 0;
+    }
+    char *s2 = 0;
+    char *m = (char *)f_04dfa0(332);
+    if (m) {
+        f_15b170(m, s6, data, h2, s1, 0, s4, 60, 0);
+        s2 = m;
+    }
+    if (Y<int>(Y<char *>(s2, 12), 40) & 1) {
+        char *q = (char *)f_04dfa0(400);
+        Y<int>(q, 0) = 400;
+        char *r = q + 4;
+        f_04e1a0(r);
+        Y<int>(q, 4) = (int)&D_1a3810;
+        Y<int>(r, 388) = 0;
+        Y<char>(r, 392) = 0;
+        f_15ba34(s2, r);
+    }
+    {
+        char *a0 = Y<char *>(s2, 232);
+        char *found = 0;
+        if (a0) found = (char *)f_154448(a0, D_1a3b18, D_1a3b64, 0);
+        if (found) {
+            int s6o = Y<int>(out, 28);
+            char *p = (char *)f_04dfa0(68);
+            char *s0 = p + 12, *s5 = p + 4;
+            Y<int>(p, 0) = 68;
+            Y<int>(p, 4) = (int)&D_1a3760;
+            Y<int>(s5, 4) = 0;
+            Y<int>(s0, 4) = 0;
+            char *n = (char *)f_04dfa0(40);
+            Y<char *>(s0, 4) = n;
+            Y<int>(n, 4) = 0;
+            Y<int>(s5, 0) = (int)&D_1a3698;
+            Y<char *>(Y<char *>(s0, 4), 8) = Y<char *>(s0, 4);
+            Y<int>(s0, 8) = 0;
+            Y<char *>(Y<char *>(s0, 4), 12) = Y<char *>(s0, 4);
+            char b2[16], b3[16], b4[16];
+            Y<int>(n, 0) = 0;
+            f_04ea4c(s5 + 24, b2, b3);
+            int ta[5], tb[5];
+            for (int k = 0; k < 5; k++) ta[k] = D_1a2be8[k];
+            for (int k = 0; k < 5; k++) tb[k] = D_1a2c08[k];
+            Y<int>(s5, 0) = (int)&D_1a35d0;
+            Y<char *>(found, 388) = s5;
+            Y<int>(s5, 60) = s6o;
+            Y<int>(s5, 56) = 0;
+            char *a5 = (char *)f_04ebf4(s5, 96);
+            Y<char *>(s5, 56) = a5;
+            int ent[4];
+            for (int i = 0; i < 5; i++) {
+                const char *str = (const char *)tb[i];
+                int len = 0;
+                if (str) { len = strlen(str); a5 = Y<char *>(s5, 56); }
+                ent[0] = ta[i];
+                ent[1] = 2;
+                ent[2] = len;
+                ent[3] = i;
+                int *dst = (int *)(a5 + i * 16);
+                dst[0] = ent[0]; dst[1] = ent[1]; dst[2] = ent[2]; dst[3] = ent[3];
+            }
+            ent[1] = 1; ent[2] = 0; ent[3] = 0; ent[0] = 0;
+            Y<int>(a5, 80) = 0;
+            Y<int>(a5, 84) = ent[1];
+            Y<int>(a5, 88) = ent[2];
+            Y<int>(a5, 92) = ent[3];
+        }
+        f_15ba88(s2);
+        int cnt = (Y<int>(s2, 44) - Y<int>(s2, 40)) >> 2;
+        if (cnt * (int)0xaaaaaaab > 0) Y<int>(s2, 240) = x;
+        Y<char *>(out, 0) = s2;
+        if (Y<int>(out, 12)) {
+            int n0 = Y<int>(data, 144);
+            Y<char *>(s4, 20) = out + 16;
+            Y<char *>(s4, 24) = out + 24;
+            int off = Y<int>(data, 148);
+            if (n0 > 0) {
+                int *d = (int *)f_04dfa0(n0 * 4);
+                Y<int *>(s4, 8) = d;
+                int *src = (int *)(off + data);
+                for (int i = 0; i < n0; i++) d[i] = (int)(data + src[i]);
+            }
+            int n1 = Y<int>(data, 168);
+            int off1 = Y<int>(data, 172);
+            if (n1 > 0) {
+                int *d = (int *)f_04dfa0(n1 * 4);
+                Y<int *>(s4, 12) = d;
+                int *src = (int *)(off1 + data);
+                for (int i = 0; i < n1; i++) d[i] = (int)(data + src[i]);
+            }
+        }
+        return 1;
+    }
+    return 1;
+}
+
+/* @draft 0x047248 us f_047248
+   WHAT IT DOES: lays out and emits one line of text glyph quads: looks up (or loads, via f_07dacc) the font page for key a3/a4 in a 20-entry cache of the context, then walks the font's groups and their 16-byte glyph entries, scaling widths by sx, accumulating a justified x position and a running maximum y, and calls f_0463a4 for each glyph; returns 1, or 0 if w>=481 or the load fails.
+   Remaining difference: not yet scored against retail register allocation. */
+int f_047248(char *ctx, int w, int ox, int key, int key2, int *tab, float sx, float sy, float c1, float c2, float c3, float c4) {
+    if (!(w < 481)) return 0;
+    int a7 = Y<int>(ctx, 0);
+    int idx = Y<int>(ctx, 20);
+    char *P = Y<char *>(ctx, 24) + idx * 0xaf20;
+    Y<int>(ctx, 8) = Y<int>(ctx, idx * 4 + 828);
+    if (key != Y<int>(ctx, idx * 4 + 28) || Y<int>(ctx, idx * 4 + 748) != key2 || Y<unsigned char>(ctx, 908)) {
+        int r = f_07dacc(a7, key, P, key2);
+        Y<int>(ctx, 8) = r;
+        if (r == -1) return 0;
+        Y<int>(ctx, idx * 4 + 828) = r;
+        Y<int>(ctx, idx * 4 + 28) = key;
+        Y<int>(ctx, idx * 4 + 748) = key2;
+    }
+    int nx = idx + 1;
+    Y<unsigned char>(ctx, 908) = 0;
+    Y<int>(ctx, 20) = nx < 20 ? nx : 0;
+    char buf[32];
+    int s5 = Y<int>(ctx, 8);
+    f_046620(buf, -1);
+    f_04637c(buf, tab[Y<int>(ctx, 8)]);
+    int maxy = 0, prevmax = 0, j = 0;
+    if (Y<int>(P, 0) > 0) {
+        int s8 = Y<short>(P, 10);
+        float fw = (float)w;
+        char *g = P;
+        do {
+            int gx = Y<short>(g, 8);
+            float f20 = 0;
+            for (int i = 0; i < Y<int>(g, 4); i++) {
+                int x0 = Y<short>(g, 12 + i * 16), x1 = Y<short>(g, 16 + i * 16);
+                f20 += (float)(x1 - x0) * sx;
+            }
+            f20 = fw - f20 * D_1a2b10;
+            char *e = g;
+            for (int i = 0; i < Y<int>(g, 4); i++, e += 16) {
+                int x0 = Y<short>(e, 12), x1 = Y<short>(e, 16);
+                int v3 = Y<short>(e, 14), v2 = Y<short>(e, 18);
+                int rowA = v3 / 1000, rowB = v2 / 1000;
+                v3 -= rowA * 1000;
+                v2 -= rowB * 1000;
+                if (rowA != s5) {
+                    s5 = rowA;
+                    f_04639c(buf);
+                    f_04637c(buf, tab[Y<int>(ctx, 8) + rowA * 10]);
+                }
+                int dy = v2 - v3;
+                int dx = (int)((float)(x1 - x0) * sx);
+                int ypos = s8 + (int)((float)dy * sy) + ox;
+                int px0 = (int)((float)gx + f20);
+                int a2v = s8 + ox;
+                int px1;
+                if (i == Y<int>(g, 4) - 1) {
+                    gx += dx;
+                    px1 = (int)((float)gx + f20);
+                } else {
+                    int lh8 = Y<short>(e, 8), lh24 = Y<short>(e, 24);
+                    gx += dx;
+                    px1 = (int)((float)gx + f20);
+                    gx = gx + lh24 - (lh8 + (x1 - x0));
+                }
+                if (ypos > maxy) maxy = ypos;
+                f_0463a4(buf, px0, a2v, -1, x0, v3, px1, ypos, -1, x1, v2, c1, c2, c3, c4);
+            }
+            if (maxy == 0) maxy = prevmax;
+            j++;
+            ox = maxy + 1;
+            prevmax = maxy;
+            g += 6404;
+        } while (j < Y<int>(P, 0));
+    }
+    f_04639c(buf);
+    return 1;
+}
+
+/* @draft 0x04c4c8 us f_04c4c8
+   WHAT IT DOES: rotates the four corner points of entry a1 about the point (cx,cy) offset by the entry's first corner, using the vector unit's sine and cosine of the angle, writes the rotated corners into the entry's vertex slots, and stores the scaled min x at +80 and max x plus one at +84. */
+void f_04c4c8(char *s, int a1, float cx, float cy, float ang) {
+    if (Y<int>(s, 32) >= a1) {
+        char *e = Y<char *>(s, 36) + a1 * 172;
+        float *f = (float *)e;
+        cx = cx + f[23];
+        cy = cy + f[27];
+        ang = ang * D_1a2b50;
+        for (int i = 0; i < 4; i++) {
+            float dx = f[23 + i] - cx;
+            f[2 + i * 5] = dx * VCos(ang) - (f[27 + i] - cy) * VSin(ang) + cx;
+            float dx2 = f[23 + i] - cx;
+            f[3 + i * 5] = dx2 * VSin(ang) + (f[27 + i] - cy) * VCos(ang) + cy;
+        }
+        float lo = f[2];
+        if (f[7] < lo) lo = f[7];
+        if (f[12] < lo) lo = f[12];
+        if (f[17] < lo) lo = f[17];
+        *(int *)(e + 80) = (int)(lo * D_1a2b54);
+        float hi = f[2];
+        if (hi < f[7]) hi = f[7];
+        if (hi < f[12]) hi = f[12];
+        if (hi < f[17]) hi = f[17];
+        *(int *)(e + 84) = (int)((hi + D_1a2b58) * D_1a2b54);
+    }
+}
+
+/* @draft 0x04cb48 us f_04cb48
+   WHAT IT DOES: scales the corner offsets of entry a1 by (sx,sy) about the point (cx,cy), rotates them with the vector unit's sine and cosine of the angle, writes four rotated vertices at +8/+12, +28/+32, +68/+72 and +48/+52, and stores the scaled min x at +80 and max x plus one at +84. */
+void f_04cb48(char *s, int a1, float cx, float cy, float ang, float sx, float sy) {
+    if (Y<int>(s, 32) >= a1) {
+        char *e = Y<char *>(s, 36) + a1 * 172;
+        float *f = (float *)e;
+        float u0 = -(cx * sx), v0 = -(cy * sy);
+        float x0 = f[23], y0 = f[27];
+        float u1 = (f[24] - x0) * sx + u0;
+        float v1 = (f[29] - y0) * sy + v0;
+        cx = cx + x0;
+        cy = cy + y0;
+        ang = ang * D_1a2b7c;
+        float x00 = u0 * VCos(ang) - v0 * VSin(ang) + cx;
+        f[2] = x00;
+        f[3] = u0 * VSin(ang) + v0 * VCos(ang) + cy;
+        float x10 = u1 * VCos(ang) - v0 * VSin(ang) + cx;
+        f[7] = x10;
+        f[8] = u1 * VSin(ang) + v0 * VCos(ang) + cy;
+        float x11 = u1 * VCos(ang) - v1 * VSin(ang) + cx;
+        f[17] = x11;
+        f[18] = u1 * VSin(ang) + v1 * VCos(ang) + cy;
+        float x01 = u0 * VCos(ang) - v1 * VSin(ang) + cx;
+        f[12] = x01;
+        f[13] = u0 * VSin(ang) + v1 * VCos(ang) + cy;
+        float lo = x00;
+        if (x10 < lo) lo = x10;
+        if (x01 < lo) lo = x01;
+        if (x11 < lo) lo = x11;
+        *(int *)(e + 80) = (int)(lo * D_1a2b80);
+        float hi = x00;
+        if (hi < x10) hi = x10;
+        if (hi < x01) hi = x01;
+        if (hi < x11) hi = x11;
+        *(int *)(e + 84) = (int)((hi + D_1a2b84) * D_1a2b80);
+    }
+}
+
+/* @draft 0x04ce2c us f_04ce2c
+   WHAT IT DOES: like f_04cb48 but the rotation centre is the translation point (tx+cx, ty+cy) rather than the entry corner; scales the corner offsets of entry a1 by (sx,sy) about the point (cx,cy), rotates them with the vector unit's sine and cosine of the angle, writes four rotated vertices at +8/+12, +28/+32, +68/+72 and +48/+52, and stores the scaled min x at +80 and max x plus one at +84. */
+void f_04ce2c(char *s, int a1, float cx, float cy, float ang, float sx, float sy, float tx, float ty) {
+    if (Y<int>(s, 32) >= a1) {
+        char *e = Y<char *>(s, 36) + a1 * 172;
+        float *f = (float *)e;
+        float u0 = -(cx * sx), v0 = -(cy * sy);
+        float x0 = f[23], y0 = f[27];
+        float u1 = (f[24] - x0) * sx + u0;
+        float v1 = (f[29] - y0) * sy + v0;
+        float ex = tx + cx;
+        float ey = ty + cy;
+        ang = ang * D_1a2b88;
+        float x00 = u0 * VCos(ang) - v0 * VSin(ang) + ex;
+        f[2] = x00;
+        f[3] = u0 * VSin(ang) + v0 * VCos(ang) + ey;
+        float x10 = u1 * VCos(ang) - v0 * VSin(ang) + ex;
+        f[7] = x10;
+        f[8] = u1 * VSin(ang) + v0 * VCos(ang) + ey;
+        float x11 = u1 * VCos(ang) - v1 * VSin(ang) + ex;
+        f[17] = x11;
+        f[18] = u1 * VSin(ang) + v1 * VCos(ang) + ey;
+        float x01 = u0 * VCos(ang) - v1 * VSin(ang) + ex;
+        f[12] = x01;
+        f[13] = u0 * VSin(ang) + v1 * VCos(ang) + ey;
+        float lo = x00;
+        if (x10 < lo) lo = x10;
+        if (x01 < lo) lo = x01;
+        if (x11 < lo) lo = x11;
+        *(int *)(e + 80) = (int)(lo * D_1a2b8c);
+        float hi = x00;
+        if (hi < x10) hi = x10;
+        if (hi < x01) hi = x01;
+        if (hi < x11) hi = x11;
+        *(int *)(e + 84) = (int)((hi + D_1a2b90) * D_1a2b8c);
+    }
+}
+
+/* @draft 0x04699c us f_04699c
+   WHAT IT DOES: emits unscaled text glyph quads for a font page P: for each group (stride 6404) and each 16-byte glyph entry it splits the packed row numbers by 1000, switches the glyph style via f_04639c/f_04637c when the row changes, positions the glyph at (ox + entry offset, oy + entry offset) and calls f_0463a4; the next group starts one line below the maximum y reached; returns 1. */
+int f_04699c(int unused, int ox, int oy, char *P, int row0, int *tab, float c1, float c2, float c3, float c4) {
+    char buf[32];
+    int maxy = 0;
+    int s4 = row0;
+    f_046620(buf, -1);
+    f_04637c(buf, tab[row0]);
+    int j = 0;
+    if (Y<int>(P, 0) > 0) {
+        char *g = P;
+        do {
+            char *e = g;
+            for (int i = 0; i < Y<int>(g, 4); i++, e += 16) {
+                int x0 = Y<short>(e, 12), v3 = Y<short>(e, 14), x1 = Y<short>(e, 16), v2 = Y<short>(e, 18);
+                int rowA = v3 / 1000;
+                if (rowA != s4) {
+                    s4 = rowA;
+                    f_04639c(buf);
+                    f_04637c(buf, tab[row0 + rowA * 10]);
+                }
+                int rowB = v2 / 1000;
+                v3 -= rowA * 1000;
+                v2 -= rowB * 1000;
+                int lh8 = Y<short>(e, 8);
+                int px1 = lh8 + (x1 - x0) + ox;
+                int px0 = lh8 + ox;
+                int lh10 = Y<short>(e, 10);
+                int a2v = lh10 + oy;
+                int ypos = lh10 + (v2 - v3) + oy;
+                if (ypos > maxy) maxy = ypos;
+                f_0463a4(buf, px0, a2v, -1, x0, v3, px1, ypos, -1, x1, v2, c1, c2, c3, c4);
+            }
+            j++;
+            oy = maxy + 1;
+            g += 6404;
+        } while (j < Y<int>(P, 0));
+    }
+    f_04639c(buf);
+    return 1;
 }
 }
 }
