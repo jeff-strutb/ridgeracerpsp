@@ -951,3 +951,33 @@ extern "C" int f_0a8bf4(CarPhys *p, const float *b)
         return 0;
     return (int)(-d0 / diff * 10.0f);
 }
+
+/* @implements 0x0a8d5c us f_0a8d5c
+   WHAT IT DOES: The general form of f_0a8bf4 for a ring of n steps: -n when the car did not cross the angle b (a heading more than 7 away, equal headings or both on one side), -n-1 when it crossed backwards, otherwise the crossing step k (c/2 for a tiny step, else the crossing point scaled by c) taken back by (k + e) mod n. */
+extern "C" int f_0a8d5c(CarPhys *p, const float *b, int c, int n, int e)
+{
+    float t0 = p->m128;
+    float d0 = f_0af380(&t0, b);
+    if (Abs(d0) > 7.0f)
+        return -n;
+    float t1 = p->m16;
+    float *pt = &t1;
+    float d1 = f_0af380(pt, b);
+    if (Abs(d1) > 7.0f)
+        return -n;
+    if (d0 == d1)
+        return -n;
+    if (d0 < 0.0f && d1 < 0.0f)
+        return -n;
+    if (0.0f < d0 && 0.0f < d1)
+        return -n;
+    float diff = d1 - d0;
+    if (diff < 0.0f)
+        return -n - 1;
+    int k;
+    if (diff < 0.001f)
+        k = c / 2;
+    else
+        k = (int)(-d0 / diff * c);
+    return k - (k + e) % n;
+}
