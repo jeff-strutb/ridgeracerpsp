@@ -8309,9 +8309,9 @@ struct ObD {
 struct R { int *a; int *c; ~R(){ f_04ed28(this);} };
 struct It { int *p; It(){} It(const It&o){p=o.p;} };
 
-/* @draft 0x055220 us f_055220
+/* @implements 0x055220 us f_055220
    WHAT IT DOES: copies the counted handle found two links down the chain at +328 (bumping its refcount), calls f_05f64c with that chain, then calls virtual slot 22 on the handle's object and returns the result.
-   Remaining difference: 2 words (order of the two stack stores before the call). */
+   The last scratch-slot store is a plain (non-volatile) store written before b, so sched2 puts it last and dbr can move it into the call's delay slot. */
 int f_055220(char *p) {
   H h; volatile int t[4]; int out[4]; int b;
   char *q = p + 328;
@@ -8321,7 +8321,7 @@ int f_055220(char *p) {
   int *c=(int*)v[3]; h.o=(int*)v[2]; h.cnt=c; t[0]=(int)v; if(c) ++*c;
   t[0]=a;
   int w=*(int*)(a+4);
-  b=w; t[0]=w;
+  *(int*)&t[0]=w; b=w;
   f_05f64c(out,q,&b);
   void **vt=*(void***)h.o;
   return ((int(*)(void*))vt[22])(h.o);
@@ -12913,6 +12913,887 @@ int f_055a98(char *self, void *arg) {
   Hq cp(h);
   Rq e;
   return f_05aaf8(self, arg, &cp, &e);
+}
+}
+}
+
+/* ---- swg9a ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 fragment by worker swg9a. */
+namespace swg9a {
+template <class T> static inline T &Y(void *p, int o) { return *(T *)((char *)p + o); }
+extern "C" {
+void f_023198(int, int);
+void *f_021b38(int);
+void f_1181c0(unsigned);
+void f_116dfc(int, int, int, int, void *);
+extern float D_1a2af0;
+static inline unsigned cvp(float f) { return (unsigned)(f * D_1a2af0); }
+void f_046620(void *, int);
+void f_04637c(void *, void *);
+void f_04639c(void *);
+int f_07dacc(void *, int, int, int);
+void f_0463a4(float, float, float, float, void *, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int);
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+void *memcpy(void *, const void *, unsigned);
+void *f_02347c(int);
+int f_0e7114(int, void *);
+int f_0e71d4(int, void *);
+int f_0cb3f4(int, int, void *, int);
+extern int D_1d2d74, D_1d2d78;
+extern float D_1a2b14;
+extern float D_1a2b18;
+extern float D_1a2b20, D_1a2b24, D_1a2b28, D_1a2b2c;
+static inline unsigned cvq(float f) { return (unsigned)(f * D_1a2b2c); }
+extern char D_1a2c1c[]; /* "NotSWGFILE" */
+extern char D_1a3b18[], D_1a3b64[];
+extern int D_1a3958, D_1a3a40, D_1a3a10, D_1a39d0, D_1a3810, D_1a3760, D_1a3698, D_1a35d0, D_24100c;
+void f_126f1c(char *);
+void *f_04dfa0(unsigned);
+void f_04b724(void *);
+int f_15a754(void *);
+void f_04e694(void *, void *);
+void f_15b170(void *, void *, void *, void *, void *, void *, void *, int, int);
+void f_15ba88(void *);
+void f_15ba34(void *, void *);
+void f_04e1a0(void *);
+void *f_154448(void *, void *, void *, int);
+void f_04ea4c(void *, void *, void *);
+void f_04e74c(void *, int);
+
+/* @draft 0x0455e8 us f_0455e8
+   WHAT IT DOES: unless the last argument is -1, packs four float components into one 32-bit color, calls f_023198 with the last argument, builds a 40-byte record of twenty 16-bit values stored as low/high byte pairs, passes the color to f_1181c0, submits the record with f_116dfc and returns 0. */
+int f_0455e8(float r, float g, float b, float a, int x0, unsigned short p1, unsigned short p2, unsigned short p3, unsigned short p4, unsigned short p5, unsigned short p6, unsigned short p7, unsigned short p8, unsigned short p9, unsigned short p10, unsigned short p11, unsigned short p12, unsigned short p13, unsigned short p14, unsigned short p15, unsigned short p16, unsigned short p17, unsigned short p18, unsigned short p19, unsigned short p20, int idx) {
+    if (idx != -1) {
+        unsigned c = cvp(r) & 0xff;
+        c |= (cvp(g) & 0xff) << 8;
+        c |= (cvp(b) & 0xff) << 16;
+        c |= cvp(a) << 24;
+        f_023198(idx, 0);
+        char *o = (char *)f_021b38(40);
+#define PR(p, lo, hi) Y<unsigned char>(o, lo) = (p); Y<unsigned char>(o, hi) = (p) >> 8;
+        PR(p1, 4, 5) PR(p2, 6, 7) PR(p3, 8, 9) PR(p4, 0, 1) PR(p5, 2, 3) PR(p6, 14, 15) PR(p7, 16, 17)
+        PR(p8, 18, 19) PR(p9, 10, 11) PR(p10, 12, 13) PR(p11, 34, 35) PR(p12, 36, 37) PR(p13, 38, 39)
+        PR(p14, 30, 31) PR(p15, 32, 33) PR(p16, 24, 25) PR(p17, 26, 27) PR(p18, 28, 29) PR(p19, 20, 21) PR(p20, 22, 23)
+#undef PR
+        f_1181c0(c);
+        f_116dfc(4, 0x800102, 4, 0, o);
+    }
+    return 0;
+}
+
+
+/* @draft 0x045f8c us f_045f8c
+   Remaining difference: retail advances the list pointer after every word; the draft lets the compiler merge the increments.
+   WHAT IT DOES: writes GE display-list words for one drawable entry: lets f_0e7114 or f_0e71d4 emit its own commands for entry types 1 and 2, emits the blend-state words when the cached mode changes, selects texture/palette words through f_02347c and f_0cb3f4 when the cached texture differs, then copies the 80-byte vertex block to a new buffer and emits its vertex-address words and either a per-index or a ranged draw command list; returns the advanced list pointer. */
+int f_045f8c(int *st, char *e, int *tbl, int dl) {
+    int *p;
+    if (e[164] == 1) dl = f_0e7114(dl, e);
+    else if (e[164] == 2) dl = f_0e71d4(dl, e);
+    p = (int *)dl;
+    if (st[1] != *(int *)(e + 168)) {
+        int m = *(int *)(e + 168);
+        if (m == 1) {
+            *p++ = 0xdf0000a2; *p++ = 0xe0000000; *p++ = 0xe10000ff;
+        } else if (m == 2) {
+            *p++ = 0xdf0002a2; *p++ = 0xe0000000; *p++ = 0xe10000ff;
+        } else {
+            *p++ = 0xdf000032; *p++ = 0xe0000000; *p++ = 0xe1000000;
+        }
+        st[1] = *(int *)(e + 168);
+    }
+    if (st[0] != *(int *)(e + 124)) {
+        int *c = *(int **)(e + 124);
+        int *d = c;
+        if (*(int *)(e + 132)) d = (int *)f_02347c(tbl[*(int *)(e + 132)]);
+        if (*(int *)(e + 156)) p = (int *)f_0cb3f4(*(int *)(e + 156), *(int *)(e + 160), d, (int)p);
+        unsigned w = d[55];
+        if (w) { *p++ = ((w >> 24) & 0xf) << 16 | 0x10000000; *p++ = (w & 0xffffff) | 0x0a000000; }
+        c = *(int **)(e + 124);
+        w = c[56];
+        if (w) { *p++ = ((w >> 24) & 0xf) << 16 | 0x10000000; *p++ = (w & 0xffffff) | 0x0a000000; }
+        st[0] = *(int *)(e + 124);
+    }
+    char *t = (char *)f_021b38(80);
+    memcpy(t, e, 80);
+    *p++ = D_1d2d78;
+    *p++ = (((unsigned)t >> 24) & 0xf) << 16 | 0x10000000;
+    unsigned a3 = ((unsigned)t & 0xffffff) | 0x01000000;
+    if (*(unsigned char *)(e + 137)) {
+        *p++ = (*(int *)(e + 140) | *(int *)(e + 144) << 10) | 0xd4000000;
+        *p++ = (*(int *)(e + 148) | *(int *)(e + 152) << 10) | 0xd5000000;
+        *p++ = a3;
+        *p++ = D_1d2d74;
+    } else {
+        for (int i = *(int *)(e + 80); i < *(int *)(e + 84); i++) {
+            *p++ = (i << 6) | 0xd4000000;
+            *p++ = ((i << 6) + 63) | 0xd5043c00;
+            *p++ = a3;
+            *p++ = D_1d2d74;
+        }
+    }
+    *p++ = 0xd4000000;
+    *p++ = 0xd5043ddf;
+    return (int)p;
+}
+
+
+/* @draft 0x046de0 us f_046de0
+   WHAT IT DOES: like f_0477b0 but centres each group: for every group of 16-byte entries it sums the halfword spans (end - start), starts x at x minus half that width, and draws the entries with f_0463a4; keeps the running maximum row bottom (falling back to the previous group's when zero) and starts the next group one row below it; returns 1 on success, 0 otherwise.
+   Remaining difference: volatile locals only approximate the retail stack-resident variables; the argument slots of f_0463a4 the retail leaves unwritten are passed as zero. */
+int f_046de0(char *s0, int x, int y, int key, int k2, int *tbl0, float r, float g, float b, float a) {
+    char *volatile s = s0; int *volatile tbl = tbl0;
+    void *o = *(void **)s;
+    int it[4];
+    if (x > 480) return 0;
+    int idx = *(int *)(s + 20);
+    char *volatile p = *(char **)(s + 24) + idx * 0xaf20;
+    *(int *)(s + 8) = *(int *)(s + 828 + idx * 4);
+    if (key != *(int *)(s + 28 + idx * 4) || *(int *)(s + 748 + idx * 4) != k2 || *(unsigned char *)(s + 908)) {
+        int h = f_07dacc(o, key, (int)p, k2);
+        *(int *)(s + 8) = h;
+        if (h == -1) return 0;
+        idx = *(int *)(s + 20);
+        *(int *)(s + 828 + idx * 4) = h;
+        *(int *)(s + 28 + idx * 4) = key;
+        *(int *)(s + 748 + idx * 4) = k2;
+    }
+    *(unsigned char *)(s + 908) = 0;
+    *(int *)(s + 20) = (idx + 1 < 20) ? idx + 1 : 0;
+    f_046620(it, -1);
+    int cur = *(int *)(s + 8);
+    volatile int mx = 0; int pmx = 0;
+    f_04637c(it, (void *)tbl[*(int *)(s + 8)]);
+    volatile int i = 0;
+    if (*(int *)p > 0) {
+        int off = 0;
+        do {
+            int w = 0;
+            {
+                char *e = p + off;
+                for (int k = 0; k < *(int *)(p + off + 4); k++, e += 16) w += ((short *)e)[8] - ((short *)e)[6];
+            }
+            int x0 = x - w / 2;
+            if (*(int *)(p + off + 4) > 0) {
+                char *e = p + off;
+                int j = 0;
+                do {
+                    int a1 = ((short *)e)[7], a2 = ((short *)e)[9];
+                    int v12 = ((short *)e)[6], v16 = ((short *)e)[8];
+                    j++;
+                    int q = a1 / 1000;
+                    if (q != cur) {
+                        cur = q;
+                        f_04639c(it);
+                        f_04637c(it, (void *)tbl[*(int *)(s + 8) + q * 10]);
+                    }
+                    int r1 = a1 - a1 / 1000 * 1000, r2 = a2 - a2 / 1000 * 1000;
+                    int yy = ((short *)e)[5], xx = ((short *)e)[4];
+                    int ex = xx + (v16 - v12) + x0;
+                    int ey = yy + (r2 - r1) + y;
+                    mx = MAX(mx, ey);
+                    f_0463a4(r, g, b, a, it, xx + x0, yy + y, -1, v12, r1, ex, ey, -1, v16, r2, 0, xx + x0, ex, 0, 0, yy + y, ey);
+                    e += 16;
+                } while (j < *(int *)(p + off + 4));
+            }
+            if (mx == 0) mx = pmx;
+            off += 6404;
+            i++;
+            pmx = mx;
+            y = mx + 1;
+        } while (i < *(int *)p);
+    }
+    f_04639c(it);
+    return 1;
+}
+
+
+/* @draft 0x0477b0 us f_0477b0
+   WHAT IT DOES: unless x exceeds 480, loads (or reuses the cached) clip record for the key pair through f_07dacc, advances the ring index (20 slots), then walks the record's groups of 16-byte entries, switching the lookup via f_04637c whenever the thousands digit of a halfword changes, and draws each entry with f_0463a4 using the given colour; returns 1 on success, 0 otherwise.
+   Remaining difference: volatile locals only approximate the retail stack-resident variables; the three argument slots of f_0463a4 the retail leaves unwritten are passed as zero. */
+int f_0477b0(char *s0, int x, int y, int key, int k2, int *tbl0, float r, float g, float b, float a) {
+    char *volatile s = s0; int *volatile tbl = tbl0;
+    void *o = *(void **)s;
+    int it[4];
+    if (x > 480) return 0;
+    int idx = *(int *)(s + 20);
+    char *volatile p = *(char **)(s + 24) + idx * 0xaf20;
+    *(int *)(s + 8) = *(int *)(s + 828 + idx * 4);
+    if (key != *(int *)(s + 28 + idx * 4) || *(int *)(s + 748 + idx * 4) != k2 || *(unsigned char *)(s + 908)) {
+        int h = f_07dacc(o, key, (int)p, k2);
+        *(int *)(s + 8) = h;
+        if (h == -1) return 0;
+        idx = *(int *)(s + 20);
+        *(int *)(s + 828 + idx * 4) = h;
+        *(int *)(s + 28 + idx * 4) = key;
+        *(int *)(s + 748 + idx * 4) = k2;
+    }
+    *(unsigned char *)(s + 908) = 0;
+    *(int *)(s + 20) = (idx + 1 < 20) ? idx + 1 : 0;
+    f_046620(it, -1);
+    int cur = *(int *)(s + 8);
+    volatile int mx = 0;
+    f_04637c(it, (void *)tbl[*(int *)(s + 8)]);
+    volatile int i = 0;
+    if (*(int *)p > 0) {
+        int off = 0;
+        do {
+            if (*(int *)(p + off + 4) > 0) {
+                char *e = p + off;
+                int j = 0;
+                do {
+                    int a1 = ((short *)e)[7], a2 = ((short *)e)[9];
+                    int v12 = ((short *)e)[6], v16 = ((short *)e)[8];
+                    j++;
+                    int q = a1 / 1000;
+                    if (q != cur) {
+                        cur = q;
+                        f_04639c(it);
+                        f_04637c(it, (void *)tbl[*(int *)(s + 8) + q * 10]);
+                    }
+                    int r1 = a1 - a1 / 1000 * 1000, r2 = a2 - a2 / 1000 * 1000;
+                    int yy = ((short *)e)[5], xx = ((short *)e)[4];
+                    int ex = xx + (v16 - v12) + x;
+                    int ey = yy + (r2 - r1) + y;
+                    mx = MAX(mx, ey);
+                    f_0463a4(r, g, b, a, it, xx + x, yy + y, -1, v12, r1, ex, ey, -1, v16, r2, 0, xx + x, ex, 0, 0, yy + y, ey);
+                    e += 16;
+                } while (j < *(int *)(p + off + 4));
+            }
+            off += 6404;
+            i++;
+            y = mx + 1;
+        } while (i < *(int *)p);
+    }
+    f_04639c(it);
+    return 1;
+}
+
+
+/* @draft 0x047b84 us f_047b84
+   WHAT IT DOES: like f_0477b0 with an extra per-group x offset array: unless x exceeds 480, loads (or reuses the cached) clip record for the key pair through f_07dacc, advances the ring index, then draws each group's 16-byte entries with f_0463a4 shifted by x plus the group's offset, starting each next group one row below the running maximum bottom; returns 1 on success, 0 otherwise.
+   Remaining difference: volatile locals only approximate the retail stack-resident variables; the argument slots of f_0463a4 the retail leaves unwritten are passed as zero. */
+int f_047b84(char *s0, int x, int y, int key, int *xs, int k2, int *tbl0, float r, float g, float b, float a) {
+    char *volatile s = s0; int *volatile tbl = tbl0;
+    void *o = *(void **)s;
+    int it[4];
+    if (x > 480) return 0;
+    int idx = *(int *)(s + 20);
+    char *volatile p = *(char **)(s + 24) + idx * 0xaf20;
+    *(int *)(s + 8) = *(int *)(s + 828 + idx * 4);
+    if (key != *(int *)(s + 28 + idx * 4) || *(int *)(s + 748 + idx * 4) != k2 || *(unsigned char *)(s + 908)) {
+        int h = f_07dacc(o, key, (int)p, k2);
+        *(int *)(s + 8) = h;
+        if (h == -1) return 0;
+        idx = *(int *)(s + 20);
+        *(int *)(s + 828 + idx * 4) = h;
+        *(int *)(s + 28 + idx * 4) = key;
+        *(int *)(s + 748 + idx * 4) = k2;
+    }
+    *(unsigned char *)(s + 908) = 0;
+    *(int *)(s + 20) = (idx + 1 < 20) ? idx + 1 : 0;
+    f_046620(it, -1);
+    int cur = *(int *)(s + 8);
+    volatile int mx = 0;
+    f_04637c(it, (void *)tbl[*(int *)(s + 8)]);
+    volatile int i = 0;
+    if (*(int *)p > 0) {
+        int off = 0;
+        do {
+            if (*(int *)(p + off + 4) > 0) {
+                char *e = p + off;
+                int j = 0;
+                do {
+                    int x1 = x + xs[i];
+                    int a1 = ((short *)e)[7], a2 = ((short *)e)[9];
+                    int v12 = ((short *)e)[6], v16 = ((short *)e)[8];
+                    j++;
+                    int q = a1 / 1000;
+                    if (q != cur) {
+                        cur = q;
+                        f_04639c(it);
+                        f_04637c(it, (void *)tbl[*(int *)(s + 8) + q * 10]);
+                    }
+                    int r1 = a1 - a1 / 1000 * 1000, r2 = a2 - a2 / 1000 * 1000;
+                    int yy = ((short *)e)[5], xx = ((short *)e)[4];
+                    int ex = xx + (v16 - v12) + x1;
+                    int ey = yy + (r2 - r1) + y;
+                    mx = MAX(mx, ey);
+                    f_0463a4(r, g, b, a, it, xx + x1, yy + y, -1, v12, r1, ex, ey, -1, v16, r2, 0, xx + x1, ex, 0, 0, yy + y, ey);
+                    e += 16;
+                } while (j < *(int *)(p + off + 4));
+            }
+            off += 6404;
+            i++;
+            y = mx + 1;
+        } while (i < *(int *)p);
+    }
+    f_04639c(it);
+    return 1;
+}
+
+
+/* @draft 0x047f7c us f_047f7c
+   WHAT IT DOES: scaled variant of the clip-record text drawer: unless x exceeds 480, loads (or reuses the cached) clip record, then for each group of 16-byte entries scales each entry's width by sx and height by sy, advances a running x by the scaled width plus the gap to the next entry, and draws it with f_0463a4; the next group starts one row below the running maximum bottom; returns 1 on success, 0 otherwise.
+   Remaining difference: volatile locals only approximate the retail stack-resident variables; unwritten stack slots of the f_0463a4 call passed as zero. */
+int f_047f7c(char *s0, int x, int y, int key, int k2, int *tbl0, float sx, float sy, float r, float g, float b, float a) {
+    char *volatile s = s0; int *volatile tbl = tbl0;
+    void *o = *(void **)s;
+    int it[4];
+    if (x > 480) return 0;
+    int idx = *(int *)(s + 20);
+    char *volatile p = *(char **)(s + 24) + idx * 0xaf20;
+    *(int *)(s + 8) = *(int *)(s + 828 + idx * 4);
+    if (key != *(int *)(s + 28 + idx * 4) || *(int *)(s + 748 + idx * 4) != k2 || *(unsigned char *)(s + 908)) {
+        int h = f_07dacc(o, key, (int)p, k2);
+        *(int *)(s + 8) = h;
+        if (h == -1) return 0;
+        idx = *(int *)(s + 20);
+        *(int *)(s + 828 + idx * 4) = h;
+        *(int *)(s + 28 + idx * 4) = key;
+        *(int *)(s + 748 + idx * 4) = k2;
+    }
+    *(unsigned char *)(s + 908) = 0;
+    *(int *)(s + 20) = (idx + 1 < 20) ? idx + 1 : 0;
+    f_046620(it, -1);
+    int cur = *(int *)(s + 8);
+    int mx = 0;
+    f_04637c(it, (void *)tbl[*(int *)(s + 8)]);
+    int i = 0;
+    if (*(int *)p > 0) {
+        int off = 0;
+        int vy = ((short *)p)[5];
+        do {
+            char *gb = p + off;
+            int n = *(int *)(gb + 4);
+            int curx = ((short *)gb)[4];
+            int Y1 = vy + y;
+            if (n > 0) {
+                char *e = gb;
+                int j = 0;
+                do {
+                    int a1 = ((short *)e)[7], a2 = ((short *)e)[9];
+                    int v12 = ((short *)e)[6], v16 = ((short *)e)[8];
+                    int q = a1 / 1000;
+                    if (q != cur) {
+                        cur = q;
+                        f_04639c(it);
+                        f_04637c(it, (void *)tbl[*(int *)(s + 8) + q * 10]);
+                    }
+                    int r1 = a1 - a1 / 1000 * 1000, r2 = a2 - a2 / 1000 * 1000;
+                    int dh = r2 - r1, dw = v16 - v12;
+                    int X = curx + x;
+                    int sh = (int)((float)dh * sy), sw = (int)((float)dw * sx);
+                    int Y2 = vy + sh + y;
+                    curx += sw;
+                    int X2 = curx + x;
+                    if (j != n - 1) curx = curx + ((short *)e)[12] - (((short *)e)[4] + dw);
+                    mx = MAX(mx, Y2);
+                    f_0463a4(r, g, b, a, it, X, Y1, -1, v12, r1, X2, Y2, -1, v16, r2, 0, X, X2, 0, 0, Y1, Y2);
+                    j++;
+                    e += 16;
+                } while (j < *(int *)(gb + 4));
+            }
+            off += 6404;
+            i++;
+            y = mx + 1;
+        } while (i < *(int *)p);
+    }
+    f_04639c(it);
+    return 1;
+}
+
+/* @draft 0x048410 us f_048410
+   WHAT IT DOES: like f_0477b0 but fades the alpha: each entry multiplies the running alpha by (lim - t) clamped to 0..D_1a2b14, where t grows by step per entry, before drawing it with f_0463a4; returns 1 on success, 0 otherwise.
+   Remaining difference: volatile locals only approximate the retail stack-resident variables; the argument slots of f_0463a4 the retail leaves unwritten are passed as zero. */
+int f_048410(char *s0, int x, int y, int key, int k2, int *tbl0, float r, float g, float b, float a, float lim, float step) {
+    float t = 0;
+    char *volatile s = s0; int *volatile tbl = tbl0;
+    void *o = *(void **)s;
+    int it[4];
+    if (x > 480) return 0;
+    int idx = *(int *)(s + 20);
+    char *volatile p = *(char **)(s + 24) + idx * 0xaf20;
+    *(int *)(s + 8) = *(int *)(s + 828 + idx * 4);
+    if (key != *(int *)(s + 28 + idx * 4) || *(int *)(s + 748 + idx * 4) != k2 || *(unsigned char *)(s + 908)) {
+        int h = f_07dacc(o, key, (int)p, k2);
+        *(int *)(s + 8) = h;
+        if (h == -1) return 0;
+        idx = *(int *)(s + 20);
+        *(int *)(s + 828 + idx * 4) = h;
+        *(int *)(s + 28 + idx * 4) = key;
+        *(int *)(s + 748 + idx * 4) = k2;
+    }
+    *(unsigned char *)(s + 908) = 0;
+    *(int *)(s + 20) = (idx + 1 < 20) ? idx + 1 : 0;
+    f_046620(it, -1);
+    int cur = *(int *)(s + 8);
+    int mx = 0;
+    f_04637c(it, (void *)tbl[*(int *)(s + 8)]);
+    volatile int i = 0;
+    if (*(int *)p > 0) {
+        int off = 0;
+        do {
+            if (*(int *)(p + off + 4) > 0) {
+                char *e = p + off;
+                int j = 0;
+                do {
+                    int a1 = ((short *)e)[7], a2 = ((short *)e)[9];
+                    int v12 = ((short *)e)[6], v16 = ((short *)e)[8];
+                    j++;
+                    int q = a1 / 1000;
+                    if (q != cur) {
+                        cur = q;
+                        f_04639c(it);
+                        f_04637c(it, (void *)tbl[*(int *)(s + 8) + q * 10]);
+                    }
+                    int r1 = a1 - a1 / 1000 * 1000, r2 = a2 - a2 / 1000 * 1000;
+                    int yy = ((short *)e)[5], xx = ((short *)e)[4];
+                    int ex = xx + (v16 - v12) + x;
+                    int ey = yy + (r2 - r1) + y;
+                    mx = MAX(mx, ey);
+                    float f = lim - t;
+                    t += step;
+                    if (f < 0) f = 0;
+                    if (f > D_1a2b14) f = D_1a2b14;
+                    a *= f;
+                    f_0463a4(r, g, b, a, it, xx + x, yy + y, -1, v12, r1, ex, ey, -1, v16, r2, 0, xx + x, ex, 0, 0, yy + y, ey);
+                    e += 16;
+                } while (j < *(int *)(p + off + 4));
+            }
+            off += 6404;
+            i++;
+            y = mx + 1;
+        } while (i < *(int *)p);
+    }
+    f_04639c(it);
+    return 1;
+}
+
+
+/* @draft 0x048838 us f_048838
+   WHAT IT DOES: scaled and fading variant of the clip-record text drawer: like f_047f7c, but before drawing each entry multiplies the running alpha by (lim - t) clamped to 0..D_1a2b18, with t growing by step per entry; returns 1 on success, 0 otherwise.
+   Remaining difference: volatile locals only approximate the retail stack-resident variables; unwritten stack slots of the f_0463a4 call passed as zero. */
+int f_048838(char *s0, int x, int y, int key, int k2, int *tbl0, float sx, float sy, float r, float g, float b, float a, float lim, float step) {
+    float t = 0;
+    char *volatile s = s0; int *volatile tbl = tbl0;
+    void *o = *(void **)s;
+    int it[4];
+    if (x > 480) return 0;
+    int idx = *(int *)(s + 20);
+    char *volatile p = *(char **)(s + 24) + idx * 0xaf20;
+    *(int *)(s + 8) = *(int *)(s + 828 + idx * 4);
+    if (key != *(int *)(s + 28 + idx * 4) || *(int *)(s + 748 + idx * 4) != k2 || *(unsigned char *)(s + 908)) {
+        int h = f_07dacc(o, key, (int)p, k2);
+        *(int *)(s + 8) = h;
+        if (h == -1) return 0;
+        idx = *(int *)(s + 20);
+        *(int *)(s + 828 + idx * 4) = h;
+        *(int *)(s + 28 + idx * 4) = key;
+        *(int *)(s + 748 + idx * 4) = k2;
+    }
+    *(unsigned char *)(s + 908) = 0;
+    *(int *)(s + 20) = (idx + 1 < 20) ? idx + 1 : 0;
+    f_046620(it, -1);
+    int cur = *(int *)(s + 8);
+    int mx = 0;
+    f_04637c(it, (void *)tbl[*(int *)(s + 8)]);
+    int i = 0;
+    if (*(int *)p > 0) {
+        int off = 0;
+        int vy = ((short *)p)[5];
+        do {
+            char *gb = p + off;
+            int n = *(int *)(gb + 4);
+            int curx = ((short *)gb)[4];
+            int Y1 = vy + y;
+            if (n > 0) {
+                char *e = gb;
+                int j = 0;
+                do {
+                    int a1 = ((short *)e)[7], a2 = ((short *)e)[9];
+                    int v12 = ((short *)e)[6], v16 = ((short *)e)[8];
+                    int q = a1 / 1000;
+                    if (q != cur) {
+                        cur = q;
+                        f_04639c(it);
+                        f_04637c(it, (void *)tbl[*(int *)(s + 8) + q * 10]);
+                    }
+                    int r1 = a1 - a1 / 1000 * 1000, r2 = a2 - a2 / 1000 * 1000;
+                    int dh = r2 - r1, dw = v16 - v12;
+                    int X = curx + x;
+                    int sh = (int)((float)dh * sy), sw = (int)((float)dw * sx);
+                    int Y2 = vy + sh + y;
+                    curx += sw;
+                    int X2 = curx + x;
+                    if (j != n - 1) curx = curx + ((short *)e)[12] - (((short *)e)[4] + dw);
+                    mx = MAX(mx, Y2);
+                    float f = lim - t;
+                    if (f < 0) f = 0;
+                    if (f > D_1a2b18) f = D_1a2b18;
+                    a *= f;
+                    t += step;
+                    f_0463a4(r, g, b, a, it, X, Y1, -1, v12, r1, X2, Y2, -1, v16, r2, 0, X, X2, 0, 0, Y1, Y2);
+                    j++;
+                    e += 16;
+                } while (j < *(int *)(gb + 4));
+            }
+            off += 6404;
+            i++;
+            y = mx + 1;
+        } while (i < *(int *)p);
+    }
+    f_04639c(it);
+    return 1;
+}
+
+/* @draft 0x048d1c us f_048d1c
+   WHAT IT DOES: scrolling clipped text: unless x exceeds 480, loads (or reuses the cached) clip record, measures the total width of its entries plus pad, wraps the scroll float at *scroll into (-width, 0], and draws each 16-byte entry with f_0463a4 shifted by x plus the scroll, wrapping it around the width and clipping it against the window [x, x + k2) (entries wholly outside are skipped); returns 1 on success, 0 otherwise.
+   Remaining difference: unwritten stack slots of the f_0463a4 call passed as zero; the retail keeps the four rectangle values in stack slots. */
+int f_048d1c(char *s, int x, int y, int key, int k2, int pad, int *tbl, float *scroll, float r, float g, float b, float a) {
+    void *o = *(void **)s;
+    int it[4];
+    if (x > 480) return 0;
+    int idx = *(int *)(s + 20);
+    char *p = *(char **)(s + 24) + idx * 0xaf20;
+    *(int *)(s + 8) = *(int *)(s + 828 + idx * 4);
+    if (key != *(int *)(s + 28 + idx * 4) || *(int *)(s + 748 + idx * 4) != k2 || *(unsigned char *)(s + 908)) {
+        int h = f_07dacc(o, key, (int)p, k2);
+        *(int *)(s + 8) = h;
+        if (h == -1) return 0;
+        idx = *(int *)(s + 20);
+        *(int *)(s + 828 + idx * 4) = h;
+        *(int *)(s + 28 + idx * 4) = key;
+        *(int *)(s + 748 + idx * 4) = k2;
+    }
+    *(unsigned char *)(s + 908) = 0;
+    *(int *)(s + 20) = (idx + 1 < 20) ? idx + 1 : 0;
+    float sc = *scroll;
+    f_046620(it, -1);
+    int cur = *(int *)(s + 8);
+    f_04637c(it, (void *)tbl[*(int *)(s + 8)]);
+    int n = *(int *)(p + 4);
+    int fx0 = ((short *)p)[4];
+    short *last = (short *)(p + n * 16 - 16);
+    int vy = last[7];
+    int W = (last[4] - fx0) + (last[8] - last[6]) + pad;
+    if (sc > 0) { sc -= (float)W; *scroll = sc; }
+    if (sc < (float)-W) { sc += (float)W; *scroll = sc; }
+    if (n > 0) {
+        char *e = p;
+        for (int j = 0; j < *(int *)(p + 4); j++, e += 16) {
+            int a1 = ((short *)e)[7], a2 = ((short *)e)[9];
+            int v12 = ((short *)e)[6], v16 = ((short *)e)[8];
+            int q = a1 / 1000;
+            if (q != cur) {
+                cur = q;
+                f_04639c(it);
+                f_04637c(it, (void *)tbl[*(int *)(s + 8) + q * 10]);
+            }
+            int r1 = a1 - a1 / 1000 * 1000, r2 = a2 - a2 / 1000 * 1000;
+            int X = (int)((float)(((short *)e)[4] + x) + sc);
+            if (X < x - (v16 - v12)) X = X + W;
+            else if (x + W < X) X = X - W;
+            int X2 = (v16 - v12) + X;
+            int Y1 = vy + y, Y2 = (r2 - r1) + vy + y;
+            if (X2 < x) continue;
+            if (x + k2 < X) continue;
+            if (X < x) { v12 = v12 + (x - X); X = x; }
+            if (x + k2 < X2) { v16 = v16 - (X2 - x - k2); X2 = x + k2; }
+            f_0463a4(r, g, b, a, it, X, Y1, -1, v12, r1, X2, Y2, -1, v16, r2, 0, X, X2, 0, 0, Y1, Y2);
+        }
+    }
+    f_04639c(it);
+    return 1;
+}
+
+/* @draft 0x049188 us f_049188
+   WHAT IT DOES: scrolling clipped text: unless x exceeds 480, loads (or reuses the cached) clip record, measures the total width of its entries (the vertical origin comes from the first entry) plus pad, wraps the scroll float at *scroll into (-width, 0], and draws each 16-byte entry with f_0463a4 shifted by x plus the scroll , wrapping it around the width and clipping it against the window [L, L + k2) (entries wholly outside are skipped); returns 1 on success, 0 otherwise.
+   Remaining difference: unwritten stack slots of the f_0463a4 call passed as zero; the retail keeps the four rectangle values in stack slots. */
+int f_049188(char *s, int x, int y, int key, int L, int k2, int pad, int *tbl, float *scroll, float r, float g, float b, float a) {
+    void *o = *(void **)s;
+    int it[4];
+    if (x > 480) return 0;
+    int idx = *(int *)(s + 20);
+    char *p = *(char **)(s + 24) + idx * 0xaf20;
+    *(int *)(s + 8) = *(int *)(s + 828 + idx * 4);
+    if (key != *(int *)(s + 28 + idx * 4) || *(int *)(s + 748 + idx * 4) != k2 || *(unsigned char *)(s + 908)) {
+        int h = f_07dacc(o, key, (int)p, k2);
+        *(int *)(s + 8) = h;
+        if (h == -1) return 0;
+        idx = *(int *)(s + 20);
+        *(int *)(s + 828 + idx * 4) = h;
+        *(int *)(s + 28 + idx * 4) = key;
+        *(int *)(s + 748 + idx * 4) = k2;
+    }
+    *(unsigned char *)(s + 908) = 0;
+    *(int *)(s + 20) = (idx + 1 < 20) ? idx + 1 : 0;
+    float sc = *scroll;
+    f_046620(it, -1);
+    int cur = *(int *)(s + 8);
+    f_04637c(it, (void *)tbl[*(int *)(s + 8)]);
+    int n = *(int *)(p + 4);
+    int fx0 = ((short *)p)[4];
+    short *last = (short *)(p + n * 16 - 16);
+    int vy = ((short *)p)[5];
+    int W = (last[4] - fx0) + (last[8] - last[6]) + pad;
+    if (sc > 0) { sc -= (float)W; *scroll = sc; }
+    if (sc < (float)-W) { sc += (float)W; *scroll = sc; }
+    if (n > 0) {
+        char *e = p;
+        for (int j = 0; j < *(int *)(p + 4); j++, e += 16) {
+            int a1 = ((short *)e)[7], a2 = ((short *)e)[9];
+            int v12 = ((short *)e)[6], v16 = ((short *)e)[8];
+            int q = a1 / 1000;
+            if (q != cur) {
+                cur = q;
+                f_04639c(it);
+                f_04637c(it, (void *)tbl[*(int *)(s + 8) + q * 10]);
+            }
+            int r1 = a1 - a1 / 1000 * 1000, r2 = a2 - a2 / 1000 * 1000;
+            int X = (int)((float)(((short *)e)[4] + x) + sc);
+            if (X < x - (v16 - v12)) X = X + W;
+            else if (x + W < X) X = X - W;
+            int X2 = (v16 - v12) + X;
+            int Y1 = vy + y, Y2 = (r2 - r1) + vy + y;
+            if (X2 < L) continue;
+            if (L + k2 < X) continue;
+            if (X < L) { v12 = v12 + (L - X); X = L; }
+            if (L + k2 < X2) { v16 = v16 - (X2 - L - k2); X2 = L + k2; }
+            f_0463a4(r, g, b, a, it, X, Y1, -1, v12, r1, X2, Y2, -1, v16, r2, 0, X, X2, 0, 0, Y1, Y2);
+        }
+    }
+    f_04639c(it);
+    return 1;
+}
+
+/* @draft 0x049600 us f_049600
+   WHAT IT DOES: scaled scrolling clipped text: like f_048d1c but the entry widths are scaled by sx and heights by sy (the total width, positions and clip adjustments all use the scaled values; the vertical origin comes from the first entry), wrapping the scroll float at *scroll and clipping each entry against [x, x + k2) before drawing it with f_0463a4; returns 1 on success, 0 otherwise.
+   Remaining difference: unwritten stack slots of the f_0463a4 call passed as zero. */
+int f_049600(char *s, int x, int y, int key, int k2, int pad, int *tbl, float *scroll, float sx, float sy, float r, float g, float b, float a) {
+    void *o = *(void **)s;
+    int it[4];
+    if (x > 480) return 0;
+    int idx = *(int *)(s + 20);
+    char *p = *(char **)(s + 24) + idx * 0xaf20;
+    *(int *)(s + 8) = *(int *)(s + 828 + idx * 4);
+    if (key != *(int *)(s + 28 + idx * 4) || *(int *)(s + 748 + idx * 4) != k2 || *(unsigned char *)(s + 908)) {
+        int h = f_07dacc(o, key, (int)p, k2);
+        *(int *)(s + 8) = h;
+        if (h == -1) return 0;
+        idx = *(int *)(s + 20);
+        *(int *)(s + 828 + idx * 4) = h;
+        *(int *)(s + 28 + idx * 4) = key;
+        *(int *)(s + 748 + idx * 4) = k2;
+    }
+    *(unsigned char *)(s + 908) = 0;
+    *(int *)(s + 20) = (idx + 1 < 20) ? idx + 1 : 0;
+    float sc = *scroll;
+    f_046620(it, -1);
+    int cur = *(int *)(s + 8);
+    f_04637c(it, (void *)tbl[*(int *)(s + 8)]);
+    int n = *(int *)(p + 4);
+    int fx0 = ((short *)p)[4];
+    short *last = (short *)(p + n * 16 - 16);
+    int vy = ((short *)p)[5];
+    int W = (int)((float)((last[4] - fx0) + (last[8] - last[6])) * sx) + pad;
+    if (sc > 0) { sc -= (float)W; *scroll = sc; }
+    if (sc < (float)-W) { sc += (float)W; *scroll = sc; }
+    if (n > 0) {
+        char *e = p;
+        for (int j = 0; j < *(int *)(p + 4); j++, e += 16) {
+            int a1 = ((short *)e)[7], a2 = ((short *)e)[9];
+            int v12 = ((short *)e)[6], v16 = ((short *)e)[8];
+            int q = a1 / 1000;
+            if (q != cur) {
+                cur = q;
+                f_04639c(it);
+                f_04637c(it, (void *)tbl[*(int *)(s + 8) + q * 10]);
+            }
+            int r1 = a1 - a1 / 1000 * 1000, r2 = a2 - a2 / 1000 * 1000;
+            int X = (int)((float)(((short *)e)[4] - fx0) * sx + (float)fx0) + x;
+            X = (int)((float)X + sc);
+            if ((float)X < (float)x - (float)(v16 - v12) * sx) X = X + W;
+            else if (x + W < X) X = X - W;
+            int X2 = (int)((float)(v16 - v12) * sx) + X;
+            int Y1 = vy + y, Y2 = vy + (int)((float)(r2 - r1) * sy) + y;
+            if (X2 < x) continue;
+            if (x + k2 < X) continue;
+            if (X < x) { v12 = v12 + (int)((float)(x - X) / sx); X = x; }
+            if (x + k2 < X2) { v16 = v16 - (int)((float)(X2 - x - k2) / sx); X2 = x + k2; }
+            f_0463a4(r, g, b, a, it, X, Y1, -1, v12, r1, X2, Y2, -1, v16, r2, 0, X, X2, 0, 0, Y1, Y2);
+        }
+    }
+    f_04639c(it);
+    return 1;
+}
+
+/* @draft 0x049fcc us f_049fcc
+   WHAT IT DOES: appends a transformed textured quad to the 172-byte entry array at s+28 (count at s+32): if the array is missing it only bumps the count; otherwise it looks up the source's 12-byte rectangle record, transforms its four corners with the 2x3 matrix at m, fills the four 20-byte vertices (texture coordinates, packed colour from m[16..19], depth, positions), stores the scaled bounding-box columns, the texture handle, clears the state fields, sets the mode byte and bumps the count. */
+#define EN(T, o) Y<T>(Y<char *>(s, 28) + Y<int>(s, 32) * 172, o)
+void f_049fcc(char *s, char *src, float *m) {
+    if (!Y<int>(s, 28)) {
+        Y<int>(s, 32) += 1;
+        return;
+    }
+    char *own = Y<char *>(s, 4);
+    short *rec = (short *)(Y<char *>(own, 40) + Y<int>(src, 12) * 12);
+    int hh = rec[3], ww = rec[2];
+    float fa = (float)ww, fb = (float)hh;
+    float x0 = m[12], x1 = fa * m[0] + m[12], x2 = fa * m[0] + fb * m[4] + m[12], x3 = fb * m[4] + m[12];
+    float y0 = m[13], y1 = fa * m[1] + m[13], y2 = fa * m[1] + fb * m[5] + m[13], y3 = fb * m[5] + m[13];
+    int uv[8];
+    float col[4];
+    uv[1] = ww; uv[2] = ww; uv[0] = 0; uv[3] = 0; uv[4] = 0; uv[5] = 0;
+    uv[6] = hh; uv[7] = hh;
+    col[0] = m[16]; col[1] = m[17]; col[2] = m[18]; col[3] = m[19];
+    int *tex = Y<int *>(own, 240);
+    EN(char, 164) = 0;
+    EN(int, 156) = 0;
+    EN(int, 132) = 0;
+    EN(int, 124) = tex[Y<int>(src, 12)];
+    EN(float, 92) = x0; EN(float, 96) = x1; EN(float, 100) = x3; EN(float, 104) = x2;
+    EN(float, 8) = x0; EN(float, 28) = x1; EN(float, 48) = x3; EN(float, 68) = x2;
+    EN(float, 108) = y0; EN(float, 112) = y1; EN(float, 116) = y3; EN(float, 120) = y2;
+    EN(float, 12) = y0; EN(float, 32) = y1; EN(float, 52) = y3; EN(float, 72) = y2;
+    float lo = x0;
+    if (x1 < lo) lo = x1;
+    if (x2 < lo) lo = x2;
+    if (x3 < lo) lo = x3;
+    EN(int, 80) = (int)(lo * D_1a2b20);
+    float hi = x0;
+    if (hi < x1) hi = x1;
+    if (hi < x2) hi = x2;
+    if (hi < x3) hi = x3;
+    EN(int, 84) = (int)((hi + D_1a2b24) * D_1a2b20);
+    EN(float, 76) = D_1a2b28; EN(float, 16) = D_1a2b28; EN(float, 36) = D_1a2b28; EN(float, 56) = D_1a2b28;
+    EN(unsigned short, 0) = uv[0]; EN(unsigned short, 40) = uv[3]; EN(unsigned short, 20) = uv[1];
+    EN(unsigned short, 2) = uv[4]; EN(unsigned short, 60) = uv[2]; EN(unsigned short, 22) = uv[5];
+    EN(unsigned short, 42) = uv[7]; EN(unsigned short, 62) = uv[6];
+    unsigned c = cvq(col[0]) & 0xff;
+    c |= (cvq(col[1]) & 0xff) << 8;
+    c |= (cvq(col[2]) & 0xff) << 16;
+    c |= cvq(col[3]) << 24;
+    EN(unsigned, 88) = c;
+    int mi = (int)m[3];
+    EN(unsigned, 4) = EN(unsigned, 88);
+    EN(unsigned, 24) = EN(unsigned, 88);
+    EN(unsigned, 44) = EN(unsigned, 88);
+    EN(unsigned, 64) = EN(unsigned, 88);
+    EN(int, 128) = mi;
+    EN(char, 136) = 1;
+    EN(int, 140) = 0;
+    EN(char, 137) = 0;
+    EN(int, 148) = 0;
+    EN(int, 144) = 0;
+    EN(int, 152) = 0;
+    EN(int, 168) = 0;
+    Y<int>(s, 32) += 1;
+}
+#undef EN
+
+/* @draft 0x04b9c4 us f_04b9c4
+   WHAT IT DOES: builds a player movie instance from an SWG file image: rejects a missing or invalid file (printing the NotSWGFILE message), allocates the parser state and the three always-new holder objects, creates the 332-byte movie object with f_15b170, builds a 400-byte extension record when the movie flags say so, attaches a 68-byte text-style record when the named clip is found, resolves the array of texture handles through f_02347c and stores the movie, the handle array and the extra argument into the owner; returns 1.
+   Remaining difference: transcribed with plain pointer arithmetic; exception landing pads and exact register allocation not reproduced. */
+int f_04b9c4(char *out, char *data, int *tex, int a3, int a4) {
+    f_04b724(out);
+    if (!data) return 0;
+    if (!f_15a754(data)) {
+        f_126f1c(D_1a2c1c);
+        return 0;
+    }
+    int *s3 = (int *)f_04dfa0(80);
+    s3[0] = (int)&D_1a3958;
+    Y<int>(s3, 16) = 0; Y<int>(s3, 20) = 0; Y<int>(s3, 24) = 0;
+    Y<int>(s3, 32) = 0; Y<int>(s3, 36) = 0; Y<int>(s3, 40) = 0;
+    char buf[64];
+    f_04e694((char *)s3 + 44, buf);
+    Y<int>(out, 4) = 1;
+    char *h2 = 0;
+    char *p = (char *)f_04dfa0(36);
+    if (p) {
+        h2 = p;
+        Y<int>(p, 0) = (int)&D_1a3a40;
+        Y<int>(p, 24) = (int)&D_24100c;
+        Y<int>(p, 28) = 0;
+    }
+    Y<int>(out, 8) = 1;
+    char *s2 = 0;
+    p = (char *)f_04dfa0(16);
+    if (p) { s2 = p; Y<int>(p, 0) = (int)&D_1a3a10; }
+    Y<int>(out, 12) = 1;
+    Y<int>(s2, 12) = 0;
+    Y<int>(s2, 8) = 0;
+    char *s0 = 0;
+    p = (char *)f_04dfa0(28);
+    if (p) { s0 = p; Y<int>(p, 0) = (int)&D_1a39d0; }
+    Y<int>(s0, 16) = 0;
+    Y<int>(s0, 20) = 0;
+    Y<int>(s0, 16) = Y<int>(out, 28);
+    Y<int>(s0, 8) = 0; Y<int>(s0, 12) = 0; Y<int>(s0, 24) = 0;
+    char *m = 0;
+    p = (char *)f_04dfa0(332);
+    if (p) {
+        f_15b170(p, s3, data, h2, s2, 0, s0, 60, 0);
+        m = p;
+    }
+    if (!(Y<int>(Y<char *>(m, 12), 40) & 1)) {
+    } else {
+        char *q = (char *)f_04dfa0(400);
+        Y<int>(q, 0) = 400;
+        char *r = q + 4;
+        f_04e1a0(r);
+        Y<int>(q, 4) = (int)&D_1a3810;
+        Y<int>(r, 388) = 0;
+        f_15ba34(m, r);
+        Y<char>(r, 392) = 0;
+    }
+    char *found = 0;
+    if (Y<char *>(m, 232)) found = (char *)f_154448(Y<char *>(m, 232), D_1a3b18, D_1a3b64, 0);
+    if (found) {
+        int own = Y<int>(out, 28);
+        char *t = (char *)f_04dfa0(68);
+        Y<int>(t, 0) = 68;
+        char *st = t + 12, *sb = t + 4;
+        Y<int>(t, 4) = (int)&D_1a3760;
+        Y<int>(sb, 4) = 0;
+        char *n = (char *)f_04dfa0(40);
+        Y<int>(st, 4) = 0;
+        Y<char *>(st, 4) = n;
+        Y<int>(n, 4) = 0;
+        Y<int>(sb, 0) = (int)&D_1a3698;
+        Y<char *>(Y<char *>(st, 4), 8) = Y<char *>(st, 4);
+        Y<int>(st, 8) = 0;
+        Y<char *>(Y<char *>(st, 4), 12) = Y<char *>(st, 4);
+        char b2[16], b3[16];
+        Y<int>(n, 0) = 0;
+        f_04ea4c(sb + 24, b3, b2);
+        Y<int>(sb, 0) = (int)&D_1a35d0;
+        Y<char *>(found, 388) = sb;
+        f_04e74c(sb, own);
+        Y<int>(sb, 56) = 0;
+    }
+    f_15ba88(m);
+    {
+        int i = 0;
+        char *mm = m + 40;
+        if (((Y<int>(mm, 4) - Y<int>(m, 40)) >> 2) * (int)0xaaaaaaab > 0) {
+            int *q = tex;
+            do {
+                *q = (int)f_02347c(*q);
+                i++;
+                q++;
+            } while (i < ((Y<int>(mm, 4) - Y<int>(m, 40)) >> 2) * (int)0xaaaaaaab);
+            Y<int *>(m, 240) = tex;
+        }
+    }
+    Y<int>(out, 52) = a4;
+    Y<char *>(out, 0) = m;
+    Y<int>(out, 40) = a3;
+    return 1;
 }
 }
 }
