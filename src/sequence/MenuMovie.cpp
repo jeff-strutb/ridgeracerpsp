@@ -3969,3 +3969,637 @@ void f_0702cc(void *self, int mode)
 
 }
 }
+
+/* ---- menuI ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* menuI fragment: TU 119 large menu movie function f_06e8c8. */
+namespace menuI {
+template <class T> inline T &at(void *p, unsigned int off) { return *(T *)((char *)p + off); }
+struct Win { int w[4]; };
+extern "C" {
+int atoi(const char *);
+int sprintf(char *, const char *, ...);
+void f_07ac1c(void *);
+void f_07ac38(void *, void *);
+int f_04b280(void *);
+int f_046c8c(int, int, int);
+int f_049188(int, int, int, float, float, float, float, int, int, int, int, void *, void *);
+void f_046894(int, int, int);
+void f_0468e8(int, int, const char *, int);
+void f_046910(int, int, const char *, int);
+void f_046de0(int, int, int, float, float, float, float, int, int, void *);
+void f_0477b0(int, int, int, float, float, float, float, int, int, void *);
+void f_047248(int, int, int, int, int, void *, float, float, float, float, float, float);
+int f_077de4(void *, int, int, int);
+int f_06b748(int);
+int f_06b708(void);
+int f_06b714(int);
+int f_06e888(int);
+int f_06e86c(int);
+int f_06e8a8(int);
+void f_07b018(void *, int, int, int, float, float, float, float, char *);
+extern unsigned D_24518c[];
+extern char D_2400c5;
+extern float D_1d3140, D_1a51d8, D_1a51dc, D_1a51e0, D_1a51e4, D_1a51e8;
+extern char D_1a5d80[]; /* "%d.%03d" */
+extern char D_1a5d88[]; /* "%d" */
+extern char D_1a5d8c[]; /* "999+" */
+extern char D_1a5d9c[]; /* "9999K+/9999M" */
+extern char D_1a5dac[]; /* "9999K+/%04dM" */
+extern char D_1a5dbc[]; /* "WT%02d.CS%02d.CR/%d/%d/%d/%d/%d/%d.SP.%d.PC%c." */
+extern char D_1a5dec[]; /* "WF%s.D%s.C%c." */
+extern char D_1a5dfc[]; /* "%04dK/%04dM" */
+extern char D_1a5e08[]; /* "%03d" */
+extern char D_1a5e10[]; /* "%s   %d%%(%d)" */
+extern char D_1a5e20[]; /* "%d %s" */
+extern char D_1a5e28[]; /* "%02d" */
+struct SA { unsigned w; unsigned char b; char z[11]; };
+struct SB { unsigned w0, w1, w2; unsigned char b; char z[3]; };
+struct T8 { int v[8]; };
+extern T8 D_1a52d4;
+
+/* @draft 0x06e8c8 us f_06e8c8
+   WHAT IT DOES: menu movie item draw/update for one numbered widget. Parses the item id after the 4-char
+   prefix of the name with atoi and dispatches over a large case list: ids of 100000000 and up pick a text id
+   (through f_046894), run the common scroll update (f_046c8c / f_049188), or draw (f_0477b0); smaller ids
+   either return early or build a text id / formatted number string (sprintf) and print it with f_046894 /
+   f_0468e8 / f_046910, or draw a sprite with f_046de0 / f_047248; id 5001006 builds the win-record
+   strings (WT.. / WF..) and draws them with f_07b018. Returns 1 when it drew a sprite or finished early,
+   0 after printing text.
+   Remaining difference: complete transcription of every case (6,432 of 6,660 bytes, frame size and prologue
+   equal); the compare tree shapes differ (retail's case sets have extra nodes that fall to the default, one is
+   emulated by the balance-only 0x6500000 label; the main n<=99999999 switch root is 0x4c5ecd in retail),
+   the sb 452(t1) store is placed after the first compare instead of before it, and shared tails are
+   scheduled differently. */
+int f_06e8c8(void *self, const char *name, float fx, float fy, float f2, float f3, float f4, float f5)
+{
+    char buf[256];
+    Win w;
+    int mode = 3;
+    f_07ac1c(&w);
+    if (at<int>(self, 4) == 0)
+        mode = 1;
+    else if (at<int>(self, 4) == 20)
+        mode = 2;
+    f_07ac38(&w, (char *)at<void *>(self, 12) + 44);
+    int h = f_04b280((char *)at<void *>(self, 12) + 4);
+    int n = atoi(name + 4);
+    int s2;
+    if (n > 99999999) {
+        void *d = at<void *>(self, 12);
+        at<unsigned char>(d, 452) = 1;
+        switch (n) {
+        case 0x623b768:
+            s2 = f_077de4((char *)d + 6736, at<int>(d, 7244), at<int>(d, 7248), 2);
+            goto setid;
+        case 0x623af99:
+            s2 = at<unsigned char>(d, at<int>(d, 1228) + 5661) + 0x6cb9408;
+            goto setid;
+        case 0x623abb1:
+            s2 = at<int>(d, 1232) + 0x6bc49f8;
+            goto setid;
+        case 0x623b384:
+            if (at<int>(d, 7236) == 6) {
+                int a3 = at<int>(d, 1204);
+                if ((a3 - 1) % 9 >= 3 || a3 == 57) {
+                    if (!at<unsigned char>(d, 2236 + a3))
+                        return 1;
+                    if (!at<unsigned char>(d, 1400 + a3))
+                        return 1;
+                }
+            }
+            s2 = at<int>(d, at<int>(d, 7520) * 4 + 5904);
+            goto setid;
+        case 0x623b767:
+            s2 = at<int>(d, 7244) + 0x6f95ac8;
+            if (s2 == 0x6f95ace)
+                s2 = 0x6f95ad0;
+            else if (s2 == 0x6f95acf)
+                s2 = 0x6f95ad1;
+            goto setid;
+        case 0x633111b:
+            s2 = f_06b748(at<int>(d, 2352));
+            if (s2 == 255)
+                s2 = 0x6331115;
+            else if (s2 == 0)
+                s2 = 0x6331113;
+            else
+                s2 += 0x6bc49f8;
+            goto setid;
+        case 0x6423fcf:
+            s2 = f_06e8a8(at<int>(d, 1240));
+            goto setid;
+        case 0x6332881:
+            if (!D_2400c5)
+                goto draw;
+            f_0477b0(h, (int)fx, (int)fy, f2, f3, f4, f5, 0x6332884, 480, (char *)d + 44);
+            return 1;
+        case 0x6500000: /* balance-only: retail tree has one more case that falls to the default */
+        default:
+            goto draw;
+        }
+    setid:
+        f_046894(h, 0, s2);
+        if (s2 != at<int>(self, 44)) {
+            at<int>(self, 44) = s2;
+            at<int>(at<void *>(self, 12), 444) = 0;
+            at<int>(at<void *>(self, 12), 448) = 0;
+        }
+    draw:
+        {
+            int v = f_046c8c(h, n, 480);
+            if (n != at<int>(self, 40)) {
+                at<int>(self, 40) = n;
+                at<int>(at<void *>(self, 12), 444) = 0;
+                at<int>(at<void *>(self, 12), 448) = 0;
+            }
+            if (v < 480)
+                return 0;
+            d = at<void *>(self, 12);
+            if (D_24518c[3] & 0x100)
+                at<int>(d, 448) = 121;
+            if (at<int>(d, 448) < 121) {
+                at<int>(d, 448) = at<int>(d, 448) + 1;
+            } else {
+                unsigned p = D_24518c[0];
+                if (p & 0x200)
+                    at<float>(d, 444) += D_1d3140;
+                else if (p & 0x100)
+                    at<float>(d, 444) -= D_1d3140 + D_1d3140;
+                else
+                    at<float>(d, 444) -= D_1d3140;
+            }
+            f_049188(h, (int)fx, (int)fy, f2, f3, f4, f5, n, 0, 480, 150, (char *)d + 44, &at<float>(d, 444));
+            return 1;
+        }
+    } else {
+        void *d = at<void *>(self, 12);
+        if (at<unsigned char>(d, 505)) {
+            switch (n) {
+            case 0x2dcaaf ... 0x2dcab0:
+            case 0x2dce9a ... 0x2dcea0:
+            case 0x2dd27f ... 0x2dd281:
+            case 0x2dd285:
+            case 0x2dda51:
+            case 0x2dda57:
+            case 0x4c85df:
+                return 1;
+            }
+        }
+        if (at<unsigned char>(d, 2389)) {
+            switch (n) {
+            case 0x4c5ecd ... 0x4c5ece:
+            case 0x4c5ed1:
+            case 0x4c5ed5 ... 0x4c5ed9:
+            case 0x4c62b1 ... 0x4c62b3:
+            case 0x4c9961:
+            case 0xe4e991:
+                return 1;
+            }
+        }
+        if (at<unsigned char>(d, 7524))
+            return 1;
+        switch (n) {
+        case 0x4c5ecd:
+            s2 = f_06e86c(at<int>(d, 1240));
+            goto t0;
+        case 0x3d3019:
+            s2 = f_06b748(at<int>(d, 2352));
+            if (s2 == 0)
+                s2 = 0x3d3012;
+            else if (s2 == 255)
+                s2 = 0x3d3014;
+            else
+                s2 += 0xc66128;
+            goto t0;
+        case 0x5beb41:
+        case 0x4c669d:
+        case 0x4c5ecf:
+        case 0x5bc04b:
+        case 0x5b9d28:
+        case 0x5b9d29:
+        case 0x2dd663 ... 0x2dd664:
+            return 0;
+        case 0x1e9fd9:
+            f_046910(h, 0, (char *)d + (at<int>(d, 3652) == 1 ? 1863 : 1539), 0);
+            return 0;
+        case 0x4c4f2b:
+        case 0x4c5312:
+            f_046910(h, 0, (char *)d + 1539, 0);
+            return 0;
+        case 0x4c5311:
+            f_046910(h, 0, (char *)d + 1539, 0);
+            return 0;
+        case 0x2dcab0:
+        case 0x5c1253:
+            s2 = at<int>(d, 1232);
+            if (s2 >= 25)
+                s2 -= 24;
+            s2 += 0xc66128;
+            goto t0;
+        case 0x2dcaaf:
+            s2 = at<int>(d, 1232);
+            if (s2 >= 25)
+                s2 -= 24;
+            if (f_06b708()) {
+                float q = (float)at<unsigned>(d, s2 * 4 + 4620) / D_1a51d8;
+                int ip = (int)q;
+                int fr = (int)((q - (float)ip) * D_1a51dc);
+                sprintf(buf, D_1a5d80, ip, fr % 1000);
+                f_0468e8(h, 0, buf, 0);
+                return 0;
+            }
+            s2 = f_06b714(at<int>(d, s2 * 4 + 4620));
+            goto pnum;
+        case 0x3d301a:
+            s2 = f_06b748(at<int>(d, 2352));
+            if (s2 == 255 || s2 == 0)
+                return 1;
+            if (f_06b708()) {
+                float q = (float)at<unsigned>(d, s2 * 4 + 4620) / D_1a51d8;
+                int ip = (int)q;
+                int fr = (int)((q - (float)ip) * D_1a51dc);
+                sprintf(buf, D_1a5d80, ip, fr % 1000);
+                f_0468e8(h, 0, buf, 0);
+                return 0;
+            }
+            s2 = f_06b714(at<int>(d, s2 * 4 + 4620));
+            goto pnum;
+        case 0x2dd27b: {
+            int v = at<int>(d, 1204);
+            if (v == 58) {
+                f_046de0(h, (int)fx, (int)fy, f2, f3, f4, f5, 0x2dd287, 480, (char *)d + 44);
+                return 1;
+            }
+            s2 = f_06e888(at<int>(d, v * 4 + 6384));
+            f_046894(h, 0, s2);
+            void *dd = at<void *>(self, 12);
+            s2 = f_06e86c(at<int>(dd, at<int>(dd, 1204) * 4 + 6384));
+            f_046894(h, 1, s2);
+            return 0;
+        }
+        case 0x2dd27f:
+            s2 = at<unsigned char>(d, at<int>(d, 7520) + 5661) + 0xd5af24;
+            f_046894(h, 0, s2);
+            s2 = at<int>(at<void *>(self, 12), 7520) + 0xd5a750;
+            f_046894(h, 1, s2);
+            return 0;
+        case 0x2dd280:
+            s2 = at<unsigned char>(d, at<int>(d, 7520) + 5841) + 0xd5af21;
+            goto t0;
+        case 0x2dd281:
+            s2 = f_06b714(at<int>(d, at<int>(d, 7520) * 4 + 6144));
+            goto pnum;
+        case 0x2dd665:
+            s2 = f_077de4((char *)d + 6736, at<int>(d, 7244), at<int>(d, 7248), 1);
+            if (s2 == 0)
+                return 1;
+            goto t0;
+        case 0x2dd666:
+            s2 = at<int>(d, 7244) + 0x1036e10;
+            goto t0;
+        case 0x2dda50:
+            s2 = f_06e86c(at<int>(d, 1240));
+            goto t0;
+        case 0x2dda51:
+            s2 = at<int>(d, 1236) + n;
+            goto t0;
+        case 0x2dda57: {
+            int v = at<int>(d, 1500);
+            if (v == 0)
+                s2 = 0x1037224;
+            else if (v == 255)
+                s2 = 0x103819e;
+            else
+                s2 = v + 0x10371ff;
+            goto t0;
+        }
+        case 0x3d14c1 ... 0x3d14c3:
+            return 1;
+        case 0x3d2844:
+            s2 = at<int>(d, 7244) + 0x1036a28;
+            goto t0;
+        case 0x4c4f2c:
+            f_0468e8(h, 0, (char *)d + 1547, 0);
+            return 0;
+        case 0x4c4f2d:
+            f_0468e8(h, 0, (char *)d + 1565, 0);
+            return 0;
+        case 0x4c5313: {
+            int a0 = at<int>(d, 868);
+            if (a0 == 0)
+                return 1;
+            s2 = f_06e888(a0);
+            f_046894(h, 0, s2);
+            s2 = f_06e86c(at<int>(at<void *>(self, 12), 868));
+            f_046894(h, 1, s2);
+            return 0;
+        }
+        case 0x4c5314: {
+            unsigned b = at<unsigned char>(d, at<int>(d, 868) + 4377);
+            if (b < 4)
+                s2 = b + n;
+            else
+                s2 = 0x4c532b;
+            goto t0;
+        }
+        case 0x4c4f2e: {
+            SA sa;
+            SB sb;
+            int cnt[7];
+            sa.w = *(unsigned *)D_1a5d8c;
+            sa.b = D_1a5d8c[4];
+            sb.w0 = ((unsigned *)D_1a5d9c)[0];
+            sb.w1 = ((unsigned *)D_1a5d9c)[1];
+            sb.w2 = ((unsigned *)D_1a5d9c)[2];
+            sb.b = D_1a5d9c[12];
+            for (int q = 0; q < 7; q++)
+                cnt[q] = 0;
+            for (int q = 0; q < 11; q++)
+                sa.z[q] = 0;
+            for (int q = 0; q < 3; q++)
+                sb.z[q] = 0;
+            int c1 = 0, c2 = 0, i;
+            int sg7 = '-', sg8 = '-';
+            int n1 = at<unsigned char>(d, 4376);
+            for (i = 1; i < n1; i++)
+                if (at<int>(d, 2336) >= at<unsigned char>(d, 3704 + i))
+                    c1++;
+            int n2 = at<unsigned char>(d, 5660);
+            for (i = 1; i < n2; i++)
+                if (at<unsigned char>(d, 2296 + i))
+                    c2 += at<unsigned char>(d, 1460 + i) != 0;
+            int *p = cnt;
+            for (i = 1; i < at<unsigned char>(d, 6624);) {
+                int j = i;
+                if ((i - 1) % 9 == 0 && i != 1)
+                    p++;
+                i++;
+                if (at<unsigned char>(d, 2236 + j) && at<unsigned char>(d, 1400 + j))
+                    *p += 1;
+            }
+            if (at<unsigned char>(d, 2293) && at<unsigned char>(d, 1457))
+                sg7 = '+';
+            unsigned a2 = at<unsigned>(d, 2232);
+            if (a2 < 1000)
+                sprintf((char *)&sa, D_1a5e08, a2);
+            float fv = at<float>(at<void *>(self, 12), 2228);
+            if (fv < D_1a51e0) {
+                int a = (int)(fv * D_1a51e4);
+                if (a < 10000)
+                    sprintf((char *)&sb, D_1a5dfc, a, (int)fv);
+                else
+                    sprintf((char *)&sb, D_1a5dac, (int)fv);
+            }
+            if (c1 == at<unsigned char>(at<void *>(self, 12), 4376) - 1 && c2 == 24 && cnt[0] == 9 &&
+                cnt[1] == 9 && cnt[2] == 9 && cnt[3] == 9 && cnt[4] == 9 && cnt[5] == 9 && cnt[6] == 4)
+                sg8 = '+';
+            int xi = (int)fx, yi = (int)fy;
+            sprintf(buf, D_1a5dbc, c1, c2, cnt[0], cnt[1], cnt[2], cnt[3], cnt[4], cnt[5], cnt[6], sg7);
+            f_07b018(&w, xi, yi, mode, f2, f3, f4, f5, buf);
+            sprintf(buf, D_1a5dec, (char *)&sa, (char *)&sb, sg8);
+            f_07b018(&w, xi, yi + 10, mode, f2, f3, f4, f5, buf);
+            return 1;
+        }
+        case 0x4c5319: {
+            char *a = (char *)d + at<int>(d, 868);
+            if (at<unsigned char>(a, 4328) != 1)
+                return 1;
+            int v = at<unsigned char>(a, 4280);
+            if (v == 58) {
+                f_046de0(h, (int)fx, (int)fy, f2, f3, f4, f5, 0x4c5328, 480, (char *)d + 44);
+                return 1;
+            }
+            s2 = at<unsigned char>(d, v + 5661) + n;
+            f_046894(h, 0, s2);
+            void *dd = at<void *>(self, 12);
+            s2 = at<unsigned char>(dd, at<int>(dd, 868) + 4280) + 0xd5a368;
+            f_046894(h, 1, s2);
+            return 0;
+        }
+        case 0x4c5321:
+            s2 = at<int>(d, at<int>(d, 872) * 4 + 876) + 0xc66128;
+            goto t0;
+        case 0x4c5322:
+            s2 = at<unsigned char>(d, at<int>(d, 868) + 4280) + 0x112ac68;
+            goto t0;
+        case 0x4c5323: {
+            char *a = (char *)d + at<int>(d, 868);
+            int a0 = at<unsigned char>(a, 4328);
+            s2 = at<unsigned char>(a, 4280);
+            if (a0 == 3) {
+                if (s2 == 1)
+                    s2 = 3;
+                else if (s2 == a0)
+                    s2 = 4;
+                else if (s2 == 4)
+                    s2 = 1;
+            } else if (a0 == 4)
+                s2 += 4;
+            s2 += 0x112b050;
+            goto t0;
+        }
+        case 0x4c5324: {
+            if (at<int>(d, at<int>(d, 7252) * 4 + 7256) <= 0)
+                return 1;
+            T8 tbl = D_1a52d4;
+            s2 = at<int>(d, at<int>(d, 7252) * 4 + 7256) - 1;
+            f_046894(h, 0, tbl.v[s2]);
+            return 0;
+        }
+        case 0x4c5325: {
+            int idx = at<int>(d, 868);
+            if (idx <= 0)
+                return 1;
+            int a1 = at<int>(d, 2336);
+            int lo = at<unsigned char>(d, 6733);
+            int a2 = a1 - at<unsigned char>(d, idx + 3656);
+            if (a2 < lo) {
+                if (!(a1 < lo)) {
+                    f_046de0(h, (int)fx, (int)fy, f2, f3, f4, f5, 0x4c532a, 480, (char *)d + 44);
+                    return 1;
+                }
+            }
+            int hi = at<unsigned char>(d, 6734);
+            if (!(a2 < hi))
+                return 0;
+            if (at<int>(d, 2336) < hi)
+                return 0;
+            f_046de0(h, (int)fx, (int)fy, f2, f3, f4, f5, n + 7, 480, (char *)d + 44);
+            return 1;
+        }
+        case 0x4c5326: {
+            int k = at<int>(d, at<int>(d, 900) * 4 + 904);
+            if (k <= 0)
+                return 1;
+            if (k < 10)
+                s2 = 0x4c5315;
+            else if (k < 24)
+                s2 = 0x4c5316;
+            else
+                s2 = 0x4c5317 + (k >= 40 ? 0x14 : 0);
+            f_046894(h, 0, s2);
+            void *dd = at<void *>(self, 12);
+            s2 = f_06e888(at<int>(dd, at<int>(dd, 900) * 4 + 904));
+            f_046894(h, 1, s2);
+            dd = at<void *>(self, 12);
+            s2 = f_06e86c(at<int>(dd, at<int>(dd, 900) * 4 + 904));
+            f_046894(h, 2, s2);
+            return 0;
+        }
+        case 0x4c5327:
+            s2 = (int)(at<float>(d, 2228) * D_1a51e4);
+            if (s2 >= 10000)
+                s2 = 9999;
+            s2 = f_06b714(s2);
+            goto pnum;
+        case 0x4c5329:
+        case 0x4c62b4:
+        case 0xe4e5d1:
+        case 0xe4f188:
+            s2 = at<int>(d, 1348);
+            goto pnum;
+        case 0x4c62be:
+            s2 = at<int>(d, 1344);
+            goto pnum;
+        case 0x4c5ecc:
+            s2 = f_06e888(at<int>(d, 1240));
+            goto t0;
+        case 0x4c5ece:
+            s2 = at<unsigned char>(d, at<int>(d, 1240) * 10 + 3801) + 0xc66510;
+            goto t0;
+        case 0x4c5ed1:
+            if (at<int>(d, 1240) == 255)
+                s2 = at<unsigned char>(d, at<int>(d, 1228) + 5661);
+            else
+                s2 = at<unsigned char>(d, at<int>(d, 1240) + 3752);
+            s2 += 0xd5af24;
+            goto t0;
+        case 0x4c5ed5 ... 0x4c5ed9:
+            s2 = at<unsigned char>(d, at<int>(d, 1240) * 10 + (n - 0x4c5ed3) + 3800) + 0xc66510;
+            goto t0;
+        case 0x4c62b5:
+            s2 = at<int>(self, 16) + 0x2dce91;
+            goto t0;
+        case 0x4c85df: {
+            int v = at<int>(d, 1228);
+            if (v == 0)
+                return 1;
+            s2 = v + 0xd5a750;
+            goto t0;
+        }
+        case 0x5c1252:
+            s2 = at<int>(d, 2364) + 0xd5af24;
+            goto t0;
+        case 0x5c163f: {
+            void *a1 = at<void *>(d, 7480);
+            if (a1 == 0)
+                return 1;
+            void *t4 = at<void *>(d, 7488);
+            if (t4 == 0)
+                return 1;
+            void *v1 = at<void *>(d, 7492);
+            if (v1 == 0)
+                return 1;
+            int off = at<int>(d, 2376) * 4;
+            s2 = at<int>(v1, off);
+            if (s2 >= 1000)
+                s2 = 999;
+            sprintf(buf, D_1a5e10, at<const char *>(a1, off), at<int>(t4, off), s2);
+            f_07b018(&w, (int)fx, (int)fy, mode, f2, f3, f4, f5, buf);
+            return 1;
+        }
+        case 0x5c164a ... 0x5c1651: {
+            int k = n - 0x5c164a;
+            char *e = (char *)d + k * 8;
+            if (*(signed char *)(e + 7308) == 0)
+                return 1;
+            sprintf(buf, D_1a5e20, k + 1, e + 7308);
+            f_07b018(&w, (int)fx, (int)fy, 0, f2, f3, f4, f5, buf);
+            return 1;
+        }
+        case 0x5c1652 ... 0x5c1659: {
+            int k = n - 0x5c1652;
+            if (*(signed char *)((char *)d + k * 8 + 7308) == 0)
+                return 1;
+            sprintf(buf, D_1a5d88, at<int>(d, k * 4 + 7404));
+            f_0468e8(h, 0, buf, 0);
+            s2 = at<int>(at<void *>(self, 12), k * 4 + 7372);
+            if (s2 >= 1000)
+                s2 = 999;
+            sprintf(buf, D_1a5e08, s2);
+            f_0468e8(h, 1, buf, 0);
+            return 0;
+        }
+        case 0x5c3194: {
+            void *v1 = at<void *>(d, 7484);
+            if (v1 == 0)
+                return 1;
+            sprintf(buf, D_1a5d88, at<int>(v1, at<int>(d, 2376) * 4));
+            f_0468e8(h, 0, buf, 0);
+            void *dd = at<void *>(self, 12);
+            sprintf(buf, D_1a5d88, 8 - at<int>(at<void *>(dd, 7484), at<int>(dd, 2376) * 4));
+            f_0468e8(h, 1, buf, 0);
+            return 0;
+        }
+        case 0x5c3197:
+            sprintf(buf, D_1a5e28, at<int>(d, 2376) + 1);
+            f_0468e8(h, 0, buf, 0);
+            return 0;
+        case 0x5c3199: {
+            void *a0 = at<void *>(d, 7500);
+            if (a0 == 0)
+                return 1;
+            if (at<int>(d, 7496) == 0)
+                return 1;
+            s2 = at<int>(a0, at<int>(d, 2376) * 4) + 0xd5af24;
+            f_046894(h, 0, s2);
+            void *dd = at<void *>(self, 12);
+            s2 = at<int>(at<void *>(dd, 7496), at<int>(dd, 2376) * 4) + 0x5c319d;
+            f_046894(h, 1, s2);
+            return 0;
+        }
+        case 0x5c319c: {
+            void *a0 = at<void *>(d, 7504);
+            if (a0 == 0)
+                return 1;
+            s2 = at<int>(a0, at<int>(d, 2376) * 4) + 0xc66128;
+            goto t0;
+        }
+        case 0x5c6073 ... 0x5c607a: {
+            int k = n - 0x5c6073;
+            if (*(signed char *)((char *)d + k * 8 + 7308) == 0)
+                return 1;
+            int v = at<int>(d, k * 4 + 7436);
+            if (v != 0)
+                s2 = v + 0xd5a750;
+            else
+                s2 = 0x5c607b;
+            goto t0;
+        }
+        case 0x5c7bca:
+            f_047248(h, (int)fx, (int)fy, 0x5c7bca, 480, (char *)d + 44, D_1a51e8, D_1a51e8, f2, f3, f4, f5);
+            return 1;
+        case 0x1038581 ... 0x1038586:
+            s2 = n + at<int>(d, 7244) * 6 - 4999;
+            goto t0;
+        case 0x1038587:
+            f_046894(h, 0, 0x1037225);
+            return 0;
+        default:
+            return 0;
+        }
+    t0:
+        f_046894(h, 0, s2);
+        return 0;
+    pnum:
+        sprintf(buf, D_1a5d88, s2);
+        f_0468e8(h, 0, buf, 0);
+        return 0;
+    }
+}
+}
+}
