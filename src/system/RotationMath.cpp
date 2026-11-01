@@ -274,13 +274,13 @@ void f_09d858(Mat33 *m, const Quat *q)
     float xy = x * ys, xz = x * zs, yz = y * zs;
     float wx = w * xs, wy = w * ys, wz = w * zs;
     m->m[0][0] = 1.0f - (yy + zz);
-    m->m[0][1] = xy + wz;
-    m->m[0][2] = xz - wy;
-    m->m[1][0] = xy - wz;
+    m->m[1][0] = xy + wz;
+    m->m[2][0] = xz - wy;
+    m->m[0][1] = xy - wz;
     m->m[1][1] = 1.0f - (xx + zz);
-    m->m[1][2] = yz + wx;
-    m->m[2][0] = xz + wy;
-    m->m[2][1] = yz - wx;
+    m->m[2][1] = yz + wx;
+    m->m[0][2] = xz + wy;
+    m->m[1][2] = yz - wx;
     m->m[2][2] = 1.0f - (xx + yy);
 }
 
@@ -296,13 +296,13 @@ void f_09d770(Mat33 *m, const Quat *q)
     float xy = x * ys, xz = x * zs, yz = y * zs;
     float wx = w * xs, wy = w * ys, wz = w * zs;
     m->m[0][0] = 1.0f - (yy + zz);
-    m->m[0][1] = xy + wz;
-    m->m[0][2] = xz - wy;
-    m->m[1][0] = xy - wz;
+    m->m[1][0] = xy + wz;
+    m->m[2][0] = xz - wy;
+    m->m[0][1] = xy - wz;
     m->m[1][1] = 1.0f - (xx + zz);
-    m->m[1][2] = yz + wx;
-    m->m[2][0] = xz + wy;
-    m->m[2][1] = yz - wx;
+    m->m[2][1] = yz + wx;
+    m->m[0][2] = xz + wy;
+    m->m[1][2] = yz - wx;
     m->m[2][2] = 1.0f - (xx + yy);
 }
 
@@ -318,13 +318,13 @@ void f_09fd1c(Mat34 *m, const Quat *q)
     float xy = x * ys, xz = x * zs, yz = y * zs;
     float wx = w * xs, wy = w * ys, wz = w * zs;
     m->m[0][0] = 1.0f - (yy + zz);
-    m->m[0][1] = xy + wz;
-    m->m[0][2] = xz - wy;
-    m->m[1][0] = xy - wz;
+    m->m[1][0] = xy + wz;
+    m->m[2][0] = xz - wy;
+    m->m[0][1] = xy - wz;
     m->m[1][1] = 1.0f - (xx + zz);
-    m->m[1][2] = yz + wx;
-    m->m[2][0] = xz + wy;
-    m->m[2][1] = yz - wx;
+    m->m[2][1] = yz + wx;
+    m->m[0][2] = xz + wy;
+    m->m[1][2] = yz - wx;
     m->m[2][2] = 1.0f - (xx + yy);
 }
 
@@ -340,13 +340,13 @@ void f_09fc34(Mat34 *m, const Quat *q)
     float xy = x * ys, xz = x * zs, yz = y * zs;
     float wx = w * xs, wy = w * ys, wz = w * zs;
     m->m[0][0] = 1.0f - (yy + zz);
-    m->m[0][1] = xy + wz;
-    m->m[0][2] = xz - wy;
-    m->m[1][0] = xy - wz;
+    m->m[1][0] = xy + wz;
+    m->m[2][0] = xz - wy;
+    m->m[0][1] = xy - wz;
     m->m[1][1] = 1.0f - (xx + zz);
-    m->m[1][2] = yz + wx;
-    m->m[2][0] = xz + wy;
-    m->m[2][1] = yz - wx;
+    m->m[2][1] = yz + wx;
+    m->m[0][2] = xz + wy;
+    m->m[1][2] = yz - wx;
     m->m[2][2] = 1.0f - (xx + yy);
 }
 
@@ -387,14 +387,18 @@ void f_09c158(Quat *d, const Vec3 *ax, float a)
     d->v[3] = cosf(h2);
 }
 
-/* @draft 0x09eda0 us f_09eda0
+/* @implements 0x09eda0 us f_09eda0
    WHAT IT DOES: Sets d to the product of two 3x3 matrices, one result row of d per pass. */
 Mat33 *f_09eda0(Mat33 *d, const Mat33 *a, const Mat33 *b)
 {
-    for (int i = 0; i < 3; i++) {
-        d->m[0][i] = a->m[i][0] * b->m[0][0] + a->m[i][1] * b->m[1][0] + a->m[i][2] * b->m[2][0];
-        d->m[1][i] = a->m[i][0] * b->m[0][1] + a->m[i][1] * b->m[1][1] + a->m[i][2] * b->m[2][1];
-        d->m[2][i] = a->m[i][0] * b->m[0][2] + a->m[i][1] * b->m[1][2] + a->m[i][2] * b->m[2][2];
+    const float *p = (const float *)a + 2;
+    float *q = (float *)d;
+    for (int i = 2; i >= 0; i--) {
+        q[0] = p[-2] * b->m[0][0] + p[-1] * b->m[1][0] + p[0] * b->m[2][0];
+        q[3] = p[-2] * b->m[0][1] + p[-1] * b->m[1][1] + p[0] * b->m[2][1];
+        q[6] = p[-2] * b->m[0][2] + p[-1] * b->m[1][2] + p[0] * b->m[2][2];
+        p += 3;
+        q++;
     }
     return d;
 }
@@ -654,7 +658,7 @@ void f_09d9c8(Vec4 *o, const Mat33 *m, const Vec4 *a);
 
 /* @draft 0x09eb40 us f_09eb40
    WHAT IT DOES: Sets d[j][i] to the sum over k of a[k][i] * b[j][k] for two 3x3 matrices (a transposed times b transposed), one column per pass.
-   Remaining difference: retail keeps an up-counting loop with separate address registers for the second and third source rows; this source gets a pointer-walking form. */
+   Remaining difference: retail keeps an up-counting loop with separate address registers for the second and third source rows and reloads a's three elements for every result row (no common subexpression across the stores). Tried (m210c): byte-offset and float-index forms, manual offset counters written as int + (int)a (matches the addu operand order, but gets a recomputed sll/addu for the first row), local copies; none matched. */
 Mat33 *f_09eb40(Mat33 *d, const Mat33 *a, const Mat33 *b)
 {
     int i = 0;
@@ -867,6 +871,31 @@ void f_09c314(Vec4a *d, const FVec3 *v)
     *d = *(Vec4a *)&r;
 }
 
+
+}
+}
+
+/* ---- m210c ---- */
+namespace m210c {
+struct Mat44 { float m[4][4]; };
+extern "C" {
+void f_0a2e44(Mat44 *r);
+Mat44 *f_09b908(Mat44 *a);
+void f_0a2c70(Mat44 *d, const Mat44 *s);
+
+/* @implements 0x0a2e98 us f_0a2e98
+   WHAT IT DOES: Builds a 4x4 matrix with f_0a2e44, runs it through f_09b908 on a copy, and passes the result to f_0a2c70 to fill the destination. */
+Mat44 *f_0a2e98(Mat44 *d)
+{
+    Mat44 t1;
+    Mat44 t3;
+    Mat44 t2;
+    f_0a2e44(&t1);
+    t2 = t1;
+    t3 = *f_09b908(&t2);
+    f_0a2c70(d, &t3);
+    return d;
+}
 
 }
 }
