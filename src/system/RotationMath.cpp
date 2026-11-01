@@ -897,5 +897,241 @@ Mat44 *f_0a2e98(Mat44 *d)
     return d;
 }
 
+struct Quat2 { float v[4]; Quat2() {} Quat2(float x, float y, float z, float w) { v[0] = x; v[1] = y; v[2] = z; v[3] = w; } };
+struct Vec3b { float v[3]; };
+extern const float D_1abfc8, D_1abfcc;
+Quat2 *c_qmul(Quat2 *d, const Quat2 *a, Quat2 b) __asm__("f_09c618");
+Quat2 c_qinv(const Quat2 *q) __asm__("f_09c54c");
+
+/* @draft 0x09c720 us f_09c720
+   WHAT IT DOES: Rotates the vector b by the quaternion q: multiplies q by (b, 1), then by the inverse of q, and returns the vector part with w = 1.
+   Remaining difference: retail keeps its locals in four slots (the argument copy and the final vector copy share one) and this source uses five. */
+Quat2 f_09c720(const Quat2 *q, const Vec3b *b)
+{
+    Quat2 t1;
+    {
+        Quat2 v(b->v[0], b->v[1], b->v[2], D_1abfc8);
+        Quat2 bc;
+        bc = v;
+        c_qmul(&t1, q, bc);
+    }
+    Quat2 inv = c_qinv(q);
+    Vec3b res;
+    {
+        Quat2 r;
+        c_qmul(&r, &t1, inv);
+        res = *(Vec3b *)&r;
+    }
+    return Quat2(res.v[0], res.v[1], res.v[2], D_1abfc8);
+}
+
+/* @draft 0x09c810 us f_09c810
+   WHAT IT DOES: Quaternion lerp: d = (1 - t) * a + (t or -t) * b, taking the negated weight when the dot product of a and b is negative; returns d.
+   Remaining difference: 18 words: register choice in the dot product and retail frame of 32 bytes (this source 16). */
+Quat2 *f_09c810(Quat2 *d, const Quat2 *a, const Quat2 *b, float t)
+{
+    float dot = a->v[0] * b->v[0] + a->v[1] * b->v[1] + a->v[2] * b->v[2] + a->v[3] * b->v[3];
+    float u = D_1abfcc - t;
+    float x = u * a->v[0], y = u * a->v[1], z = u * a->v[2], w = u * a->v[3];
+    if (dot < 0.0f)
+        t = -t;
+    *d = Quat2(x, y, z, w);
+    *d = Quat2(d->v[0] + t * b->v[0], d->v[1] + t * b->v[1], d->v[2] + t * b->v[2], d->v[3] + t * b->v[3]);
+    return d;
+}
+
+}
+
+/* Rotation matrix to rotation vector: the antisymmetric part gives the axis and acos of the
+   clamped trace the angle; near 0 or pi it goes through Euler angles and a quaternion. */
+struct Vec3 { float v[3]; };
+struct Quat4 { float v[4]; };
+extern "C" {
+float c_acos(float x) __asm__("f_09ab88");
+float c_atan2(float y, float x) __asm__("f_09a86c");
+void c_wrap(float *a) __asm__("f_099b98");
+void c_eul2quat(Quat4 *o, const void *in) __asm__("f_09bf24");
+void c_quat2rv(Quat4 *o, const Quat4 *a) __asm__("f_09b2a8");
+}
+struct Ang {
+    float a;
+    Ang() : a(0.0f) {}
+    Ang(float x) : a(x) { c_wrap(&a); }
+};
+struct AngI { int a; AngI() : a(0) {} AngI(const Ang &o) { a = *(const int *)&o; } };
+struct Euler {
+    AngI e[3];
+    float w;
+    Euler() __attribute__((always_inline));
+};
+inline Euler::Euler()
+{
+    e[0] = Ang(0.0f);
+    e[1] = Ang(0.0f);
+    e[2] = Ang(0.0f);
+    w = 0.0f;
+}
+extern "C" {
+extern const float D_1ac0a0, D_1ac0a4, D_1ac0a8, D_1ac0ac, D_1ac0b0, D_1ac0b4;
+extern const float D_1ac0b8, D_1ac0bc, D_1ac0c0, D_1ac0c4, D_1ac0c8, D_1ac0cc;
+extern const float D_1ac0d0, D_1ac0d4, D_1ac0d8, D_1ac0dc, D_1ac0e0, D_1ac0e4;
+extern const float D_1ac0e8, D_1ac0ec, D_1ac0f0, D_1ac0f4, D_1ac0f8, D_1ac0fc;
+
+/* @draft 0x0a4408 us f_0a4408
+   WHAT IT DOES: Converts a rotation matrix (3x3, rows of three) to a rotation vector in d: if the antisymmetric part of the matrix is above a small threshold the axis is that part scaled to the angle acos((clamped trace - 1) / 2); otherwise it extracts Euler angles (each wrapped by f_099b98, with a gimbal fallback when the cosine of the middle angle is tiny), builds a quaternion with f_09bf24 and converts it with f_09b2a8.
+   Remaining difference: six words differ: retail copies the last Euler angle through v1 and loads the middle-angle operands before the copy. */
+void f_0a4408(Vec3 *d, const float *m)
+{
+    d->v[0] = m[5] - m[7];
+    d->v[1] = m[6] - m[2];
+    d->v[2] = m[1] - m[3];
+    if (fabsf(d->v[0]) > D_1ac0a0 || fabsf(d->v[1]) > D_1ac0a0 || fabsf(d->v[2]) > D_1ac0a0) {
+        float tr = m[0] + m[4] + m[8];
+        if (tr <= D_1ac0a4)
+            tr = D_1ac0a4;
+        else if (tr >= D_1ac0a8)
+            tr = D_1ac0a8;
+        float ang = c_acos((tr - D_1ac0ac) * D_1ac0b0);
+        float s = ang / sqrtf(d->v[0] * d->v[0] + d->v[1] * d->v[1] + d->v[2] * d->v[2]);
+        d->v[0] *= s;
+        d->v[1] *= s;
+        d->v[2] *= s;
+        return;
+    }
+    Euler e;
+    float cy = sqrtf(m[0] * m[0] + m[1] * m[1]);
+    if (cy > D_1ac0b4) {
+        e.e[0] = Ang(c_atan2(m[5], m[8]));
+        e.e[1] = Ang(c_atan2(-m[2], cy));
+        e.e[2] = Ang(c_atan2(m[1], m[0]));
+    } else {
+        e.e[0] = Ang(c_atan2(-m[7], m[4]));
+        e.e[1] = Ang(c_atan2(-m[2], cy));
+        e.e[2] = Ang(0.0f);
+    }
+    Quat4 r;
+    Quat4 q;
+    c_eul2quat(&q, &e);
+    c_quat2rv(&r, &q);
+    *(Quat4 *)d = r;
+}
+
+/* @draft 0x0a4724 us f_0a4724
+   WHAT IT DOES: Converts a rotation matrix (3x3, rows of three) to a rotation vector in d: if the antisymmetric part of the matrix is above a small threshold the axis is that part scaled to the angle acos((clamped trace - 1) / 2); otherwise it extracts Euler angles (each wrapped by f_099b98, with a gimbal fallback when the cosine of the middle angle is tiny), builds a quaternion with f_09bf24 and converts it with f_09b2a8.
+   Remaining difference: six words differ: retail copies the last Euler angle through v1 and loads the middle-angle operands before the copy. */
+void f_0a4724(Vec3 *d, const float *m)
+{
+    d->v[0] = m[5] - m[7];
+    d->v[1] = m[6] - m[2];
+    d->v[2] = m[1] - m[3];
+    if (fabsf(d->v[0]) > D_1ac0b8 || fabsf(d->v[1]) > D_1ac0b8 || fabsf(d->v[2]) > D_1ac0b8) {
+        float tr = m[0] + m[4] + m[8];
+        if (tr <= D_1ac0bc)
+            tr = D_1ac0bc;
+        else if (tr >= D_1ac0c0)
+            tr = D_1ac0c0;
+        float ang = c_acos((tr - D_1ac0c4) * D_1ac0c8);
+        float s = ang / sqrtf(d->v[0] * d->v[0] + d->v[1] * d->v[1] + d->v[2] * d->v[2]);
+        d->v[0] *= s;
+        d->v[1] *= s;
+        d->v[2] *= s;
+        return;
+    }
+    Euler e;
+    float cy = sqrtf(m[0] * m[0] + m[1] * m[1]);
+    if (cy > D_1ac0cc) {
+        e.e[0] = Ang(c_atan2(m[5], m[8]));
+        e.e[1] = Ang(c_atan2(-m[2], cy));
+        e.e[2] = Ang(c_atan2(m[1], m[0]));
+    } else {
+        e.e[0] = Ang(c_atan2(-m[7], m[4]));
+        e.e[1] = Ang(c_atan2(-m[2], cy));
+        e.e[2] = Ang(0.0f);
+    }
+    Quat4 r;
+    Quat4 q;
+    c_eul2quat(&q, &e);
+    c_quat2rv(&r, &q);
+    *(Quat4 *)d = r;
+}
+
+/* @draft 0x0a4a40 us f_0a4a40
+   WHAT IT DOES: Converts a rotation matrix (3x4, rows of four) to a rotation vector in d: if the antisymmetric part of the matrix is above a small threshold the axis is that part scaled to the angle acos((clamped trace - 1) / 2); otherwise it extracts Euler angles (each wrapped by f_099b98, with a gimbal fallback when the cosine of the middle angle is tiny), builds a quaternion with f_09bf24 and converts it with f_09b2a8.
+   Remaining difference: six words differ: retail copies the last Euler angle through v1 and loads the middle-angle operands before the copy. */
+void f_0a4a40(Vec3 *d, const float *m)
+{
+    d->v[0] = m[6] - m[9];
+    d->v[1] = m[8] - m[2];
+    d->v[2] = m[1] - m[4];
+    if (fabsf(d->v[0]) > D_1ac0d0 || fabsf(d->v[1]) > D_1ac0d0 || fabsf(d->v[2]) > D_1ac0d0) {
+        float tr = m[0] + m[5] + m[10];
+        if (tr <= D_1ac0d4)
+            tr = D_1ac0d4;
+        else if (tr >= D_1ac0d8)
+            tr = D_1ac0d8;
+        float ang = c_acos((tr - D_1ac0dc) * D_1ac0e0);
+        float s = ang / sqrtf(d->v[0] * d->v[0] + d->v[1] * d->v[1] + d->v[2] * d->v[2]);
+        d->v[0] *= s;
+        d->v[1] *= s;
+        d->v[2] *= s;
+        return;
+    }
+    Euler e;
+    float cy = sqrtf(m[0] * m[0] + m[1] * m[1]);
+    if (cy > D_1ac0e4) {
+        e.e[0] = Ang(c_atan2(m[6], m[10]));
+        e.e[1] = Ang(c_atan2(-m[2], cy));
+        e.e[2] = Ang(c_atan2(m[1], m[0]));
+    } else {
+        e.e[0] = Ang(c_atan2(-m[9], m[5]));
+        e.e[1] = Ang(c_atan2(-m[2], cy));
+        e.e[2] = Ang(0.0f);
+    }
+    Quat4 r;
+    Quat4 q;
+    c_eul2quat(&q, &e);
+    c_quat2rv(&r, &q);
+    *(Quat4 *)d = r;
+}
+
+/* @draft 0x0a4d5c us f_0a4d5c
+   WHAT IT DOES: Converts a rotation matrix (3x4, rows of four) to a rotation vector in d: if the antisymmetric part of the matrix is above a small threshold the axis is that part scaled to the angle acos((clamped trace - 1) / 2); otherwise it extracts Euler angles (each wrapped by f_099b98, with a gimbal fallback when the cosine of the middle angle is tiny), builds a quaternion with f_09bf24 and converts it with f_09b2a8.
+   Remaining difference: six words differ: retail copies the last Euler angle through v1 and loads the middle-angle operands before the copy. */
+void f_0a4d5c(Vec3 *d, const float *m)
+{
+    d->v[0] = m[6] - m[9];
+    d->v[1] = m[8] - m[2];
+    d->v[2] = m[1] - m[4];
+    if (fabsf(d->v[0]) > D_1ac0e8 || fabsf(d->v[1]) > D_1ac0e8 || fabsf(d->v[2]) > D_1ac0e8) {
+        float tr = m[0] + m[5] + m[10];
+        if (tr <= D_1ac0ec)
+            tr = D_1ac0ec;
+        else if (tr >= D_1ac0f0)
+            tr = D_1ac0f0;
+        float ang = c_acos((tr - D_1ac0f4) * D_1ac0f8);
+        float s = ang / sqrtf(d->v[0] * d->v[0] + d->v[1] * d->v[1] + d->v[2] * d->v[2]);
+        d->v[0] *= s;
+        d->v[1] *= s;
+        d->v[2] *= s;
+        return;
+    }
+    Euler e;
+    float cy = sqrtf(m[0] * m[0] + m[1] * m[1]);
+    if (cy > D_1ac0fc) {
+        e.e[0] = Ang(c_atan2(m[6], m[10]));
+        e.e[1] = Ang(c_atan2(-m[2], cy));
+        e.e[2] = Ang(c_atan2(m[1], m[0]));
+    } else {
+        e.e[0] = Ang(c_atan2(-m[9], m[5]));
+        e.e[1] = Ang(c_atan2(-m[2], cy));
+        e.e[2] = Ang(0.0f);
+    }
+    Quat4 r;
+    Quat4 q;
+    c_eul2quat(&q, &e);
+    c_quat2rv(&r, &q);
+    *(Quat4 *)d = r;
+}
+
 }
 }
