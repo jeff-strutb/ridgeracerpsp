@@ -1733,9 +1733,13 @@ int f_072e1c(void *self, void *out)
         __builtin_memcpy((char *)out, (char *)self + 1508, 324);
         break;
     case 18:
-        at<int>(out, 8) = at<int>(self, 7244);
-        at<int>(out, 12) = at<int>(self, 2352);
+    {
+        int p = at<int>(self, 7244);
+        int q = at<int>(self, 2352);
+        at<int>(out, 8) = p;
+        at<int>(out, 12) = q;
         break;
+    }
     case 21:
         at<int>(out, 8) = at<int>(self, 2360);
         at<int>(out, 12) = at<int>(self, 2364);
