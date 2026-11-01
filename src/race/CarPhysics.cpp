@@ -844,7 +844,8 @@ extern "C" void f_0ab0fc(CarPhys *p)
 extern "C" void f_0aa748(CarPhys *p);
 
 /* @draft 0x0aa608 us f_0aa608
-   WHAT IT DOES: Stores the truncated height, then for each of the four wheels turns the wheel's offset by the car's heading, adds the car's position and stores it as the wheel's position and the probe point, takes the wheel's surface id (or -1 when the car has no index), runs the surface step f_0aa748 and keeps its results for the wheel; the last wheel's surface id becomes the car's index. */
+   WHAT IT DOES: Stores the truncated height, then for each of the four wheels turns the wheel's offset by the car's heading, adds the car's position and stores it as the wheel's position and the probe point, takes the wheel's surface id (or -1 when the car has no index), runs the surface step f_0aa748 and keeps its results for the wheel; the last wheel's surface id becomes the car's index.
+   Remaining difference: retail schedules the v.z load after the first sum (both reloads of v in $f0), as in f_0a9158. */
 extern "C" void f_0aa608(CarPhys *p)
 {
     p->m180 = (int)p->m16;
@@ -852,7 +853,7 @@ extern "C" void f_0aa608(CarPhys *p)
     Angle a;
     Angle *pa = &a;
     float *pz = &v.z;
-    short s;
+    unsigned short s;
     for (int i = 0; i < 4; i++) {
         v.x = ((float *)((char *)p + 224))[i];
         v.y = 0.0f;
@@ -879,7 +880,7 @@ extern "C" void f_0aa608(CarPhys *p)
         ((float *)((char *)p + 304))[i] = e;
         ((float *)((char *)p + 288))[i] = f;
         ((float *)((char *)p + 320))[i] = g;
-        ((short *)((char *)p + 392))[i] = s;
+        ((unsigned short *)((char *)p + 392))[i] = s;
     }
     p->m100 = s;
 }
@@ -920,4 +921,33 @@ extern "C" void f_0aaf68(CarPhys *p, int i)
     ((unsigned short *)((char *)p + 392))[i] = h;
     ((float *)((char *)p + 304))[i] = e;
     ((float *)((char *)p + 288))[i] = f;
+}
+
+static inline float Abs(float x) { return x < 0.0f ? -x : x; }
+
+/* @implements 0x0a8bf4 us f_0a8bf4
+   WHAT IT DOES: Tests whether the car crossed the angle b between its previous and current heading: -1 when either heading is more than 6 away, when they are equal or when both lie on the same side; -2 when the crossing runs backwards; otherwise the crossing point as tenths of the step (0 for a step under 0.001). */
+extern "C" int f_0a8bf4(CarPhys *p, const float *b)
+{
+    float t0 = p->m128;
+    float d0 = f_0af380(&t0, b);
+    if (Abs(d0) > 6.0f)
+        return -1;
+    float t1 = p->m16;
+    float *pt = &t1;
+    float d1 = f_0af380(pt, b);
+    if (Abs(d1) > 6.0f)
+        return -1;
+    if (d0 == d1)
+        return -1;
+    if (d0 < 0.0f && d1 < 0.0f)
+        return -1;
+    if (0.0f < d0 && 0.0f < d1)
+        return -1;
+    float diff = d1 - d0;
+    if (diff < 0.0f)
+        return -2;
+    if (diff < 0.001f)
+        return 0;
+    return (int)(-d0 / diff * 10.0f);
 }
