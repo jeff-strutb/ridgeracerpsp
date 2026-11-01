@@ -2681,3 +2681,827 @@ int f_074430(void *self, char *name, float x, float y, float xa, float xb, float
 }
 }
 }
+
+/* ---- menuG ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 119 fragment by worker menuG. */
+namespace menuG {
+
+template <typename T>
+inline T &at(void *p, unsigned int off)
+{
+    return *(T *)((char *)p + off);
+}
+inline void *operator new(unsigned int, void *p) { return p; }
+
+extern "C" {
+int f_0740ec(void *);
+void f_097ba8(void *);
+extern char D_242e14[];
+extern unsigned int D_24518c;
+extern double D_1a6230;
+extern int D_1a52d4[];
+
+#define PTR ((void *)at<int>(self, 12))
+#define Q(T, o) at<T>(PTR, o)
+
+/* @draft 0x06cfec us f_06cfec
+   WHAT IT DOES: answers a query code (0..250) about the owner object at self+12: a switch returning (and for many codes consuming or clearing) fields of it: flags, list counts and the stacked index lists at +872/+900/+7252, bracket tests of the value at +2336 against three thresholds, and a float scaled to a threshold table; unknown codes return 0.
+   Remaining difference: register choices in the small arms and 80 bytes of size (structure of the switch arms matches). */
+int f_06cfec(void *self, unsigned int cmd)
+{
+    int tmp[8];
+    int tbl[8];
+    switch (cmd) {
+    case 1:
+        { cmd = Q(unsigned char, 2164); goto out; }
+    case 2: {
+        int v = Q(int, 7508);
+        if (!v)
+            { cmd = 0; goto out; }
+        Q(int, 7508) = 0;
+        { cmd = v; goto out; }
+    }
+    case 3:
+        { cmd = Q(int, 1224); goto out; }
+    case 4:
+        { cmd = Q(unsigned char, 1537); goto out; }
+    case 7: {
+        if (!Q(int, 868))
+            { cmd = 0; goto out; }
+        int n = Q(unsigned char, 4376);
+        for (int i = 1; i < n; i++)
+            if (Q(unsigned char, 2176 + i) != 10)
+                { cmd = 0; goto out; }
+        { cmd = 1; goto out; }
+    }
+    case 8:
+        { cmd = 1; goto out; }
+    case 9:
+        if (Q(int, 1240) != 255)
+            { cmd = 0; goto out; }
+        if (Q(int, 1348))
+            { cmd = 1; goto out; }
+        { cmd = 0; goto out; }
+    case 11:
+        { cmd = Q(int, 1588); goto out; }
+    case 12:
+        if (Q(unsigned char, 1504))
+            { cmd = 1; goto out; }
+        Q(unsigned char, 1504) = 1;
+        { cmd = 0; goto out; }
+    case 13:
+        if (!Q(unsigned char, 866))
+            { cmd = 0; goto out; }
+        Q(unsigned char, 866) = 0;
+        { cmd = 1; goto out; }
+    case 14: {
+        int i = 1;
+        int n = Q(unsigned char, 4376);
+        Q(int, 868) = 0;
+        for (; i < n; i++) {
+            if (Q(unsigned char, 2176 + i) == 10 && !Q(unsigned char, 1352 + i)) {
+                Q(unsigned char, 1352 + i) = 1;
+                break;
+            }
+        }
+        if (i == Q(unsigned char, 4376))
+            { cmd = 0; goto out; }
+        Q(int, 868) = i;
+        { cmd = i; goto out; }
+    }
+    case 15: {
+        int k = Q(int, 868);
+        if (!k)
+            { cmd = 0; goto out; }
+        int n = Q(unsigned char, 4376);
+        int cur = Q(unsigned char, 4377 + k);
+        for (int i = 1; i < n; i++) {
+            if (cur == Q(unsigned char, 4377 + i) && Q(unsigned char, 2176 + i) != 10)
+                { cmd = 0; goto out; }
+        }
+        { cmd = Q(unsigned char, 4377 + Q(int, 868)); goto out; }
+    }
+    case 16:
+        { cmd = Q(unsigned char, 4328 + Q(int, 868)) == 1; goto out; }
+    case 17:
+        if (Q(unsigned char, 4328 + Q(int, 868)) != 1)
+            { cmd = 0; goto out; }
+        { cmd = Q(unsigned char, 4280 + Q(int, 868)); goto out; }
+    case 18:
+        { cmd = Q(unsigned char, 4328 + Q(int, 868)) == 2; goto out; }
+    case 19:
+        if (Q(unsigned char, 4328 + Q(int, 868)) != 2)
+            { cmd = 0; goto out; }
+        { cmd = Q(unsigned char, 4280 + Q(int, 868)); goto out; }
+    case 20:
+        { cmd = Q(unsigned char, 4328 + Q(int, 868)) == 3; goto out; }
+    case 21:
+        if (Q(unsigned char, 4328 + Q(int, 868)) != 3)
+            { cmd = 0; goto out; }
+        { cmd = Q(unsigned char, 4280 + Q(int, 868)); goto out; }
+    case 22:
+        { cmd = Q(unsigned char, 4328 + Q(int, 868)) == 4; goto out; }
+    case 23:
+        if (Q(unsigned char, 4328 + Q(int, 868)) != 4)
+            { cmd = 1; goto out; }
+        { cmd = Q(unsigned char, 4280 + Q(int, 868)); goto out; }
+    case 24: {
+        if (!Q(int, 868))
+            { cmd = 0; goto out; }
+        Q(int, 896) = 0;
+        Q(int, 876) = 0;
+        Q(int, 880) = 0;
+        Q(int, 884) = 0;
+        Q(int, 888) = 0;
+        Q(int, 892) = 0;
+        Q(int, 872) = 0;
+        int n = Q(unsigned char, 5660);
+        for (int i = 1; i < n; i++) {
+            if (Q(unsigned char, 2296 + i) && !Q(unsigned char, 1460 + i)) {
+                int k = Q(int, 872);
+                Q(unsigned char, 1460 + i) = 1;
+                Q(int, 872) = k + 1;
+                Q(int, 876 + k * 4) = i;
+            }
+        }
+        { cmd = Q(int, 872); goto out; }
+    }
+    case 25: {
+        if (!Q(int, 868))
+            { cmd = 0; goto out; }
+        int v = Q(int, 872);
+        if (v <= 0)
+            { cmd = 0; goto out; }
+        v--;
+        int r = Q(int, 876 + v * 4);
+        Q(int, 872) = v;
+        { cmd = r; goto out; }
+    }
+    case 26: {
+        if (!Q(int, 868))
+            { cmd = 0; goto out; }
+        int d = Q(int, 2336) - Q(unsigned char, 3656 + Q(int, 868));
+        if (d < Q(unsigned char, 6732) && Q(int, 2336) >= Q(unsigned char, 6732))
+            { cmd = 1; goto out; }
+        if (d >= Q(unsigned char, 6733))
+            { cmd = 0; goto out; }
+        if (Q(int, 2336) >= Q(unsigned char, 6733))
+            { cmd = 1; goto out; }
+        { cmd = 0; goto out; }
+    }
+    case 27: {
+        if (!Q(int, 868))
+            { cmd = 0; goto out; }
+        int d = Q(int, 2336) - Q(unsigned char, 3656 + Q(int, 868));
+        if (d < Q(unsigned char, 6732) && Q(int, 2336) >= Q(unsigned char, 6732))
+            { cmd = 2; goto out; }
+        if (d < Q(unsigned char, 6733) && Q(int, 2336) >= Q(unsigned char, 6733))
+            { cmd = 3; goto out; }
+        if (d >= Q(unsigned char, 6734))
+            { cmd = 0; goto out; }
+        if (Q(int, 2336) >= Q(unsigned char, 6734))
+            { cmd = 4; goto out; }
+        { cmd = 0; goto out; }
+    }
+    case 28: {
+        if (!Q(int, 868))
+            { cmd = 0; goto out; }
+        Q(int, 924) = 0;
+        Q(int, 904) = 0;
+        Q(int, 908) = 0;
+        Q(int, 912) = 0;
+        Q(int, 916) = 0;
+        Q(int, 920) = 0;
+        Q(int, 900) = 0;
+        int n = Q(unsigned char, 4376);
+        int t = Q(int, 2336);
+        int d = t - Q(unsigned char, 3656 + Q(int, 868));
+        for (int i = 1; i < n; i++) {
+            int c = Q(unsigned char, 3704 + i);
+            if (d < c && Q(int, 2336) >= c) {
+                tmp[Q(int, 900)] = i;
+                Q(int, 900) = Q(int, 900) + 1;
+            }
+        }
+        int m = Q(int, 900);
+        if (m > 0) {
+            for (int k = 0; k < m; k++)
+                Q(int, 900 + (m - k) * 4) = tmp[k];
+        }
+        { cmd = 0; goto out; }
+    }
+    case 29: {
+        if (!Q(int, 868))
+            { cmd = 0; goto out; }
+        int v = Q(int, 900);
+        if (v <= 0)
+            { cmd = 0; goto out; }
+        v--;
+        int r = Q(int, 904 + v * 4);
+        Q(int, 900) = v;
+        { cmd = r; goto out; }
+    }
+    case 30: {
+        __builtin_memcpy(tbl, D_1a52d4, 32);
+        self = PTR;
+        unsigned t = (unsigned)((double)at<float>(self, 2228) * D_1a6230);
+        at<int>(self, 7252) = 0;
+        for (int j = 0; j < 10; j++)
+            at<int>(self, 7256 + j * 4) = 0;
+        for (int i = 0; i < 8; i++) {
+            if (!at<unsigned char>(self, 1486 + i) && !(t < (unsigned)tbl[i])) {
+                int k = at<int>(self, 7252);
+                at<unsigned char>(self, 1486 + i) = 1;
+                at<int>(self, 7256 + k * 4) = i + 1;
+                at<int>(self, 7252) = k + 1;
+            }
+        }
+        { cmd = at<int>(self, 7252); goto out; }
+    }
+    case 31: {
+        int v = Q(int, 7252);
+        if (v <= 0)
+            { cmd = 0; goto out; }
+        v--;
+        int r = Q(int, 7256 + v * 4);
+        Q(int, 7252) = v;
+        { cmd = r; goto out; }
+    }
+    case 32:
+        { cmd = 0; goto out; }
+    case 33:
+        if (!(Q(int, 2336) < Q(unsigned char, 6734)))
+            { cmd = 4; goto out; }
+        if (!(Q(int, 2336) < Q(unsigned char, 6733)))
+            { cmd = 3; goto out; }
+        { cmd = 2 - (Q(int, 2336) < Q(unsigned char, 6732)); goto out; }
+    case 41: {
+        unsigned v = Q(unsigned, 1232);
+        if (v < 25)
+            { cmd = v; goto out; }
+        { cmd = v - 24; goto out; }
+    }
+    case 42:
+        { cmd = Q(int, 1228); goto out; }
+    case 43:
+        { cmd = Q(int, 7516); goto out; }
+    case 45:
+        { cmd = Q(int, 1224); goto out; }
+    case 47:
+        if (!(D_24518c & 1))
+            { cmd = 0; goto out; }
+        if (Q(unsigned char, 1505))
+            { cmd = 1; goto out; }
+        { cmd = 0; goto out; }
+    case 48:
+        { cmd = Q(int, 1240); goto out; }
+    case 49:
+        { cmd = 0; goto out; }
+    case 50:
+        { cmd = Q(unsigned char, 4377 + Q(int, 1240)); goto out; }
+    case 52:
+        { cmd = Q(unsigned char, 1536); goto out; }
+    case 58:
+        { cmd = Q(int, 1584); goto out; }
+    case 59:
+        { cmd = Q(int, 2352); goto out; }
+    case 61:
+        { cmd = Q(int, 1516); goto out; }
+    case 62:
+        { cmd = Q(int, 1520); goto out; }
+    case 63:
+        { cmd = Q(int, 1524); goto out; }
+    case 66:
+        { cmd = Q(unsigned char, 7524) == 0; goto out; }
+    case 68: {
+        int v = Q(int, 1232);
+        if (v >= 25)
+            v -= 24;
+        { cmd = v; goto out; }
+    }
+    case 69:
+        { cmd = Q(unsigned char, 1506); goto out; }
+    case 71: {
+        Q(int, 952) = 0;
+        Q(int, 932) = 0;
+        Q(int, 936) = 0;
+        Q(int, 940) = 0;
+        Q(int, 944) = 0;
+        Q(int, 948) = 0;
+        Q(int, 928) = 0;
+        Q(int, 532) = 0;
+        int n = Q(unsigned char, 6624);
+        for (int i = 1; i < n; i++) {
+            if (Q(unsigned char, 2236 + i) && !Q(unsigned char, 1400 + i)) {
+                int k = Q(int, 928);
+                Q(unsigned char, 1400 + i) = 1;
+                Q(int, 928) = k + 1;
+                Q(int, 932 + k * 4) = i;
+            }
+        }
+        if (Q(int, 928) == 0)
+            f_097ba8(D_242e14);
+        { cmd = Q(int, 928); goto out; }
+    }
+    case 72:
+        { cmd = Q(unsigned char, 865) == 0; goto out; }
+    case 73:
+        if (!Q(unsigned char, 3636))
+            { cmd = 1; goto out; }
+        Q(unsigned char, 865) = 0;
+        Q(unsigned char, 3636) = 0;
+        { cmd = 0; goto out; }
+    case 5:
+    case 74:
+    case 77:
+    case 78:
+    case 79:
+        if (!Q(unsigned char, 453))
+            { cmd = 0; goto out; }
+        Q(unsigned char, 453) = 0;
+        { cmd = 1; goto out; }
+    case 84: {
+        int i = Q(unsigned char, 6624) - 1;
+        if (!Q(unsigned char, 2236 + i))
+            { cmd = 0; goto out; }
+        if (!Q(unsigned char, 1400 + i))
+            { cmd = 1; goto out; }
+        { cmd = 0; goto out; }
+    }
+    case 85:
+        { cmd = Q(int, 7244); goto out; }
+    case 86:
+        { cmd = Q(unsigned char, 1505); goto out; }
+    case 87:
+        Q(unsigned char, 864) = 1;
+        if (Q(int, 532) != Q(int, 928))
+            { cmd = 1; goto out; }
+        Q(unsigned char, 864) = 0;
+        { cmd = 0; goto out; }
+    case 201:
+        f_0740ec(PTR);
+        { cmd = 0; goto out; }
+    case 202:
+        if (!Q(unsigned char, 2372))
+            { cmd = 0; goto out; }
+        Q(unsigned char, 2372) = 0;
+        { cmd = 1; goto out; }
+    case 203:
+        { cmd = Q(int, 7476); goto out; }
+    case 204:
+        { cmd = Q(unsigned char, 2380); goto out; }
+    case 206:
+        { cmd = Q(unsigned char, 2372); goto out; }
+    case 207:
+        { cmd = Q(int *, 7500)[Q(int, 2376)]; goto out; }
+    case 208:
+        { cmd = Q(int, 7304); goto out; }
+    case 209:
+        { cmd = Q(unsigned char, 2388); goto out; }
+    case 210:
+        if (!Q(unsigned char, 2357))
+            { cmd = 0; goto out; }
+        Q(unsigned char, 2357) = 0;
+        { cmd = 1; goto out; }
+    case 211:
+        { cmd = Q(unsigned char, 2356); goto out; }
+    case 222:
+        { cmd = 8; goto out; }
+    case 250:
+        { cmd = Q(unsigned char, 3752 + Q(int, 1240)); goto out; }
+    default:
+        cmd = 0;
+    }
+out:
+    return cmd;
+}
+
+extern int sprintf(char *, const char *, ...);
+void f_078e4c(void *);
+void f_01c7a4(void *, int);
+void f_005720(void *);
+void f_113488(int);
+void f_08a71c(int, int);
+void *_Znwj(unsigned);
+void f_088b58(void *, void *);
+int f_01c260(void *);
+void f_073840(void *, int, void *);
+void f_01dee4(int);
+void f_0e7768(int);
+void f_04b4d8(void *, const char *, int);
+int f_077d38(void *, int);
+int f_077b0c(void *, int);
+int f_072080(void *, int, int, void *);
+extern char D_1a57a8[];
+extern char D_1a57f8[];
+extern unsigned D_24139c;
+extern unsigned char D_2413a0;
+extern unsigned D_2413a4;
+extern char D_23bb4c[];
+extern int D_1d46f4;
+extern int D_242b78;
+extern char D_1dd6b0[];
+extern void *D_242b50;
+extern void *D_2413ac;
+extern int D_1d326c[];
+extern char D_1a57fc[], D_1a5804[], D_1a5814[], D_1a5828[], D_1a5838[], D_1a5844[];
+extern char D_1a5850[], D_1a585c[], D_1a5868[], D_1a5874[], D_1a5880[], D_1a588c[];
+extern char D_1a5894[], D_1a589c[], D_1a58a4[], D_1a58ac[], D_1a58b4[], D_1a58bc[];
+extern char D_1a58c8[], D_1a58d0[];
+
+struct B324 { int w[81]; };
+
+/* @draft 0x06dcb0 us f_06dcb0
+   WHAT IT DOES: applies a menu command (code 0..288, with a value) to the owner object at self+12: a switch that stores the value into fields of it (+1224, +1240, +1232, +2360..+2392, ...), picks a random banner string with a linear congruential generator and prints it with sprintf, starts the sub-menu action via f_08a71c for values 1..8 of command 81, loads the resource names for value 900 of command 99, and for command 99 maps a second switch on the value to state bytes and words (+7232, +7532, +3644, ...).
+   Remaining difference: instruction scheduling and register choice in the small arms; the f_077d38 calls are not tail-merged as in retail (28 bytes shorter overall). */
+void f_06dcb0(void *self, unsigned cmd, int v)
+{
+    char str[80];
+    switch (cmd) {
+    case 1:
+        if (v == 0) {
+            void *p = PTR;
+            at<int>(p, 3652) = 1;
+            __builtin_memcpy(str, D_1a57a8, 80);
+            if (!D_2413a0) {
+                D_2413a0 = 1;
+                D_24139c = D_2413a4;
+            }
+            D_24139c = D_24139c * 0x19660d + 0x3c6ef35f;
+            sprintf((char *)p + 1863, D_1a57f8, str + (D_24139c % 10) * 8);
+        } else {
+            at<int>(PTR, 3648) = 2;
+            at<int>(PTR, 3652) = 0;
+        }
+        break;
+    case 3:
+        at<int>(PTR, 1224) = v;
+        break;
+    case 5:
+        if (v != 0) {
+            void *p = PTR;
+            if (at<int>(p, 3652)) {
+                f_078e4c((char *)p + 2168);
+                *(B324 *)((char *)PTR + 1508) = *(B324 *)((char *)PTR + 1832);
+                at<int>(PTR, 3648) = 1;
+                at<int>(PTR, 3652) = 0;
+                at<int>(PTR, 3644) = 1;
+            }
+        }
+        break;
+    case 9:
+        at<unsigned char>(PTR, 1536) = v != 0;
+        break;
+    case 15:
+        if (v == 0)
+            v = 1;
+        at<int>(PTR, 7244) = v;
+        break;
+    case 61:
+        at<int>(PTR, 1516) = v;
+        f_01c7a4(D_23bb4c, 1);
+        break;
+    case 62:
+        at<int>(PTR, 1520) = v;
+        f_01c7a4(D_23bb4c, 0);
+        break;
+    case 63:
+        at<int>(PTR, 1524) = v;
+        f_01c7a4(D_23bb4c, 2);
+        break;
+    case 81:
+        if (D_1d46f4 == 1) {
+            void *p = PTR;
+            D_1d46f4 = 0;
+            D_242b78 = 0;
+            at<int>(p, 7528) = v;
+            f_005720(D_1dd6b0);
+            f_097ba8(D_242e14);
+            f_113488(0);
+            if ((unsigned)v < 9) {
+                int k;
+                switch (v) {
+                case 1:
+                    k = 0;
+                    goto tail;
+                case 2:
+                    at<unsigned char>(PTR, 36) = 1;
+                    f_08a71c(1, 1);
+                    D_242b50 = PTR;
+                    break;
+                case 3:
+                    k = 13;
+                    goto tail;
+                case 4:
+                    k = 9;
+                    goto tail;
+                case 5:
+                    k = 8;
+                    goto tail;
+                case 6:
+                    k = 7;
+                    goto tail;
+                case 7:
+                    k = 10;
+                tail:
+                    at<unsigned char>(PTR, 36) = 1;
+                    f_08a71c(k, 1);
+                    break;
+                case 8:
+                    at<unsigned char>(PTR, 36) = 1;
+                    if (!D_2413ac) {
+                        void *o = _Znwj(32);
+                        D_2413ac = o;
+                        f_088b58(o, PTR);
+                    }
+                    f_08a71c(12, 1);
+                    break;
+                }
+            }
+        }
+        break;
+    case 94:
+        at<int>(PTR, 7520) = v;
+        break;
+    case 95: {
+        void *p = PTR;
+        at<float>(self, 36) = 1.5707964f;
+        int old = at<int>(p, 1212);
+        at<unsigned char>(p, 505) = 0;
+        at<int>(p, 1204) = v;
+        if (old == v && v != 0) {
+            if (old != 0 && at<unsigned char>(p, 7513))
+                break;
+        }
+        at<int>(p, 1208) = at<int>(p, 1204);
+        at<int>(p, 1212) = v;
+        if (v == 0)
+            f_01dee4(at<int>(p, 512));
+        at<unsigned char>(p, 7513) = 0;
+        break;
+    }
+    case 99: {
+        void *p = PTR;
+        at<int>(p, 7228) = v;
+        switch (v) {
+        case 200:
+            at<int>(p, 7232) = 1;
+            break;
+        case 204: {
+            at<unsigned char>(p, 7512) = 1;
+            int r = f_01c260(p);
+            f_073840(PTR, D_1d326c[r], (char *)PTR + 1863);
+            break;
+        }
+        case 300:
+            at<int>(p, 7232) = 2;
+            break;
+        case 301:
+            at<int>(p, 7232) = 3;
+            break;
+        case 302:
+            at<int>(p, 7232) = 4;
+            break;
+        case 303:
+            at<int>(p, 7232) = 5;
+            break;
+        case 304:
+            at<int>(p, 7232) = 6;
+            break;
+        case 305:
+            at<int>(p, 7232) = 7;
+            break;
+        case 306:
+            at<int>(p, 7232) = 9;
+            break;
+        case 307:
+            at<int>(p, 7232) = 8;
+            break;
+        case 310: {
+            at<unsigned char>(p, 7512) = 1;
+            int r = f_01c260(p);
+            f_073840(PTR, D_1d326c[r], (char *)PTR + 1539);
+            break;
+        }
+        case 319:
+            at<int>(p, 3644) = 8;
+            break;
+        case 521:
+            if (at<unsigned char>(p, 504))
+                at<int>(p, 3640) = 7;
+            at<int>(p, 1208) = -1;
+            at<unsigned char>(p, 504) = 0;
+            at<int>(p, 1212) = 0;
+            break;
+        case 524:
+        case 527:
+            at<unsigned char>(p, 7532) = 1;
+            at<unsigned char>(p, 2389) = 0;
+            break;
+        case 525:
+            at<unsigned char>(p, 504) = 1;
+            at<int>(p, 3640) = 6;
+            break;
+        case 550:
+        case 653:
+            at<unsigned char>(p, 7532) = 2;
+            break;
+        case 555:
+            if (at<int>(p, 7236) != 3)
+                at<unsigned char>(p, 505) = 0;
+            at<unsigned char>(p, 2389) = 0;
+            at<unsigned char>(p, 7532) = 3;
+            break;
+        case 560:
+            if (at<int>(p, 7236) != 3)
+                at<unsigned char>(p, 505) = 0;
+            break;
+        case 662:
+            at<unsigned char>(p, 7532) = 3;
+            break;
+        case 801:
+            at<unsigned char>(p, 7532) = 1;
+            at<int>(p, 1208) = -1;
+            at<unsigned char>(p, 504) = 0;
+            at<int>(p, 1212) = 0;
+            break;
+        case 803:
+            at<int>(p, 3644) = 7;
+            break;
+        case 900:
+            f_0e7768(0);
+            at<unsigned char>(PTR, 7524) = 1;
+            f_04b4d8((char *)PTR + 4, D_1a57fc, 1);
+            f_04b4d8((char *)PTR + 4, D_1a5804, 1);
+            f_04b4d8((char *)PTR + 4, D_1a5814, 0);
+            f_04b4d8((char *)PTR + 4, D_1a5828, 0);
+            f_04b4d8((char *)PTR + 4, D_1a5838, 0);
+            f_04b4d8((char *)PTR + 4, D_1a5844, 0);
+            f_04b4d8((char *)PTR + 4, D_1a5850, 0);
+            f_04b4d8((char *)PTR + 4, D_1a585c, 0);
+            f_04b4d8((char *)PTR + 4, D_1a5868, 0);
+            f_04b4d8((char *)PTR + 4, D_1a5874, 0);
+            f_04b4d8((char *)PTR + 4, D_1a5880, 0);
+            f_04b4d8((char *)PTR + 4, D_1a588c, 0);
+            f_04b4d8((char *)PTR + 4, D_1a5894, 0);
+            f_04b4d8((char *)PTR + 4, D_1a589c, 0);
+            f_04b4d8((char *)PTR + 4, D_1a58a4, 0);
+            f_04b4d8((char *)PTR + 4, D_1a58ac, 0);
+            f_04b4d8((char *)PTR + 4, D_1a58b4, 0);
+            f_04b4d8((char *)PTR + 4, D_1a58bc, 0);
+            f_04b4d8((char *)PTR + 4, D_1a58c8, 0);
+            f_04b4d8((char *)PTR + 4, D_1a58d0, 0);
+            f_097ba8(D_242e14);
+            break;
+        }
+        break;
+    }
+    case 100:
+        at<int>(PTR, 1240) = v;
+        break;
+    case 101: {
+        void *p = PTR;
+        int sel = at<int>(p, 1240);
+        at<int>(p, 1244) = v;
+        at<int>(p, 7516) = at<unsigned char>(p, 3752 + sel);
+        int r;
+        if (sel == 21)
+            r = 27;
+        else
+            r = f_077d38((char *)p + 6736, at<unsigned char>(p, 3800 + sel * 10 + v));
+        at<int>(p, 1500) = r;
+        break;
+    }
+    case 102: {
+        at<int>(self, 20) = v * 60000;
+        void *p = PTR;
+        at<int>(p, 1344) = f_072080(p, at<int>(self, 20), at<int>(self, 16), (char *)p + 1248);
+        void *q = PTR;
+        at<int>(q, 1348) = v;
+        int a1 = at<int>(q, 1248);
+        int w = at<int>(self, 16);
+        at<int>(q, 1240) = 255;
+        at<int>(q, 7516) = w;
+        at<int>(q, 1244) = 1;
+        at<int>(q, 1500) = f_077d38((char *)q + 6736, a1);
+        break;
+    }
+    case 103:
+        at<int>(self, 16) = v;
+        break;
+    case 104:
+        at<int>(PTR, 1244) = 1;
+        at<int>(PTR, 1240) = 255;
+        break;
+    case 105: {
+        void *p = PTR;
+        at<int>(p, 1232) = v;
+        at<int>(p, 1500) = f_077d38((char *)p + 6736, v);
+        break;
+    }
+    case 106:
+        at<int>(PTR, 7516) = v;
+        break;
+    case 107:
+        at<int>(PTR, 1228) = v;
+        break;
+    case 108:
+        at<int>(PTR, 1236) = v;
+        break;
+    case 109:
+        at<unsigned char>(PTR, 1506) = v == 0;
+        break;
+    case 117:
+        at<int>(PTR, 1584) = v;
+        break;
+    case 119:
+        if (v) {
+            at<int>(PTR, 3644) = 9;
+            f_097ba8(D_242e14);
+        }
+        break;
+    case 120:
+        at<unsigned char>(PTR, 1537) = v != 0;
+        break;
+    case 121:
+        if (v == 1 || v == 2)
+            at<int>(PTR, 3644) = 5;
+        else if (v == 3)
+            at<int>(PTR, 3644) = 6;
+        else if (v == 4)
+            at<int>(PTR, 3644) = 8;
+        break;
+    case 123: {
+        void *p = PTR;
+        int a = at<int>(p, 7236);
+        if (a != 8 && a != 3)
+            at<unsigned char>(p, 505) = 1;
+        break;
+    }
+    case 124:
+        at<int>(PTR, 2352) = v;
+        break;
+    case 125: {
+        void *p = PTR;
+        at<int>(p, 1500) = f_077b0c((char *)p + 6736, at<int>(p, 7244));
+        break;
+    }
+    case 126:
+        at<unsigned char>(PTR, 1507) = v != 0;
+        break;
+    case 127:
+        at<int>(PTR, 7248) = v;
+        break;
+    case 201:
+        at<int>(PTR, 7516) = v;
+        at<int>(PTR, 2364) = v;
+        break;
+    case 202:
+        at<int>(PTR, 2360) = v;
+        at<int>(PTR, 2392) = 1;
+        at<int>(PTR, 2384) = 0;
+        break;
+    case 203:
+        at<int>(PTR, 2392) = 2;
+        at<int>(PTR, 2384) = 1;
+        break;
+    case 204:
+        at<int>(PTR, 2376) = v;
+        break;
+    case 205: {
+        void *p = PTR;
+        int k = v * 4;
+        at<int>(p, 2392) = 5;
+        at<int>(p, 2376) = v;
+        at<int>(p, 7516) = *(int *)(at<int>(p, 7500) + k);
+        int a1 = *(int *)(at<int>(p, 7504) + k);
+        at<int>(p, 1232) = a1;
+        at<int>(p, 2360) = *(int *)(at<int>(p, 7496) + k);
+        at<int>(p, 1500) = f_077d38((char *)p + 6736, a1);
+        break;
+    }
+    case 207:
+        at<unsigned char>(PTR, 2372) = 0;
+        at<int>(PTR, 2392) = v ? 6 : 7;
+        break;
+    case 208: {
+        void *p = PTR;
+        at<int>(p, 2368) = v;
+        at<int>(p, 1232) = v;
+        at<int>(p, 1500) = f_077d38((char *)p + 6736, v);
+        break;
+    }
+    case 209:
+        at<int>(PTR, 2392) = 8;
+        break;
+    case 288:
+        at<int>(PTR, 2392) = 9;
+        break;
+    }
+}
+}
+}
