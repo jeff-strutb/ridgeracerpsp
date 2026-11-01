@@ -1276,15 +1276,15 @@ void f_04e990(char *a0) {
     ((Der8d8 *)a0)->~Der8d8();
 }
 
-/* @draft 0x04e9e8 us f_04e9e8
+/* @implements 0x04e9e8 us f_04e9e8
    WHAT IT DOES: sets the vtable address D_1a3760, runs f_04e6d0 on the sub-object at +8, the base
    destructor f_04e8c0 on the object and then frees the object at -4 with f_04e4b4.
-   Remaining difference: 1 word (the landing pad fills the _Unwind_Resume delay slot with move a0,s0; retail has a nop there and the move before). */
+   The free call may throw and only an empty-dtor local is live around it: its landing pad is
+   the _Unwind_Resume call itself (retail's LSDA), which leaves that call's delay slot a nop. */
 extern "C" void f_04e4b4_nt(void *) throw() __asm__("f_04e4b4");
 void f_04e9e8(char *a0) {
-    GuardE g;
     ((Der8d8 *)a0)->~Der8d8();
-    f_04e4b4_nt(a0 - 4);
+    { GuardE g; f_04e4b4(a0 - 4); }
 }
 
 /* @draft 0x04ea4c us f_04ea4c
@@ -1304,17 +1304,16 @@ void f_04ea4c(char *a0) {
     FLD(void *, a, 12) = a;
 }
 
-/* @draft 0x04ec30 us f_04ec30
+/* @implements 0x04ec30 us f_04ec30
    WHAT IT DOES: sets the vtable address D_1a3810 into the object, calls f_05d6dc on the object, then
    frees the object at -4 with f_04e4b4.
-   Remaining difference: 3 words of prologue scheduling (retail puts sw v0 after addiu sp, move s0,a0 before the call and addiu s0,-4 in its delay slot). */
+   The free may throw with only an empty-dtor local live; its landing pad is the _Unwind_Resume
+   call (retail's LSDA). */
 extern "C" void f_04e4b4_nt(void *) throw() __asm__("f_04e4b4");
 void f_04ec30(char *a0) {
-    GuardE g;
     *(void **)a0 = D_1a3810;
     f_05d6dc(a0);
-    a0 -= 4;
-    f_04e4b4_nt(a0);
+    { GuardE g; f_04e4b4(a0 - 4); }
 }
 
 /* @draft 0x04ed28 us f_04ed28
@@ -5342,9 +5341,10 @@ void f_04eaa0(Outer *o){
   o->~Outer();
 }
 
-/* @draft 0x04eb44 us f_04eb44
+/* @implements 0x04eb44 us f_04eb44
    WHAT IT DOES: deleting twin of the container destructor, also freeing the block header at -4.
-   Deleting twin of f_04eaa0 (frees the block header at -4 afterwards). Remaining difference: 4 words at the tail (retail leaves a nop in the _Unwind_Resume delay slot and puts move a0,s0 before it; ours fills the slot, 172 vs 176 bytes). */
+   Deleting twin of f_04eaa0 (frees the block header at -4 afterwards). The free may throw with
+   only an empty-dtor local live: its landing pad is the _Unwind_Resume call (nop in its slot). */
 extern "C" void f_04e4b4_nt3b(void *) throw() __asm__("f_04e4b4");
 void f_04eb44(Outer *o){
   {
@@ -5352,7 +5352,7 @@ void f_04eb44(Outer *o){
     *(void**)o = D_1a3698;
   }
   o->~Outer();
-  f_04e4b4_nt3b((char*)o - 4);
+  { G4eaa0 g; f_04e4b4((char*)o - 4); }
 }
 
 
@@ -14534,5 +14534,247 @@ void f_0602c0(char *self, const Pm9 &pm) {
   int out2[4]; int a2 = *(int *)(q + 4);
   f_05e394(out2, q, &a2, &r);
 }
+}
+}
+
+/* ---- swg10c ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 wave 4, worker swg10c */
+namespace swg10c {
+extern "C" {
+void *f_04dfa0(unsigned);
+void f_04e4b4(void *);
+void *memset(void *, int, unsigned);
+void f_15db40(void *, void *, void *, int, int, int *, int);
+void f_05c698(void *, void *);
+extern char D_1a3e10[];
+extern char D_1a4888[];
+struct VB4888 { void *vt; ~VB4888() { vt = D_1a4888; } };
+struct Bg {
+    char pad[344];
+    static void *operator new(unsigned n) throw() { return f_04dfa0(n); }
+    Bg(void *b, void *a, int c, int d, int *e, int f) { f_15db40(this, a, b, c, d, e, f); }
+};
+struct Vx { virtual void s0(); virtual void s1(); virtual void *s2(int); virtual void s3(); virtual void s4(); virtual void s5(void *); };
+struct O36 : VB4888 {
+    char *self; int n; char *a; char *b; char *c; char *d; int e; int z;
+    static void *operator new(unsigned n) { return f_04dfa0(n); }
+    static void operator delete(void *p) { f_04e4b4(p); }
+    O36(char *s, int *np) {
+        vt = D_1a3e10;
+        int k;
+        self = s; k = *np << 2; n = *np;
+        a = (char *)((Vx *)s)->s2(k);
+        b = (char *)((Vx *)self)->s2(k);
+        c = a; d = b;
+        memset(a, 0, k);
+        memset(b, 0, k);
+        e = (int)((Vx *)self)->s2(k);
+        z = 0;
+    }
+};
+/* @draft 0x05a01c us f_05a01c
+   Remaining difference: retail keeps the two allocation flags in s4/s6 (plus one byte at 60(sp)); this form puts them in stack slots (592 vs 572 bytes).
+   WHAT IT DOES: allocates a 344-byte object, builds a 36-byte helper recording the argument count and three buffers obtained through virtual slot 2 of the owner (two of them zero-filled), constructs the object with f_15db40, optionally notifies the owner's object at +232 (virtual slot 5) and, unless the index is -1, registers the object with f_05c698 on the list at +44; returns the object. */
+void *f_05a01c(char *s, int a1, int a2, int *n, int k, unsigned char fl) {
+    Bg *o = new Bg(new O36(s, n), *(void **)(s + 4), a1, a2, n, k);
+    char *p = *(char **)(s + 4);
+    if ((*(int *)(*(char **)(p + 12) + 40) & 1) && !fl)
+        ((Vx *)*(char **)(p + 232))->s5(o);
+    if (k != -1) { int args[2]; args[0] = (int)o; args[1] = (int)s; f_05c698(s + 44, args); }
+    return o;
+}
+
+void *f_04dfa0(unsigned);
+void f_04ed28(void *);
+void f_05f64c(void *, void *, void *);
+void f_05e394(void *, void *, void *, void *);
+void *f_154448(void *, void *, void *, int);
+extern char D_1a4900[];
+extern char D_1a496c[];
+extern char D_1a4110[];
+struct Rf {
+    char *p; int *rc;
+    Rf() {}
+    ~Rf() { f_04ed28(this); }
+    Rf &operator=(const Rf &o) {
+        if (this != &o) {
+            f_04ed28(this);
+            char *q = o.p; int *r2 = o.rc;
+            p = q; rc = r2;
+            if (r2) *r2 += 1;
+        }
+        return *this;
+    }
+};
+struct Pq;
+struct Pq : Rf {
+    Pq(char *o) { p = o; rc = 0; if (o) { rc = (int *)f_04dfa0(4); *rc = 1; } }
+};
+struct It { char *n; It() {} It(const It &o) { n = o.n; } };
+struct Ob8 {
+    char *vt; int z;
+    static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+    Ob8() { vt = D_1a4110; z = 0; }
+};
+struct Vq { virtual void s0(); virtual void s1(); virtual void s2(); virtual void s3(); virtual void s4();
+    virtual void s5(); virtual void s6(); virtual void s7(); virtual void s8(); virtual void s9();
+    virtual void s10(); virtual void s11(); virtual void s12(); virtual void s13(); virtual void s14();
+    virtual void s15(); virtual void s16(); virtual void s17(); virtual void s18(); virtual void s19();
+    virtual void s20(); virtual void s21(); virtual void s22(); virtual int s23(); };
+struct E16x { int q; };
+struct E16 { char *n; int pad[3]; E16() {} E16(const E16 &o) { n = o.n; } };
+struct It2 { char *c; char *e; };
+/* @draft 0x0575c0 us f_0575c0
+   Remaining difference: result register (retail keeps the return value in a2 and merges the early -1 return), the address of the held handle lives in s5 from the start in retail (788 vs 796 bytes).
+   WHAT IT DOES: returns -1 when the current entry at +336 is the head of the list at +332; otherwise takes (when the flag is set) the handle of the next entry, or a fresh 8-byte object, as a counted handle, pops two entries, resolves the current entry by a dynamic cast and stores its link, calls virtual slot 23 on the next entry, copies the handles of the following two entries into the fields at +272 and +288, pops the rest of the range and reports the handle to f_05e394; returns the virtual call's result. */
+int f_0575c0(char *s, unsigned char flag) {
+    char *t = s + 328;
+    int res;
+    char *top = *(char **)(t + 4);
+    E16 e0;
+    e0.n = *(char **)top;
+    if (*(char **)(s + 336) == e0.n) return -1;
+    Rf a;
+    a.p = 0; a.rc = 0;
+    E16 u0;
+    E16 it, r, arg;
+    if (flag) {
+        it.n = top;
+        char *nd = *(char **)(top + 4);
+        a = *(Rf *)(nd + 8);
+        it.n = nd;
+    } else {
+        Pq tmp((char *)new Ob8);
+        a = tmp;
+    }
+    it.n = *(char **)(t + 4);
+    arg.n = (it.n = *(char **)(it.n + 4));
+    f_05f64c(&r, t, &arg);
+    char *cur = *(char **)(s + 336);
+    arg.n = (r.n = cur);
+    char *c = 0;
+    if (*(char **)(cur + 8)) c = (char *)f_154448(*(char **)(cur + 8), D_1a4900, D_1a496c, 0);
+    it.n = *(char **)(c + 8);
+    *(char **)(s + 336) = it.n;
+    char *o = *(char **)(r.n);
+    r.n = o;
+    res = ((Vq *)*(char **)(o + 8))->s23();
+    {
+        char *n1 = *(char **)r.n;
+        r.n = n1;
+        *(Rf *)(s + 272) = *(Rf *)(n1 + 8);
+        char *n2 = *(char **)r.n;
+        r.n = n2;
+        *(Rf *)(s + 288) = *(Rf *)(n2 + 8);
+    }
+    It2 lp;
+    lp.c = arg.n; lp.e = *(char **)(t + 4);
+    It cc, ee, h, w;
+    cc.n = lp.c; ee.n = lp.e;
+    if (cc.n != ee.n) {
+        do {
+            w.n = cc.n;
+            cc.n = *(char **)cc.n;
+            f_05f64c(&h, t, &w);
+        } while (cc.n != ee.n);
+    }
+    h.n = *(char **)(t + 4);
+    f_05e394(&w, t, &h, &a);
+    return res;
+}
+}
+void *f_04dfa0(unsigned);
+void f_04e4b4(void *);
+void f_04ed28(void *);
+void f_05f64c(void *, void *, void *);
+void f_05e394(void *, void *, void *, void *);
+void f_05be04(void *, int);
+void f_0606e4(void *, void *, void *);
+void f_0606a0(void *, void *, int);
+void f_060670(void *);
+void f_04e8c0(void *) throw();
+extern char D_1a3760[];
+extern char D_1a3e50[];
+struct Rf2 {
+    char *p; int *rc;
+    Rf2() {}
+    ~Rf2() { f_04ed28(this); }
+};
+struct Pq2 : Rf2 {
+    Pq2(char *o) { p = o; rc = 0; if (o) { rc = (int *)f_04dfa0(4); *rc = 1; } }
+};
+struct E16b { char *n; int pad[3]; E16b() {} E16b(const E16b &o) { n = o.n; } };
+struct Vq2 { virtual void s0(); virtual void s1(); virtual void s2(); virtual void s3(); virtual void s4();
+    virtual void s5(); virtual void s6(); virtual void s7(); virtual void s8(); virtual void s9();
+    virtual void s10(); virtual void s11(); virtual void s12(); virtual void s13(); virtual void s14();
+    virtual void s15(); virtual void s16(); virtual void s17(); virtual void s18(); virtual void s19();
+    virtual void s20(); virtual void s21(); virtual void s22(); virtual int s23(); };
+struct Bs { int vt, x; ~Bs() { f_04e8c0(this); } };
+struct M60670 { int w[4]; ~M60670() { f_060670(this); } };
+struct Vc { int pad; Rf2 *b, *e, *c; };
+struct Ob44 : Bs {
+    int pad8; char *head; int cnt; int pad20;
+    M60670 m;
+    static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+    static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+    Ob44(int n) {
+        vt = (int)D_1a3760; x = 0;
+        head = 0;
+        char *h = (char *)f_04dfa0(40);
+        head = h; ((char **)h)[1] = 0;
+        vt = (int)D_1a3e50;
+        ((char **)h)[2] = h; cnt = 0; ((char **)head)[3] = head; ((int *)h)[0] = 0;
+        m.w[1] = 0; m.w[2] = 0; m.w[3] = 0;
+        f_05be04(&m, n);
+    }
+};
+/* @draft 0x0578dc us f_0578dc
+   Remaining difference: retail's frame is 48 bytes larger (three more 16-byte slots between the iterators and the loop handles) and the base-construction cleanup pad differs; same calls in the same order (748 vs 812 bytes).
+   WHAT IT DOES: pops an entry of the argument stack at +328 as a counted handle, asks its object for a count (virtual slot 23), builds a 40-byte object with a tree head node and a handle vector reserved to that count, then for each index pops another handle and appends it to the vector (f_0606e4 when full); finally wraps the object in a counted holder and reports it to f_05e394. */
+void f_0578dc(char *s) {
+    char *t = s + 328;
+    Rf2 a;
+    E16b it, r, arg;
+    it.n = *(char **)(t + 4);
+    char *nd = *(char **)(it.n + 4);
+    a.rc = *(int * volatile *)(nd + 12);
+    a.p = *(char * volatile *)(nd + 8);
+    it.n = nd;
+    if (a.rc) *a.rc += 1;
+    it.n = *(char **)(t + 4);
+    arg.n = (it.n = *(char **)(it.n + 4));
+    f_05f64c(&r, t, &arg);
+    int n = ((Vq2 *)a.p)->s23();
+    Ob44 *o = new Ob44(n);
+    for (int i = 0; i < n; i++) {
+        Rf2 b;
+        arg.n = *(char **)(t + 4);
+        nd = *(char **)(arg.n + 4);
+        b.rc = *(int * volatile *)(nd + 12);
+        b.p = *(char * volatile *)(nd + 8);
+        arg.n = nd;
+        if (b.rc) *b.rc += 1;
+        arg.n = *(char **)(t + 4);
+        it.n = (arg.n = *(char **)(arg.n + 4));
+        f_05f64c(&r, t, &it);
+        Rf2 tmp;
+        char *q = b.p; int *rc = b.rc;
+        tmp.p = q; tmp.rc = rc;
+        if (rc) *rc += 1;
+        Vc *v = (Vc *)&o->m;
+        if (v->e == v->c) f_0606e4(v, v->e, &tmp);
+        else {
+            Rf2 *e = v->e;
+            if (e) { e->p = tmp.p; e->rc = tmp.rc; if (tmp.rc) *tmp.rc += 1; }
+            v->e = e + 1;
+        }
+    }
+    Pq2 pr((char *)o);
+    r.n = *(char **)(t + 4);
+    f_05e394(&arg, t, &r, &pr);
 }
 }
