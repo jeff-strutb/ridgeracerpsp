@@ -8485,3 +8485,282 @@ void f_04e74c(char *self, int arg) {
 
 }
 }
+
+/* ---- swg5d ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 wave 3 worker swg5d (rest_d3) */
+namespace swg5d {
+extern "C" {
+struct Tmp16 { int w[4]; ~Tmp16() {} };
+struct G2 { int w[4]; ~G2() {} };
+struct It2 {
+    void **p;
+    void *&operator*() { return *p; }
+    It2 &operator++() { ++p; return *this; }
+    bool operator!=(const It2 &o) const { return p != o.p; }
+};
+void *memcpy(void *, const void *, unsigned);
+char *f_065060(unsigned, void *);
+void f_1310e8(const char *);
+extern char D_1a3234[];
+extern char D_291400[];
+int sceKernelCpuSuspendIntr(void);
+void sceKernelCpuResumeIntr(int);
+void *f_05db08(unsigned n);
+void f_05db44(void *);
+void f_05daa4(void *, void *);
+void f_05e394(void *, void *, void *, void *);
+void f_04ed28(void *);
+void f_04e4b4(void *);
+/* @draft 0x061cc8 us f_061cc8
+   WHAT IT DOES: builds a string rep from a char range [b,e): for an empty range shares the static empty rep (bumping its count under interrupt suspend); otherwise throws on a null begin, allocates a rep, copies the characters, stores the length and terminates it.
+   Remaining difference: register allocation of the saved registers (35/55 words) */
+char *f_061cc8(char *b, char *e, void *a, int x) throw() {
+    Tmp16 t;
+    if (b == e) {
+        char *rp = D_291400;
+        int st = sceKernelCpuSuspendIntr();
+        volatile int *c = (volatile int *)(rp + 8);
+        int o = *c; (void)o;
+        *c += 1;
+        sceKernelCpuResumeIntr(st);
+        return rp + 12;
+    }
+    if (!b) f_1310e8(D_1a3234);
+    unsigned n = e - b;
+    char *r = f_065060(n, a);
+    char *d = r + 12;
+    memcpy(d, b, n);
+    *(unsigned *)r = n;
+    d[n] = 0;
+    return d;
+}
+/* @draft 0x061620 us f_061620
+   WHAT IT DOES: twin of f_061cc8: builds a string rep from a char range [b,e): for an empty range shares the static empty rep (bumping its count under interrupt suspend); otherwise throws on a null begin, allocates a rep, copies the characters, stores the length and terminates it.
+   Remaining difference: register allocation of the saved registers (35/55 words) */
+char *f_061620(char *b, char *e, void *a, int x) throw() {
+    Tmp16 t;
+    if (b == e) {
+        char *rp = D_291400;
+        int st = sceKernelCpuSuspendIntr();
+        volatile int *c = (volatile int *)(rp + 8);
+        int o = *c; (void)o;
+        *c += 1;
+        sceKernelCpuResumeIntr(st);
+        return rp + 12;
+    }
+    if (!b) f_1310e8(D_1a3234);
+    unsigned n = e - b;
+    char *r = f_065060(n, a);
+    char *d = r + 12;
+    memcpy(d, b, n);
+    *(unsigned *)r = n;
+    d[n] = 0;
+    return d;
+}
+void f_04e930(void *, void *);
+void f_05cbd4(void *);
+char *f_05cc58(void *, void *, void *, void *);
+struct It4 { int *p; int pad[3]; It4() {} It4(const It4 &o) { p = o.p; } It4 operator++(int) { It4 t(*this); f_05cbd4(this); return t; } };
+/* @draft 0x064f10 us f_064f10
+   WHAT IT DOES: tree range erase: when the range is the whole tree it empties it (f_04e930 and the header reset); otherwise it unlinks each node in [first,last) with f_05cc58, destroys its value (f_04ed28), frees it (f_04e4b4) and decrements the count.
+   Remaining difference: block layout of the clear branch versus the loop (57/62 words) */
+void f_064f10(char *t, char **first, char **last) {
+    char *hdr = *(char **)(t + 4);
+    It4 b; b.p = *(int **)(hdr + 8);
+    It4 e; e.p = (int *)hdr;
+    if (*first == (char *)b.p && *last == hdr) {
+        if (*(int *)(t + 8)) {
+            f_04e930(t, *(char **)(hdr + 4));
+            *(int *)(t + 8) = 0;
+            *(char **)(*(char **)(t + 4) + 8) = *(char **)(t + 4);
+            *(char **)(*(char **)(t + 4) + 4) = 0;
+            *(char **)(*(char **)(t + 4) + 12) = *(char **)(t + 4);
+        }
+    } else {
+        while (*first != *last) {
+            It4 c = (*(It4 *)first)++;
+            char *hh = *(char **)(t + 4);
+            char *n = f_05cc58(c.p, hh + 4, hh + 8, hh + 12);
+            f_04ed28(n + 32);
+            f_04e4b4(n);
+            *(int *)(t + 8) -= 1;
+        }
+    }
+}
+struct E { const char *name; int a, b, c; E() {} };
+extern char D_291418[];
+extern E D_291900[];
+extern char D_1a3388[], D_1a3390[], D_1a339c[], D_1a33a8[], D_1a33b0[], D_1a33bc[], D_1a33c4[];
+static inline void ini(E *p, int a, int b, int c) { p->a = a; p->b = b; p->c = c; }
+/* @draft 0x065c80 us f_065c80
+   WHAT IT DOES: one-time initialisation (guarded by the byte at D_291418) of the 8-entry table at D_291900 (name string, kind and three integers per entry: attachSound, getPan, getVolume, setPan, setVolume, start, stop and a terminator); returns the table.
+   Remaining difference: store scheduling and pointer CSE of the entries */
+E *f_065c80(void) {
+    if (!D_291418[0]) {
+        ini(D_291900 + 0, 2, 1, 0);
+        ini(D_291900 + 1, 2, 0, 1);
+        ini(D_291900 + 2, 2, 0, 2);
+        ini(D_291900 + 3, 2, 1, 3);
+        ini(D_291900 + 4, 2, 1, 4);
+        ini(D_291900 + 5, 2, -1, 5);
+        ini(D_291900 + 6, 2, -2, 6);
+        ini(D_291900 + 7, 1, 0, 0);
+        D_291900[0].name = D_1a3390;
+        D_291900[1].name = D_1a3388;
+        D_291900[2].name = D_1a339c;
+        D_291900[3].name = D_1a33a8;
+        D_291900[4].name = D_1a33b0;
+        D_291900[5].name = D_1a33bc;
+        D_291900[6].name = D_1a33c4;
+        D_291900[7].name = 0;
+        D_291418[0] = 1;
+    }
+    return D_291900;
+}
+void f_1312d4(const char *);
+void f_131378(const char *);
+extern char D_1a3260[];
+char **f_062050(char **, char *, char *, char *, char *);
+char **f_062108(char **, char *, char *, char *, char *, int);
+inline bool lt5(unsigned a, unsigned b) { return a < b; }
+/* @implements 0x061a08 us f_061a08
+   WHAT IT DOES: basic_string::replace(pos, n1, s, n2): throws out_of_range when pos exceeds the length and length_error when the result would be too long, clamps n1 to the tail, then calls the safe replace (f_062050) when the string is shared or the source lies outside it, else the overlapping replace (f_062108). */
+char **f_061a08(char **self, unsigned pos, unsigned n1, char *s, unsigned n2) {
+    unsigned size = *(unsigned *)(*self - 12);
+    if (pos > size) f_131378(D_1a3260);
+    unsigned rem = size - pos;
+    if (!(n1 < rem)) n1 = rem;
+    if (0x3ffffffc - n2 < size - n1) f_1312d4(D_1a3260);
+    char *d = *self;
+    if (*(int *)(d - 4) > 0 || lt5((unsigned)s, (unsigned)d) || lt5((unsigned)(d + size), (unsigned)s))
+        goto safe;
+    return f_062108(self, d + pos, d + pos + n1, s, s + n2, 0);
+safe:
+    return f_062050(self, d + pos, d + pos + n1, s, s + n2);
+}
+int memcmp(const void *, const void *, unsigned) throw();
+void f_05db84(void *);
+char *f_15c098(int, int, int);
+struct S { char *p; int pad[3]; S() {} S(const S &o) { p = o.p; } ~S() { f_05db84(this); } };
+void f_05a3e8(S *, char *, void *);
+void f_05e4a8(S *, int);
+typedef void (*VF)(S *, void *);
+typedef S (*VFR)(void *);
+inline const unsigned &mn(const unsigned &a, const unsigned &b) { if (b < a) return b; return a; }
+inline bool eqsa(S &s1, S &s2) {
+    const char *d1 = s1.p;
+    unsigned la = *(unsigned *)(d1 - 12);
+    unsigned lb = *(unsigned *)(s2.p - 12);
+    int r = memcmp(d1, s2.p, mn(la, lb));
+    if (!r) r = la - lb;
+    return r == 0;
+}
+inline bool eqs2a(S &s1, S &s2) {
+    const char *d2 = s2.p;
+    unsigned la = *(unsigned *)(s1.p - 12);
+    unsigned lb = *(unsigned *)(d2 - 12);
+    int r = memcmp(s1.p, d2, mn(la, lb));
+    if (!r) r = la - lb;
+    return r == 0;
+}
+/* @draft 0x0646c0 us f_0646c0
+   WHAT IT DOES: compares a string with the name string of the argument object (virtual call at +84): builds the left string from the member at +16 (a literal copy when it is -1, else a lookup through f_15c098/f_05a3e8) or takes the string member at +28 when the flag byte at +8 is set, then compares them with memcmp and the length difference; returns whether they are equal.
+   Remaining difference: stack slot of the length pair and one landing pad arrangement (24/94 words) */
+bool f_0646c0(unsigned char *self, int *other) {
+    bool res;
+    S t1;
+    if (self[8]) {
+        (*(VF *)(*other + 84))(&t1, other);
+        res = eqs2a(*(S *)((char *)self + 28), t1);
+    } else {
+        int k = *(int *)((char *)self + 16);
+        if (k == -1) f_05e4a8(&t1, *(int *)((char *)self + 24));
+        else {
+            Tmp16 g;
+            f_05a3e8(&t1, f_15c098(*(int *)(*(int *)((char *)self + 12) + 4), 7, k), &g);
+        }
+        S t2 = (*(VFR *)(*other + 84))(other);
+        res = eqsa(t1, t2);
+    }
+    return res;
+}
+inline bool eqsb(S &s1, S &s2) {
+    const char *d1 = s1.p;
+    unsigned la = *(unsigned *)(d1 - 12);
+    unsigned lb = *(unsigned *)(s2.p - 12);
+    int r = memcmp(d1, s2.p, mn(la, lb));
+    if (!r) r = la - lb;
+    return r < 0;
+}
+inline bool eqs2b(S &s1, S &s2) {
+    const char *d2 = s2.p;
+    unsigned la = *(unsigned *)(s1.p - 12);
+    unsigned lb = *(unsigned *)(d2 - 12);
+    int r = memcmp(s1.p, d2, mn(la, lb));
+    if (!r) r = la - lb;
+    return r < 0;
+}
+/* @draft 0x064838 us f_064838
+   WHAT IT DOES: compares a string with the name string of the argument object (virtual call at +84): builds the left string from the member at +16 (a literal copy when it is -1, else a lookup through f_15c098/f_05a3e8) or takes the string member at +28 when the flag byte at +8 is set, then compares them with memcmp and the length difference; returns whether the left is less than the right.
+   Remaining difference: stack slot of the length pair and one landing pad arrangement (24/94 words) */
+bool f_064838(unsigned char *self, int *other) {
+    bool res;
+    S t1;
+    if (self[8]) {
+        (*(VF *)(*other + 84))(&t1, other);
+        res = eqs2b(*(S *)((char *)self + 28), t1);
+    } else {
+        int k = *(int *)((char *)self + 16);
+        if (k == -1) f_05e4a8(&t1, *(int *)((char *)self + 24));
+        else {
+            Tmp16 g;
+            f_05a3e8(&t1, f_15c098(*(int *)(*(int *)((char *)self + 12) + 4), 7, k), &g);
+        }
+        S t2 = (*(VFR *)(*other + 84))(other);
+        res = eqsb(t1, t2);
+    }
+    return res;
+}
+inline bool eqsc(S &s1, S &s2) {
+    const char *d1 = s1.p;
+    unsigned la = *(unsigned *)(d1 - 12);
+    unsigned lb = *(unsigned *)(s2.p - 12);
+    int r = memcmp(d1, s2.p, mn(la, lb));
+    if (!r) r = la - lb;
+    return r > 0;
+}
+inline bool eqs2c(S &s1, S &s2) {
+    const char *d2 = s2.p;
+    unsigned la = *(unsigned *)(s1.p - 12);
+    unsigned lb = *(unsigned *)(d2 - 12);
+    int r = memcmp(s1.p, d2, mn(la, lb));
+    if (!r) r = la - lb;
+    return r > 0;
+}
+/* @draft 0x0649b0 us f_0649b0
+   WHAT IT DOES: compares a string with the name string of the argument object (virtual call at +84): builds the left string from the member at +16 (a literal copy when it is -1, else a lookup through f_15c098/f_05a3e8) or takes the string member at +28 when the flag byte at +8 is set, then compares them with memcmp and the length difference; returns whether the left is greater than the right.
+   Remaining difference: stack slot of the length pair and one landing pad arrangement (24/94 words) */
+bool f_0649b0(unsigned char *self, int *other) {
+    bool res;
+    S t1;
+    if (self[8]) {
+        (*(VF *)(*other + 84))(&t1, other);
+        res = eqs2c(*(S *)((char *)self + 28), t1);
+    } else {
+        int k = *(int *)((char *)self + 16);
+        if (k == -1) f_05e4a8(&t1, *(int *)((char *)self + 24));
+        else {
+            Tmp16 g;
+            f_05a3e8(&t1, f_15c098(*(int *)(*(int *)((char *)self + 12) + 4), 7, k), &g);
+        }
+        S t2 = (*(VFR *)(*other + 84))(other);
+        res = eqsc(t1, t2);
+    }
+    return res;
+}
+}
+}
