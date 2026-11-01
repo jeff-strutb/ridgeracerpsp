@@ -5300,9 +5300,8 @@ void f_04e4b4(void *pp) {
     D_29174c = (unsigned)b;
 }
 
-/* @draft 0x04eaa0 us f_04eaa0
-   WHAT IT DOES: destructor of a container object: stores its vtable, clears the list member, frees it and runs the base destructor.
-   Remaining difference: the exception landing pad keeps the member pointer in a third saved register (s2) instead of reusing s0. */
+/* @implements 0x04eaa0 us f_04eaa0
+   WHAT IT DOES: destructor of a container object: stores its vtable, clears the list member, frees it and runs the base destructor. */
 
 extern char D_1a3698[];
 void f_04ee68(void*,void*); void f_04e8d8(void*);
@@ -5318,20 +5317,28 @@ struct Lst { int pad; Node *head; int size;
     head->p = 0;
     head->q = head;
   } }
- ~Lst(){ f_04e4b4(head);} };
+ ~Lst(){ Node *h = head; f_04e4b4(h);} };
 struct Outer : Base { int b[5]; Lst m; ~Outer() { m.clear(); } };
+struct G4eaa0 { ~G4eaa0() {} };
 void f_04eaa0(Outer *o){
-  *(void**)o = D_1a3698;
+  {
+    G4eaa0 g;
+    *(void**)o = D_1a3698;
+  }
   o->~Outer();
 }
 
 /* @draft 0x04eb44 us f_04eb44
    WHAT IT DOES: deleting twin of the container destructor, also freeing the block header at -4.
-   Deleting twin of f_04eaa0 (frees the block header at -4 afterwards). Same remaining difference. */
+   Deleting twin of f_04eaa0 (frees the block header at -4 afterwards). Remaining difference: 4 words at the tail (retail leaves a nop in the _Unwind_Resume delay slot and puts move a0,s0 before it; ours fills the slot, 172 vs 176 bytes). */
+extern "C" void f_04e4b4_nt3b(void *) throw() __asm__("f_04e4b4");
 void f_04eb44(Outer *o){
-  *(void**)o = D_1a3698;
+  {
+    G4eaa0 g;
+    *(void**)o = D_1a3698;
+  }
   o->~Outer();
-  f_04e4b4((char*)o - 4);
+  f_04e4b4_nt3b((char*)o - 4);
 }
 
 
@@ -5621,9 +5628,8 @@ void f_04bef8(char *s) {
    WHAT IT DOES: if index a1 is valid, either clears the entry's flag byte (a4 or a5 not positive) or stores a2..a5 into the entry and sets the flag byte. */
 void f_04c0a8(char *s, int a1, int a2, int a3, int a4, int a5) {
     if (*(int *)(s + 32) >= a1) {
-        int bad = a4 <= 0 || a5 <= 0;
         char *e = *(char **)(s + 36) + a1 * 172;
-        if (bad) {
+        if (a4 <= 0 || a5 <= 0) {
             *(char *)(e + 137) = 0;
         } else {
             *(int *)(e + 152) = a5;
@@ -6169,7 +6175,7 @@ struct Hdr65b30 {
     int w0;
     void *hdr;
     int cnt;
-    ~Hdr65b30() { f_04e4b4(hdr); }
+    ~Hdr65b30() { void *h = hdr; f_04e4b4(h); }
 };
 struct Base65b30 {
     void *vt;
