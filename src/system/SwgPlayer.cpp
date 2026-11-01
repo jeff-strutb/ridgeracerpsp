@@ -1233,14 +1233,23 @@ void f_04e6d0(char *s) {
     f_04e4b4(FLD(void *, s, 4));
 }
 
-/* @draft 0x04e8d8 us f_04e8d8
+/* @implements 0x04e8d8 us f_04e8d8
    WHAT IT DOES: sets the vtable address D_1a3760 into the object, runs f_04e6d0 on the sub-object at
-   +8 and then the base destructor f_04e8c0 on the object.
-   Remaining difference: 19/22 words differ, first at +0xc; size 60 vs 88. */
+   +8 and then the base destructor f_04e8c0 on the object. */
+struct Base8c0 {
+    int vt, x;
+    ~Base8c0() { f_04e8c0(this); }
+};
+struct Mem6d0 {
+    ~Mem6d0() { f_04e6d0((char *)this); }
+};
+struct Der8d8 : Base8c0 {
+    Mem6d0 m;
+    ~Der8d8() { *(void **)this = D_1a3760; }
+};
 void f_04e8d8(char *a0) {
-    *(void **)a0 = D_1a3760;
-    f_04e6d0(a0 + 8);
-    f_04e8c0(a0);
+    GuardE g;
+    ((Der8d8 *)a0)->~Der8d8();
 }
 
 /* @implements 0x04e930 us f_04e930
@@ -1259,25 +1268,23 @@ void f_04e930(void *s2, char *s1) {
     }
 }
 
-/* @draft 0x04e990 us f_04e990
+/* @implements 0x04e990 us f_04e990
    WHAT IT DOES: sets the vtable address D_1a3760 into the object, runs f_04e6d0 on the sub-object at +8
-   and then the base destructor f_04e8c0 on the object.
-   Remaining difference: 19/22 words differ, first at +0xc; size 60 vs 88. */
+   and then the base destructor f_04e8c0 on the object. */
 void f_04e990(char *a0) {
-    *(void **)a0 = D_1a3760;
-    f_04e6d0(a0 + 8);
-    f_04e8c0(a0);
+    GuardE g;
+    ((Der8d8 *)a0)->~Der8d8();
 }
 
 /* @draft 0x04e9e8 us f_04e9e8
    WHAT IT DOES: sets the vtable address D_1a3760, runs f_04e6d0 on the sub-object at +8, the base
    destructor f_04e8c0 on the object and then frees the object at -4 with f_04e4b4.
-   Remaining difference: 20/25 words differ, first at +0xc; size 72 vs 100. */
+   Remaining difference: 1 word (the landing pad fills the _Unwind_Resume delay slot with move a0,s0; retail has a nop there and the move before). */
+extern "C" void f_04e4b4_nt(void *) throw() __asm__("f_04e4b4");
 void f_04e9e8(char *a0) {
-    *(void **)a0 = D_1a3760;
-    f_04e6d0(a0 + 8);
-    f_04e8c0(a0);
-    f_04e4b4(a0 - 4);
+    GuardE g;
+    ((Der8d8 *)a0)->~Der8d8();
+    f_04e4b4_nt(a0 - 4);
 }
 
 /* @draft 0x04ea4c us f_04ea4c
@@ -1300,13 +1307,14 @@ void f_04ea4c(char *a0) {
 /* @draft 0x04ec30 us f_04ec30
    WHAT IT DOES: sets the vtable address D_1a3810 into the object, calls f_05d6dc on the object, then
    frees the object at -4 with f_04e4b4.
-   Remaining difference: 8/17 words differ, first at +0x8; size 60 vs 68. */
+   Remaining difference: 3 words of prologue scheduling (retail puts sw v0 after addiu sp, move s0,a0 before the call and addiu s0,-4 in its delay slot). */
 extern "C" void f_04e4b4_nt(void *) throw() __asm__("f_04e4b4");
 void f_04ec30(char *a0) {
     GuardE g;
     *(void **)a0 = D_1a3810;
     f_05d6dc(a0);
-    f_04e4b4_nt(a0 - 4);
+    a0 -= 4;
+    f_04e4b4_nt(a0);
 }
 
 /* @draft 0x04ed28 us f_04ed28
@@ -1768,14 +1776,15 @@ void f_052f4c(char *p)
 
 /* @draft 0x05a378 us f_05a378
    WHAT IT DOES: Passes the sub-object at +44, its word at +4 and the argument (by
-   address) to f_0613e8 with a 16-byte output buffer.    Remaining difference: frame layout: retail places the argument copy at sp+32 above a 16-byte buffer; ours places it at sp+20 (6 of 14 words differ).
+   address) to f_0613e8 with a 16-byte output buffer.    Remaining difference: 2 words (the spill of arg at sp+32 sits before addiu a3 in retail, after it in ours); the word buffer is 16 bytes so the frame matches.
    */
 void f_05a378(char *p, int arg)
 {
     char *q = p + 44;
     int out[4];
-    int v = *(int *)(q + 4);
-    f_0613e8(out, q, &v, &arg);
+    int v[4];
+    v[0] = *(int *)(q + 4);
+    f_0613e8(out, q, v, &arg);
 }
 
 /* @implements 0x059c74 us f_059c74
@@ -2813,12 +2822,14 @@ void *f_064ba4(void)
     return p;
 }
 
-/* @draft 0x062fe4 us f_062fe4
-   WHAT IT DOES: Allocates a 12-byte StackPosValue, copies the word at +8 of the source and clears +4.
-   Remaining difference: the prologue. Retail reserves a 32-byte frame (s0 at 16, ra at 20); this source gives 16. */
+/* @implements 0x062fe4 us f_062fe4
+   WHAT IT DOES: Allocates a 12-byte StackPosValue, copies the word at +8 of the source and clears +4. */
+extern "C" void *f_05db08_nt(unsigned) throw() __asm__("f_05db08");
+struct G62fe4 { ~G62fe4() {} };
 void *f_062fe4(void *o)
 {
-    void *p = f_05db08(12);
+    G62fe4 g;
+    void *p = f_05db08_nt(12);
     W(p, 8) = W(o, 8);
     *(void **)p = D_1a3f00;
     W(p, 4) = 0;
@@ -5035,10 +5046,12 @@ struct Holder { int a, b; ~Holder() { f_04ed28(this); } };
 /* @draft 0x05fbdc us f_05fbdc
    WHAT IT DOES: allocates an 8-byte object via f_05db08 holding the D_1a4480 vtable and a zero, wraps it in a Holder via f_05daa4, and inserts the keyed entry into the tree with f_05e394.
    Remaining difference: missing: second empty landing pad, 8 bytes */
+struct EmptyD5fbdc { ~EmptyD5fbdc() {} };
 void f_05fbdc(void *unused, char *s) {
     int *p = (int *)f_05db08(8);
     p[0] = (int)D_1a4480;
     p[1] = 0;
+    EmptyD5fbdc e;
     Holder h;
     f_05daa4(&h, p);
     int out[4];
@@ -5737,11 +5750,11 @@ void f_0454d4(int *p) {
 /* @draft 0x04d224 us f_04d224
    WHAT IT DOES: counts entries whose id at +128 equals the clip id for a1, stores the count through out if given, and returns the index of the first match or -1. */
 int f_04d224(char *s, int a1, int *out) {
+    int cnt = 0, found = -1, i;
     void *o = *(void **)s;
     char *e = *(char **)(s + 36);
     int id = f_15c07c(o, 3, a1);
     int n = *(int *)(s + 32);
-    int cnt = 0, found = -1, i;
     for (i = 0; i < n; i++, e += 172) {
         if (id == *(int *)(e + 128)) {
             if (found == -1) found = i;
@@ -5819,7 +5832,7 @@ struct Obj924 {
 };
 
 extern "C" {
-/* @draft 0x04670c us f_04670c
+/* @implements 0x04670c us f_04670c
    WHAT IT DOES: resets the cache keys at s+12/s+16 to -1; if neither object pointer (s+0, s+4) exists yet, allocates and constructs the 924-byte object, a 0xaf20-byte buffer and a 0xdae80-byte array, fills the 10x20 int table at s+28 with -1 and clears the byte at s+908 and the word at s+20. */
 void f_04670c(int *s) {
     s[3] = -1;
@@ -5842,8 +5855,8 @@ void f_04670c(int *s) {
             s[167 + i] = -1;
             s[187 + i] = -1;
         }
-        *(char *)((char *)s + 908) = 0;
         s[5] = 0;
+        *(char *)((char *)s + 908) = 0;
     }
 }
 
@@ -6630,3 +6643,454 @@ void f_0645e0(void *o, void *a)
 
 }
 }
+
+/* ---- swg4e ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 fragment swg4e: untagged functions of the SWG player (rest_e). */
+
+namespace swg4e {
+
+
+extern "C" {
+void *f_04dfa0(unsigned n);
+void *f_05db08(unsigned n);
+void f_05daa4(void *self, void *a1);
+void f_05db44(void *);
+double f_1259cc(void);
+int f_06b624(void *, void *, void *);
+void f_15f714(void *, void *);
+void f_15f6f8(void *);
+extern char D_1a4320[];
+extern char D_1a4270[];
+extern char D_1a4060[];
+int f_15e0f4(void *);
+void f_15f190(void *, float *, float *);
+void f_15f1bc(void *, float *, float *);
+double f_11c6d8(double, double);
+double f_11cd44(double, double);
+void f_068bc0(void *, void *, int);
+void f_068e6c(void *, void *, int);
+int f_15c278(void *, int);
+}
+
+struct Ref { int a, b; Ref(void *p); ~Ref() {} };
+inline Ref::Ref(void *p) { f_05daa4(this, p); }
+struct NumD {
+    void *vt; int z; double d;
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    NumD(double x) { vt = (void *)D_1a4270; d = x; z = 0; }
+};
+struct NumI {
+    void *vt; int z; int v;
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    NumI(int x) { vt = (void *)D_1a4320; v = x; z = 0; }
+};
+extern "C" {
+double f_11c448(double);
+double f_11c590(double);
+double f_11b514(double);
+double f_11bafc(double);
+double f_11bce8(double);
+double f_11c848(double);
+double f_11be14(double);
+double f_11cba8(double);
+double f_11c018(double);
+double f_11d280(double);
+double f_11c12c(double);
+}
+
+inline double vc(char *obj) {
+    void *a = **(void ***)(obj + 52);
+    return ((double (*)(void *))((void **)*(void **)a)[24])(a);
+}
+
+extern "C" {
+int f_15e128(void *);
+}
+
+inline double vc2(char *obj) {
+    void *a = ((void **)*(void **)(obj + 52))[2];
+    return ((double (*)(void *))((void **)*(void **)a)[24])(a);
+}
+
+inline void *vc9(char *obj) {
+    void *v = *(void **)(obj + 44);
+    return ((void *(*)(void *))((void **)*(void **)v)[9])(v);
+}
+
+struct NumB {
+    void *vt; int z; char b;
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    NumB(char x) { vt = (void *)D_1a4060; b = x; z = 0; }
+};
+struct Ref0 { int a, b; ~Ref0() {} };
+struct H { int a; int *rc; H(const H &o) { a = o.a; rc = o.rc; if (rc) ++*rc; } };
+struct V { int w0, w1, w2, w3, w4, w5; int *rc; V(const V &o) { int *r = o.rc; w0 = o.w0; w1 = o.w1; w2 = o.w2; w3 = o.w3; w4 = o.w4; w5 = o.w5; rc = r; if (rc) ++*rc; } };
+struct N { int l, r, p, q; V v; };
+inline void *operator new(unsigned, void *p) throw() { return p; }
+struct Num {
+    void *vt; int z; double d;
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    Num() { double t = f_1259cc(); vt = (void *)D_1a4270; d = t; z = 0; }
+};
+
+extern "C" {
+
+double f_11c448(double);
+double f_11c590(double);
+double f_11b514(double);
+double f_11bafc(double);
+double f_11bce8(double);
+double f_11c848(double);
+double f_11be14(double);
+double f_11cba8(double);
+double f_11c018(double);
+double f_11d280(double);
+double f_11c12c(double);
+
+struct Sx3 { int a, b, c; };
+struct Pa { };
+typedef Sx3 (Pa::*PMf)(void *);
+extern PMf D_1d3068[];
+struct Xi { int p[3]; int idx; };
+/* @draft 0x066c60 us f_066c60
+   WHAT IT DOES: looks up a pointer-to-member-function in the table D_1d3068 indexed by the field at +12 of the third argument and calls it on the second argument (adjusted by the stored delta, virtual dispatch when the delta's low bit is set) with the first argument passed through; returns the struct result. Remaining difference: callee pointer lives in v0 instead of v1 (7 of 31 words). */
+Sx3 f_066c60(Pa *a, void *u, Xi *x) {
+    PMf m = D_1d3068[x->idx];
+    return (a->*m)(u);
+}
+
+struct It4 { int *p; It4() {} It4(const It4 &o) { p = o.p; } void inc() { p = (int *)*p; } It4 &operator=(const It4 &o) { p = o.p; return *this; } };
+void f_05f64c(void *, void *, void *);
+/* @draft 0x069ea0 us f_069ea0
+   WHAT IT DOES: walks the circular list headed at the sentinel in field +4 and erases (f_05f64c) every node whose value at +8 equals the key pointed to by the second argument. Remaining difference: iterator temporaries stack layout (22 of 34 words). */
+void f_069ea0(int *l, int **k) {
+    It4 first; It4 end; It4 tmp[4]; It4 arg;
+    end.p = (int *)l[1];
+    first.p = (int *)*end.p;
+    while (first.p != end.p) {
+        It4 nx(first);
+        nx.inc();
+        if (*k == (int *)first.p[2]) { arg = first; f_05f64c(tmp, l, &arg); }
+        first = nx;
+    }
+}
+
+char *f_05f0b8(void *, void *);
+/* @draft 0x068808 us f_068808
+   WHAT IT DOES: returns a reference-counted handle copied from the entry the player's object at +40 holds for the key (virtual slot 9 of the +44 object, field +20): looked up through f_05f0b8 when the key is non-zero, otherwise the default handle at +280; the count is incremented. Remaining difference: the loads are after the join instead of in each branch (21 of 36 words). */
+H f_068808(char *self, char *o) {
+    void *v = *(void **)(o + 44);
+    char *w = ((char *(*)(void *))((void **)*(void **)v)[9])(v);
+    int k = *(int *)(w + 20);
+    H *s;
+    if (k) s = (H *)(f_05f0b8(*(char **)(o + 40) + 348, &k) + 16);
+    else s = (H *)(*(char **)(o + 40) + 280);
+    return *s;
+}
+
+void f_05f5dc(void *, void *, void *);
+void *f_05cc58(void *, void *, void *, void *);
+void f_04e4b4(void *);
+/* @implements 0x06b050 us f_06b050
+   WHAT IT DOES: finds the node for the key in the tree at +48 (f_05f5dc); if found, clears the slot of the table at +36 indexed by the node's field +20 when it still holds the key, unlinks the node (f_05cc58), frees it (f_04e4b4) and decrements the tree's count at +8. */
+void f_06b050(char *self, int k) {
+    It4 out; It4 end; It4 c1; It4 c2;
+    char *t = self + 48;
+    f_05f5dc(&out, t, &k);
+    int *hdr = *(int **)(t + 4); int *n = out.p;
+    end.p = hdr;
+    if (n != hdr) {
+        int **slot = (int **)(*(char **)(self + 36) + n[5] * 4);
+        if ((int)*slot == k) *slot = 0;
+        c1.p = n;
+        c2.p = n;
+        f_04e4b4(f_05cc58(n, hdr + 1, hdr + 2, hdr + 3));
+        --*(int *)(t + 8);
+    }
+}
+
+struct Sx { int w[4]; Sx(const Sx &o) { w[0] = o.w[0]; } };
+struct Q2 {
+ virtual void s0(); virtual void s1(); virtual void s2(); virtual void s3(); virtual void s4();
+ virtual void s5(); virtual void s6(); virtual void s7(); virtual void s8(); virtual void s9();
+ virtual void s10(); virtual void s11(); virtual void s12(); virtual void s13(); virtual void s14();
+ virtual void s15(); virtual void s16(); virtual void s17(); virtual void s18(); virtual void s19();
+ virtual Sx s20(void *); virtual void s21(); virtual void s22(); virtual int s23();
+};
+void f_06b0f0(void *, int, void *, int);
+/* @implements 0x067cbc us f_067cbc
+   WHAT IT DOES: calls virtual slot 20 of the object at +52 (with the object at +40, result into a local), virtual slot 23 of its second element, and passes the slot-9 result of the +44 object, the local and that value with the +40 object to f_06b0f0; returns an empty reference through f_05daa4. */
+Ref f_067cbc(char *o) {
+    void *v = *(void **)(o + 44);
+    int s1 = ((int (*)(void *))((void **)*(void **)v)[9])(v);
+    Q2 *a = **(Q2 ***)(o + 52);
+    Sx sp = a->s20(*(void **)(o + 40));
+    Q2 *d = ((Q2 **)*(void **)(o + 52))[2];
+    int x = d->s23();
+    f_06b0f0(*(void **)(o + 40), s1, &sp, x);
+    return Ref(0);
+}
+
+void f_05db84(void *);
+void f_15fb94(int, int);
+extern char D_1a4d14[];
+struct Sd { int w[4]; ~Sd() { f_05db84(this); } };
+struct Q {
+ virtual void s0(); virtual void s1(); virtual void s2(); virtual void s3(); virtual void s4();
+ virtual void s5(); virtual void s6(); virtual void s7(); virtual void s8(); virtual void s9();
+ virtual void s10(); virtual void s11(); virtual void s12(); virtual void s13(); virtual void s14();
+ virtual void s15(); virtual void s16(); virtual void s17(); virtual void s18(); virtual void s19();
+ virtual void s20(); virtual Sd s21();
+};
+/* @implements 0x068248 us f_068248
+   WHAT IT DOES: obtains the output stream object from virtual slot 21 of the object at +52, stores the character at D_1a4d14 into its virtual base, passes the slot-9 result of the +44 object and the stream to f_15fb94, destroys the stream (f_05db84) and returns an empty reference. */
+Ref f_068248(char *o) {
+    void *v = *(void **)(o + 44);
+    int s1 = ((int (*)(void *))((void **)*(void **)v)[9])(v);
+    Q *a = **(Q ***)(o + 52);
+    {
+        Sd sp = a->s21();
+        int *vt = (int *)sp.w[0];
+        *((char *)vt + vt[-3]) = D_1a4d14[0];
+        f_15fb94(s1, sp.w[0]);
+    }
+    return Ref(0);
+}
+
+struct Pv { virtual void s0(); virtual void s1(); virtual void s2(); virtual void s3(); virtual void s4(const void *); };
+extern char D_1a2e9c[];
+inline const void *sdstr(const Sd &s) {
+    int *vt = (int *)s.w[0];
+    *((char *)vt + vt[-3]) = D_1a4d14[0];
+    return (const void *)s.w[0];
+}
+/* @implements 0x0674e8 us f_0674e8
+   WHAT IT DOES: if the object at +228 of the one at +56 exists, calls its virtual slot 4 with a string: when the count at +48 is positive, the text of a stream obtained from virtual slot 21 of the +52 object (a character stored into its virtual base), otherwise the constant string D_1a2e9c; the temporary stream is destroyed afterwards; returns an empty reference. */
+Ref f_0674e8(char *o) {
+    Pv *p = *(Pv **)(*(char **)(o + 56) + 228);
+    if (p) {
+        p->s4(*(int *)(o + 48) > 0 ? sdstr((**(Q ***)(o + 52))->s21()) : (const void *)D_1a2e9c);
+    }
+    return Ref(0);
+}
+
+extern double D_1a4d30;
+/* @implements 0x0675cc us f_0675cc
+   WHAT IT DOES: with the slot-9 result of the +44 object: when the flag is zero returns a reference to a new double object holding the float at +140 times 100; otherwise stores the slot-24 value of the +52 object divided by 100 into the float at +140 and returns an empty reference. */
+Ref f_0675cc(char *o, int flag) {
+    char *s = (char *)vc9(o);
+    if (flag == 0) {
+        return Ref(new NumD(*(float *)(s + 140) * 100.0f));
+    }
+    *(float *)(s + 140) = (float)(vc(o) / D_1a4d30);
+    return Ref(0);
+}
+
+struct T64 { float x; float pad[4]; float y; };
+/* @implements 0x069538 us f_069538
+   WHAT IT DOES: reads the two floats at +64 and +84 of the slot-9 object of the +44 object; with a zero flag returns a reference to a new double object holding the first, otherwise stores the slot-24 value of the +52 object as the first float, writes the second back and returns an empty reference. */
+Ref f_069538(char *o, int flag) {
+    char *s = (char *)vc9(o);
+    T64 *t = (T64 *)(s + 64);
+    float x = t->x;
+    float y = t->y;
+    if (flag == 0) return Ref(new NumD(x));
+    t->x = (float)vc(o);
+    t->y = y;
+    return Ref(0);
+}
+/* @implements 0x0697b4 us f_0697b4
+   WHAT IT DOES: as f_069538 with the roles of the two floats swapped: the second float (+84) is read or replaced by the slot-24 value and the first (+64) is written back unchanged. */
+Ref f_0697b4(char *o, int flag) {
+    char *s = (char *)vc9(o);
+    T64 *t = (T64 *)(s + 64);
+    float x = t->x;
+    float y = t->y;
+    if (flag == 0) return Ref(new NumD(y));
+    t->y = (float)vc(o);
+    t->x = x;
+    return Ref(0);
+}
+
+float cosf(float);
+float sinf(float);
+/* @implements 0x06898c us f_06898c
+   WHAT IT DOES: with a zero flag returns a reference to a new double object holding the angle float at +160 of the slot-9 object; otherwise stores the slot-24 value of the +52 object there, converts degrees to radians and writes the 2x2 rotation (cos, sin, -sin, cos) into the matrix floats at +64. */
+Ref f_06898c(char *o, int flag) {
+    char *s = (char *)vc9(o);
+    if (flag == 0) return Ref(new NumD(*(float *)(s + 160)));
+    float *m = (float *)(s + 64);
+    float a = (float)vc(o);
+    m[24] = a;
+    float r = a * 3.1415927f / 180.0f;
+    float c = cosf(r);
+    float sn = sinf(r);
+    m[5] = c;
+    m[0] = c;
+    m[1] = sn;
+    m[4] = -sn;
+    return Ref(0);
+}
+
+void f_04ed28(void *);
+void f_0678b0(void *, void *, void *, void *, int, void *);
+struct Hd {
+    int a; int *rc;
+    Hd(void *p) { f_05daa4(this, p); }
+    Hd(const Hd &o) { a = o.a; rc = o.rc; if (rc) ++*rc; }
+    ~Hd() { f_04ed28(this); }
+};
+/* @implements 0x067788 us f_067788
+   WHAT IT DOES: builds two stream-like results from virtual slot 20 of the first and third elements of the +52 table (with the +40 object), takes the slot-23 value of its fifth element, makes a handle (a copy of the one at +24 of the table when the mode at +48 is 4, otherwise empty) and passes everything with the +40 and +44 objects to f_0678b0; destroys the handle and returns an empty reference. */
+Ref f_067788(char *o) {
+    void **tb = *(void ***)(o + 52);
+    Q2 *a = (Q2 *)tb[0];
+    Sx sp0 = a->s20(*(void **)(o + 40));
+    Q2 *b = (Q2 *)((void **)*(void **)(o + 52))[2];
+    Sx sp16 = b->s20(*(void **)(o + 40));
+    Q2 *d = (Q2 *)((void **)*(void **)(o + 52))[4];
+    int x = d->s23();
+    {
+        Hd h = (*(int *)(o + 48) == 4) ? Hd(*(Hd *)((char *)*(void **)(o + 52) + 24)) : Hd(0);
+        f_0678b0(*(void **)(o + 40), *(void **)(o + 44), &sp0, &sp16, x, &h);
+    }
+    return Ref(0);
+}
+
+extern double D_1a4d68;
+int f_164e34(double);
+/* @implements 0x06ac38 us f_06ac38
+   WHAT IT DOES: takes the slot-24 value of the +52 object, rounds it to an integer (floor, plus one when the fractional part is at least D_1a4d68) and returns a reference to a new integer object holding it. */
+Ref f_06ac38(char *o) {
+    double d = vc(o);
+    double fl = f_11be14(d);
+    int i = f_164e34(fl);
+    if (d - fl >= D_1a4d68) return Ref(new NumI(i + 1));
+    return Ref(new NumI(i));
+}
+
+void *f_154448(void *, void *, void *, int);
+void f_15f10c(void *, void *, int);
+int f_15f11c(void *, void *);
+void f_06b4a4(void *, void *, int, int, int);
+extern char D_1a4900[];
+extern char D_1a4960[];
+struct Ob48 {
+    char b[48];
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    Ob48(char *o, int c, int d, int e) { f_06b4a4(this, *(void **)(o + 40), c, d, e); }
+};
+/* @draft 0x0698e4 us f_0698e4
+   WHAT IT DOES: with a non-zero flag, runs a dynamic cast of the first element of the +52 table and passes the slot-9 object, the argument and the cast result's field +28 (or -1) to f_15f10c, returning an empty reference; with a zero flag, returns a reference to a new 48-byte object built by f_06b4a4 from the +40 object and the f_15f11c conversion of the argument. */
+Ref f_0698e4(char *o, int flag, void *arg) {
+    void *s = vc9(o);
+    if (flag) {
+        void *t = **(void ***)(o + 52);
+        char *r;
+        if (t && (r = (char *)f_154448(t, D_1a4900, D_1a4960, 0))) f_15f10c(s, arg, *(int *)(r + 28));
+        else f_15f10c(s, arg, -1);
+        return Ref(0);
+    }
+    return Ref(new Ob48(o, f_15f11c(s, arg), 0, 0));
+}
+
+struct Rn { int color; Rn *parent; Rn *left; Rn *right; };
+void f_064cfc(Rn *, Rn **);
+void f_064d44(Rn *, Rn **);
+/* @implements 0x066cdc us f_066cdc
+   WHAT IT DOES: red-black tree rebalance after an insert: colours the new node red, then repeatedly recolours or rotates (f_064cfc left, f_064d44 right) while its parent is red, and finally colours the root black. */
+void f_066cdc(Rn *x, Rn **root) {
+    x->color = 0;
+    while (x != *root && x->parent->color == 0) {
+        if (x->parent == x->parent->parent->left) {
+            Rn *y = x->parent->parent->right;
+            if (y && y->color == 0) {
+                x->parent->color = 1;
+                y->color = 1;
+                x->parent->parent->color = 0;
+                x = x->parent->parent;
+            } else {
+                if (x == x->parent->right) {
+                    x = x->parent;
+                    f_064cfc(x, root);
+                }
+                x->parent->color = 1;
+                x->parent->parent->color = 0;
+                f_064d44(x->parent->parent, root);
+            }
+        } else {
+            Rn *y = x->parent->parent->left;
+            if (y && y->color == 0) {
+                x->parent->color = 1;
+                y->color = 1;
+                x->parent->parent->color = 0;
+                x = x->parent->parent;
+            } else {
+                if (x == x->parent->left) {
+                    x = x->parent;
+                    f_064d44(x, root);
+                }
+                x->parent->color = 1;
+                x->parent->parent->color = 0;
+                f_064cfc(x->parent->parent, root);
+            }
+        }
+    }
+    (*root)->color = 1;
+}
+
+extern char D_1a4990[];
+inline int vc2i(char *obj) {
+    void *a = ((void **)*(void **)(obj + 52))[2];
+    return ((int (*)(void *))((void **)*(void **)a)[23])(a);
+}
+struct Pw {
+    virtual void s0(); virtual void s1(); virtual void s2();
+    virtual void s3(const void *, int, float);
+};
+/* @implements 0x067390 us f_067390
+   WHAT IT DOES: when the object at +228 of the +56 object and the +44 object both exist and the +44 object dynamic-casts to the target class, obtains the text of a stream from its virtual slot 21 (a character stored into the stream's virtual base), reads an optional float (the slot-24 value when the count at +48 is positive) and an integer (1, or the slot-23 value when the count is at least 2), and passes text, integer and float to virtual slot 3 of the +228 object; destroys the stream and returns an empty reference. */
+Ref f_067390(char *o) {
+    Pw *p = *(Pw **)(*(char **)(o + 56) + 228);
+    if (p && *(void **)(o + 44)) {
+        char *r = (char *)f_154448(*(void **)(o + 44), D_1a4900, D_1a4990, 0);
+        if (r) {
+            Sd sp = ((Q *)(r + 24))->s21();
+            int *vt = (int *)sp.w[0];
+            *((char *)vt + vt[-3]) = D_1a4d14[0];
+            const void *str = (const void *)sp.w[0];
+            float f = 0.0f;
+            if (*(int *)(o + 48) > 0) f = (float)vc(o);
+            int a = *(int *)(o + 48) < 2 ? 1 : vc2i(o);
+            p->s3(str, a, f);
+        }
+    }
+    return Ref(0);
+}
+
+inline int vc2323(char *obj) {
+    void *a = **(void ***)(obj + 52);
+    return ((int (*)(void *))((void **)*(void **)a)[23])(a);
+}
+inline int iabs(int v) { return v < 0 ? -v : v; }
+/* @implements 0x069f28 us f_069f28
+   WHAT IT DOES: absolute value of the number held by the +52 object: when its type code (virtual slot 6) is 6 returns a reference to a new double object holding the absolute value of the slot-24 value, otherwise to a new integer object holding the absolute value of the slot-23 value. */
+Ref f_069f28(char *o) {
+    void *a = **(void ***)(o + 52);
+    if (((int (*)(void *))((void **)*(void **)a)[6])(a) == 6) {
+        double d = vc(o);
+        if (d >= 0.0) return Ref(new NumD(d));
+        return Ref(new NumD(-d));
+    }
+    return Ref(new NumI(iabs(vc2323(o))));
+}
+}}
