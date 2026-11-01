@@ -4109,18 +4109,17 @@ void *f_05db08(char *a0) {
     return (char *)v0 + 4;
 }
 
-/* @draft 0x05da50 us f_05da50
+/* @implements 0x05da50 us f_05da50
    WHAT IT DOES: frees each node of the circular list headed at +4 with f_04e4b4, then makes the
-   head self-linked.
-   Remaining difference: not yet compared. */
+   head self-linked. */
 void f_05da50(char *a0) {
     char *head = *(char **)(a0 + 4);
     char *s0 = *(char **)head;
     if (s0 != head) {
         do {
-            char *nx = *(char **)s0;
-            f_04e4b4(s0);
-            s0 = nx;
+            char *t = s0;
+            s0 = *(char **)s0;
+            f_04e4b4(t);
             head = *(char **)(a0 + 4);
         } while (s0 != head);
     }
@@ -4412,15 +4411,15 @@ void f_05f6a8(char *self, unsigned i, int x) {
     }
 }
 
-/* @draft 0x05df24 us f_05df24
+/* @implements 0x05df24 us f_05df24
    WHAT IT DOES: copy assignment of a reference-counted pointer pair: when the source is a
    different object, releases this object with f_04ed28, copies the two words from the source
    and bumps the count of the second word's target. */
 void *f_05df24(char *self, char *o) {
     if (self != o) {
         f_04ed28(self);
-        char *v1 = *(char **)(o + 4);
         char *v0 = *(char **)o;
+        char *v1 = *(char **)(o + 4);
         *(char **)(self + 4) = v1;
         *(char **)self = v0;
         if (v1) (*(int *)v1)++;
@@ -5046,12 +5045,10 @@ struct Holder { int a, b; ~Holder() { f_04ed28(this); } };
 /* @draft 0x05fbdc us f_05fbdc
    WHAT IT DOES: allocates an 8-byte object via f_05db08 holding the D_1a4480 vtable and a zero, wraps it in a Holder via f_05daa4, and inserts the keyed entry into the tree with f_05e394.
    Remaining difference: missing: second empty landing pad, 8 bytes */
-struct EmptyD5fbdc { ~EmptyD5fbdc() {} };
 void f_05fbdc(void *unused, char *s) {
     int *p = (int *)f_05db08(8);
     p[0] = (int)D_1a4480;
     p[1] = 0;
-    EmptyD5fbdc e;
     Holder h;
     f_05daa4(&h, p);
     int out[4];
@@ -5674,8 +5671,9 @@ void f_04c1c8(char *s, int a1, Rec16 r) {
    WHAT IT DOES: caches a lookup: if the key pair (a1, a2) differs from the cached one, calls f_07dacc, stores the result (returns 0 on -1) and the key; returns the first int of the buffer. */
 int f_046d50(char *s, int a1, int a2) {
     int *p = *(int **)(s + 4);
+    void *o = *(void **)s;
     if (a1 != *(int *)(s + 12) || *(int *)(s + 16) != a2) {
-        int r = f_07dacc(*(void **)s, a1, (int)p, a2);
+        int r = f_07dacc(o, a1, (int)p, a2);
         *(int *)(s + 8) = r;
         if (r == -1) return 0;
         *(int *)(s + 12) = a1;
@@ -7094,3 +7092,263 @@ Ref f_069f28(char *o) {
     return Ref(new NumI(iabs(vc2323(o))));
 }
 }}
+
+/* ---- swg4a ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 fragment by worker swg4a. */
+namespace swg4a {
+
+extern "C" {
+extern int D_241000, D_241008;
+extern void *D_241004;
+extern unsigned D_291680, D_291420, D_291410, D_291424, D_291744, D_291748, D_29166c, D_29174c, D_291668;
+extern unsigned *D_291690;
+void *f_153558(unsigned) __asm__("_Znaj");
+int f_04d82c(int);
+void *memset(void *, int, unsigned);
+int f_046c8c(void *, int);
+void f_046de0a(void *, int, int, int, int, int, float, float, float, float) __asm__("f_046de0");
+void f_0477b0a(void *, int, int, int, int, int, float, float, float, float) __asm__("f_0477b0");
+void f_04e4b4(void *);
+void f_15b670(void *);
+#define VC(o, k) ((*(void (***)(void *))(o))[k](o))
+void f_024aec(int);
+void *f_021b38(int);
+void f_118d04(int, int, int, int);
+void f_116dfc(int, int, int, int, void *);
+void *memcpy(void *, const void *, unsigned);
+void f_021720(void) throw();
+void f_021750(void) throw();
+void f_045400(void *) throw();
+void f_04559c(void *) throw();
+int f_0216d8(void) throw();
+void f_0216e8(int) throw();
+int f_0e71d4(int, void *) throw();
+int f_0e7114(int, void *) throw();
+int f_045f8c(void *, void *, int, int) throw();
+
+
+/* @draft 0x04c3c8 us f_04c3c8
+   WHAT IT DOES: offsets the four corner points of entry a1 by (x,y) and stores the scaled min x and max x. */
+void f_04c3c8(char *s, int a1, float x, float y) {
+    if (*(int *)(s + 32) < a1) return;
+    float *f = (float *)(*(char **)(s + 36) + a1 * 172);
+    for (int i = 0; i < 4; i++) {
+        f[2 + 5 * i] = f[23 + i] + x;
+        f[3 + 5 * i] = f[27 + i] + y;
+    }
+    char *e = (char *)f;
+    float lo = f[2];
+    if (f[7] < lo) lo = f[7];
+    if (f[12] < lo) lo = f[12];
+    if (f[17] < lo) lo = f[17];
+    *(int *)(e + 80) = (int)(lo * 0.015625f);
+    float hi = f[2];
+    if (hi < f[7]) hi = f[7];
+    if (hi < f[12]) hi = f[12];
+    if (hi < f[17]) hi = f[17];
+    *(int *)(e + 84) = (int)((hi + 1.0f) * 0.015625f);
+}
+
+/* @implements 0x04d548 us f_04d548
+   WHAT IT DOES: runs the f_0216d8 bracketed pass over the entries of the 172-byte array, dispatching each by its flags to f_045f8c, f_0e7114 or f_0e71d4, then closes with f_0216e8. */
+void f_04d548(char *s) {
+    int loc[4];
+    int v, i;
+    unsigned char *e;
+    f_021720();
+    f_045400(loc);
+    f_021750();
+    e = *(unsigned char **)(s + 36);
+    v = f_0216d8();
+    for (i = 0; i < *(int *)(s + 32); i++, e += 172) {
+        if (e[136]) {
+            v = f_045f8c(loc, e, *(int *)(s + 52), v);
+        } else if (e[164] == 1) {
+            v = f_0e7114(v, e);
+        } else if (e[164] == 2) {
+            v = f_0e71d4(v, e);
+        }
+    }
+    f_0216e8(v);
+    f_021720();
+    f_04559c(loc);
+    f_021750();
+}
+
+/* @draft 0x04c278 us f_04c278
+   WHAT IT DOES: shifts the four corner points of entry a1 so the first lands at (x,y), then stores the scaled min x at +80 and the scaled max x plus one at +84. */
+void f_04c278(char *s, int a1, float x, float y) {
+    if (*(int *)(s + 32) >= a1) {
+    char *e = *(char **)(s + 36) + a1 * 172;
+    float *f = (float *)e;
+    x -= f[23]; y -= f[27];
+    for (int i = 0; i < 4; i++) {
+        f[2 + 5 * i] = f[23 + i] + x;
+        f[3 + 5 * i] = f[27 + i] + y;
+    }
+    float lo = f[2];
+    if (f[7] < lo) lo = f[7];
+    if (f[12] < lo) lo = f[12];
+    if (f[17] < lo) lo = f[17];
+    *(int *)(e + 80) = (int)(lo * 0.015625f);
+    float hi = f[2];
+    if (hi < f[7]) hi = f[7];
+    if (hi < f[12]) hi = f[12];
+    if (hi < f[17]) hi = f[17];
+    *(int *)(e + 84) = (int)((hi + 1.0f) * 0.015625f);
+    }
+}
+/* @draft 0x04bf6c us f_04bf6c
+   WHAT IT DOES: loads the four corner points of entry a1 from the 16-byte records at a2 (floats plus truncated shorts), then stores the scaled min x at +80 and max x plus one at +84. */
+void f_04bf6c(char *s, int a1, float *p) {
+    if (*(int *)(s + 32) >= a1) {
+    char *e = *(char **)(s + 36) + a1 * 172;
+    float *f = (float *)e;
+    for (int i = 0; i < 4; i++) {
+        ((short *)f)[10 * i] = (int)p[2];
+        f[2 + 5 * i] = p[0];
+        ((short *)f)[10 * i + 1] = (int)p[3];
+        f[3 + 5 * i] = p[1];
+        p += 4;
+    }
+    float lo = f[2];
+    if (f[7] < lo) lo = f[7];
+    if (f[12] < lo) lo = f[12];
+    if (f[17] < lo) lo = f[17];
+    *(int *)(e + 80) = (int)(lo * 1.0f);
+    float hi = f[2];
+    if (hi < f[7]) hi = f[7];
+    if (hi < f[12]) hi = f[12];
+    if (hi < f[17]) hi = f[17];
+    *(int *)(e + 84) = (int)((hi + 1.0f) * 1.0f);
+    }
+}
+
+/* @implements 0x045e58 us f_045e58
+   WHAT IT DOES: when the cached value at offset 0 differs from the one at 124 of the descriptor a1, calls f_024aec and updates it; copies the 80-byte descriptor into a block from f_021b38 and, for each index from a1[80] up to a1[84], calls f_118d04 and f_116dfc; returns 0. */
+int f_045e58(int *s, char *a1) {
+    if (*s != *(int *)(a1 + 124)) {
+        f_024aec(*(int *)(a1 + 124));
+        *s = *(int *)(a1 + 124);
+    }
+    void *t = f_021b38(80);
+    __builtin_memcpy(t, a1, 80);
+    int i = *(int *)(a1 + 80);
+    if (i < *(int *)(a1 + 84)) {
+        do {
+            f_118d04(i << 6, 0, 64, 272);
+            f_116dfc(4, 0x80019e, 4, 0, t);
+            i++;
+        } while (i < *(int *)(a1 + 84));
+    }
+    return 0;
+}
+
+/* @draft 0x04c7b8 us f_04c7b8
+   WHAT IT DOES: for the 172-byte entry a1, packs four float channels (scaled by 255 and converted to unsigned bytes) from the four arrays a2,a3,t0,t1 into one word per corner at offset 4 + 20*i. */
+void f_04c7b8(char *s, int a1, float *r, float *g, float *b, float *a) {
+    if (*(int *)(s + 32) >= a1) {
+        unsigned *w = (unsigned *)(*(char **)(s + 36) + a1 * 172 + 4);
+        for (int i = 0; i < 4; i++) {
+            unsigned x = (unsigned char)(unsigned)(r[i] * 255.0f);
+            x |= (unsigned)(unsigned char)(unsigned)(g[i] * 255.0f) << 8;
+            x |= (unsigned)(unsigned char)(unsigned)(b[i] * 255.0f) << 16;
+            x |= (unsigned)(a[i] * 255.0f) << 24;
+            *w = x;
+            w += 5;
+        }
+    }
+}
+
+/* @draft 0x04b724 us f_04b724
+   WHAT IT DOES: tears down the sub-objects owned by the object at s[0]: frees the entry at +236 (clearing its two fields, virtual destructor, f_04e4b4) when s[12] is set, likewise the ones at +228 and +224 under s[8] and s[4], then destroys and frees the object itself, calls virtual slot 1 on the members at +232 and +220 and clears s[0]. */
+void f_04b724(char *s) {
+    char *p = *(char **)s;
+    if (p) {
+        char *a = *(char **)(p + 236);
+        char *e = *(char **)(p + 220);
+        char *c = *(char **)(p + 224);
+        char *b = *(char **)(p + 228);
+        if (a && *(int *)(s + 12)) {
+            if (*(void **)(a + 8)) f_04e4b4(*(void **)(a + 8));
+            *(int *)(a + 8) = 0;
+            if (*(void **)(a + 12)) f_04e4b4(*(void **)(a + 12));
+            *(int *)(a + 12) = 0;
+            VC(a, 0);
+            f_04e4b4(a);
+        }
+        if (b && *(int *)(s + 8)) {
+            VC(b, 0);
+            f_04e4b4(b);
+        }
+        if (c && *(int *)(s + 4)) {
+            VC(c, 0);
+            f_04e4b4(c);
+        }
+        if (p) {
+            f_15b670(p);
+            f_04e4b4(p);
+        }
+        void *d = *(void **)(p + 232);
+        if (d) VC(d, 1);
+        if (e) VC(e, 1);
+        *(int *)s = 0;
+    }
+}
+
+/* @draft 0x049e0c us f_049e0c
+   WHAT IT DOES: positions and draws a text/glyph record: truncates the object's x and y at +48/+52, shifts x by the record's width (full for type 20, half for type 40) via f_046c8c, then draws through f_0477b0 (types 0/20/40) or f_046de0 with the object's four colour floats at +64..+76 scaled by the record's four bytes over 255. */
+void f_049e0c(char *s, unsigned char *r, int a2, char *o) {
+    int x = (int)*(float *)(o + 48);
+    int y = (int)*(float *)(o + 52);
+    unsigned t = *(unsigned short *)(r + 6);
+    if (t == 0) {
+        goto A;
+    } else if (t == 20) {
+        x -= f_046c8c(*(void **)(s + 24), *(int *)r);
+        goto A;
+    } else if (t == 40) {
+        x -= f_046c8c(*(void **)(s + 24), *(int *)r) / 2;
+        goto A;
+    }
+    f_046de0a(*(void **)(s + 24), x, y, *(int *)r, 480, *(int *)(s + 20),
+              *(float *)(o + 64) * ((float)r[20] / 255.0f), *(float *)(o + 68) * ((float)r[21] / 255.0f),
+              *(float *)(o + 72) * ((float)r[22] / 255.0f), *(float *)(o + 76) * ((float)r[23] / 255.0f));
+    return;
+A:
+    f_0477b0a(*(void **)(s + 24), x, y, *(int *)r, 480, *(int *)(s + 20),
+              *(float *)(o + 64) * ((float)r[20] / 255.0f), *(float *)(o + 68) * ((float)r[21] / 255.0f),
+              *(float *)(o + 72) * ((float)r[22] / 255.0f), *(float *)(o + 76) * ((float)r[23] / 255.0f));
+}
+
+/* @draft 0x0451b4 us f_0451b4
+   WHAT IT DOES: one-time init of the SWG player's heap: returns 1 when D_241000 is already set; otherwise allocates the a0-byte arena (f_153558), sets up the 10-bucket free-list table (memset), computes the aligned remaining size and publishes the arena globals, sets D_241000 and returns 0. */
+int f_0451b4(unsigned a0) {
+    if (D_241000) return 1;
+    void *p = f_153558(a0);
+    D_241004 = p;
+    D_291680 = (unsigned)p;
+    D_291424 = 10;
+    D_291420 = a0;
+    D_291744 = f_04d82c(16) - 1;
+    unsigned n = D_291424 << 2;
+    D_291690 = (unsigned *)D_291680;
+    memset((void *)D_291680, 0, n);
+    unsigned e = (D_291680 + n + 15) & ~15u;
+    unsigned r = D_291420 - (e - D_291680);
+    D_291668 = r;
+    D_241008 = a0;
+    D_241000 = 1;
+    D_29166c = r;
+    D_291748 = e;
+    D_29174c = 0;
+    D_291410 = 0;
+    return 0;
+}
+
+}
+}
