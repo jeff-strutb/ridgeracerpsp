@@ -735,3 +735,22 @@ extern "C" void f_0a9248(CarPhys *p)
         ((int *)((char *)p + 272))[i] = d;
     }
 }
+
+/* @draft 0x0af064 us f_0af064
+   WHAT IT DOES: Blends the four wheel records of the car p toward those of q by the factor t: a negative surface index is taken from q, the wheel angle moves along the shortest turn (f_0af380) and is wrapped (f_0af478), the surface id is copied and the wheel height is interpolated linearly.
+   Remaining difference: retail loads p's height before q's for the final blend; here q's comes first. */
+extern "C" void f_0af064(CarPhys *p, CarPhys *q, float t)
+{
+    for (int i = 0; i < 4; i++) {
+        if (((int *)((char *)p + 496))[i] < 0)
+            ((int *)((char *)p + 496))[i] = ((int *)((char *)q + 496))[i];
+        float a = ((float *)((char *)q + 288))[i];
+        float b = f_0af380(&a, &((float *)((char *)p + 288))[i]) * t + ((float *)((char *)p + 288))[i];
+        float r = f_0af478(&b);
+        float c = ((float *)((char *)p + 352))[i];
+        float e = (((float *)((char *)q + 352))[i] - c) * t + c;
+        ((unsigned short *)((char *)p + 368))[i] = ((unsigned short *)((char *)q + 368))[i];
+        ((float *)((char *)p + 288))[i] = r;
+        ((float *)((char *)p + 352))[i] = e;
+    }
+}
