@@ -12241,3 +12241,325 @@ int f_04699c(int unused, int ox, int oy, char *P, int row0, int *tab, float c1, 
 }
 }
 }
+
+/* ---- swg8c ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 wave 4, worker swg8c */
+namespace swg8c {
+extern "C" {
+
+void f_04ed28(void *);
+void f_05f64c(void *, void *, void *);
+void f_05e394(void *, void *, void *, void *);
+struct Ref {
+    char *p;
+    int *rc;
+    ~Ref() { f_04ed28(this); }
+};
+
+void f_05e4a8(void *, void *) throw();
+void f_04eee8(void *s, void *tag);
+int sceKernelCpuSuspendIntr(void);
+void sceKernelCpuResumeIntr(int);
+extern char D_1a4d14[];
+struct G2 { int w[4]; ~G2() {} };
+struct Str {
+    char *p;
+    Str() {}
+    Str(Str &a) { f_05e4a8(this, &a); }
+    Str(const Str &a) { f_05e4a8(this, (Str *)&a); }
+    ~Str() {
+        G2 g;
+        char *s0 = p;
+        char *s2 = s0 - 12;
+        int intr = sceKernelCpuSuspendIntr();
+        volatile int *c = (volatile int *)(s0 - 4);
+        int s1 = *c;
+        *c += -1;
+        sceKernelCpuResumeIntr(intr);
+        if (s1 <= 0) f_04eee8(s2, &g);
+    }
+};
+typedef Str (*VFs)(char *);
+static inline void *vf8(void *p, int i) { return (*(void ***)p)[i]; }
+int f_15e078(int, char *);
+
+void *memmove(void *, const void *, unsigned);
+void *f_04dfa0(int);
+void f_04e4b4(void *);
+void f_06544c(unsigned *, unsigned *, const unsigned *);
+unsigned *f_06547c(unsigned *, unsigned, const unsigned *);
+unsigned *f_0618ec(unsigned *, unsigned, const unsigned *);
+struct Vec8 { int pad; unsigned *b, *e, *c; };
+inline const unsigned &mx8(const unsigned &a, const unsigned &b) { if (a < b) return b; return a; }
+struct It { char *n; It() {} It(const It &o) { n = o.n; } };
+
+/* @implements 0x059000 us f_059000
+   WHAT IT DOES: pops the argument stack at +328 once, loads the next top as a reference-counted handle, pops it, calls virtual slot 22 on the object and, when it returns nonzero, pops four more entries; then pops once more and releases the handle. */
+void f_059000(char *s) {
+    char *t = s + 328;
+    It it, r, arg;
+    Ref a;
+    it.n = *(char **)(t + 4);
+    arg.n = (it.n = *(char **)(it.n + 4));
+    f_05f64c(&r, t, &arg);
+    arg.n = *(char **)(t + 4);
+    char *nd = *(char **)(arg.n + 4);
+    a.rc = *(int * volatile *)(nd + 12);
+    a.p = *(char * volatile *)(nd + 8);
+    arg.n = nd;
+    if (a.rc) *a.rc += 1;
+    arg.n = *(char **)(t + 4);
+    it.n = (arg.n = *(char **)(arg.n + 4));
+    f_05f64c(&r, t, &it);
+    if (((int (*)(void *))(*(void ***)a.p)[22])(a.p)) {
+        arg.n = *(char **)(t + 4);
+        it.n = (arg.n = *(char **)(arg.n + 4));
+        f_05f64c(&r, t, &it);
+        arg.n = *(char **)(t + 4);
+        it.n = (arg.n = *(char **)(arg.n + 4));
+        f_05f64c(&r, t, &it);
+        arg.n = *(char **)(t + 4);
+        it.n = (arg.n = *(char **)(arg.n + 4));
+        f_05f64c(&r, t, &it);
+        arg.n = *(char **)(t + 4);
+        it.n = (arg.n = *(char **)(arg.n + 4));
+        f_05f64c(&r, t, &it);
+    }
+    arg.n = *(char **)(t + 4);
+    it.n = (arg.n = *(char **)(arg.n + 4));
+    f_05f64c(&r, t, &it);
+}
+
+int memcmp(const void *, const void *, unsigned) throw();
+void f_064c6c(void *);
+int *f_0650fc(int *, char *, char *, char *, void *);
+inline const unsigned &min8(const unsigned &a, const unsigned &b) { if (b < a) return b; return a; }
+struct Sp8 { char *p; };
+inline bool cmp8(Sp8 &ka, Sp8 &kb) {
+    char *ap = ka.p;
+    char *bp = kb.p;
+    const unsigned a = *(unsigned *)(ap - 12);
+    const unsigned b = *(unsigned *)(bp - 12);
+    int r = memcmp(ap, bp, min8(a, b));
+    if (!r) r = a - b;
+    return r < 0;
+}
+struct NodeIt8 { char *n; int pad[3]; };
+struct InsRes8 { char *it; unsigned char ok; };
+
+/* @draft 0x05e540 us f_05e540
+   Remaining difference: the string length compare reloads its lengths after memcmp and the frame is 16 bytes short.
+   WHAT IT DOES: unique insert into the string keyed tree: walks down comparing the key string with memcmp and the length difference, checks the predecessor for an equal key, and either inserts through f_0650fc (returning the new node and 1) or returns the existing node and 0. */
+InsRes8 *f_05e540(InsRes8 *out, char *t, Sp8 *key) {
+    char *x;
+    char *y = *(char **)(t + 4);
+    x = *(char **)(y + 4);
+    int comp = 1;
+    Sp8 k = *key;
+    while (x) {
+        y = x;
+        comp = cmp8(k, *(Sp8 *)(x + 16));
+        x = comp ? *(char **)(x + 8) : *(char **)(x + 12);
+    }
+    NodeIt8 j;
+    NodeIt8 lm;
+    NodeIt8 r;
+    j.n = y;
+    if (comp) {
+        lm.n = *(char **)(*(char **)(t + 4) + 8);
+        if (j.n != lm.n)
+            f_064c6c(&j);
+        else
+            goto ins;
+    }
+    if (!cmp8(*(Sp8 *)(j.n + 16), *key)) {
+        out->ok = 0;
+        out->it = j.n;
+        return out;
+    }
+ins:
+    {
+        f_0650fc((int *)&r, t, x, y, key);
+        out->ok = 1;
+        out->it = r.n;
+    }
+    return out;
+}
+
+extern char D_1a4320[];
+struct ObL {
+    void *vt; int x; int c;
+    static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+    static void operator delete(void *p) { f_04e4b4((unsigned *)p - 1); }
+    ObL(const Str &s) { vt = D_1a4320; x = 0; c = *(int *)(s.p - 12); }
+};
+struct RefN {
+    char *p; int *rc;
+    RefN(char *o) { p = o; rc = 0; if (o) { int *c = (int *)f_04dfa0(4); *c = 1; rc = c; } }
+    ~RefN() { f_04ed28(this); }
+};
+static inline void ins8(It *out, char *t, It *pos, const RefN &h) {
+    pos->n = *(char **)(t + 4);
+    f_05e394(out, t, pos, (void *)&h);
+}
+
+extern char D_1a3958[], D_1a3ad0[];
+void f_060c80(void *, void *, void *);
+void f_05da50(void *);
+void f_04e65c(void *, void *, int);
+struct Lm { int pad; char *hd; ~Lm() { f_05da50(this); f_04e4b4(hd); } };
+struct Vb { int pad; char *b, *e, *c; ~Vb() { f_04e65c(b, e, 0); if (b) f_04e4b4(b); } };
+struct Vc {
+    int pad; char *b, *e, *c;
+    ~Vc() {
+        for (char *p = b; p != e; p += 44) ((void (*)(void *))vf8(p, 0))(p);
+        if (b) f_04e4b4(b);
+    }
+};
+struct Tmp16 { int w[4]; ~Tmp16() {} };
+struct Base9 { void *vt; ~Base9() { vt = D_1a3ad0; } };
+struct Obj9 : Base9 {
+    int w[2];
+    Vc c;
+    Vb b;
+    Lm a;
+    ~Obj9() {
+        vt = D_1a3958;
+        char *s0 = (char *)this + 44;
+        void *out[4];
+        void *x;
+        x = *(void **)(*(char **)(s0 + 4));
+        void *y = *(void **)x;
+        out[0] = y;
+        Tmp16 tmp;
+        f_060c80(out, &x, this);
+        f_05da50(s0);
+    }
+};
+
+void f_059848(void *);
+struct Obj9b : Base9 {
+    int w[2];
+    Vc c;
+    Vb b;
+    Lm a;
+    static void operator delete(void *p) { f_04e4b4(p); }
+    ~Obj9b() {
+        vt = D_1a3958;
+        f_059848(this);
+    }
+};
+
+/* @draft 0x058a44 us f_058a44
+   Remaining difference: one word, the inlined string destructor on the unwind path uses blez where retail has blezl (branch likely).
+   WHAT IT DOES: pops the top argument as a handle; asks the object at the next entry of the list at +344 (virtual slot 9) for a value, then if the handle's type (slot 6) is 7 and the value is nonzero, fetches its name string (slot 21), terminates it and passes it to f_15e078, otherwise returns slot 23 of the handle minus one; returns -1 for the null value case. */
+int f_058a44(char *s) {
+    char *t = s + 328;
+    Ref a;
+    It it, r, arg;
+    it.n = *(char **)(t + 4);
+    char *nd = *(char **)(it.n + 4);
+    a.rc = *(int * volatile *)(nd + 12);
+    a.p = *(char * volatile *)(nd + 8);
+    it.n = nd;
+    if (a.rc) *a.rc += 1;
+    it.n = *(char **)(t + 4);
+    arg.n = (it.n = *(char **)(it.n + 4));
+    f_05f64c(&r, t, &arg);
+    arg.n = *(char **)(s + 344);
+    char *n2 = *(char **)(arg.n + 4);
+    char *o = *(char **)(n2 + 8);
+    arg.n = n2;
+    int obj = ((int (*)(void *))vf8(o, 9))(o);
+    int res = -1;
+    if (((int (*)(void *))vf8(a.p, 6))(a.p) == 7) {
+        if (obj) {
+            Str str = (*(VFs *)(*(char **)a.p + 84))(a.p);
+            str.p[*(int *)(str.p - 12)] = D_1a4d14[0];
+            res = f_15e078(obj, str.p);
+        }
+    } else {
+        res = ((int (*)(void *))vf8(a.p, 23))(a.p) - 1;
+    }
+    return res;
+}
+
+/* @draft 0x05f774 us f_05f774
+   Remaining difference: register allocation only (retail keeps the vector in s2 and reuses s1 for the element count in the in-place path; here x lives in s4), 4 bytes longer.
+   WHAT IT DOES: vector fill insert: inserts n copies of *x at pos in a vector of 4-byte elements; when the spare capacity suffices it shifts the tail up with memmove and fills (uninitialized fill for the part past the old end), otherwise allocates a block of size old + max(old, n), memmoves the head, fills, memmoves the tail, frees the old block and updates begin, end and capacity. */
+void f_05f774(Vec8 *v, unsigned *pos, unsigned n, const unsigned *x) {
+    if (n != 0) {
+        if ((unsigned)(v->c - v->e) >= n) {
+            unsigned xc = *x;
+            unsigned *old = v->e;
+            unsigned ab = (char *)old - (char *)pos;
+            unsigned after = (int)ab >> 2;
+            if (n < after) {
+                memmove(old, old - n, (char *)old - (char *)(old - n));
+                v->e += n;
+                memmove(old - (old - n - pos), pos, (old - n - pos) * 4);
+                f_06544c(pos, pos + n, &xc);
+            } else {
+                f_06547c(old, n - after, &xc);
+                v->e += n - after;
+                memmove(v->e, pos, ab);
+                v->e += after;
+                f_06544c(pos, old, &xc);
+            }
+        } else {
+            unsigned osz = v->e - v->b;
+            unsigned len = osz + mx8(osz, n);
+            unsigned *nb = (unsigned *)f_04dfa0(len * 4);
+            unsigned bytes = (char *)pos - (char *)v->b;
+            memmove(nb, v->b, bytes);
+            unsigned *p = f_0618ec((unsigned *)((char *)nb + bytes), n, x);
+            unsigned tail = (char *)v->e - (char *)pos;
+            memmove(p, pos, tail);
+            if (v->b) f_04e4b4(v->b);
+            v->c = nb + len;
+            v->e = (unsigned *)((char *)p + tail);
+            v->b = nb;
+        }
+    }
+}
+
+/* @draft 0x057f2c us f_057f2c
+   Remaining difference: retail guards the allocated block with a conditional-free flag (s6) across the name call and keeps the string at sp+96 with its tag at sp+80; here the new-expression leaves no guard (512 vs 544 bytes).
+   WHAT IT DOES: pops the top argument as a handle, asks its object (virtual slot 21) for a name string, builds a 12-byte value object (vtable D_1a4320, zero, the string's length) wrapped in a counted handle and pushes it on the argument stack; frees the string and the temporaries. */
+void f_057f2c(char *s) {
+    char *t = s + 328;
+    Ref a;
+    It it, r, arg;
+    it.n = *(char **)(t + 4);
+    char *nd = *(char **)(it.n + 4);
+    a.rc = *(int * volatile *)(nd + 12);
+    a.p = *(char * volatile *)(nd + 8);
+    it.n = nd;
+    if (a.rc) *a.rc += 1;
+    it.n = *(char **)(t + 4);
+    arg.n = (it.n = *(char **)(it.n + 4));
+    f_05f64c(&r, t, &arg);
+    ins8(&arg, t, &r, RefN((char *)new ObL((*(VFs *)(*(char **)a.p + 84))(a.p))));
+}
+
+/* @draft 0x059890 us f_059890
+   Remaining difference: 452 vs 508 bytes; retail has a separate unwind stub per member-destructor call site (six small landing pads), here they merge; the vtable store is scheduled differently.
+   WHAT IT DOES: destructor: sets the derived vtable D_1a3958, empties the list at +44 (f_060c80 over its range, then f_05da50 and freeing its head), destroys the byte-range vector at +28, runs the virtual destructor slot of every 44-byte element of the vector at +12 and frees it, then sets the base vtable D_1a3ad0. */
+void f_059890(Obj9 *o) {
+    o->~Obj9();
+}
+
+/* @draft 0x059a8c us f_059a8c
+   Remaining difference: 424 vs 488 bytes; same missing per-call-site unwind stubs as f_059890.
+   WHAT IT DOES: deleting destructor of the object destroyed by f_059890: sets the derived vtable D_1a3958, empties the list at +44 through f_059848, destroys the members (list, byte-range vector, virtual-destructor element vector), sets the base vtable D_1a3ad0 and frees the object with f_04e4b4. */
+void f_059a8c(Obj9b *o) {
+    o->~Obj9b();
+    Obj9b::operator delete(o);
+}
+
+}  // extern "C"
+}  // namespace swg8c
