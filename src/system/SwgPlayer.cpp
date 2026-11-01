@@ -9370,3 +9370,491 @@ void f_058c10(char *s) {
 
 }  // extern "C"
 }  // namespace swg6c
+
+/* ---- swg6b ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 fragment swg6b: large untagged functions of the SWG player (big_b). */
+namespace swg6b {
+extern "C" {
+#define Q6(o, off) (*(int *)((char *)(o) + (off)))
+void *f_04dfa0(unsigned); void f_04ed28(void *); void f_04e4b4(void *); void f_04eee8(void *, void *);
+void f_05f4d0(void *, void *, void *); void f_05daa4(void *, void *);
+int f_15c0f0(int, int); int f_15c07c(int, int, void *);
+void f_05f1f4(void *, void *, void *); void f_05f238(void *, void *, void *, void *);
+void f_05a3e8(void *, void *, void *); void f_05e540(void *, void *, void *);
+int sprintf(char *, const char *, ...);
+unsigned sceKernelCpuSuspendIntr(void); void sceKernelCpuResumeIntr(unsigned);
+extern char D_1a3760[], D_1a41c0[];
+struct Em6 { ~Em6() {} };
+struct Hd6 { int *p; int *c; ~Hd6() { f_04ed28(this); } };
+struct Str6 {
+  char *p;
+  ~Str6() {
+    Em6 g; char *s0 = p; char *s2 = s0 - 12;
+    unsigned intr = sceKernelCpuSuspendIntr();
+    volatile int *c = (volatile int *)(s0 - 4);
+    int s1 = *c; *c += -1;
+    sceKernelCpuResumeIntr(intr);
+    if (s1 <= 0) f_04eee8(s2, &g);
+  }
+};
+/* the 68-byte object built by f_050e04: a vtable, a tree header, the owner key and a sub-object */
+struct Obj6 {
+  static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+  static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+  Obj6(void *owner) {
+    Em6 e;
+    Q6(this, 0) = (int)D_1a3760;
+    Q6(this, 4) = 0; Q6(this, 12) = 0;
+    int *n = (int *)f_04dfa0(40);
+    Q6(this, 12) = (int)n; n[1] = 0;
+    Q6(this, 0) = (int)D_1a41c0;
+    n[2] = (int)n; n[3] = (int)n;
+    Q6(this, 24) = (int)owner;
+    Q6(this, 16) = 0; n[0] = 0;
+    *((char *)this + 28) = 0;
+    Q6(this, 36) = 0; Q6(this, 40) = 0; Q6(this, 44) = 0;
+    int pad[16];
+    f_05f4d0((char *)this + 48, (char *)&owner - 4, pad);
+  }
+};
+struct Pr6 {
+  Obj6 *p; int *cnt;
+  Pr6(Obj6 *o) { p = o; cnt = 0; if (o) { cnt = (int *)f_04dfa0(4); *cnt = 1; } }
+  ~Pr6() { f_04ed28(this); }
+};
+/* find the node for *kp in the tree, inserting a default entry (key, 4 zero-ish words, empty handle) when absent */
+static inline char *slot6(char *tree, int *kp) {
+  char *it;
+  f_05f1f4(&it, tree, kp);
+  char *end = *(char **)(tree + 4);
+  if (it == end || (unsigned)*kp < (unsigned)Q6(it, 16)) {
+    int tmp[6]; char *hint = it, *res;
+    tmp[0] = 0; tmp[1] = -1; tmp[2] = 0; tmp[3] = 0;
+    f_05daa4(&tmp[4], 0);
+    int pr[7];
+    pr[0] = *kp; pr[1] = tmp[0]; pr[2] = tmp[1]; pr[3] = tmp[2]; pr[4] = tmp[3]; pr[5] = tmp[4]; pr[6] = tmp[5];
+    if (pr[6]) ++*(int *)pr[6];
+    f_05f238(&res, tree, &hint, pr);
+    it = res;
+    f_04ed28(&pr[5]);
+    f_04ed28(&tmp[4]);
+  }
+  return it;
+}
+
+/* @draft 0x050e04 us f_050e04
+   WHAT IT DOES: builds a new 68-byte child object keyed by the argument object and stores it at +332 of that object; hands the object a copy of the player's counted handle (+372/+376) through virtual slot 14; then registers a four-word record {player, id, tree, name} in the map at +348 under the argument object's key (the id comes from f_15c0f0 for the argument's slot at +164, or from a generated "_mc%p_" name looked up through f_15c07c and the string map at +8), and finally, when the argument has a parent at +20, looks that parent up (inserting a default if absent) and calls virtual slot 14 of the parent's registered handle with the record and the object holder; with no parent the holder is stored into the player at +280.
+   Remaining difference: not scored; raw transcription of the tree insert helpers with open-coded copies, landing pads and register allocation unmatched. */
+void f_050e04(char *self, char *P) {
+  Pr6 pr(new Obj6(P));
+  Q6(P, 332) = (int)pr.p;
+  Hd6 h; h.p = (int *)Q6(self, 372); h.c = (int *)Q6(self, 376);
+  if (h.c) ++*h.c;
+  ((void (*)(void *, void *, void *))(*(void ***)pr.p)[14])(pr.p, self + 152, &h);
+  int rec[4];
+  rec[0] = 0; rec[1] = -1; rec[2] = 0; rec[3] = 0;
+  int id = Q6(P, 164);
+  if (id == -1) {
+    char buf[64];
+    sprintf(buf, "_mc%p_", P);
+    int r = f_15c07c(Q6(self, 4), 7, buf);
+    if (r == -1) {
+      Str6 s; char tag[16];
+      f_05a3e8(&s, buf, tag);
+      char *res[2];
+      f_05e540(res, self + 8, &s);
+      rec[0] = (int)self; rec[1] = r; rec[2] = (int)(self + 8); rec[3] = (int)(res[0] + 16);
+    } else {
+      rec[0] = (int)self; rec[1] = r; rec[2] = 0; rec[3] = 0;
+    }
+  } else {
+    int r = f_15c0f0(Q6(self, 4), id);
+    rec[0] = (int)self; rec[1] = r; rec[2] = 0; rec[3] = 0;
+  }
+  char *tree = self + 348;
+  int key = (int)P;
+  char *node = slot6(tree, &key);
+  {
+    Hd6 t; t.p = pr.p ? (int *)pr.p : 0; t.c = pr.cnt;
+    if (t.c) ++*t.c;
+    Hd6 t2 = t; if (t2.c) ++*t2.c;
+    Q6(node, 20) = rec[0]; Q6(node, 24) = rec[1]; Q6(node, 28) = rec[2]; Q6(node, 32) = rec[3];
+    if (node + 36 != (char *)&t2) {
+      f_04ed28(node + 36);
+      Q6(node, 40) = (int)t2.c; Q6(node, 36) = (int)t2.p;
+      if (t2.c) ++*t2.c;
+    }
+  }
+  int par = Q6(P, 20);
+  if (par) {
+    int pk = par;
+    char *pn = slot6(tree, &pk);
+    Hd6 c; c.p = (int *)pr.p; c.c = pr.cnt; if (c.c) ++*c.c;
+    void *o = (void *)Q6(pn, 36);
+    ((void (*)(void *, void *, void *))(*(void ***)o)[14])(o, rec, &c);
+  } else {
+    char *m = self + 280;
+    if (m != (char *)&pr) {
+      f_04ed28(m);
+      Q6(m, 4) = (int)pr.cnt; Q6(self, 280) = (int)pr.p;
+      if (pr.cnt) ++*pr.cnt;
+    }
+  }
+}
+
+
+void f_05f64c(void *, void *, void *); void f_05e394(void *, void *, void *, void *);
+void f_05e4a8(void *, void *); int f_15c098(int, int);
+void f_05a44c(void *, const char *, void *); void f_05a578(void *, void *, void *); void f_05fadc(void *, void *);
+extern char D_291400[], D_1a43d0[], D_1a2e9c[], D_1a2ea0[];
+struct Ob36 {
+  static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+  static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+  Ob36(void *path) {
+    Em6 e;
+    Q6(this, 0) = (int)D_1a43d0; Q6(this, 16) = -1; Q6(this, 4) = 0;
+    *((char *)this + 8) = 1;
+    Q6(this, 12) = 0; Q6(this, 24) = 0;
+    f_05e4a8((char *)this + 28, path);
+  }
+};
+struct Pr36 {
+  Ob36 *p; int *cnt;
+  Pr36(Ob36 *o) { p = o; cnt = 0; if (o) { cnt = (int *)f_04dfa0(4); *cnt = 1; } }
+  ~Pr36() { f_04ed28(this); }
+};
+/* @draft 0x051ecc us f_051ecc
+   WHAT IT DOES: builds the dotted path name of a chain of parent objects: starting from a copy of the handle two links down the chain at +328, walks the owner chain (virtual slot 9 of the handle, then the parent link at +20 of each registered record found or defaulted in the map at +348), prepending each record's name (the stored string, or one built from the owner's id through f_15c098) and a separator chosen by whether more parents follow; then allocates a 36-byte named object holding the resulting string and hands it to f_05e394 with the +328 sub-object.
+   Remaining difference: not scored beyond the draft; the empty-string setup is open-coded and the iterator copies, landing pads and register allocation are not matched. */
+void f_051ecc(char *self) {
+  char *q = self + 328;
+  Hd6 h; int out[4]; int b;
+  int a = Q6(q, 4);
+  int *v = *(int **)(a + 4);
+  h.p = (int *)v[2]; h.c = (int *)v[3]; if (h.c) ++*h.c;
+  b = *(int *)(a + 4);
+  f_05f64c(out, q, &b);
+  Str6 path;
+  unsigned intr = sceKernelCpuSuspendIntr();
+  int *g = (int *)D_291400;
+  int old = g[2]; g[2] = old + 1;
+  sceKernelCpuResumeIntr(intr);
+  path.p = D_291400 + 12;
+  int s0 = ((int (*)(void *))(*(void ***)h.p)[9])(h.p);
+  if (s0) {
+    char *tree = self + 348;
+    do {
+      int key = s0;
+      char *node = slot6(tree, &key);
+      s0 = Q6(s0, 20);
+      Str6 nm, t1, t2;
+      if (Q6(node, 24) == -1) {
+        f_05e4a8(&nm, (void *)Q6(node, 32));
+      } else {
+        int o = Q6(node, 20);
+        int r = f_15c098(Q6(o, 4), 7);
+        char tag[16];
+        f_05a3e8(&nm, (void *)r, tag);
+      }
+      f_05a44c(&t1, s0 ? D_1a2ea0 : D_1a2e9c, &nm);
+      f_05a578(&t2, &t1, &path);
+      f_05fadc(&path, &t2);
+    } while (s0);
+  }
+  Pr36 pr(new Ob36(&path));
+  int out2[4]; int a2 = Q6(q, 4);
+  f_05e394(out2, q, &a2, &pr);
+}
+
+
+void *f_154448(void *, void *, void *, int); void *f_15fa60(int, void *); void f_15fb50(void *, int);
+void *f_05db08(int); void f_05f374(void *, void *, int); void f_05dc90(void *, void *); void f_05daec(void *);
+char *f_05f0b8(void *, void *); void f_05f524(void *, void *, void *); void f_05df24(void *, void *); void f_05db68(void *);
+void f_05f6a8(void *, int, void *); void f_05f954(void *, void *, void *); void f_05f998(void *, void *, void *, void *);
+extern char D_1a4900[], D_1a493c[];
+struct Rc4 { int w[4]; };
+/* take the counted handle two links down the chain at q+4 (what f_05f64c is then asked about) */
+static inline void grab6(Hd6 &h, char *q, void *out) {
+  int a = Q6(q, 4);
+  int *v = *(int **)(a + 4);
+  h.p = (int *)v[2]; h.c = (int *)v[3];
+  if (h.c) ++*h.c;
+  int b = *(int *)(a + 4);
+  f_05f64c(out, q, &b);
+}
+/* @draft 0x0517f8 us f_0517f8
+   WHAT IT DOES: takes three copies of the counted handle two links down the chain at +328; finds the registered parent of the object chain (virtual slot 9, f_15fa60), builds a 64-byte child object (f_05f374) wrapped in a counted handle, stores it at +332 of the child's owner, hands it the player's handle (+372) through virtual slot 14 and records {record, handle} in the map at +348; when the owner has a parent, looks that parent up in the same map (defaulting it), casts its handle's object with __dynamic_cast, notifies it through virtual slot 14 with the record, grows its element vector (+32) to the slot index (virtual slot 23 of the first handle, minus 16384 when not below it), stores the owner there and records the index in its map at +48.
+   Remaining difference: not scored beyond the draft; temporaries are open-coded, landing pads and register allocation are not matched. */
+void f_0517f8(char *self) {
+  char *q = self + 328;
+  Hd6 h0, h1, h2; int o0[4];
+  grab6(h0, q, o0); grab6(h1, q, o0); grab6(h2, q, o0);
+  int s0 = ((int (*)(void *))(*(void ***)h2.p)[9])(h2.p);
+  Rc4 r96 = ((Rc4 (*)(void *, void *))(*(void ***)h1.p)[20])(h1.p, self);
+  int s3 = ((int (*)(void *))(*(void ***)h0.p)[23])(h0.p);
+  if (s3 >= 16384) s3 -= 16384;
+  if (s0) {
+    int *t = (int *)Q6(self, 344);
+    void *a1 = (void *)((int *)t[1])[2];
+    ((int (*)(void *))(*(void ***)a1)[9])(a1);
+    char *P = (char *)f_15fa60(s0, a1);
+    int parent = Q6(P, 20);
+    char *s5 = 0;
+    if (parent) {
+      char *tree = self + 348;
+      char *node = slot6(tree, &parent);
+      void *n = (void *)Q6(node, 36);
+      s5 = n ? (char *)f_154448(n, D_1a4900, D_1a493c, 0) : 0;
+      char *vec = s5 + 32;
+      unsigned sz = (unsigned)(Q6(vec, 8) - Q6(vec, 4)) >> 2;
+      void *e = 0;
+      if ((unsigned)s3 < sz) e = (void *)((int *)Q6(s5, 36))[s3];
+      if (e) f_15fb50(e, 0);
+    }
+    void *o = f_05db08(64);
+    f_05f374(o, P, 1);
+    Hd6 r; f_05daa4(&r, o);
+    Q6(P, 332) = (int)r.p;
+    char t1[8];
+    f_05dc90(t1, self + 372);
+    ((void (*)(void *, void *, void *))(*(void ***)r.p)[14])(r.p, self + 152, t1);
+    f_05daec(t1);
+    int *val = (int *)f_05f0b8(self + 348, &P);
+    Rc4 rc = r96;
+    char t2[8]; f_05dc90(t2, &r);
+    int ent[8];
+    f_05f524(ent, &rc, t2);
+    val[0] = ent[0]; val[1] = ent[1]; val[2] = ent[2]; val[3] = ent[3];
+    f_05df24(val + 4, ent + 4);
+    f_05db68(ent);
+    f_05daec(t2);
+    if (parent) {
+      char t3[8];
+      f_05dc90(t3, &r);
+      ((void (*)(void *, void *, void *))(*(void ***)s5)[14])(s5, &r96, t3);
+      f_05daec(t3);
+      char *vec = s5 + 32;
+      unsigned sz = (unsigned)(Q6(vec, 8) - Q6(vec, 4)) >> 2;
+      int Pv = (int)P;
+      if (!((unsigned)s3 < sz)) { int zero = 0; f_05f6a8(vec, s3 + 1, &zero); }
+      ((int *)Q6(s5, 36))[s3] = Pv;
+      char *m = s5 + 48;
+      char *it; f_05f954(&it, m, &Pv);
+      char *end = *(char **)(m + 4);
+      if (it == end || (unsigned)Pv < (unsigned)Q6(it, 16)) {
+        int pr[2]; char *hint = it, *res;
+        pr[0] = Pv; pr[1] = 0;
+        f_05f998(&res, m, &hint, pr);
+        it = res;
+      }
+      Q6(it, 20) = s3;
+    }
+    f_05daec(&r);
+  }
+}
+
+
+void f_05b780(void *, int); void f_05b858(void *, void *); void f_06053c(void *, void *, void *); void f_04ea4c(void *, void *, void *);
+extern char D_1a3fb0[], D_1a3698[];
+struct Pt6 {
+  void *p; int *cnt;
+  Pt6(void *o) { p = o; cnt = 0; if (o) { cnt = (int *)f_04dfa0(4); *cnt = 1; } }
+  ~Pt6() { f_04ed28(this); }
+};
+static inline void tree6(void *o, int base) {
+  int *n = (int *)f_04dfa0(40);
+  Q6(o, base + 4) = (int)n; n[1] = 0;
+}
+struct ObA6 {
+  static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+  static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+  ObA6(void *a, void *b, int n) {
+    Em6 e;
+    Q6(this, 0) = (int)D_1a3760; Q6(this, 4) = 0; Q6(this, 12) = 0;
+    int *nd = (int *)f_04dfa0(40);
+    Q6(this, 12) = (int)nd; nd[1] = 0;
+    Q6(this, 0) = (int)D_1a3fb0;
+    nd[2] = (int)nd; Q6(this, 16) = 0; nd[3] = (int)nd;
+    Q6(this, 28) = (int)b; nd[0] = 0; Q6(this, 24) = (int)a;
+    Q6(this, 36) = 0; Q6(this, 40) = 0; Q6(this, 44) = 0;
+    f_05b780((char *)this + 32, n);
+  }
+  ObA6(ObA6 *src) {
+    Em6 e;
+    Q6(this, 0) = (int)D_1a3760; Q6(this, 4) = 0; Q6(this, 12) = 0;
+    int *nd = (int *)f_04dfa0(40);
+    Q6(this, 12) = (int)nd; nd[1] = 0;
+    Q6(this, 0) = (int)D_1a3fb0;
+    Q6(this, 16) = 0; nd[2] = (int)nd;
+    Q6(this, 36) = 0; Q6(this, 40) = 0;
+    nd[3] = (int)nd; Q6(this, 24) = Q6(src, 24); Q6(this, 28) = Q6(src, 28); nd[0] = 0;
+    Q6(this, 44) = 0;
+    if (Q6(src, 36) != Q6(src, 40)) f_05b858((char *)this + 32, (char *)src + 32);
+  }
+};
+struct ObB6 {
+  static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+  static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+  ObB6() {
+    Em6 e;
+    Q6(this, 0) = (int)D_1a3760; Q6(this, 4) = 0; Q6(this, 12) = 0;
+    int *nd = (int *)f_04dfa0(40);
+    Q6(this, 12) = (int)nd; nd[1] = 0;
+    Q6(this, 0) = (int)D_1a3698;
+    nd[2] = (int)nd; Q6(this, 16) = 0; nd[3] = (int)nd; nd[0] = 0;
+    int tag[16]; int junk;
+    f_04ea4c((char *)this + 24, &junk, tag);
+  }
+};
+/* @draft 0x056390 us f_056390
+   WHAT IT DOES: builds three small ref-counted tree objects: object A (52 bytes, owner and extra key, an n-entry vector of unaligned little-endian words read from the byte buffer), object B (60 bytes, an empty second tree) whose virtual slot 42 is called with the player, and object C (a copy of A); registers B at +136 through B's virtual slot 14 and B again at +120 through A's slot 14, then either (id == -1) hands A to f_05e394 with the +328 sub-object, or sends the record {player, id} and A to virtual slot 14 of the object two links down the player's chain at +344.
+   Remaining difference: not scored beyond the draft; the vector push_back is open-coded and landing pads, temporaries and register allocation are not matched. */
+void f_056390(char *self, void *x, int id, int n, const unsigned char *bytes) {
+  ObA6 *A = new ObA6(self, x, n);
+  int *v = (int *)((char *)A + 32);
+  int val;
+  for (int i = 0; i < n; i++) {
+    val = bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24);
+    int *end = (int *)v[2];
+    if (end == (int *)v[3]) f_06053c(v, end, &val);
+    else { if (end) *end = val; v[2] = (int)(end + 1); }
+    bytes += 4;
+  }
+  ObB6 *B = new ObB6;
+  ((void (*)(void *, void *))(*(void ***)B)[42])(B, self);
+  ObA6 *C = new ObA6(A);
+  {
+    Pt6 pc(C);
+    ((void (*)(void *, void *, void *))(*(void ***)B)[14])(B, self + 136, &pc);
+  }
+  {
+    Pt6 pb(B);
+    ((void (*)(void *, void *, void *))(*(void ***)A)[14])(A, self + 120, &pb);
+  }
+  if (id == -1) {
+    char *q = self + 328;
+    Pt6 pa(A);
+    int out[8]; int a = Q6(q, 4);
+    f_05e394(out + 6, q, &a, &pa);
+  } else {
+    int *t = (int *)Q6(self, 344);
+    int *v1 = (int *)t[1];
+    int rec[4];
+    rec[0] = (int)self; rec[1] = id; rec[2] = 0; rec[3] = 0;
+    void *o = (void *)v1[2];
+    Pt6 pa(A);
+    ((void (*)(void *, void *, void *))(*(void ***)o)[14])(o, rec, &pa);
+  }
+}
+
+
+int f_05df80(void *, void *); extern const char *D_1d2d7c[20]; extern char D_1a4110[];
+struct Ob12 {
+  void *vt; int x;
+  static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+  static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+  Ob12() { Em6 e; vt = D_1a4110; x = 0; }
+};
+static inline int vcall0(void *o, int slot) { return ((int (*)(void *))(*(void ***)o)[slot])(o); }
+/* @draft 0x053534 us f_053534
+   WHAT IT DOES: takes two copies of the counted handle two links down the chain at +328; when the second handle's object is of kind 7 and the record it returns (virtual slot 20) is accepted by f_05df80 against the player's key at +24, replaces the second handle with the one two links down the +344 chain; then asks the second object (virtual slot 13) for a handle from a record, which is either the first object's record (virtual slot 20) or, when the second is kind 10, the first is not kind 7 and its slot-23 index is below 20, a record built from the name D_1d2d7c[index] (looked up with f_15c07c, or inserted in the string map at +8); the resulting handle, or a new 12-byte object when it is null, is passed to f_05e394 with the +328 sub-object.
+   Remaining difference: not scored beyond the draft; landing pads, temporaries and register allocation are not matched. */
+void f_053534(char *self) {
+  char *q = self + 328;
+  Hd6 h0, h1; int o0[4];
+  grab6(h0, q, o0); grab6(h1, q, o0);
+  if (vcall0(h1.p, 6) == 7) {
+    Rc4 r = ((Rc4 (*)(void *, void *))(*(void ***)h1.p)[20])(h1.p, self);
+    if (f_05df80(&r, self + 24)) {
+      int *t = (int *)Q6(self, 344);
+      int *s3 = (int *)t[1];
+      if ((char *)&h1 != (char *)(s3 + 2)) {
+        f_04ed28(&h1);
+        h1.p = (int *)s3[2]; h1.c = (int *)s3[3];
+        if (h1.c) ++*h1.c;
+      }
+    }
+  }
+  void *s3 = h1.p;
+  int rec[4];
+  int idx;
+  if (vcall0(s3, 6) == 10 && vcall0(h0.p, 6) != 7 && (unsigned)(idx = vcall0(h0.p, 23)) < 20) {
+    const char *name = D_1d2d7c[idx];
+    int r = f_15c07c(Q6(self, 4), 7, (void *)name);
+    rec[0] = (int)self; rec[1] = r; rec[2] = 0; rec[3] = 0;
+    if (r == -1) {
+      Str6 st; char tag[16]; char *res[2];
+      f_05a3e8(&st, (void *)name, tag);
+      f_05e540(res, self + 8, &st);
+      rec[2] = (int)(self + 8); rec[3] = (int)(res[0] + 16);
+    }
+  } else {
+    *(Rc4 *)rec = ((Rc4 (*)(void *, void *))(*(void ***)h0.p)[20])(h0.p, self);
+  }
+  Hd6 res = ((Hd6 (*)(void *, void *))(*(void ***)s3)[13])(s3, rec);
+  Hd6 pr;
+  if (res.p) {
+    pr.p = res.p; pr.c = res.c;
+    if (pr.c) ++*pr.c;
+  } else {
+    Ob12 *o = new Ob12;
+    pr.p = (int *)o; pr.c = 0;
+    if (o) { pr.c = (int *)f_04dfa0(4); *pr.c = 1; }
+  }
+  int out[4]; int a = Q6(q, 4);
+  f_05e394(out, q, &a, &pr);
+}
+
+
+/* out = o->slot13(*r), with the self-assignment guard of the handle's operator= */
+static inline void asg6(Hd6 &out, void *o, Rc4 *r) {
+  Hd6 t = ((Hd6 (*)(void *, void *))(*(void ***)o)[13])(o, r);
+  if (&out != &t) {
+    f_04ed28(&out);
+    out.p = t.p; out.c = t.c;
+    if (out.c) ++*out.c;
+  }
+}
+/* @draft 0x0530a8 us f_0530a8
+   WHAT IT DOES: takes two copies of the counted handle two links down the chain at +328 and asks the second one's object (virtual slot 20) for a record of the player; then offers the record to a series of candidate objects (the ones at +272, +288, each node of the list at +340, then +264) through virtual slot 13 until one returns a non-null handle, and gives that candidate (or, when none does, the object of the list's last node) a copy of the first handle together with the record through virtual slot 14.
+   Remaining difference: not scored beyond the draft; handle copies, landing pads and register allocation are not matched. */
+void f_0530a8(char *self) {
+  char *q = self + 328;
+  Hd6 h0, h1; int o0[4];
+  grab6(h0, q, o0); grab6(h1, q, o0);
+  Rc4 r80 = ((Rc4 (*)(void *, void *))(*(void ***)h1.p)[20])(h1.p, self);
+  Hd6 out; out.p = 0; out.c = 0;
+  void *tgt = (void *)Q6(self, 272);
+  asg6(out, tgt, &r80);
+  if (!out.p) {
+    tgt = (void *)Q6(self, 288);
+    asg6(out, tgt, &r80);
+    if (!out.p) {
+      int *lst = (int *)(self + 340);
+      int *head = (int *)lst[1];
+      int *n = (int *)head[0];
+      tgt = 0;
+      while (n != head) {
+        asg6(out, (void *)n[2], &r80);
+        if (out.p) { tgt = (void *)n[2]; break; }
+        n = (int *)n[0];
+      }
+      if (!tgt) {
+        tgt = (void *)Q6(self, 264);
+        asg6(out, tgt, &r80);
+        if (!out.p) tgt = (void *)((int *)((int *)lst[1])[1])[2];
+      }
+    }
+  }
+  Hd6 c; c.p = h0.p; c.c = h0.c;
+  if (c.c) ++*c.c;
+  ((void (*)(void *, void *, void *))(*(void ***)tgt)[14])(tgt, &r80, &c);
+}
+
+}
+}
+#undef Q6
