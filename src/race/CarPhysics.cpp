@@ -88,6 +88,7 @@ void f_0aea0c(CarPhys *p);
 void f_0aea84(CarPhys *p);
 void f_0ae9f8(CarPhys *p);
 void f_0a6fac(void);
+void f_0a6fac_p(CarPhys *p) __asm__("f_0a6fac");
 void f_0a6f88(CarPhys *p);
 void f_099b98(void *p);
 float f_0af380(const float *a, const float *b);
@@ -475,15 +476,15 @@ extern "C" void f_0ab43c(CarPhys *p, int i)
 }
 
 /* @draft 0x0af2cc us f_0af2cc
-   WHAT IT DOES: Calls one of two routines on a global table entry: f_0a6f88 when the first argument is 1 and the second is 0xffff, and f_0a6fac when the first is 0 and the second is 0xffff.
-   Remaining difference: the global address is written as a split pointer; the two conditional calls are laid out differently (14 of 29 words). */
+   WHAT IT DOES: Calls one of two routines on the global car record D_245430: f_0a6f88 when the first argument is 1 and the second is 0xffff, and f_0a6fac when the first is 0 and the second is 0xffff.
+   Remaining difference: retail keeps the second call inline (beqz to the epilogue); here GCC's call heuristic (70%) moves it out of line like the first. Not a goto, an inverted early return, a bool, or a pointer local. */
 extern "C" void f_0af2cc(int a, int b)
 {
-    int s0 = b == 0xffff;
-    if (s0 && a == 1)
-        f_0a6f88((CarPhys *)((char *)&D_245430 - 13984));
-    if (s0 && a == 0)
-        f_0a6fac();
+    int s = b == 0xffff;
+    if (s && a == 1)
+        f_0a6f88((CarPhys *)D_245430);
+    if (s && a == 0)
+        f_0a6fac_p((CarPhys *)D_245430);
 }
 
 extern float D_2456b0;
