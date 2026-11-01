@@ -1610,5 +1610,395 @@ int f_074240(void *self, int a)
     return r;
 }
 
+
+/* @draft 0x06dac0 us f_06dac0
+   WHAT IT DOES: answers a menu-slot query by code (34..83) with argument b from the parent object at self+12: scans the slot flags (+2236, +1400, +5661) for a duplicate of b, compares indexed byte tables (+3704/+2336, +3752/+5662), tests slot flag pairs (+2296/+1460, +2236/+1400), returns table bytes (+2176, +5721 plus 1, +3656, +2322, +2324, +1505 for b == 100); 0 for unknown codes. */
+int f_06dac0(void *self, int a, int b)
+{
+    switch (a) {
+    case 34: {
+        a = 0;
+        if ((unsigned)(b - 1) < 7) {
+            char *o = at<char *>(self, 12);
+            int i = 1;
+            int n = at<unsigned char>(o, 6624);
+            if (i < n) {
+                char *p = o;
+                do {
+                    if (at<unsigned char>(p + i, 2236) != 0 && at<unsigned char>(p + i, 1400) != 0 && at<unsigned char>(p + i, 5661) == b)
+                        goto out34;
+                    i++;
+                } while (i < n);
+            }
+            a = 1;
+        }
+    out34:
+        break;
+    }
+    case 35: {
+        a = 0;
+        if (b >= 0) {
+            char *o = at<char *>(self, 12);
+            char *p = o + b;
+            if (at<int>(o, 2336) < at<unsigned char>(p, 3704))
+                a = 11;
+            else
+                a = at<unsigned char>(p, 2176);
+        }
+        break;
+    }
+    case 36: {
+        a = 0;
+        char *o = at<char *>(self, 12);
+        int n = at<unsigned char>(o, 6624);
+        int i = 1;
+        if (i < n) {
+            int c = at<unsigned char>(b + o, 3752);
+            char *p = o + 5662;
+            do {
+                if (!(*(unsigned char *)p < c))
+                    return 1;
+                i++;
+                p++;
+            } while (i < n);
+        }
+        break;
+    }
+    case 40: {
+        a = 0;
+        if (b >= 0) {
+            char *p = at<char *>(self, 12) + b;
+            if (at<unsigned char>(p, 2296) == 0)
+                a = 1;
+            else if (at<unsigned char>(p, 1460) != 0)
+                a = 0;
+            else
+                a = 1;
+        }
+        break;
+    }
+    case 44: {
+        a = 0;
+        if (b >= 0) {
+            char *p = at<char *>(self, 12) + b;
+            if (at<unsigned char>(p, 2236) == 0)
+                a = 1;
+            else if (at<unsigned char>(p, 1400) != 0)
+                a = 0;
+            else
+                a = 1;
+        }
+        break;
+    }
+    case 64:
+        a = 0;
+        if (b >= 0)
+            a = at<unsigned char>(at<char *>(self, 12) + b, 5721) + 1;
+        break;
+    case 51:
+    case 65:
+        a = 0;
+        if (b >= 0)
+            a = at<unsigned char>(at<char *>(self, 12) + b, 3656);
+        break;
+    case 38:
+    case 83:
+        if ((unsigned)b < 7)
+            a = at<unsigned char>(at<char *>(self, 12) + b, 2322);
+        else if ((unsigned)(b - 7) < 3)
+            a = at<unsigned char>(at<char *>(self, 12) + b, 2324);
+        else if (b == 100)
+            a = at<unsigned char>(at<char *>(self, 12), 1505);
+        else
+            a = 0;
+        break;
+    default:
+        a = 0;
+        break;
+    }
+    return a;
+}
+
+
+/* @draft 0x072e1c us f_072e1c
+   WHAT IT DOES: fills the buffer out according to the kind f_0780e0(out) reports: kind 5 copies the 292 bytes at self+1216, kind 10 the 324 bytes at self+1508, kind 18 two words (+7244, +2352), kind 21 three words (+2360..+2368), kind 24 one word (+2376), kind 27 the count at +928 followed by that many words from +932; returns 1 when handled, else 0.
+   Remaining difference: self and out swap callee-saved registers (s1/s0). */
+int f_072e1c(void *self, void *out)
+{
+    switch (f_0780e0(out)) {
+    case 5:
+        __builtin_memcpy((char *)out, (char *)self + 1216, 292);
+        break;
+    case 10:
+        __builtin_memcpy((char *)out, (char *)self + 1508, 324);
+        break;
+    case 18:
+        at<int>(out, 8) = at<int>(self, 7244);
+        at<int>(out, 12) = at<int>(self, 2352);
+        break;
+    case 21:
+        at<int>(out, 8) = at<int>(self, 2360);
+        at<int>(out, 12) = at<int>(self, 2364);
+        at<int>(out, 16) = at<int>(self, 2368);
+        break;
+    case 24:
+        at<int>(out, 8) = at<int>(self, 2376);
+        break;
+    case 27: {
+        at<int>(out, 28) = at<int>(self, 928);
+        for (int i = 0; i < at<int>(self, 928); i++)
+            at<int>(out, 8 + i * 4) = at<int>(self, 932 + i * 4);
+        break;
+    }
+    default:
+        return 0;
+    }
+    return 1;
+}
+
+
+void *memset(void *, int, unsigned int);
+int sceUtilityOskInitStart(void *);
+int f_01c260(void);
+extern unsigned short D_1d3320[];
+extern int D_1d3310[];
+extern int D_241434[];
+extern int D_2413c0[];
+extern int D_241400[];
+/* @draft 0x073840 us f_073840
+   WHAT IT DOES: opens the on-screen keyboard: clears and fills the 64-character title buffer D_1d3320 from the zero-terminated string in, clears the result block D_241434 and the 7-character initial text D_1d3310 and fills the latter from the signed bytes of init, then builds the OSK parameter block D_2413c0 (size 64, language from f_01c260 mapped to 0/2/3/4/1, one data block D_241400 pointing at the buffers) and calls sceUtilityOskInitStart; returns 0.
+   Remaining difference: data-address high parts are held in different callee-saved registers (retail s5/s3/s4) and the language-selection tail is 20 bytes shorter. */
+int f_073840(void *unused, const unsigned short *in, const signed char *init)
+{
+    unsigned short *d = D_1d3320;
+    int i, x;
+    memset(D_1d3320, 0, 128);
+    while (*in)
+        *d++ = *in++;
+    D_241434[3] = 0;
+    D_241434[0] = 0;
+    D_241434[1] = 0;
+    D_241434[2] = 0;
+    D_1d3310[0] = 0;
+    D_1d3310[1] = 0;
+    D_1d3310[2] = 0;
+    D_1d3310[3] = 0;
+    for (i = 0; i < 7; i++)
+        ((short *)D_1d3310)[i] = init[i];
+    memset(D_2413c0, 0, 64);
+    D_2413c0[0] = 64;
+    if (f_01c260() == 0)
+        x = 0;
+    else if ((x = f_01c260()) == 2)
+        ;
+    else if ((x = f_01c260()) == 3)
+        ;
+    else if ((x = f_01c260()) == 4)
+        ;
+    else
+        x = 1;
+    D_2413c0[1] = x;
+    D_241400[12] = 7;
+    D_2413c0[4] = 19;
+    D_2413c0[6] = 16;
+    D_2413c0[3] = 17;
+    D_2413c0[5] = 18;
+    D_241400[4] = 13;
+    D_241400[9] = 8;
+    D_241400[6] = 1;
+    D_241400[7] = (int)D_1d3320;
+    D_241400[8] = (int)D_1d3310;
+    D_241400[10] = (int)D_241434;
+    D_2413c0[2] = 1;
+    D_2413c0[8] = 0;
+    D_2413c0[9] = 0;
+    D_2413c0[12] = 1;
+    D_2413c0[13] = (int)D_241400;
+    D_241400[1] = 0;
+    D_241400[3] = 0;
+    D_241400[2] = 0;
+    D_241400[5] = 1;
+    D_241400[11] = 0;
+    D_241400[0] = 1;
+    sceUtilityOskInitStart(D_2413c0);
+    return 0;
+}
+
+
+int sceUtilityOskGetStatus(void);
+int sceUtilityOskUpdate(int);
+int sceUtilityOskShutdownStart(void);
+int sceCtrlSetSamplingMode(int);
+void f_021b9c(void);
+int f_097524(void *);
+void f_097878(void *, int, int);
+extern int D_24142c;
+extern char D_242e14[];
+extern int D_2413a8;
+/* @draft 0x073c88 us f_073c88
+   WHAT IT DOES: per-frame update of the on-screen keyboard screen: while the keyboard is open (flag at +7512) it follows sceUtilityOskGetStatus (running: update; finished: close it, pick the result mode from D_24142c and copy up to seven result characters into the name field at +1539, or +1863 when +3652 is 1, padding with zero up to eight; shutting down: start the shutdown); otherwise it polls the pad type, tracks the button state at +7236 and +7532/+7533 and tells the pad object when it changes. Returns 1 while the keyboard is up, 0 otherwise.
+   Remaining difference: 3 words longer (prologue and case-exit layout). */
+int f_073c88(void *self)
+{
+    char *s = (char *)self;
+    int p, n, v;
+    if (at<unsigned char>(s, 7512)) {
+        switch (sceUtilityOskGetStatus()) {
+        case 2:
+            f_021b9c();
+            sceUtilityOskUpdate(1);
+            return 1;
+        case 0:
+            at<unsigned char>(s, 7512) = 0;
+            sceCtrlSetSamplingMode(1);
+            v = D_24142c;
+            if (v == 1)
+                goto mode2;
+            if (v < 2) {
+                if (v != 0)
+                    return 1;
+            mode2:
+                at<int>(s, 7508) = 2;
+                return 1;
+            }
+            if (v != 2)
+                return 1;
+            at<int>(s, 7508) = 1;
+            n = 0;
+            {
+                unsigned short *src = (unsigned short *)D_241434;
+                char *d = s + 1539;
+                do {
+                    if (*src == 0)
+                        break;
+                    if (at<int>(s, 3652) == 1)
+                        at<char>(d, 324) = *(unsigned char *)src;
+                    else
+                        *d = *(unsigned char *)src;
+                    n++;
+                    src++;
+                    d++;
+                } while (n < 7);
+            }
+            if (n == 0)
+                return 1;
+            if (n < 8) {
+                char *d = s + n + 1539;
+                do {
+                    if (at<int>(s, 3652) == 1)
+                        at<char>(d, 324) = 0;
+                    else
+                        *d = 0;
+                    n++;
+                    d++;
+                } while (n < 8);
+            }
+            return 1;
+        case 3:
+            sceUtilityOskShutdownStart();
+            return 1;
+        case 1:
+        case 4:
+            return 1;
+        }
+        return 1;
+    }
+    {
+        int (*fn)(void *, int) = (int (*)(void *, int))at<void **>(*(void **)self, 40);
+        fn(self, 6);
+    }
+    p = f_097524(D_242e14);
+    if (p == 2)
+        at<unsigned char>(s, 7532) = 1;
+    v = at<int>(s, 7236);
+    if (v != p) {
+        if (v != -1)
+            f_097878(D_242e14, p, at<unsigned char>(s, 7532));
+        at<int>(s, 7236) = p;
+        if (p == 6)
+            D_2413a8 = 1;
+        else
+            D_2413a8 = 0;
+    }
+    if (at<unsigned char>(s, 7532) == at<unsigned char>(s, 7533))
+        return 0;
+    f_097878(D_242e14, at<int>(s, 7236), at<unsigned char>(s, 7532));
+    at<unsigned char>(s, 7533) = at<unsigned char>(s, 7532);
+    return 0;
+}
+
+
+void f_0e7858_v(void) __asm__("f_0e7858");
+void f_0e798c(void);
+void f_04b4d8(void *, const char *, int);
+void f_04b5c8(void *, const char *, const char *, int);
+void f_04b664(void *, const char *, int);
+void f_097680(void *, int, int);
+extern char D_242e14[];
+extern char D_1a57fc[]; /* "rrm_307" */
+extern char D_1a5804[]; /* "r999_UNDERBAR" */
+extern char D_1a5814[]; /* "OPTION_ICON_GAME" */
+extern char D_1a5828[]; /* "OPTION_ICON_AV" */
+extern char D_1a5838[]; /* "Cours006" */
+extern char D_1a5844[]; /* "Cours005" */
+extern char D_1a5850[]; /* "Cours004" */
+extern char D_1a585c[]; /* "Cours003" */
+extern char D_1a5868[]; /* "Cours002" */
+extern char D_1a5874[]; /* "Cours001" */
+extern char D_1a5880[]; /* "MiniLogoPro" */
+extern char D_1a588c[]; /* "Navi1" */
+extern char D_1a5894[]; /* "Navi2" */
+extern char D_1a589c[]; /* "Navi3" */
+extern char D_1a58a4[]; /* "Navi4" */
+extern char D_1a58ac[]; /* "Navi5" */
+extern char D_1a58b4[]; /* "Navi6" */
+extern char D_1a58bc[]; /* "MINI_LOGO1" */
+extern char D_1a58c8[]; /* "Navi7" */
+extern char D_1a58d0[]; /* "Navi0" */
+extern char D_1a6058[]; /* "MiniGameEnd" */
+/* @draft 0x073a44 us f_073a44
+   WHAT IT DOES: when the screen's load flag (+7524) is set and the pad word D_245194 has bit 0 but not bit 3, clears the flag and registers twenty named movie parts (option icons, rrm_307, the course and navigation frames, the mini logo) on the sub-object at self+4 with f_04b4d8, then names the mini-game end clip and starts it, and refreshes the pad object D_242e14 with the stored state (+7236, +7532).
+   Remaining difference: the pad word is loaded into v0 instead of v1 (5 words). */
+void f_073a44(void *self)
+{
+    char *s = (char *)self;
+    if (at<unsigned char>(s, 7524) == 0)
+        return;
+    f_0e7858_v();
+    unsigned int pad = D_245194;
+    if ((pad & 1) == 0)
+        return;
+    if ((pad & 8) != 0)
+        return;
+    f_0e798c();
+    {
+        void *s0 = s + 4;
+        at<unsigned char>(s, 7524) = 0;
+        f_04b4d8(s0, D_1a5814, 1);
+        f_04b4d8(s0, D_1a5828, 1);
+        f_04b4d8(s0, D_1a57fc, 1);
+        f_04b4d8(s0, D_1a5804, 1);
+        f_04b4d8(s0, D_1a5838, 1);
+        f_04b4d8(s0, D_1a5844, 1);
+        f_04b4d8(s0, D_1a5850, 1);
+        f_04b4d8(s0, D_1a585c, 1);
+        f_04b4d8(s0, D_1a5868, 1);
+        f_04b4d8(s0, D_1a5874, 1);
+        f_04b4d8(s0, D_1a5880, 1);
+        f_04b4d8(s0, D_1a588c, 1);
+        f_04b4d8(s0, D_1a5894, 1);
+        f_04b4d8(s0, D_1a589c, 1);
+        f_04b4d8(s0, D_1a58a4, 1);
+        f_04b4d8(s0, D_1a58ac, 1);
+        f_04b4d8(s0, D_1a58b4, 1);
+        f_04b4d8(s0, D_1a58bc, 1);
+        f_04b4d8(s0, D_1a58c8, 1);
+        f_04b4d8(s0, D_1a58d0, 1);
+        f_04b5c8(s0, D_1a57fc, D_1a6058, 0);
+        f_04b664(s0, D_1a57fc, 0);
+        f_097680(D_242e14, at<int>(s, 7236), at<unsigned char>(s, 7532));
+    }
+}
+
 }
 }
