@@ -39,6 +39,12 @@ struct Vec3 {
     float x, y, z;
 };
 
+/* A position as stored in an object (no constructor, so the engine sounds need no
+   construction at startup). */
+struct Pos3 {
+    float x, y, z;
+};
+
 /* One sound slot (52 bytes). The first slot's head words double as the wall-hit state. */
 struct Slot {
     float f0;
@@ -84,7 +90,7 @@ public:
     int m8;
     unsigned int m12;
     char m16[112];
-    Vec3 pos;
+    Pos3 pos;
     float m140;
     float level;
     float m148;
@@ -99,7 +105,7 @@ public:
     char m1856[16];
     int m1872;
     char m1876[12];
-    Vec3 last;
+    Pos3 last;
     float m1900;
 
     int f_0c80a8(unsigned short name, unsigned char idx, short a, short b, int i, int j, float vol);
@@ -112,6 +118,7 @@ public:
     void f_0c9a80();
     void f_0c9b24(short mute);
     void f_0c9b54();
+    ~CEngineSound() {}
 };
 
 /* @draft 0x0c80a8 us _ZN12CEngineSound8f_0c80a8Ethssiif
@@ -344,3 +351,16 @@ void CEngineSound::f_0c9b54()
         f_0c8360(1, 11);
     }
 }
+
+/* The engine sound of each car on the grid. */
+CEngineSound D_249330[12];
+
+/* @implements 0x0ca044 us __static_initialization_and_destruction_0
+   WHAT IT DOES: At shutdown, runs the (empty) destructor over the twelve engine sounds, last
+   first; nothing is built at startup. */
+
+/* @implements 0x0ca07c us _GLOBAL__I_
+   WHAT IT DOES: The startup entry for this file's static data. */
+
+/* @implements 0x0ca09c us _GLOBAL__D_
+   WHAT IT DOES: The shutdown entry for this file's static data. */
