@@ -353,13 +353,15 @@ void f_09fc34(Mat34 *m, const Quat *q)
 void f_099b98(float *a);
 float f_099fc4(float a);
 float cosf(float);
+extern const float D_1abfa4, D_1abfa8;
 
 /* Rotation vector scaled to an axis-angle quaternion: (axis * sin(a/2), cos(a/2)). */
 /* @draft 0x09c0c4 us f_09c0c4
-   WHAT IT DOES: Builds an axis-angle quaternion: the axis scaled by sin(angle/2) with w = cos(angle/2). */
-void f_09c0c4(Quat *d, const Vec3 *ax, float a)
+   WHAT IT DOES: Builds an axis-angle quaternion: the axis scaled by sin(angle/2) with w = cos(angle/2).
+   Remaining difference: 11 of 37 words: retail loads the constant after moving the angle into $f20 and multiplies in place; the scheduler here loads the constant first. */
+void f_09c0c4(Quat *d, const Vec3 *ax, int a)
 {
-    float h = a * 0.5f;
+    float h = D_1abfa4 * *(float *)&a;
     float h1 = h;
     f_099b98(&h1);
     float s = f_099fc4(h1);
@@ -372,10 +374,11 @@ void f_09c0c4(Quat *d, const Vec3 *ax, float a)
 }
 
 /* @draft 0x09c158 us f_09c158
-   WHAT IT DOES: Builds an axis-angle quaternion: the axis scaled by sin(angle/2) with w = cos(angle/2). */
-void f_09c158(Quat *d, const Vec3 *ax, float a)
+   WHAT IT DOES: Builds an axis-angle quaternion: the axis scaled by sin(angle/2) with w = cos(angle/2).
+   Remaining difference: 11 of 37 words: retail loads the constant after moving the angle into $f20 and multiplies in place; the scheduler here loads the constant first. */
+void f_09c158(Quat *d, const Vec3 *ax, int a)
 {
-    float h = a * 0.5f;
+    float h = D_1abfa8 * *(float *)&a;
     float h1 = h;
     f_099b98(&h1);
     float s = f_099fc4(h1);
@@ -671,6 +674,37 @@ Mat33 *f_09eb40(Mat33 *d, const Mat33 *a, const Mat33 *b)
     return d;
 }
 
+/* @draft 0x09f158 us f_09f158
+   WHAT IT DOES: Sets d[j][i] to the sum over k of a[k][i] * b[j][k] for a 3x3 matrix a and a four-row matrix b (a transposed times b transposed), one column of d per pass over four result rows; returns d.
+   Remaining difference: same unsolved codegen as f_09eb40: retail strength-reduces a's second and third rows to byte-offset counters added to a each pass, and reloads a for every result. */
+Mat43 *f_09f158(Mat43 *d, const Mat33 *a, const Mat43 *b)
+{
+    int i = 0;
+    do {
+        d->m[0][i] = a->m[0][i] * b->m[0][0] + a->m[1][i] * b->m[0][1] + a->m[2][i] * b->m[0][2];
+        d->m[1][i] = a->m[0][i] * b->m[1][0] + a->m[1][i] * b->m[1][1] + a->m[2][i] * b->m[1][2];
+        d->m[2][i] = a->m[0][i] * b->m[2][0] + a->m[1][i] * b->m[2][1] + a->m[2][i] * b->m[2][2];
+        d->m[3][i] = a->m[0][i] * b->m[3][0] + a->m[1][i] * b->m[3][1] + a->m[2][i] * b->m[3][2];
+        i++;
+    } while (i < 3);
+    return d;
+}
+
+/* @draft 0x09ec14 us f_09ec14
+   WHAT IT DOES: Sets d[j][i] to the sum over k of a[k][i] * b[k][j] for two 3x3 matrices (a transposed times b), one column of d per pass; returns d.
+   Remaining difference: same loop shape and same unsolved codegen as f_09eb40: retail keeps a byte-offset counter per source row and reloads a's three elements for every result; ours 184 bytes vs 212 (float-pointer and byte-offset forms tried, 180 and 204 bytes, none matched). */
+Mat33 *f_09ec14(Mat33 *d, const Mat33 *a, const Mat33 *b)
+{
+    int i = 0;
+    do {
+        d->m[0][i] = a->m[0][i] * b->m[0][0] + a->m[1][i] * b->m[1][0] + a->m[2][i] * b->m[2][0];
+        d->m[1][i] = a->m[0][i] * b->m[0][1] + a->m[1][i] * b->m[1][1] + a->m[2][i] * b->m[2][1];
+        d->m[2][i] = a->m[0][i] * b->m[0][2] + a->m[1][i] * b->m[1][2] + a->m[2][i] * b->m[2][2];
+        i++;
+    } while (i < 3);
+    return d;
+}
+
 /* @draft 0x0a318c us f_0a318c
    WHAT IT DOES: Inverts a rigid transform: the rotation part is transposed (f_0a0944) into d and the translation becomes the negated source translation rotated by the inverse (f_09fe84).
    Remaining difference: callee-saved register choice (s0/s1 swapped) and the final copy's address form. */
@@ -683,7 +717,8 @@ Mat44 *f_0a318c(Mat44 *d, const Mat44 *s)
     const Vec3 *tr = (const Vec3 *)s->m[3];
     Vec4 n(-s->m[3][0], -tr->v[1], -tr->v[2], 1.0f);
     f_09fe84(&r, (const Mat34 *)d, &n);
-    *(Vec4 *)d->m[3] = r;
+    Vec4 *dt = (Vec4 *)d->m[3];
+    *dt = r;
     return d;
 }
 
@@ -699,7 +734,8 @@ Mat43 *f_0a22cc(Mat43 *d, const Mat43 *s)
     const Vec3 *tr = (const Vec3 *)s->m[3];
     Vec4 n(-s->m[3][0], -tr->v[1], -tr->v[2], 1.0f);
     f_09d9c8(&r, (const Mat33 *)d, &n);
-    *(Vec4 *)d->m[3] = r;
+    Vec4 *dt = (Vec4 *)d->m[3];
+    *dt = r;
     return d;
 }
 
@@ -818,53 +854,50 @@ Mat43 *f_0a26b4(Mat43 *d, const Mat43 *a, const Mat43 *b)
     return d;
 }
 
+extern const float D_1abfac, D_1abfb0, D_1abfb4, D_1abfb8;
 void f_099b98(float *a);
 void f_09c158(Quat *d, const Vec4a *ax, int a);
 
-/* @draft 0x09c1ec us f_09c1ec
-   WHAT IT DOES: Builds the rotation quaternion of a rotation vector: if its length is below a small epsilon the result is (0, 0, 0, 1); otherwise the unit axis and the length (adjusted through f_099b98) go to f_09c158 and the result is copied out.
-   Remaining difference: the order of the three axis loads and the temporary's stores (retail x, y, z; this source z, y, x or similar). */
+/* @implements 0x09c1ec us f_09c1ec
+   WHAT IT DOES: Builds the rotation quaternion of a rotation vector: if its length is below a small epsilon the result is (0, 0, 0, 1); otherwise the unit axis and the length (adjusted through f_099b98) go to f_09c158 and the result is copied out. */
 void f_09c1ec(Vec4a *d, const FVec3 *v)
 {
     Vec4a ax;
     float s = sqrtf(v->v[0] * v->v[0] + v->v[1] * v->v[1] + v->v[2] * v->v[2]);
-    if (s < 9.99999997475243e-7f) {
+    if (s < D_1abfac) {
         d->v[2] = 0;
         d->v[1] = 0;
         d->v[0] = 0;
-        d->v[3] = 1.0f;
+        d->v[3] = D_1abfb0;
         return;
     }
     float n = s;
-    float uz = v->v[2] / n;
     float uy = v->v[1] / n;
-    float ux = v->v[0] / n;
-    ax = Vec4a(ux, uy, uz, 1.0f);
+    float uz = v->v[2] / n;
+    ax = Vec4a(v->v[0] / n, uy, uz, 1.0f);
     Quat r;
     f_099b98(&n);
     f_09c158(&r, &ax, *(int *)&n);
     *d = *(Vec4a *)&r;
 }
 
-/* @draft 0x09c314 us f_09c314
-   WHAT IT DOES: The same as f_09c1ec (twin at another address): builds the rotation quaternion of a rotation vector: if its length is below a small epsilon the result is (0, 0, 0, 1); otherwise the unit axis and the length (adjusted through f_099b98) go to f_09c158 and the result is copied out.
-   Remaining difference: the order of the three axis loads and the temporary's stores (retail x, y, z; this source z, y, x or similar). */
+/* @implements 0x09c314 us f_09c314
+   WHAT IT DOES: The same as f_09c1ec (twin at another address): builds the rotation quaternion of a rotation vector: if its length is below a small epsilon the result is (0, 0, 0, 1); otherwise the unit axis and the length (adjusted through f_099b98) go to f_09c158 and the result is copied out. */
 void f_09c314(Vec4a *d, const FVec3 *v)
 {
     Vec4a ax;
     float s = sqrtf(v->v[0] * v->v[0] + v->v[1] * v->v[1] + v->v[2] * v->v[2]);
-    if (s < 9.99999997475243e-7f) {
+    if (s < D_1abfb4) {
         d->v[2] = 0;
         d->v[1] = 0;
         d->v[0] = 0;
-        d->v[3] = 1.0f;
+        d->v[3] = D_1abfb8;
         return;
     }
     float n = s;
-    float uz = v->v[2] / n;
     float uy = v->v[1] / n;
-    float ux = v->v[0] / n;
-    ax = Vec4a(ux, uy, uz, 1.0f);
+    float uz = v->v[2] / n;
+    ax = Vec4a(v->v[0] / n, uy, uz, 1.0f);
     Quat r;
     f_099b98(&n);
     f_09c158(&r, &ax, *(int *)&n);
@@ -878,6 +911,55 @@ void f_09c314(Vec4a *d, const FVec3 *v)
 /* ---- m210c ---- */
 namespace m210c {
 struct Mat44 { float m[4][4]; };
+
+extern "C" {
+/* @draft 0x0a12ac us f_0a12ac
+   WHAT IT DOES: Sets d[j][i] to the sum over k of a[k][i] * b[b[j][k]] for two 4x4 matrices (only the upper-left 3x3 is used), one column of d per pass; returns d.
+   Remaining difference: same unsolved codegen as f_09eb40: retail strength-reduces a's second and third rows to byte-offset counters added to a each pass, and reloads a for every result. */
+Mat44 *f_0a12ac(Mat44 *d, const Mat44 *a, const Mat44 *b)
+{
+    int i = 0;
+    do {
+        d->m[0][i] = a->m[0][i] * b->m[0][0] + a->m[1][i] * b->m[0][1] + a->m[2][i] * b->m[0][2];
+        d->m[1][i] = a->m[0][i] * b->m[1][0] + a->m[1][i] * b->m[1][1] + a->m[2][i] * b->m[1][2];
+        d->m[2][i] = a->m[0][i] * b->m[2][0] + a->m[1][i] * b->m[2][1] + a->m[2][i] * b->m[2][2];
+        i++;
+    } while (i < 3);
+    return d;
+}
+
+/* @draft 0x0a1794 us f_0a1794
+   WHAT IT DOES: Sets d[j][i] to the sum over k of a[k][i] * b[j][k] for 4x4 matrices (upper-left 3x3 of a, four result rows), one column of d per pass; returns d.
+   Remaining difference: same unsolved codegen as f_09eb40: retail strength-reduces a's second and third rows to byte-offset counters added to a each pass, and reloads a for every result. */
+Mat44 *f_0a1794(Mat44 *d, const Mat44 *a, const Mat44 *b)
+{
+    int i = 0;
+    do {
+        d->m[0][i] = a->m[0][i] * b->m[0][0] + a->m[1][i] * b->m[0][1] + a->m[2][i] * b->m[0][2];
+        d->m[1][i] = a->m[0][i] * b->m[1][0] + a->m[1][i] * b->m[1][1] + a->m[2][i] * b->m[1][2];
+        d->m[2][i] = a->m[0][i] * b->m[2][0] + a->m[1][i] * b->m[2][1] + a->m[2][i] * b->m[2][2];
+        d->m[3][i] = a->m[0][i] * b->m[3][0] + a->m[1][i] * b->m[3][1] + a->m[2][i] * b->m[3][2];
+        i++;
+    } while (i < 3);
+    return d;
+}
+
+/* @draft 0x0a1380 us f_0a1380
+   WHAT IT DOES: Sets d[j][i] to the sum over k of a[k][i] * b[b[k][j]] for two 4x4 matrices (only the upper-left 3x3 is used), one column of d per pass; returns d.
+   Remaining difference: same unsolved codegen as f_09eb40: retail strength-reduces a's second and third rows to byte-offset counters added to a each pass, and reloads a for every result. */
+Mat44 *f_0a1380(Mat44 *d, const Mat44 *a, const Mat44 *b)
+{
+    int i = 0;
+    do {
+        d->m[0][i] = a->m[0][i] * b->m[0][0] + a->m[1][i] * b->m[1][0] + a->m[2][i] * b->m[2][0];
+        d->m[1][i] = a->m[0][i] * b->m[0][1] + a->m[1][i] * b->m[1][1] + a->m[2][i] * b->m[2][1];
+        d->m[2][i] = a->m[0][i] * b->m[0][2] + a->m[1][i] * b->m[1][2] + a->m[2][i] * b->m[2][2];
+        i++;
+    } while (i < 3);
+    return d;
+}
+
+}
 extern "C" {
 void f_0a2e44(Mat44 *r);
 Mat44 *f_09b908(Mat44 *a);
@@ -899,7 +981,7 @@ Mat44 *f_0a2e98(Mat44 *d)
 
 struct Quat2 { float v[4]; Quat2() {} Quat2(float x, float y, float z, float w) { v[0] = x; v[1] = y; v[2] = z; v[3] = w; } };
 struct Vec3b { float v[3]; };
-extern const float D_1abfc8, D_1abfcc;
+extern const float D_1abfc8, D_1abfcc, D_1abfd0;
 Quat2 *c_qmul(Quat2 *d, const Quat2 *a, Quat2 b) __asm__("f_09c618");
 Quat2 c_qinv(const Quat2 *q) __asm__("f_09c54c");
 
@@ -927,7 +1009,7 @@ Quat2 f_09c720(const Quat2 *q, const Vec3b *b)
 
 /* @draft 0x09c810 us f_09c810
    WHAT IT DOES: Quaternion lerp: d = (1 - t) * a + (t or -t) * b, taking the negated weight when the dot product of a and b is negative; returns d.
-   Remaining difference: 18 words: register choice in the dot product and retail frame of 32 bytes (this source 16). */
+   Remaining difference: 16 words: register choice in the dot product (retail loads b[0], b[1] into $f2, $f1; ours the reverse). */
 Quat2 *f_09c810(Quat2 *d, const Quat2 *a, const Quat2 *b, float t)
 {
     float dot = a->v[0] * b->v[0] + a->v[1] * b->v[1] + a->v[2] * b->v[2] + a->v[3] * b->v[3];
@@ -937,6 +1019,23 @@ Quat2 *f_09c810(Quat2 *d, const Quat2 *a, const Quat2 *b, float t)
         t = -t;
     *d = Quat2(x, y, z, w);
     *d = Quat2(d->v[0] + t * b->v[0], d->v[1] + t * b->v[1], d->v[2] + t * b->v[2], d->v[3] + t * b->v[3]);
+    struct T16 { float f[4]; ~T16() {} } pad;
+    return d;
+}
+
+/* @draft 0x09c930 us f_09c930
+   WHAT IT DOES: Quaternion lerp: d = (1 - t) * a + (t or -t) * b, taking the negated weight when the dot product of a and b is not negative; returns d.
+   Remaining difference: 16 words, the same as f_09c810: register choice in the dot product (retail loads b[0], b[1] into $f2, $f1; ours the reverse). */
+Quat2 *f_09c930(Quat2 *d, const Quat2 *a, const Quat2 *b, float t)
+{
+    float dot = a->v[0] * b->v[0] + a->v[1] * b->v[1] + a->v[2] * b->v[2] + a->v[3] * b->v[3];
+    float u = D_1abfd0 - t;
+    float x = u * a->v[0], y = u * a->v[1], z = u * a->v[2], w = u * a->v[3];
+    if (dot >= 0.0f)
+        t = -t;
+    *d = Quat2(x, y, z, w);
+    *d = Quat2(d->v[0] + t * b->v[0], d->v[1] + t * b->v[1], d->v[2] + t * b->v[2], d->v[3] + t * b->v[3]);
+    struct T16 { float f[4]; ~T16() {} } pad;
     return d;
 }
 
