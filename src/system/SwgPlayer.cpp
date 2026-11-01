@@ -6192,31 +6192,32 @@ struct Tr65b30 : Base65b30 {
     Hdr65b30 m;
     ~Tr65b30() {
         vt = D_1a3698;
-        if (m.cnt) {
-            f_04ee68(&m, W(m.hdr, 4));
-            m.cnt = 0;
-            W(m.hdr, 8) = (int)m.hdr;
-            W(m.hdr, 4) = 0;
-            W(m.hdr, 12) = (int)m.hdr;
+        Hdr65b30 *mp = &m;
+        if (mp->cnt) {
+            f_04ee68(mp, W(mp->hdr, 4));
+            mp->cnt = 0;
+            *(void **)((char *)mp->hdr + 8) = mp->hdr;
+            *(void **)((char *)mp->hdr + 4) = 0;
+            *(void **)((char *)mp->hdr + 12) = mp->hdr;
         }
     }
 };
 
-/* @draft 0x065b30 us f_065b30
+/* @implements 0x065b30 us f_065b30
    WHAT IT DOES: destructor of the tree container: empties the tree and frees its header node. */
 void f_065b30(void *o)
 {
     ((Tr65b30 *)o)->~Tr65b30();
 }
 
-/* @draft 0x065e10 us f_065e10
+/* @implements 0x065e10 us f_065e10
    WHAT IT DOES: destructor of the tree container (twin of f_065b30): empties the tree and frees its header node. */
 void f_065e10(void *o)
 {
     ((Tr65b30 *)o)->~Tr65b30();
 }
 
-/* @draft 0x065bd4 us f_065bd4
+/* @implements 0x065bd4 us f_065bd4
    WHAT IT DOES: deleting destructor of the tree container: runs the destructor, then calls f_05db44(self). */
 void f_065bd4(void *o)
 {
@@ -6224,7 +6225,7 @@ void f_065bd4(void *o)
     f_05db44(o);
 }
 
-/* @draft 0x065eb4 us f_065eb4
+/* @implements 0x065eb4 us f_065eb4
    WHAT IT DOES: deleting destructor of the tree container (twin of f_065bd4): runs the destructor, then calls f_05db44(self). */
 void f_065eb4(void *o)
 {
@@ -8761,6 +8762,270 @@ bool f_0649b0(unsigned char *self, int *other) {
         res = eqsc(t1, t2);
     }
     return res;
+}
+}
+}
+
+/* ---- swg6a ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 fragment swg6a: untagged functions of the SWG player (big_e, big_a). */
+
+namespace swg6a {
+extern "C" {
+void *f_04dfa0(unsigned n);
+void *f_05db08(unsigned n);
+void f_05daa4(void *self, void *a1);
+void f_05db44(void *);
+void f_04ed28(void *);
+void *f_15c098(void *, int, int);
+int f_15c07c(void *, int, int);
+void *f_154448(void *, void *, void *, int);
+void f_15fb50(void *, int);
+void *f_15faf0(void *, int);
+void *f_15fa60(void *, void *);
+void f_05f374(void *, void *, int);
+char *f_05f0b8(void *, void *);
+void f_05f524(void *, void *, void *);
+void f_05df24(void *, void *);
+void f_05f6a8(void *, unsigned, void *);
+void f_05f954(void *, void *, void *);
+void f_05f998(void *, void *, void *, void *);
+void f_05f5dc(void *, void *, void *);
+void f_06b050(void *, int);
+extern char D_1a4900[], D_1a493c[], D_1a4d14[];
+}
+
+struct Ref { int a, b; Ref(void *p); ~Ref() {} };
+inline Ref::Ref(void *p) { f_05daa4(this, p); }
+struct It4 { int *p; It4() {} It4(const It4 &o) { p = o.p; } };
+struct Pr { int k, v; };
+struct Hd { int a, b; ~Hd() { f_04ed28(this); } };
+struct Obj64 {
+    char pad[64];
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    Obj64(void *x) { f_05f374(this, x, 1); }
+};
+
+extern "C" {
+/* @draft 0x0678b0 us f_0678b0
+   WHAT IT DOES: registers a new child object for the slot index (taken modulo 16384) under the player: reads the character id from the stream argument, resolves it through the player, finds the object of the given type, creates a node and a 64-byte holder for it, appends the node to the player's list at +348 with the given 16-byte record, passes the handle to two virtual calls, stores the node in the object's slot vector (growing it) and records the slot index in the object's map at +48.    Remaining difference: stack-slot layout of the locals (X lives at 112 instead of 176), register assignment of s5/s6, and the delay-slot scheduling of the slot-vector lookup. */
+void f_0678b0(char *self, char *obj, int *strm, int *rec, int idx, int *flag)
+{
+    int s2 = idx;
+    if (idx >= 16384) s2 = idx - 16384;
+    int ch;
+    void *pl = *(void **)(self + 4);
+    if (strm[1] == -1) {
+        int *sb = (int *)strm[3];
+        *(char *)((char *)sb + *(int *)(*(int *)sb - 12)) = D_1a4d14[0];
+        ch = *sb;
+    } else {
+        ch = (int)f_15c098((void *)((int *)strm[0])[1], 7, strm[1]);
+    }
+    int s0 = f_15c07c(pl, 4, ch);
+    if (s0 == -1) return;
+    if (!obj) return;
+    char *s1 = (char *)f_154448(obj, D_1a4900, D_1a493c, 0);
+    if (!s1) return;
+    char *s5 = s1 + 32;
+    void *s4 = ((void *(**)(void *))*(void **)s1)[9](s1);
+    void *a0 = 0;
+    if (s2 < (unsigned)((*(int *)(s5 + 8) - *(int *)(s5 + 4)) >> 2))
+        a0 = ((void **)*(void **)(s1 + 36))[s2];
+    if (a0) f_15fb50(a0, 0);
+    void *X = f_15faf0(s4, s0);
+    Obj64 *o = new Obj64(X);
+    Ref r(o);
+    *(int *)((char *)X + 332) = r.a;
+    {
+        Hd h;
+        h.a = *(int *)(self + 372);
+        h.b = *(int *)(self + 376);
+        if (h.b) ++*(int *)h.b;
+        ((void (**)(void *, void *, void *))*(void **)r.a)[14]((void *)r.a, self + 152, &h);
+    }
+    if (*flag) ((void (**)(void *, int))*(void **)r.a)[17]((void *)r.a, *flag);
+    char *s3 = f_05f0b8(self + 348, &X);
+    int rec2[4] = {rec[0], rec[1], rec[2], rec[3]};
+    {
+        Hd h;
+        h.a = r.a; h.b = r.b;
+        if (h.b) ++*(int *)h.b;
+        int out[6];
+        f_05f524(out, rec2, &h);
+        *(int *)s3 = out[0]; *(int *)(s3 + 12) = out[3];
+        *(int *)(s3 + 4) = out[1]; *(int *)(s3 + 8) = out[2];
+        f_05df24(s3 + 16, out + 4);
+    }
+    {
+        Hd h;
+        h.a = r.a; h.b = r.b;
+        if (h.b) ++*(int *)h.b;
+        ((void (**)(void *, void *, void *))*(void **)s1)[14](s1, rec, &h);
+    }
+    void *k = X;
+    if (!(s2 < (unsigned)((*(int *)(s5 + 8) - *(int *)(s5 + 4)) >> 2))) {
+        int z = 0;
+        f_05f6a8(s5, s2 + 1, &z);
+    }
+    *(void **)(*(char **)(s1 + 36) + s2 * 4) = k;
+    char *m = s1 + 48;
+    int *it;
+    f_05f954(&it, m, &k);
+    int *hd = *(int **)(m + 4);
+    if (it == hd || (unsigned)k < (unsigned)it[4]) {
+        int *res;
+        int pr[2] = {(int)k, 0};
+        f_05f998(&res, m, &it, pr);
+        it = res;
+    }
+    it[5] = s2;
+}
+/* @draft 0x06b0f0 us f_06b0f0
+   WHAT IT DOES: for a non-null object, resolves its node through the player's table, and when the node has a parent object, looks the parent up in the player's list at +348, narrows it with a checked cast and frees the previous slot entry; then creates a 64-byte holder and handle for the node, passes the handle to a virtual call, appends a record copy to the list, and when a parent exists passes the handle to the parent's virtual call, stores the node in the parent's slot vector (growing it) and records the slot index in the parent's map at +48.    Remaining difference: unchecked; the dead stores of the first lookup (sp+0) are not reproduced and the local layout is not matched. */
+void f_06b0f0(char *self, char *obj, int *rec, int idx)
+{
+    int s3 = idx;
+    if (idx >= 16384) s3 = idx - 16384;
+    char *s4 = 0;
+    if (!obj) return;
+    void *q = *(void **)(*(char **)(self + 344) + 4);
+    void *pa = *(void **)((char *)q + 8);
+    void *v = ((void *(**)(void *))*(void **)pa)[9](pa);
+    char *X0 = (char *)f_15fa60(obj, v);
+    int p192 = *(int *)(X0 + 20);
+    if (p192) {
+        char *n = f_05f0b8(self + 348, &p192);
+        void *a0 = *(void **)(n + 16);
+        void *r0 = 0;
+        if (a0) r0 = f_154448(a0, D_1a4900, D_1a493c, 0);
+        s4 = (char *)r0;
+        char *vec = s4 + 32;
+        void *sl = 0;
+        if ((unsigned)s3 < (unsigned)((*(int *)(vec + 8) - *(int *)(vec + 4)) >> 2))
+            sl = ((void **)*(void **)(s4 + 36))[s3];
+        if (sl) f_15fb50(sl, 0);
+    }
+    Obj64 *o = new Obj64(X0);
+    Ref r(o);
+    *(int *)(X0 + 332) = r.a;
+    {
+        Hd h;
+        h.a = *(int *)(self + 372);
+        h.b = *(int *)(self + 376);
+        if (h.b) ++*(int *)h.b;
+        ((void (**)(void *, void *, void *))*(void **)r.a)[14]((void *)r.a, self + 152, &h);
+    }
+    char *s1 = f_05f0b8(self + 348, &X0);
+    int rec2[4] = {rec[0], rec[1], rec[2], rec[3]};
+    {
+        Hd h;
+        h.a = r.a; h.b = r.b;
+        if (h.b) ++*(int *)h.b;
+        int out[6];
+        f_05f524(out, rec2, &h);
+        *(int *)s1 = out[0]; *(int *)(s1 + 12) = out[3];
+        *(int *)(s1 + 4) = out[1]; *(int *)(s1 + 8) = out[2];
+        f_05df24(s1 + 16, out + 4);
+    }
+    if (p192) {
+        {
+            Hd h;
+            h.a = r.a; h.b = r.b;
+            if (h.b) ++*(int *)h.b;
+            ((void (**)(void *, void *, void *))*(void **)s4)[14](s4, rec, &h);
+        }
+        char *vec = s4 + 32;
+        void *k = X0;
+        if (!((unsigned)s3 < (unsigned)((*(int *)(vec + 8) - *(int *)(vec + 4)) >> 2))) {
+            int z = 0;
+            f_05f6a8(vec, s3 + 1, &z);
+        }
+        *(void **)(*(char **)(s4 + 36) + s3 * 4) = k;
+        char *m = s4 + 48;
+        int *it;
+        f_05f954(&it, m, &k);
+        int *hd = *(int **)(m + 4);
+        if (it == hd || (unsigned)k < (unsigned)it[4]) {
+            int *res;
+            int pr[2] = {(int)k, 0};
+            f_05f998(&res, m, &it, pr);
+            it = res;
+        }
+        it[5] = s3;
+    }
+}
+/* @draft 0x068bc0 us f_068bc0
+   WHAT IT DOES: when both objects share the same non-zero parent, finds the parent in the player's list, narrows it with a checked cast, looks both objects up in the parent's map at +48 for their slot indices, removes both entries (f_06b050), then stores each object into the other's slot of the slot vector (growing it as needed) and records the swapped slot index in the map.    Remaining difference: callee-saved register assignment (parent pointer lands in s5 instead of s3, the two slot indices swap s5/s7) and 12 bytes of size. */
+void f_068bc0(char *self, char *a, char *b)
+{
+    int k = *(int *)(a + 20);
+    if (!k) return;
+    if (k != *(int *)(b + 20)) return;
+    char *n = f_05f0b8(self + 348, &k);
+    void *pa0 = *(void **)(n + 16);
+    char *par = pa0 ? (char *)f_154448(pa0, D_1a4900, D_1a493c, 0) : 0;
+    char *m = par + 48;
+    It4 i0; It4 i16; It4 i32; It4 i48; Pr p64; It4 i80; Pr p96;
+    char *ka = a; char *kb = b;
+    f_05f5dc(&i0, m, &ka);
+    int s7 = -1;
+    int *hd = *(int **)(m + 4);
+    i16.p = hd;
+    if (i0.p != hd) s7 = i0.p[5];
+    f_05f5dc(&i16, m, &kb);
+    int s5 = -1;
+    hd = *(int **)(m + 4);
+    i0.p = hd;
+    if (i16.p != hd) s5 = i16.p[5];
+    if ((s5 | s7) < 0) return;
+    f_06b050(par, (int)a);
+    f_06b050(par, (int)b);
+    char *vec = par + 32;
+    unsigned sz = (unsigned)((*(int *)(vec + 8) - *(int *)(vec + 4)) >> 2);
+    if (!((unsigned)s5 < sz)) {
+        int z = 0;
+        f_05f6a8(vec, s5 + 1, &z);
+    }
+    char *ka2 = a;
+    (*(char ***)(par + 36))[s5] = ka2;
+    f_05f954(&i16, m, &ka2);
+    hd = *(int **)(m + 4);
+    int *t = i16.p;
+    i0.p = hd;
+    if (t == hd || (unsigned)ka2 < (unsigned)t[4]) {
+        p64.k = (int)ka2; p64.v = 0;
+        i80.p = t;
+        i48.p = t;
+        f_05f998(&i32, m, &i80, &p64);
+        i16.p = i32.p;
+        t = i32.p;
+    }
+    t[5] = s5;
+    sz = (unsigned)((*(int *)(vec + 8) - *(int *)(vec + 4)) >> 2);
+    if (!((unsigned)s7 < sz)) {
+        int z = 0;
+        f_05f6a8(vec, s7 + 1, &z);
+    }
+    char *kb2 = b;
+    (*(char ***)(par + 36))[s7] = kb2;
+    f_05f954(&i80, m, &kb2);
+    hd = *(int **)(m + 4);
+    t = i80.p;
+    i48.p = hd;
+    if (t == hd || (unsigned)kb2 < (unsigned)t[4]) {
+        p96.k = (int)kb2; p96.v = 0;
+        i0.p = t;
+        i16.p = t;
+        f_05f998(&i32, m, &i0, &p96);
+        i80.p = i32.p;
+        t = i32.p;
+    }
+    t[5] = s7;
 }
 }
 }
