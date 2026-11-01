@@ -1050,12 +1050,12 @@ void f_07354c(void *self, char *p)
         t.a = *(B4 *)q;
         t.b = *(B4 *)(q + 4);
         q += 8;
-        char **slot = &at<char *>(self, 2396 + *(int *)&t.b * 4);
         char *e = p + *(int *)&t.a;
+        char **slot = &at<char *>(self, 2396 + *(int *)&t.b * 4);
         *slot = e;
         f_0230e0(e);
         i++;
-    } while (i < *(int *)&t.h);
+    } while (*(int *)&t.h > i);
     }
 }
 
@@ -1722,7 +1722,7 @@ int f_06dac0(void *self, int a, int b)
 
 /* @draft 0x072e1c us f_072e1c
    WHAT IT DOES: fills the buffer out according to the kind f_0780e0(out) reports: kind 5 copies the 292 bytes at self+1216, kind 10 the 324 bytes at self+1508, kind 18 two words (+7244, +2352), kind 21 three words (+2360..+2368), kind 24 one word (+2376), kind 27 the count at +928 followed by that many words from +932; returns 1 when handled, else 0.
-   Remaining difference: self and out swap callee-saved registers (s1/s0). */
+   Remaining difference: the kind-18 arm loads and stores its two words in a different order (4 words). */
 int f_072e1c(void *self, void *out)
 {
     switch (f_0780e0(out)) {
@@ -1746,8 +1746,11 @@ int f_072e1c(void *self, void *out)
         break;
     case 27: {
         at<int>(out, 28) = at<int>(self, 928);
-        for (int i = 0; i < at<int>(self, 928); i++)
-            at<int>(out, 8 + i * 4) = at<int>(self, 932 + i * 4);
+        for (int i = 0; i < at<int>(self, 928); i++) {
+            int o = i * 4;
+            int v = at<int>((char *)(o + (unsigned)self), 932);
+            at<int>((char *)(o + (unsigned)out), 8) = v;
+        }
         break;
     }
     default:
@@ -2000,5 +2003,125 @@ void f_073a44(void *self)
     }
 }
 
+
+extern int D_24139c;
+extern unsigned char D_2413a0;
+extern int D_2413a4;
+int f_0722bc(char *, unsigned, int, int, int *, unsigned char *, int *, unsigned, unsigned, int *, int *);
+/* @implements 0x072080 us f_072080
+   WHAT IT DOES: asks f_0722bc to fill a 96,000-byte table, a 24-entry list and a count; on the first use it copies 24 bytes from the list's words, seeds the generator D_24139c from D_2413a4 once, then picks a row of the table by random number modulo the count, bumps each of its 24 bytes until one wraps to zero, collects those values into X, and writes them to out in a random (Fisher-Yates style) order; returns how many were collected. */
+int f_072080(char *a0, unsigned a1, int a2, int *out)
+{
+    unsigned char A[96000];
+    int X[24];
+    int Y[24];
+    int z;
+    int flag;
+    unsigned j, k;
+    z = 0;
+    flag = 0;
+    f_0722bc(a0, a1, a2, 0, X, A, &flag, 0, 0, Y, &z);
+    if (flag == 0) {
+        for (j = 0; j < 24; j++)
+            A[j] = (unsigned char)Y[j];
+        flag = 1;
+    }
+    if (D_2413a0 == 0) {
+        D_2413a0 = 1;
+        D_24139c = D_2413a4;
+    }
+    D_24139c = D_24139c * 1664525 + 1013904223;
+    unsigned char *row = (unsigned char *)((unsigned)D_24139c % (unsigned)flag * 24 + (unsigned)A);
+    for (j = 0; j < 24; j++) {
+        int v = row[j] + 1;
+        row[j] = v;
+        unsigned char c = v;
+        if (c == 0)
+            break;
+        X[j] = c;
+    }
+    for (k = 0; k < j; k++) {
+        D_24139c = D_24139c * 1664525 + 1013904223;
+        unsigned r = (unsigned)D_24139c % (unsigned)(j - k);
+        int t = X[r];
+        X[r] = X[j - 1 - k];
+        out[k] = t;
+    }
+    return j;
+}
+
+void f_06b6fc(int);
+void f_07a19c(void *);
+/* @draft 0x0756b4 us f_0756b4
+   WHAT IT DOES: loads saved state from the buffer p according to the kind f_0780e0(p) reports: kind 3 copies 24 bytes to self+1012, mirrors the word at +1024 into +880 (calling f_0929b4 with 10 when it is 3 and the byte at +1030 is set) and calls f_06b6fc with the byte at +1028; kind 8 copies 128 bytes to self+884 and the word at +900 into +4356; kind 15 copies 236 bytes to self+1036 and calls f_07a19c on it; returns 1 when handled, else 0.
+   Remaining difference: the result is carried in v1 and moved to v0 at the shared return, 8 bytes longer than retail. */
+int f_0756b4(void *self, void *p)
+{
+    char *s = (char *)self;
+    switch ((unsigned)f_0780e0(p)) {
+    case 3: {
+        __builtin_memcpy(s + 1012, p, 24);
+        int v = at<int>(s, 1024);
+        at<int>(s, 880) = v;
+        if (v == 3 && at<unsigned char>(s, 1030))
+            f_0929b4(f_092970(), 10);
+        f_06b6fc(at<char>(s, 1028));
+        return 1;
+    }
+    case 8:
+        __builtin_memcpy(s + 884, p, 128);
+        at<int>(s, 4356) = at<int>(s, 900);
+        return 1;
+    case 15:
+        __builtin_memcpy(s + 1036, p, 236);
+        f_07a19c(s + 1036);
+        return 1;
+    }
+    return 0;
+}
+
+/* @draft 0x0722bc us f_0722bc
+   WHAT IT DOES: a recursive search for ordered picks of up to 24 entries: for each candidate depth it adds the entry at obj+(idx*26+depth)*4+4832 to a running total (base), skips totals above the limit, records the best total below it with its choice list in Y, and when the total is more than 60000 below the limit appends the choice list as a 24-byte row of table A (padded with 0xff, counter *cnt up to 3800); otherwise recurses one level deeper; returns 1 as soon as the row count is exhausted or a deeper call succeeds. */
+int f_0722bc(char *obj, unsigned limit, int idx, int base, int *X, unsigned char *A, int *cnt, unsigned depth, unsigned n, int *Y, int *best)
+{
+    int r = 0;
+    if (n < 24 && depth < 24) {
+        int c = idx * 26;
+        int *pX = X + n;
+        unsigned lim28 = limit - 60000;
+        do {
+            if ((unsigned)*cnt >= 3800) {
+                r = 1;
+                break;
+            }
+            unsigned a3 = base + at<int>(obj, (c + depth) * 4 + 4832) + 20000;
+            if (limit < a3)
+                continue;
+            if (a3 < limit) {
+                if ((unsigned)*best < a3) {
+                    unsigned i;
+                    *best = a3;
+                    for (i = 0; i <= n; i++)
+                        Y[i] = X[i];
+                    for (i = n + 1; i < 24; i++)
+                        Y[i] = -1;
+                }
+            }
+            *pX = depth;
+            if (lim28 < a3) {
+                unsigned i;
+                for (i = 0; i <= n; i++)
+                    A[*cnt * 24 + i] = (unsigned char)X[i];
+                for (i = n + 1; i < 24; i++)
+                    A[*cnt * 24 + i] = 0xff;
+                *cnt = *cnt + 1;
+            } else if (f_0722bc(obj, limit, idx, a3, X, A, cnt, depth + 1, n + 1, Y, best)) {
+                r = 1;
+                break;
+            }
+        } while (++depth < 24);
+    }
+    return r;
+}
 }
 }
