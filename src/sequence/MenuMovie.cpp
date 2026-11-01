@@ -89,7 +89,7 @@ void f_06c938(void *self)
     f_04b2d4((char *)self + 4);
 }
 
-/* @draft 0x06e86c us f_06e86c
+/* @implements 0x06e86c us f_06e86c
    WHAT IT DOES: Adds two to a value at or above 40, then adds a constant 0xe4e5a8. */
 int f_06e86c(int a)
 {
@@ -98,7 +98,7 @@ int f_06e86c(int a)
     return a + 0xe4e5a8;
 }
 
-/* @draft 0x06e888 us f_06e888
+/* @implements 0x06e888 us f_06e888
    WHAT IT DOES: Adds one when the value is at or above 40, then adds a constant 0xe4e990. */
 int f_06e888(int a)
 {
@@ -107,7 +107,7 @@ int f_06e888(int a)
     return r + 0xe4e990;
 }
 
-/* @draft 0x06e8a8 us f_06e8a8
+/* @implements 0x06e8a8 us f_06e8a8
    WHAT IT DOES: Adds one when the value is at or above 40, then adds a constant 0x6dace78. */
 int f_06e8a8(int a)
 {
@@ -160,7 +160,7 @@ void f_06c5e0(void *self)
     ::operator delete(self);
 }
 
-/* @draft 0x073fa8 us f_073fa8
+/* @implements 0x073fa8 us f_073fa8
    WHAT IT DOES: Calls the routine at 0x02326c with 2, then the routine at 0x01dee4 with the
    word at offset 512. */
 void f_073fa8(void *self)
@@ -169,7 +169,7 @@ void f_073fa8(void *self)
     f_01dee4(at<int>(self, 512));
 }
 
-/* @draft 0x06ca64 us f_06ca64
+/* @implements 0x06ca64 us f_06ca64
    WHAT IT DOES: Passes the sub-object at offset 4 through 0x04b280, then calls 0x046894 with
    the result and the two arguments. */
 void f_06ca64(void *self, int a1, int a2)
@@ -177,7 +177,7 @@ void f_06ca64(void *self, int a1, int a2)
     f_046894(f_04b280((char *)self + 4), a1, a2);
 }
 
-/* @draft 0x06caa8 us f_06caa8
+/* @implements 0x06caa8 us f_06caa8
    WHAT IT DOES: Passes the sub-object at offset 4 through 0x04b280, then calls 0x0468e8 with
    the result and the three arguments. */
 void f_06caa8(void *self, int a1, int a2, int a3)
@@ -185,7 +185,7 @@ void f_06caa8(void *self, int a1, int a2, int a3)
     f_0468e8(f_04b280((char *)self + 4), a1, a2, a3);
 }
 
-/* @draft 0x06cafc us f_06cafc
+/* @implements 0x06cafc us f_06cafc
    WHAT IT DOES: Passes the sub-object at offset 4 through 0x04b280, then calls 0x046d50 with
    the result and the two arguments. */
 void f_06cafc(void *self, int a1, int a2)
@@ -193,7 +193,7 @@ void f_06cafc(void *self, int a1, int a2)
     f_046d50(f_04b280((char *)self + 4), a1, a2);
 }
 
-/* @draft 0x073ea0 us f_073ea0
+/* @implements 0x073ea0 us f_073ea0
    WHAT IT DOES: Sets up the WirelessMenu entry with the WirelessLanError text, then clears
    its second entry through the routine at 0x04b664. */
 void f_073ea0(void *self)
@@ -202,7 +202,7 @@ void f_073ea0(void *self)
     f_04b664((char *)self + 4, D_1a6078, 0);
 }
 
-/* @draft 0x073ef8 us f_073ef8
+/* @implements 0x073ef8 us f_073ef8
    WHAT IT DOES: Sets up the WirelessMenu entry with the WirelessSwitchOFFType2 text, then
    clears its second entry through the routine at 0x04b664. */
 void f_073ef8(void *self)
@@ -211,7 +211,7 @@ void f_073ef8(void *self)
     f_04b664((char *)self + 4, D_1a6078, 0);
 }
 
-/* @draft 0x073f50 us f_073f50
+/* @implements 0x073f50 us f_073f50
    WHAT IT DOES: Sets up the WirelessMenu entry with the WirelessCError text, then clears its
    second entry through the routine at 0x04b664. */
 void f_073f50(void *self)
@@ -234,8 +234,10 @@ int f_075b74(void *self, int kind)
         if (s0) {
             int v2 = at<int>(self, 4);
             at<int>(self, 4352) = 0;
-            if (v2)
+            if (v2) {
                 f_04b290(sub);
+                r = s0;
+            }
         }
     }
     return r;
@@ -459,18 +461,16 @@ void f_076a24(void *self)
     f_0769fc(1, 0xffff);
 }
 
-/* @draft 0x0769b8 us f_0769b8
-   WHAT IT DOES: For code 3, takes the word at offset 456 of the object, clears it and returns the old value; otherwise returns 0.
-   Remaining difference: retail copies the loaded word into the result register in the branch delay slot and shares one return; this form places the clear before the store and the return differently (44 vs 40 bytes). */
+/* @implements 0x0769b8 us f_0769b8
+   WHAT IT DOES: For code 3, takes the word at offset 456 of the object, clears it and returns the old value; otherwise returns 0. */
 int f_0769b8(char *self, int code)
 {
     int r = 0;
     if (code == 3) {
         int v = FIELD(int, self, 456);
-        if (v) {
-            r = v;
+        if (v)
             FIELD(int, self, 456) = 0;
-        }
+        r = v;
     }
     return r;
 }
@@ -907,7 +907,7 @@ void f_0753e4(MN *self) { self->~MN(); }
    WHAT IT DOES: destroys the composite menu object (twin of f_0753e4). */
 void f_0754a0(MN *self) { self->~MN(); }
 
-/* @draft 0x07363c us f_07363c
+/* @implements 0x07363c us f_07363c
    WHAT IT DOES: reads a packed table header at p+4 and, for each entry, sets the slot at self+2396+index*4 to -1. */
 void f_07363c(void *self, char *p)
 {
@@ -915,12 +915,16 @@ void f_07363c(void *self, char *p)
     t.h = *(B4 *)(p + 4);
     unsigned off = ((*(int *)&t.h & 1) == 0) * 8;
     unsigned o8 = off + 8;
+    int i = 0;
+    if (*(int *)&t.h > 0) {
     char *q = (char *)(o8 + (unsigned)p);
-    for (int i = 0; i < *(int *)&t.h; i++) {
+    do {
         t.a = *(B4 *)q;
         t.b = *(B4 *)(q + 4);
         q += 8;
         at<int>(self, 2396 + *(int *)&t.b * 4) = -1;
+        i++;
+    } while (i < *(int *)&t.h);
     }
 }
 
@@ -1039,14 +1043,19 @@ void f_07354c(void *self, char *p)
     t.h = *(B4 *)(p + 4);
     unsigned off = ((*(int *)&t.h & 1) == 0) * 8;
     unsigned o8 = off + 8;
+    int i = 0;
+    if (*(int *)&t.h > 0) {
     char *q = (char *)(o8 + (unsigned)p);
-    for (int i = 0; i < *(int *)&t.h; i++) {
+    do {
         t.a = *(B4 *)q;
         t.b = *(B4 *)(q + 4);
         q += 8;
+        char **slot = &at<char *>(self, 2396 + *(int *)&t.b * 4);
         char *e = p + *(int *)&t.a;
-        at<char *>(self, 2396 + *(int *)&t.b * 4) = e;
+        *slot = e;
         f_0230e0(e);
+        i++;
+    } while (i < *(int *)&t.h);
     }
 }
 
@@ -1100,21 +1109,25 @@ void f_04b25c(void *);
 void f_04b23c(void *, void *);
 /* @draft 0x06c954 us f_06c954
    WHAT IT DOES: initialises the sub-object at self+4, reads a packed table header at p+4 and for each entry stores the pointer p+offset into the slot at self+44+index*4 and calls f_0230e0 on it, then calls f_04b23c(self+4, self+44). */
-void f_06c954(void *self, char *p)
+void f_06c954(void *self, int a, char *p)
 {
     f_04b25c((char *)self + 4);
     struct { B4 h, a, b; } t;
     t.h = *(B4 *)(p + 4);
     unsigned off = ((*(int *)&t.h & 1) == 0) * 8;
     unsigned o8 = off + 8;
+    int i = 0;
+    if (*(int *)&t.h > 0) {
     char *q = (char *)(o8 + (unsigned)p);
-    for (int i = 0; i < *(int *)&t.h; i++) {
+    do {
         t.a = *(B4 *)q;
         t.b = *(B4 *)(q + 4);
         q += 8;
         char *e = p + *(int *)&t.a;
         at<char *>(self, 44 + *(int *)&t.b * 4) = e;
         f_0230e0(e);
+        i++;
+    } while (i < *(int *)&t.h);
     }
     f_04b23c((char *)self + 4, (char *)self + 44);
 }
@@ -1196,14 +1209,18 @@ void f_076328(void *self, int a, char *p)
     t.h = *(B4 *)(p + 4);
     unsigned off = ((*(int *)&t.h & 1) == 0) * 8;
     unsigned o8 = off + 8;
+    int i = 0;
+    if (*(int *)&t.h > 0) {
     char *q = (char *)(o8 + (unsigned)p);
-    for (int i = 0; i < *(int *)&t.h; i++) {
+    do {
         t.a = *(B4 *)q;
         t.b = *(B4 *)(q + 4);
         q += 8;
         char *e = p + *(int *)&t.a;
         at<char *>(self, 476 + *(int *)&t.b * 4) = e;
         f_0230e0(e);
+        i++;
+    } while (i < *(int *)&t.h);
     }
     f_04a648(sub, a, (char *)self + 476, 0, 0, 0, 0);
     f_04b8a0(sub, (void *)f_06b7b4, 0);
@@ -1226,14 +1243,18 @@ void f_0759f0(void *self, int a, char *p)
     t.h = *(B4 *)(p + 4);
     unsigned off = ((*(int *)&t.h & 1) == 0) * 8;
     unsigned o8 = off + 8;
+    int i = 0;
+    if (*(int *)&t.h > 0) {
     char *q = (char *)(o8 + (unsigned)p);
-    for (int i = 0; i < *(int *)&t.h; i++) {
+    do {
         t.a = *(B4 *)q;
         t.b = *(B4 *)(q + 4);
         q += 8;
         char *e = p + *(int *)&t.a;
         at<char *>(self, 476 + *(int *)&t.b * 4) = e;
         f_0230e0(e);
+        i++;
+    } while (i < *(int *)&t.h);
     }
     f_04a648(sub, a, (char *)self + 476, 0, 0, 0, 0);
     f_04b8a0(sub, (void *)f_06b7b4, 0);
@@ -1257,14 +1278,18 @@ void f_0760fc(void *self, int a, char *p)
     t.h = *(B4 *)(p + 4);
     unsigned off = ((*(int *)&t.h & 1) == 0) * 8;
     unsigned o8 = off + 8;
+    int i = 0;
+    if (*(int *)&t.h > 0) {
     char *q = (char *)(o8 + (unsigned)p);
-    for (int i = 0; i < *(int *)&t.h; i++) {
+    do {
         t.a = *(B4 *)q;
         t.b = *(B4 *)(q + 4);
         q += 8;
         char *e = p + *(int *)&t.a;
         at<char *>(self, 968 + *(int *)&t.b * 4) = e;
         f_0230e0(e);
+        i++;
+    } while (i < *(int *)&t.h);
     }
     f_04a648(sub, a, (char *)self + 968, 0, 0, 0, 0);
     f_04b8a0(sub, (void *)f_06b7b4, 0);
@@ -1313,14 +1338,18 @@ void f_076778(void *self, int a, char *p)
     t.h = *(B4 *)(p + 4);
     unsigned off = ((*(int *)&t.h & 1) == 0) * 8;
     unsigned o8 = off + 8;
+    int i = 0;
+    if (*(int *)&t.h > 0) {
     char *q = (char *)(o8 + (unsigned)p);
-    for (int i = 0; i < *(int *)&t.h; i++) {
+    do {
         t.a = *(B4 *)q;
         t.b = *(B4 *)(q + 4);
         q += 8;
         char *e = p + *(int *)&t.a;
         at<char *>(self, 480 + *(int *)&t.b * 4) = e;
         f_0230e0(e);
+        i++;
+    } while (i < *(int *)&t.h);
     }
     f_04a648(sub, a, (char *)self + 480, 0, 0, 0, 0);
     f_04b8a0(sub, (void *)f_06b7b4, 0);
@@ -1459,6 +1488,126 @@ int f_07659c(void *self, char *s, float x0, float x1, float x2, float x3, float 
         return 1;
     }
     return 0;
+}
+
+
+extern bool D_2413b8;
+extern char *D_2413ac;
+extern int D_1d46f0;
+extern int D_242b78;
+extern int D_242b50;
+extern char D_242e14[];
+int f_08a9c0(void);
+void f_088bd4(void);
+void f_088bdc(void *);
+void f_088bc8(void);
+void f_08a998(void);
+void f_097680(void *, int, int);
+
+/* @draft 0x0736f0 us f_0736f0
+   WHAT IT DOES: per-frame check of the menu movie player: when the pending state is 8 it pokes the global helper object, then decides from the input flags and the poll result whether playback ended; if so it logs, tears down the helper object and resets the flag. */
+void f_0736f0(char *self)
+{
+    if (at<int>(self, 7528) == 8) {
+        if (D_2413ac) {
+            f_088bd4();
+            f_088bdc(D_2413ac);
+        }
+    }
+    unsigned flags = D_245194;
+    int d = f_08a9c0();
+    if (at<int>(self, 7528) == 8 && D_2413ac)
+        d = (at<unsigned char>(D_2413ac, 4) ? -1 : 0) | 1;
+    if ((flags & 0xf008) || D_2413b8)
+        d = -1;
+    if (!(d == -1 && D_1d46f0 == 1 && D_242b78 >= 30)) {
+        if (!D_2413b8)
+            return;
+    }
+    f_097680(D_242e14, at<int>(self, 7236), at<unsigned char>(self, 7532));
+    at<char>(self, 36) = 0;
+    if (D_2413ac) {
+        f_088bc8();
+        _ZdlPv(D_2413ac);
+        D_2413ac = 0;
+    }
+    f_08a998();
+    D_242b50 = 0;
+}
+
+
+/* @draft 0x074240 us f_074240
+   WHAT IT DOES: answers a menu state query by code (10..77) from the parent object at self+12: returns and clears a flag, indexed byte tables, a 1..12 cycling index, fields at +1024, +996, +1044 and +1030 and several equality/non-zero tests; 0 for unknown codes. */
+int f_074240(void *self, int a)
+{
+    int r, t, k, off;
+    char *o;
+    switch (a) {
+    case 10: {
+        void *o = at<void *>(self, 12);
+        if (at<bool>(o, 453)) {
+            r = 1;
+            at<bool>(o, 453) = 0;
+        } else
+            r = 0;
+        break;
+    }
+    case 11: {
+        void *o = at<void *>(self, 12);
+        int v = at<int>(o, 904);
+        if (v == 255)
+            r = 0;
+        else
+            r = at<unsigned char>(o, v + 1993);
+        break;
+    }
+    case 12: {
+        void *o = at<void *>(self, 12);
+        int v = at<int>(o, 900) - 1;
+        t = v % 12;
+        goto add1;
+    }
+    case 21: case 22: case 23: case 24: case 25: case 26: case 27: case 28: {
+        k = a - 21;
+        off = k * 28;
+        t = at<int>(at<char *>(self, 12) + off, 1060);
+    add1:
+        r = t + 1;
+        break;
+    }
+    case 45:
+        r = at<int>(at<void *>(self, 12), 1024);
+        break;
+    case 46:
+        r = at<int>(at<void *>(self, 12), 904) == 255;
+        break;
+    case 54:
+        r = at<int>(at<void *>(self, 12), 912) != 0;
+        break;
+    case 55: {
+        void *o = at<void *>(self, 12);
+        int v = at<int>(o, 904);
+        r = at<int>(o, 908) == at<unsigned char>(o, v + 1272);
+        break;
+    }
+    case 56:
+        r = at<int>(at<void *>(self, 12), 996);
+        break;
+    case 57:
+        r = at<int>(at<void *>(self, 12), 1044);
+        break;
+    case 53:
+    case 61:
+        r = at<unsigned char>(at<void *>(self, 12), 1030);
+        break;
+    case 77:
+        r = at<unsigned char>(at<void *>(self, 12), 1020) ^ 1;
+        break;
+    default:
+        r = 0;
+        break;
+    }
+    return r;
 }
 
 }
