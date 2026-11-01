@@ -5250,17 +5250,23 @@ static inline void dflt(char *s, int i) {
         ((void (*)(void *, char *))vt[10])(o, ((char **)W(s, 12))[i]);
     }
 }
+/* The command names live in the object file's string pool between literals of functions not
+   yet written; named by their retail addresses so this file's own pool keeps retail's order. */
+extern char D_1a2d04[]; /* "_SWGKEYREPEATON" */
+extern char D_1a2d14[]; /* "_SWGKEYREPEATOFF" */
+extern char D_1a2d28[]; /* "_SWGEND" */
+
 /* @implements 0x04dd14 us f_04dd14
    WHAT IT DOES: handles the _SWGKEYREPEATON/_SWGKEYREPEATOFF/_SWGEND command names by setting the matching flag, else forwards the name to the default handler through the vtable. */
 void f_04dd14(char *s, int i) {
     char **names = (char **)W(s, 12);
-    if (strcmp(names[i], "_SWGKEYREPEATON") == 0) {
+    if (strcmp(names[i], D_1a2d04) == 0) {
         int p = W(s, 24);
         if (p) *(char*)p = 1; else dflt(s, i);
-    } else if (strcmp(((char **)W(s, 12))[i], "_SWGKEYREPEATOFF") == 0) {
+    } else if (strcmp(((char **)W(s, 12))[i], D_1a2d14) == 0) {
         int p = W(s, 24);
         if (p) *(char*)p = 0; else dflt(s, i);
-    } else if (strcmp(((char **)W(s, 12))[i], "_SWGEND") == 0) {
+    } else if (strcmp(((char **)W(s, 12))[i], D_1a2d28) == 0) {
         int p = W(s, 20);
         if (p) *(int*)p = 1; else dflt(s, i);
     } else dflt(s, i);
