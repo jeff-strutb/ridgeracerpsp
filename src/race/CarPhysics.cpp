@@ -465,19 +465,18 @@ extern "C" void f_0ab220(CarPhys *p)
     }
 }
 
-/* @draft 0x0ab43c us f_0ab43c
-   WHAT IT DOES: Copies the record with index i into the car, runs f_0ab2a4 and stores the car's results back into that record.
-   Remaining difference: the record and list pointers are formed in a different order (21 of 28 words). */
+/* @implements 0x0ab43c us f_0ab43c
+   WHAT IT DOES: Copies the record with index i into the car, runs f_0ab2a4 and stores the car's results back into that record. */
 extern "C" void f_0ab43c(CarPhys *p, int i)
 {
-    char *q = (char *)p + 4 * i;
-    unsigned short *o = (unsigned short *)((char *)p + 2 * i + 368);
-    p->m148 = *(float *)(q + 192);
-    p->m152 = *(float *)(q + 208);
+    float a = ((float *)((char *)p + 192))[i];
+    float b = ((float *)((char *)p + 208))[i];
+    p->m148 = a;
+    p->m152 = b;
     f_0ab2a4(p);
-    *(int *)(q + 376) = p->m188;
-    *o = p->m184;
-    *(float *)(q + 336) = p->m144;
+    ((float *)((char *)p + 336))[i] = p->m144;
+    ((unsigned short *)((char *)p + 368))[i] = p->m184;
+    ((int *)((char *)p + 376))[i] = p->m188;
 }
 
 /* @draft 0x0af2cc us f_0af2cc
@@ -681,7 +680,7 @@ void f_0a9330(CarPhys *p);
 
 /* @draft 0x0a9158 us f_0a9158
    WHAT IT DOES: Stores the truncated speed, then for each of the four wheels turns the wheel's offset by the car's heading, adds the car's position, stores the result as the wheel's position and as the probe point, runs the ground probe f_0a98d8 and keeps its two results for the wheel.
-   Remaining difference: the order of the four float loads before the two sums. */
+   Remaining difference: retail schedules the v.z load after the first sum (both reloads of v use $f0); sched1 here hoists it above. Not -fno-schedule-insns (breaks 10 others), local order, in-place sums or reading the position first. */
 extern "C" void f_0a9158(CarPhys *p)
 {
     p->m180 = (int)p->m128;
@@ -712,7 +711,7 @@ extern "C" void f_0a9158(CarPhys *p)
 
 /* @draft 0x0a9248 us f_0a9248
    WHAT IT DOES: Runs the wheel update f_0a9330, then for each of the four wheels turns the wheel's offset by the car's heading, adds the car's position, stores the result as the wheel's position and as the probe point, runs the ground probe f_0a98d8 and keeps its two results for the wheel.
-   Remaining difference: the order of the four float loads before the two sums. */
+   Remaining difference: retail schedules the v.z load after the first sum (both reloads of v use $f0); sched1 here hoists it above. Not -fno-schedule-insns (breaks 10 others), local order, in-place sums or reading the position first. */
 extern "C" void f_0a9248(CarPhys *p)
 {
     f_0a9330(p);
