@@ -3505,3 +3505,467 @@ void f_06dcb0(void *self, unsigned cmd, int v)
 }
 }
 }
+
+/* ---- menuJ ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* menuJ fragment: TU 119 menu movie scene function f_0702cc. */
+namespace menuJ {
+template <class T> inline T &at(void *p, unsigned int off) { return *(T *)((char *)p + off); }
+#define VFPU_BEGIN ".set push\n\t.set noreorder\n\t"
+#define VFPU_END "\n\t.set pop"
+static inline float VSin(float a)
+{
+    float r;
+    __asm__ volatile(VFPU_BEGIN "lv.s S400, %1\n\tvsin.s S401, S400\n\tsv.s S401, %0" VFPU_END
+                     : "=m"(r) : "m"(a) : "memory");
+    return r;
+}
+static inline float VCos(float a)
+{
+    float r;
+    __asm__ volatile(VFPU_BEGIN "lv.s S400, %1\n\tvcos.s S401, S400\n\tsv.s S401, %0" VFPU_END
+                     : "=m"(r) : "m"(a) : "memory");
+    return r;
+}
+struct V4 { float v[4]; };
+struct C8 { float v[8]; };
+struct V2 { float x, z; };
+struct I9 { int v[9]; };
+struct S4 { short v[4]; };
+struct S6 { short v[6]; };
+
+extern "C" {
+int sprintf(char *, const char *, ...);
+void _ZdlPv(void *);
+extern V4 D_1a5e70, D_1a5e80;
+extern I9 D_1a5e30;
+extern S4 D_1a5e54;
+extern S6 D_1a5e5c;
+extern char D_1a5e90[]; /* "%02d/25]" */
+extern char D_1a5e9c[]; /* "[" */
+extern char D_1a5d88[]; /* "%d" */
+extern unsigned int D_245194;
+extern char D_242e14[];
+
+void f_021720(void);
+void f_021750(void);
+int f_0216d8(void);
+void f_0216e8(int);
+void f_01f234(void *, int);
+void f_01e5d0(void *, void *);
+void f_0cc170(float, float, float);
+void f_0cc3e4(void *);
+float f_0cd3cc(float);
+void f_118380(float);
+void f_11817c(int);
+void f_1166d4(int);
+void f_116898(int);
+void f_118e30(int, int, int, int, int);
+void f_118738(int, int);
+void f_1187d8(int, int);
+void f_1187fc(int, float);
+int f_0cac88(int, int, void *, int);
+void f_026bc8(void *, int, int, int);
+int f_01fad0(int);
+int f_01f9bc(int);
+int f_01f9d8(int);
+int f_01f9f4(int);
+void f_07ac1c(void *);
+void f_07ac38(void *, void *);
+void f_07ac40(void *, int);
+void f_07cb24(void *, int, int, float, float, float, float, int, char *);
+void f_113488(int);
+void f_0e5740(void *);
+void f_0e5a1c(void *);
+void f_0e5a60(void *, float);
+float f_0e62d0(void *);
+void f_097680(void *, int, int);
+void *f_04b280(void *);
+void f_046894(void *, int, int);
+void f_0468e8(void *, int, char *, int);
+void *f_0477b0(void *, int, int, float, float, float, float, int, int, void *);
+void *f_048410(void *, int, int, float, float, float, float, int, int, void *, float, float);
+int f_01c260(void);
+void f_023198(void *, int);
+void f_022400(void *, void *, int);
+void f_02231c(void *, int);
+int f_06b714(int);
+}
+
+static inline void geSetup(float z)
+{
+    f_118e30(0, 2, 3, 0, 0);
+    f_1166d4(4);
+    f_1166d4(5);
+    f_116898(7);
+    f_116898(9);
+    f_118738(7, 1);
+    f_1187d8(1, 1);
+    f_1187fc(0, z);
+    f_116898(10);
+    f_116898(5);
+    f_116898(7);
+    f_1166d4(9);
+    f_116898(10);
+    f_116898(1);
+    f_118e30(0, 2, 3, 0, 0);
+    f_1166d4(4);
+}
+
+static inline void rot2(V2 v, float a, float *o0, float *o2)
+{
+    *o0 = v.x * VCos(a) - v.z * VSin(a);
+    *o2 = v.x * VSin(a) + v.z * VCos(a);
+}
+
+extern "C" {
+
+/* @draft 0x0702cc us f_0702cc
+   WHAT IT DOES: menu movie 3D scene step for mode (0..5) of the parent record: mode 3 advances the
+   intro fade/transition object (counter at +532, timer float at +528) drawing the fade rectangles,
+   progress sprites and labels and releasing the object at the end; the other modes set up the
+   camera and light (fov 60, or 45 in mode 4), project the selected model with the colour pair
+   chosen from the per-slot tables, and for modes 1 and 5 draw the "NN/25]" page counter.
+   Remaining difference: 1083 of 1169 words differ (same size class, 4664 vs 4676 bytes; mnemonic sequence ~89% aligned): callee-saved register
+   assignment differs (mode/self/parent in s5/s7/s2 against retail s4/s5/s1), retail spills the
+   live flag (sp+484) and the pointer at +508 (sp+480) while this keeps them in registers, the
+   text object shares its stack slot with the VFPU sin/cos temporaries in retail, and the
+   shared tails (page-counter epilogue, case-1/5 colour setup) are laid out differently. */
+void f_0702cc(void *self, int mode)
+{
+    char *p;
+    if (mode == 3) {
+        p = at<char *>(self, 12);
+        void *obj = at<void *>(p, 524);
+        if (!obj)
+            return;
+        int cur = at<int>(p, 532);
+        if (cur == at<int>(p, 928))
+            return;
+        float t = at<float>(p, 528);
+        if (t == -3.0f) {
+            if (at<unsigned char>(p, 865))
+                return;
+            at<int>(p, 532) = cur + 1;
+            at<unsigned char>(p, 865) = 1;
+            f_113488(0);
+            p = at<char *>(self, 12);
+            if (at<int>(p, 532) != at<int>(p, 928))
+                return;
+            at<int>(p, 532) = 0;
+            at<int>(p, 928) = 0;
+            f_0e5740(obj);
+            _ZdlPv(obj);
+            p = at<char *>(self, 12);
+            at<int>(p, 932) = -1;
+            at<unsigned char>(p, 864) = 1;
+            at<int>(p, 524) = 0;
+            f_097680(D_242e14, at<int>(p, 7236), at<unsigned char>(p, 7532));
+            return;
+        }
+        float z = 0.0f;
+        if (z <= t) {
+            f_021750();
+            f_0e5a60(obj, at<float>(at<char *>(self, 12), 528));
+            f_021720();
+            geSetup(z);
+            p = at<char *>(self, 12);
+            int sel = at<int>(p, 932 + at<int>(p, 532) * 4);
+            void *o = f_04b280(p + 4);
+            p = at<char *>(self, 12);
+            if (360.0f < at<float>(p, 528)) {
+                I9 tbl = D_1a5e30;
+                int a = (int)((at<float>(p, 528) - 360.0f) * 255.0f / 60.0f);
+                if (a > 255)
+                    a = 255;
+                int idx = tbl.v[at<unsigned char>(p + sel, 5721)];
+                void *tex = at<void *>(p + idx * 4, 2396);
+                S4 q = D_1a5e54;
+                S6 r;
+                r.v[0] = 0; r.v[1] = 0; r.v[2] = 0; r.v[3] = 96; r.v[4] = 128; r.v[5] = 0;
+                f_023198(tex, 0);
+                f_022400(&r, &q, (a << 24) + 0xffffff);
+                p = at<char *>(self, 12);
+            }
+            if (360.0f < at<float>(p, 528)) {
+                int w = (int)((at<float>(p, 528) - 360.0f) * 460.0f / 90.0f);
+                if (w > 460)
+                    w = 460;
+                w += 10;
+                S6 r;
+                r.v[0] = 10; r.v[1] = 250; r.v[2] = 0; r.v[3] = w; r.v[4] = 251; r.v[5] = 0;
+                f_02231c(&r, -1);
+            }
+            f_1166d4(9);
+            int y = 420;
+            if (f_01c260() == 2 || f_01c260() == 4)
+                y = 390;
+            f_0477b0(o, y, 254, 1.0f, 1.0f, 1.0f, 1.0f, 0x4c6a82, 480,
+                     at<char *>(self, 12) + 44);
+            p = at<char *>(self, 12);
+            float tm = at<float>(p, 528);
+            if (30.0f < tm) {
+                float k = (float)((double)(tm - 30.0f) * 0.1);
+                float one = 1.0f;
+                float a = one;
+                if (240.0f < tm)
+                    a -= (tm - 240.0f) / 60.0f;
+                if (a < 0.0f)
+                    a = 0.0f;
+                f_048410(o, 50, 70, one, one, one, a, 0x4c6a81, 480, p + 44, k, 0.2f);
+                p = at<char *>(self, 12);
+            }
+            if (480.0f < at<float>(p, 528)) {
+                float k = (float)((double)(at<float>(p, 528) - 480.0f) * 0.1);
+                f_046894(o, 0, at<unsigned char>(p + sel, 5661) + 0xd5af24);
+                f_046894(o, 1, sel + 0xd5a750);
+                float one = 1.0f;
+                f_048410(o, 12, 226, one, one, one, one, 0x2dd27f, 480,
+                         at<char *>(self, 12) + 44, k, 0.2f);
+                p = at<char *>(self, 12);
+            }
+            if (630.0f < at<float>(p, 528)) {
+                float k = (float)((double)(at<float>(p, 528) - 630.0f) * 0.1);
+                f_046894(o, 0, at<unsigned char>(p + sel, 5841) + 0xd5af21);
+                float one = 1.0f;
+                f_048410(o, 12, 254, one, one, one, one, 0x2dd280, 480,
+                         at<char *>(self, 12) + 44, k, 0.2f);
+                p = at<char *>(self, 12);
+            }
+            if (700.0f < at<float>(p, 528)) {
+                char buf[256];
+                float k = (float)((double)(at<float>(p, 528) - 700.0f) * 0.1);
+                sprintf(buf, D_1a5d88, f_06b714(at<int>(p + sel * 4, 6144)));
+                f_0468e8(o, 0, buf, 0);
+                float one = 1.0f;
+                f_048410(o, 150, 254, one, one, one, one, 0x2dd281, 480,
+                         at<char *>(self, 12) + 44, k, 0.2f);
+                p = at<char *>(self, 12);
+            }
+            if (at<float>(p, 528) < 100.0f) {
+                int a = (int)(255.0f - at<float>(p, 528) * 255.0f / 100.0f);
+                if (a > 255)
+                    a = 255;
+                S6 r = D_1a5e5c;
+                f_02231c(&r, a << 24);
+            }
+            float lim = f_0e62d0(obj) - 100.0f;
+            p = at<char *>(self, 12);
+            if (lim <= at<float>(p, 528)) {
+                float lim2 = f_0e62d0(obj) - 100.0f;
+                int a = (int)((at<float>(at<char *>(self, 12), 528) - lim2) * 255.0f / 100.0f);
+                if (a > 255)
+                    a = 255;
+                S6 r = D_1a5e5c;
+                f_02231c(&r, a << 24);
+                p = at<char *>(self, 12);
+            }
+        } else {
+            geSetup(z);
+            S6 r = D_1a5e5c;
+            f_02231c(&r, 0xff000000);
+            f_1166d4(9);
+            p = at<char *>(self, 12);
+        }
+        float nv = at<float>(p, 528) + 1.0f;
+        at<float>(p, 528) = nv;
+        if ((D_245194 & 0x6000) && 0.0f < nv)
+            at<float>(p, 528) = f_0e62d0(obj);
+        if (f_0e62d0(obj) <= at<float>(at<char *>(self, 12), 528)) {
+            p = at<char *>(self, 12);
+            at<float>(p, 528) = -6.0f;
+            f_0e5a1c(obj);
+        }
+        return;
+    }
+
+    p = at<char *>(self, 12);
+    if (!at<int>(p, 1204))
+        return;
+    if (!at<unsigned char>(p, 7513))
+        return;
+    if (mode == 1) {
+        if (at<int>(p, 7228) != 555 && at<int>(p, 7236) == 3 && !at<unsigned char>(p, 2389)) {
+            at<unsigned char>(p, 7532) = 2;
+            at<unsigned char>(p, 2389) = mode;
+        }
+        p = at<char *>(self, 12);
+    }
+    V4 cam = D_1a5e70;
+    V4 rot = D_1a5e80;
+    C8 c;
+    c.v[0] = 0; c.v[1] = 0; c.v[2] = 0; c.v[3] = 0; c.v[4] = 0; c.v[5] = 0; c.v[6] = 0; c.v[7] = 0;
+    int live = 1;
+    int cur = 0;
+    float fov = 60.0f;
+    if (mode == 4) {
+        cam.v[1] = 1500.0f;
+        cam.v[2] = 5680.0f;
+        rot.v[0] = -0.2f;
+        fov = 45.0f;
+    }
+    float ang = at<float>(self, 36);
+    c.v[5] = ang;
+    at<float>(self, 36) = ang + 0.0087266443f;
+    char *ps = at<char *>(p, 516);
+    char *cs = at<char *>(p, 512);
+    int *lt = (int *)(cs + 1968);
+    char *c288 = c288;
+    char *pl = at<char *>(p, 1192);
+    int q508 = at<int>(p, 508);
+    f_021750();
+    f_021720();
+    f_118380(50.0f);
+    float lv[3];
+    lv[0] = 0.24789f; lv[1] = 0.8369f; lv[2] = -0.488006f;
+    at<float>(cs, 1936) = lv[0];
+    at<float>(cs, 1940) = lv[1];
+    at<float>(cs, 1944) = lv[2];
+    at<int>(cs, 1968) = 0xaaaaaa;
+    lt[2] = 0xaaaaaa;
+    at<int>(cs, 1984) = 0x8c8c8c;
+    f_1166d4(11);
+    f_116898(12);
+    f_116898(13);
+    f_116898(14);
+    f_1166d4(10);
+    f_11817c(0xff000000);
+    at<int>(ps, 0) = 0;
+    at<int>(ps, 4) = 0;
+    at<int>(ps, 8) = 0;
+    float h = fov * 3.1415927f / 180.0f * 0.5f;
+    at<float>(ps, 480) = h;
+    float tn = f_0cd3cc(h);
+    int W = 480, H = 272;
+    at<float>(ps, 484) = 1.7647059f;
+    at<float>(ps, 488) = 300.0f;
+    at<float>(ps, 492) = 2000000.0f;
+    at<int>(ps, 516) = 2048;
+    at<int>(ps, 512) = 2048;
+    at<int>(ps, 504) = at<int>(ps, 500) * W;
+    at<int>(ps, 508) = H;
+    at<float>(ps, 496) = 1.0f / tn;
+    at<float>(ps, 520) = (float)W * 0.5f;
+    at<float>(ps, 524) = (float)H * 0.5f;
+    *(V4 *)ps = cam;
+    f_0cc170(-rot.v[0], -rot.v[1], -rot.v[2]);
+    f_0cc3e4(ps);
+    f_021750();
+    f_01f234(cs, 1911);
+    int i;
+    switch (mode) {
+    case 0:
+    case 3:
+        break;
+    case 1: {
+        p = at<char *>(self, 12);
+        i = at<int>(p, 1204);
+        if (at<unsigned char>(p + i, 2236) && at<unsigned char>(p + i, 1400)) {
+            cur = at<int>(p, 1204);
+            break;
+        }
+        goto reset;
+    }
+    case 2:
+        cur = at<int>(at<char *>(self, 12), 1204);
+        break;
+    case 4:
+        cur = at<int>(at<char *>(self, 12), 1228);
+        break;
+    case 5: {
+        p = at<char *>(self, 12);
+        i = at<int>(p, 1204);
+        if ((i - 1) % 9 < 3 && i != 57) {
+            cur = at<int>(p, 1204);
+            break;
+        }
+        if (at<unsigned char>(p + i, 2236) && at<unsigned char>(p + i, 1400)) {
+            cur = at<int>(p, 1204);
+            break;
+        }
+    reset:
+        f_021720();
+        lt[2] = 0;
+        at<int>(cs, 1968) = 0;
+        at<int>(cs, 1984) = 0;
+        f_021750();
+        live = 0;
+        at<int>(c288, 12) = 0;
+        p = at<char *>(self, 12);
+        cur = at<int>(p, 1204);
+        break;
+    }
+    default:
+        break;
+    }
+    if (pl) {
+        rot2(*(V2 *)(pl + 4), at<float>(self, 36) * 0.6366197f, &c.v[0], &c.v[2]);
+    }
+    *(C8 *)cs = c;
+    f_01e5d0(cs, ps + 288);
+    p = at<char *>(self, 12);
+    {
+        int m = at<unsigned char>(p + at<int>(p, 1204), 5781);
+        at<int>(c288, 8) = (m == 3) ? 0 : m;
+    }
+    if (cur && live) {
+        int m = at<unsigned char>(p + cur, 5781);
+        if (m == 3)
+            m = 0;
+        int key = at<int>(p + cur * 4, 1592);
+        if (key != 0) {
+            int v = f_01fad0(key - 1);
+            at<int>(c288, 1616) = v;
+            at<int>(c288, 1612) = v;
+            p = at<char *>(self, 12);
+            int a = f_01f9bc(at<int>(p + cur * 4, 1592) - 1);
+            p = at<char *>(self, 12);
+            int b = f_01f9d8(at<int>(p + cur * 4, 1592) - 1);
+            p = at<char *>(self, 12);
+            int d = f_01f9f4(at<int>(p + cur * 4, 1592) - 1);
+            f_026bc8(cs + 2000, a, b, d);
+        } else {
+            unsigned char *e = (unsigned char *)(at<char *>(cs, 288) + m * 4);
+            int col = e[160] | (e[161] << 8) | (e[162] << 16);
+            at<int>(c288, 1616) = col;
+            at<int>(c288, 1612) = col;
+            f_026bc8(cs + 2000, e[148], e[149], e[150]);
+        }
+    }
+    {
+        int v = f_0216d8();
+        f_0216e8(f_0cac88(q508, 2, ps, v));
+    }
+    f_021720();
+    if (mode == 1 || mode == 5) {
+        if (cur && live) {
+            geSetup(0.0f);
+            char buf[256];
+            char ts[48];
+            sprintf(buf, D_1a5e90, at<int>(at<char *>(self, 12) + cur * 4, 1592) + 1);
+            f_07ac1c(ts);
+            f_07ac40(ts, 0);
+            f_07ac38(ts, at<char *>(self, 12) + 44);
+            sprintf(buf, D_1a5e90, at<int>(at<char *>(self, 12) + cur * 4, 1592) + 1);
+            float one = 1.0f;
+            f_07cb24(ts, 474, 38, 0.0f, 0.0f, 0.0f, one, 2, buf);
+            f_07cb24(ts, 428, 38, 0.0f, 0.0f, 0.0f, one, 2, D_1a5e9c);
+            if (D_245194 & 1) {
+                p = at<char *>(self, 12);
+                if (at<int>(p, 7228) != 551) {
+                    unsigned int *k = (unsigned int *)(p + cur * 4 + 1592);
+                    unsigned int nv = *k + 1;
+                    *k = nv;
+                    if (nv >= 25)
+                        *k = 0;
+                }
+            }
+        }
+    }
+}
+
+}
+}
