@@ -981,10 +981,11 @@ void f_04e694(void *self) {
     new (self) GuardC694;
 }
 
-/* @draft 0x04e8c0 us f_04e8c0
+/* @implements 0x04e8c0 us f_04e8c0
    WHAT IT DOES: stores the vtable address D_1a3ab0 into the object.
-   Remaining difference: 3/6 words differ, first at +0x8; size 16 vs 24. */
+   */
 void f_04e8c0(void *self) {
+    GuardE g;
     *(void **)self = D_1a3ab0;
 }
 
@@ -1001,20 +1002,22 @@ char *f_04ebf4(void *a0, char *a1) {
     return v0 + 4;
 }
 
-/* @draft 0x04eec0 us f_04eec0
+/* @implements 0x04eec0 us f_04eec0
    WHAT IT DOES: stores the vtable address D_1a3810 into the object, then calls the base
-   destructor f_05d6dc.
-   Remaining difference: 4/10 words differ, first at +0xc; size 40 vs 40. */
+   destructor f_05d6dc (declared throw() so the guard needs no landing pad). */
+extern "C" void f_05d6dc_nt(void *) throw() __asm__("f_05d6dc");
 void f_04eec0(void *self) {
+    GuardE g;
     *(void **)self = D_1a3810;
-    f_05d6dc(self);
+    f_05d6dc_nt(self);
 }
 
-/* @draft 0x04eee8 us f_04eee8
+/* @implements 0x04eee8 us f_04eee8
    WHAT IT DOES: calls f_04e4b4 on the object; a throw() function, so the exception path is
    __cxa_call_unexpected.
-   Remaining difference: 4/14 words differ, first at +0x0; size 56 vs 56. */
+   */
 void f_04eee8(void *self) throw() {
+    GuardE g;
     f_04e4b4(self);
 }
 
@@ -1298,6 +1301,7 @@ void f_04ea4c(char *a0) {
    WHAT IT DOES: sets the vtable address D_1a3810 into the object, calls f_05d6dc on the object, then
    frees the object at -4 with f_04e4b4.
    Remaining difference: 8/17 words differ, first at +0x8; size 60 vs 68. */
+extern "C" void f_04e4b4_nt(void *) throw() __asm__("f_04e4b4");
 void f_04ec30(char *a0) {
     GuardE g;
     *(void **)a0 = D_1a3810;
@@ -1744,9 +1748,9 @@ void f_05a3b0(void *p, void *q)
     f_061458((char *)p + 44, tmp);
 }
 
-/* @draft 0x052f4c us f_052f4c
+/* @implements 0x052f4c us f_052f4c
    WHAT IT DOES: Passes the sub-object at +328 and the value chain +328 -> +4 -> +4 to
-   f_05f64c, with the output buffer at sp+16.    Remaining difference: store order: retail stores the b word to sp+32 before the buf word to sp+0; ours emits the buf store first (2 of 14 words differ, first at +0x20).
+   f_05f64c, with the output buffer at sp+16.
    */
 void f_052f4c(char *p)
 {
@@ -1756,8 +1760,9 @@ void f_052f4c(char *p)
     int b;
     int v = *(int *)(q + 4);
     buf[0] = v;
-    b = *(int *)(v + 4);
-    buf[0] = b;
+    int w = *(int *)(v + 4);
+    buf[0] = w;
+    b = w;
     f_05f64c(out, q, &b);
 }
 
@@ -5406,6 +5411,485 @@ int f_050650(char *s, int x, int y, int z) {
     }
   }
   return r;
+}
+
+}
+}
+
+/* ---- swg3a ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 fragment by worker swg3a. */
+namespace swg3a {
+
+struct Rec16 { int a, b, c, d; };
+inline void *operator new(unsigned, void *p) { return p; }
+
+extern "C" {
+void f_04a5d8(void *);
+void f_04a610(void *);
+void f_04b994(void *);
+int f_15c07c(void *, int, int);
+void f_15d2e4(void *, int, int, int);
+void f_15cef8(void *, int, int);
+void f_15ced4(void *, int, int);
+void f_07d880a(void *) asm("f_07d880");
+void f_15c870d(void *, int, int, float, float) asm("f_15c870");
+void f_15d0ac(void *, int, int, int);
+void f_15d124(void *, int, int, int);
+void f_118e30(int, int, int, int, int);
+void f_1166d4(int);
+void f_04d648(void *);
+void f_04b290(void *);
+void f_04b2b4(void *);
+void *f_04dfa0(int);
+void *f_15bfe4(void *, int);
+void f_15f190(void *, float *, float *);
+void f_07d764(void *);
+void _ZdlPv(void *);
+void f_021720(void);
+void f_021750(void);
+void f_045400a(void *) asm("f_045400");
+void f_04559ca(void *) asm("f_04559c");
+void f_045e58(void *, void *);
+int f_07dacc(void *, int, int, int);
+void f_116898(int);
+void f_118738(int, int);
+void f_1187d8(int, int);
+void f_1187fc(int, float);
+extern void *D_241000;
+extern void *D_241004;
+void _ZdaPv(void *);
+void f_07d754(void *);
+void f_0459d0(void *, void *, void *, void *, void *, void *, void *, void *, int);
+void *memset(void *, int, unsigned);
+extern int D_291424, D_291680, D_291690, D_291420, D_291668, D_29166c, D_291748, D_29174c, D_291410;
+void f_045c14(void *, void *, void *, void *, void *, void *, void *, void *, int);
+}
+void operator delete[](void *) throw();
+extern "C" {
+}
+
+struct B { B() { f_04a5d8(this); } ~B() { f_04a610(this); } };
+struct D : B { D() { f_04b994(this); } };
+
+extern "C" {
+
+/* @implements 0x04b8cc us f_04b8cc
+   WHAT IT DOES: placement-constructs a derived player object in the storage passed in (base ctor helper f_04a5d8, then f_04b994). */
+void f_04b8cc(void *s) {
+    new (s) D;
+}
+
+/* @implements 0x04b914 us f_04b914
+   WHAT IT DOES: twin of f_04b8cc: placement-constructs the derived object in the passed storage. */
+void f_04b914(void *s) {
+    new (s) D;
+}
+
+/* @implements 0x04b4d8 us f_04b4d8
+   WHAT IT DOES: resolves the movie-clip id for a1 via f_15c07c and passes it with the byte a2 to f_15d2e4 on the player's object. */
+void f_04b4d8(char *s, int a1, unsigned char a2) {
+    void *o = *(void **)s;
+    f_15d2e4(o, f_15c07c(o, 3, a1), a2, 0);
+}
+
+/* @implements 0x04b664 us f_04b664
+   WHAT IT DOES: resolves the clip id for a1 and calls f_15cef8 with the boolean a2 != 0. */
+void f_04b664(char *s, int a1, int a2) {
+    void *o = *(void **)s;
+    f_15cef8(o, f_15c07c(o, 3, a1), a2 != 0);
+}
+
+/* @implements 0x04b6d4 us f_04b6d4
+   WHAT IT DOES: resolves the clip id for a1 and calls f_15ced4 with the boolean a2 != 0. */
+void f_04b6d4(char *s, int a1, int a2) {
+    void *o = *(void **)s;
+    f_15ced4(o, f_15c07c(o, 3, a1), a2 != 0);
+}
+
+
+/* @draft 0x046894 us f_046894
+   WHAT IT DOES: stores a2 into the 20-int-wide table at s+108 indexed by a1 and the row at s+20, sets the dirty byte at s+908 if it changed, then calls f_07d880 on the player's object. */
+void f_046894(char *s, int a1, int a2) {
+    int *p = (int *)(s + 108) + (a1 * 20 + *(int *)(s + 20));
+    if (*p != a2) {
+        *p = a2;
+        *(char *)(s + 908) = 1;
+    }
+    f_07d880a(*(void **)s);
+}
+
+/* @implements 0x045378 us f_045378
+   WHAT IT DOES: if the global D_241000 is set, frees the array D_241004 (if any) and clears both globals. */
+void f_045378(void) {
+    if (D_241000) {
+        if (D_241004) _ZdaPv(D_241004);
+        D_241004 = 0;
+        D_241000 = 0;
+    }
+}
+
+/* @implements 0x04b368 us f_04b368
+   WHAT IT DOES: resolves the clip id for a1 and calls f_15c870 with 0 and the floats x, y. */
+void f_04b368(char *s, int a1, float x, float y) {
+    void *o = *(void **)s;
+    f_15c870d(o, f_15c07c(o, 3, a1), 0, x, y);
+}
+
+/* @implements 0x04b548 us f_04b548
+   WHAT IT DOES: resolves the clip id for a1 and calls f_15d0ac with a2 and the boolean a3 != 0. */
+void f_04b548(char *s, int a1, int a2, int a3) {
+    void *o = *(void **)s;
+    f_15d0ac(o, f_15c07c(o, 3, a1), a2, a3 != 0);
+}
+
+/* @implements 0x04b5c8 us f_04b5c8
+   WHAT IT DOES: resolves clip ids for a1 and a2 and calls f_15d124 with both and the boolean a3 != 0. */
+void f_04b5c8(char *s, int a1, int a2, int a3) {
+    void *o = *(void **)s;
+    int x = f_15c07c(o, 3, a1);
+    int y = f_15c07c(o, 0, a2);
+    f_15d124(o, x, y, a3 != 0);
+}
+
+/* @implements 0x04b3c8 us f_04b3c8
+   WHAT IT DOES: looks up the object for clip a1; if found, fetches its two floats with f_15f190 and stores them through a2 and a3. */
+void f_04b3c8(char *s, int a1, float *a2, float *a3) {
+    void *o = *(void **)s;
+    void *r = f_15bfe4(o, f_15c07c(o, 3, a1));
+    float x, y;
+    if (r) {
+        f_15f190(r, &x, &y);
+        *a2 = x;
+        *a3 = y;
+    }
+}
+
+/* @implements 0x046620 us f_046620
+   WHAT IT DOES: selects a blend mode by m (1, 2 or default), sets it with f_118e30, then calls f_1166d4(4). */
+void f_046620(void *s, int m) {
+    switch (m) {
+    case 1: f_118e30(0, 2, 10, 0, 255); break;
+    case 2: f_118e30(2, 2, 10, 0, 255); break;
+    default: f_118e30(0, 2, 3, 0, 0); break;
+    }
+    f_1166d4(4);
+}
+
+/* @implements 0x04c160 us f_04c160
+   WHAT IT DOES: if index a1 is within the entry count at s+32, copies a 16-byte record (selected by a2) into the entry's halfword fields at four positions. */
+void f_04c160(char *s, int a1, int a2) {
+    if (*(int *)(s + 32) >= a1) {
+        Rec16 *r = (Rec16 *)(*(char **)(s + 40) + a2 * 16);
+        unsigned short *e = (unsigned short *)(*(char **)(s + 36) + a1 * 172);
+        e[0] = r->a; e[10] = r->c; e[1] = r->b; e[20] = r->a; e[30] = r->c; e[11] = r->b; e[21] = r->d;
+        e[31] = r->d;
+    }
+}
+
+/* @implements 0x04bef8 us f_04bef8
+   WHAT IT DOES: initialises the player's entry table: runs setup helpers, counts entries, allocates count*172 bytes, stores the block in the player and its owner, and recounts. */
+void f_04bef8(char *s) {
+    f_04d648(s);
+    char *q = *(char **)(*(char **)s + 224);
+    f_04b290(s);
+    *(int *)(q + 32) = 0;
+    f_04b2b4(s);
+    int n = *(int *)(q + 32);
+    *(int *)(s + 32) = n;
+    void *p = f_04dfa0(n * 172);
+    *(void **)(s + 36) = p;
+    *(void **)(q + 28) = p;
+    *(int *)(q + 32) = 0;
+    f_04b2b4(s);
+}
+
+/* @draft 0x04c0a8 us f_04c0a8
+   WHAT IT DOES: if index a1 is valid, either clears the entry's flag byte (a4 or a5 not positive) or stores a2..a5 into the entry and sets the flag byte. */
+void f_04c0a8(char *s, int a1, int a2, int a3, int a4, int a5) {
+    if (*(int *)(s + 32) >= a1) {
+        char *e = *(char **)(s + 36) + a1 * 172;
+        if (a4 <= 0 || a5 <= 0) {
+            *(char *)(e + 137) = 0;
+        } else {
+            *(int *)(e + 152) = a5;
+            *(char *)(e + 137) = 1;
+            *(int *)(e + 140) = a2;
+            *(int *)(e + 144) = a3;
+            *(int *)(e + 148) = a4;
+        }
+    }
+}
+
+
+/* @implements 0x0467ec us f_0467ec
+   WHAT IT DOES: destroys the player's objects: runs f_07d764 and deletes the first, deletes the second, delete[]s the third, clearing each pointer. */
+void f_0467ec(char *s) {
+    void *a = *(void **)s;
+    void *b = *(void **)(s + 4);
+    if (a) {
+        f_07d764(a);
+        _ZdlPv(a);
+        *(void **)s = 0;
+    }
+    if (b) {
+        _ZdlPv(b);
+        *(void **)(s + 4) = 0;
+    }
+    b = *(void **)(s + 24);
+    if (b) {
+        _ZdaPv(b);
+        *(void **)(s + 24) = 0;
+    }
+}
+
+
+/* @implements 0x04c1c8 us f_04c1c8
+   WHAT IT DOES: same as f_04c160 but takes the 16-byte record by value. */
+void f_04c1c8(char *s, int a1, Rec16 r) {
+    if (*(int *)(s + 32) >= a1) {
+        unsigned short *e = (unsigned short *)(*(char **)(s + 36) + a1 * 172);
+        e[0] = r.a; e[10] = r.c; e[1] = r.b; e[20] = r.a; e[30] = r.c; e[11] = r.b; e[21] = r.d;
+        e[31] = r.d;
+    }
+}
+
+/* @draft 0x046d50 us f_046d50
+   WHAT IT DOES: caches a lookup: if the key pair (a1, a2) differs from the cached one, calls f_07dacc, stores the result (returns 0 on -1) and the key; returns the first int of the buffer. */
+int f_046d50(char *s, int a1, int a2) {
+    int *p = *(int **)(s + 4);
+    if (a1 != *(int *)(s + 12) || *(int *)(s + 16) != a2) {
+        int r = f_07dacc(*(void **)s, a1, (int)p, a2);
+        *(int *)(s + 8) = r;
+        if (r == -1) return 0;
+        *(int *)(s + 12) = a1;
+        *(int *)(s + 16) = a2;
+    }
+    return *p;
+}
+
+/* @draft 0x04d2c0 us f_04d2c0
+   WHAT IT DOES: draws all entries: starts a batch (f_021720), initialises a context, calls f_045e58 for every entry whose flag byte at +136 is set, closes the context and ends the batch (f_021750). */
+void f_04d2c0(char *s) {
+    int i = 0;
+    int o[4];
+    f_021720();
+    f_045400a(o);
+    for (i = 0; i < *(int *)(s + 32); ) {
+        char *e = *(char **)(s + 36) + i * 172;
+        i++;
+        if (*(unsigned char *)(e + 136)) f_045e58(o, e);
+    }
+    f_04559ca(o);
+    f_021750();
+}
+
+
+/* @implements 0x045400 us f_045400
+   WHAT IT DOES: initialises a draw-state struct: sets its first two words to -1, sets the blend mode via f_118e30 and calls f_1166d4(4). */
+void f_045400(int *p) {
+    p[0] = -1;
+    p[1] = -1;
+    f_118e30(0, 2, 3, 0, 0);
+    f_1166d4(4);
+    f_1166d4(5);
+    f_116898(7);
+    f_116898(9);
+    f_118738(7, 1);
+    f_1187d8(1, 1);
+    f_1187fc(0, 0.0f);
+    f_116898(10);
+    f_116898(5);
+    f_116898(7);
+    f_1166d4(9);
+    f_116898(10);
+    f_116898(1);
+    f_118e30(0, 2, 3, 0, 0);
+    f_1166d4(4);
+    f_116898(6);
+}
+
+/* @implements 0x0454d4 us f_0454d4
+   WHAT IT DOES: sets p[0] to -1 and issues a fixed sequence of GPU state calls (f_118e30, f_1166d4, f_116898, f_118738, f_1187d8, f_1187fc) ending in the default blend mode. */
+void f_0454d4(int *p) {
+    p[0] = -1;
+    f_118e30(0, 2, 3, 0, 0);
+    f_1166d4(4);
+    f_1166d4(5);
+    f_116898(7);
+    f_116898(9);
+    f_118738(7, 1);
+    f_1187d8(1, 1);
+    f_1187fc(0, 0.0f);
+    f_116898(10);
+    f_116898(5);
+    f_116898(7);
+    f_1166d4(9);
+    f_116898(10);
+    f_116898(1);
+    f_118e30(0, 2, 3, 0, 0);
+    f_1166d4(4);
+}
+
+/* @draft 0x04d224 us f_04d224
+   WHAT IT DOES: counts entries whose id at +128 equals the clip id for a1, stores the count through out if given, and returns the index of the first match or -1. */
+int f_04d224(char *s, int a1, int *out) {
+    void *o = *(void **)s;
+    char *e = *(char **)(s + 36);
+    int id = f_15c07c(o, 3, a1);
+    int n = *(int *)(s + 32);
+    int cnt = 0, found = -1, i;
+    for (i = 0; i < n; i++, e += 172) {
+        if (id == *(int *)(e + 128)) {
+            if (found == -1) found = i;
+            cnt++;
+        }
+    }
+    if (out) *out = cnt;
+    return found;
+}
+
+/* @implements 0x04d4c4 us f_04d4c4
+   WHAT IT DOES: packs twelve float arguments into seven 16-byte vectors on the stack (one of them zero) and calls f_045c14 with an output buffer and them. */
+void f_04d4c4(float x1, float x2, float x4, float x5, float x6, float x7,
+              float y1, float y2, float y4, float y5, float y6, float y7) {
+    float o[4], v1[4], v2[4], v3[4], v4[4], v5[4], v6[4], v7[4];
+    v1[0] = x1; v1[1] = y1;
+    v2[0] = x2; v2[1] = y2;
+    v3[0] = 0; v3[1] = 0;
+    v4[0] = x4; v4[1] = y4;
+    v5[0] = x5; v5[1] = y5;
+    v6[0] = x6; v6[1] = y6;
+    v7[0] = x7; v7[1] = y7;
+    f_045c14(o, v1, v2, v3, v4, v5, v6, v7, 0);
+}
+
+/* @implements 0x0452cc us f_0452cc
+   WHAT IT DOES: if D_241000 is set, clears the D_291680 buffer, derives the 16-byte-aligned end, and resets the allocation pointers and counters. */
+void f_0452cc(void) {
+    if (D_241000) {
+        int n = D_291424 << 2;
+        D_291690 = D_291680;
+        memset((void *)D_291680, 0, n);
+        int base = D_291680;
+        int e = (base + n + 15) & -16;
+        int a = D_291420 - (e - base);
+        D_29166c = a;
+        D_29174c = 0;
+        D_291410 = 0;
+        D_291668 = a;
+        D_291748 = e;
+    }
+}
+
+/* @draft 0x046c8c us f_046c8c
+   WHAT IT DOES: looks up the clip data with f_07dacc, caches the key (a1, a2); if the result is a type-1 list, returns the sum of (end - start) halfword spans over its 16-byte records, else 0. */
+int f_046c8c(char *s, int a1, int a2) {
+    int *p = *(int **)(s + 4);
+    int r = f_07dacc(*(void **)s, a1, (int)p, a2);
+    *(int *)(s + 8) = r;
+    if (r == -1) return 0;
+    *(int *)(s + 12) = a1;
+    *(int *)(s + 16) = a2;
+    if (*p != 1) return 0;
+    int sum = 0, i;
+    volatile int sp_[2];
+    short *q = (short *)(p + 1);
+    for (i = 0; i < p[1]; i++, q += 8) {
+        int x = q[4], y = q[6];
+        sp_[0] = x;
+        sp_[1] = y;
+        sum += y - x;
+    }
+    return sum;
+}
+
+}
+
+extern "C" void *f_1534a4(unsigned) __asm__("_Znwj");
+extern "C" void *f_153558(unsigned) __asm__("_Znaj");
+struct Obj924 {
+    char pad[924];
+    Obj924() { f_07d754(this); }
+    static void *operator new(unsigned n) { return f_1534a4(n); }
+    static void operator delete(void *p) { _ZdlPv(p); }
+};
+
+extern "C" {
+/* @draft 0x04670c us f_04670c
+   WHAT IT DOES: resets the cache keys at s+12/s+16 to -1; if neither object pointer (s+0, s+4) exists yet, allocates and constructs the 924-byte object, a 0xaf20-byte buffer and a 0xdae80-byte array, fills the 10x20 int table at s+28 with -1 and clears the byte at s+908 and the word at s+20. */
+void f_04670c(int *s) {
+    s[3] = -1;
+    s[4] = -1;
+    if (s[0] == 0 && s[1] == 0) {
+        Obj924 *o = new Obj924;
+        s[1] = (int)f_1534a4(0xaf20);
+        s[0] = (int)o;
+        s[6] = (int)f_153558(0xdae80);
+        int i;
+        for (i = 0; i < 20; i++) {
+            s[7 + i] = -1;
+            s[27 + i] = -1;
+            s[47 + i] = -1;
+            s[67 + i] = -1;
+            s[87 + i] = -1;
+            s[107 + i] = -1;
+            s[127 + i] = -1;
+            s[147 + i] = -1;
+            s[167 + i] = -1;
+            s[187 + i] = -1;
+        }
+        *(char *)((char *)s + 908) = 0;
+        s[5] = 0;
+    }
+}
+
+/* @implements 0x04d3d8 us f_04d3d8
+   WHAT IT DOES: packs twenty-eight float arguments into seven 4-float vectors on the stack (the third all zero) and calls f_0459d0 with an output buffer and them. */
+void f_04d3d8(float x1, float x2, float x4, float x5, float x6, float x7,
+              float y1, float y2, float y4, float y5, float y6, float y7,
+              float z1, float z2, float z4, float z5, float z6, float z7,
+              float w1, float w2, float w4, float w5, float w6, float w7) {
+    float o[4], v1[4], v2[4], v3[4], v4[4], v5[4], v6[4], v7[4];
+    v1[0] = x1; v1[1] = y1; v1[2] = z1; v1[3] = w1;
+    v2[0] = x2; v2[1] = y2; v2[2] = z2; v2[3] = w2;
+    v3[0] = 0; v3[1] = 0; v3[2] = 0; v3[3] = 0;
+    v4[0] = x4; v4[1] = y4; v4[2] = z4; v4[3] = w4;
+    v5[0] = x5; v5[1] = y5; v5[2] = z5; v5[3] = w5;
+    v6[0] = x6; v6[1] = y6; v6[2] = z6; v6[3] = w6;
+    v7[0] = x7; v7[1] = y7; v7[2] = z7; v7[3] = w7;
+    f_0459d0(o, v1, v2, v3, v4, v5, v6, v7, 0);
+}
+
+/* @draft 0x04c910 us f_04c910
+   WHAT IT DOES: if index a1 is valid, interpolates two coordinates of the entry between its stored endpoints by fx and fy, stores them in the entry, then computes the integer min cell (min/64) and max cell ((max+63)/64) of the interpolated x against the entry's bounds into +80 and +84. */
+void f_04c910(char *s, int a1, float fx, float fy) {
+    if (*(int *)(s + 32) < a1) return;
+    {
+        char *e = *(char **)(s + 36) + a1 * 172;
+        float t0 = *(float *)(e + 92), t1 = *(float *)(e + 96);
+        float u0 = *(float *)(e + 108), u1 = *(float *)(e + 116);
+        float x = t0 + (t1 - t0) * fx;
+        float y = u0 + (u1 - u0) * fy;
+        float lo = *(float *)(e + 8);
+        float m = lo, c = lo;
+        *(float *)(e + 28) = x;
+        *(float *)(e + 72) = y;
+        *(float *)(e + 68) = x;
+        *(float *)(e + 52) = y;
+        if (x < m) m = x;
+        float hi = *(float *)(e + 48);
+        if (hi < m) m = hi;
+        if (x < m) m = x;
+        *(int *)(e + 80) = (int)(m * 0.015625f);
+        if (c < x) c = x;
+        if (c < hi) c = hi;
+        if (c < x) c = x;
+        *(int *)(e + 84) = (int)((c + 63.0f) * 0.015625f);
+    }
 }
 
 }
