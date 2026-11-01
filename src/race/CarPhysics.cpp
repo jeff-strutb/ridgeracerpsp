@@ -981,3 +981,48 @@ extern "C" int f_0a8d5c(CarPhys *p, const float *b, int c, int n, int e)
         k = (int)(-d0 / diff * c);
     return k - (k + e) % n;
 }
+
+/* One course point (24 bytes) of the point list D_23f7f0, D_2456b8 points in a ring. */
+struct CoursePt {
+    float x, y, z;
+    int m12, m16, m20;
+};
+struct CoursePos {
+    float a, b, c;
+};
+extern CoursePt *D_23f7f0_pts __asm__("D_23f7f0");
+extern int D_2456b8;
+
+/* The course position at s: the points either side of s (wrapping to the first), interpolated. */
+static inline CoursePos CourseAt(CoursePt *list, float s)
+{
+    int n = (int)s;
+    float f = s - n;
+    CoursePt *a = &list[n];
+    CoursePt *b = a + 1;
+    if (n + 1 >= D_2456b8)
+        b = list;
+    CoursePos r;
+    r.a = (b->x - a->x) * f + a->x;
+    r.b = (b->z - a->z) * f + a->z;
+    r.c = (b->y - a->y) * f + a->y;
+    return r;
+}
+
+/* @draft 0x0a8fa8 us f_0a8fa8
+   WHAT IT DOES: Writes into out the course direction at the car's course position: the course point d ahead (wrapped by f_0af478) minus the point at the position, with a last word of 1.0; returns out.
+   Remaining difference: retail copies the wrapped position to a new register and converts the second point index back through an integer register (mtc1); register choices follow from that. */
+extern "C" float *f_0a8fa8(float *out, CarPhys *c, const float *d)
+{
+    CoursePt *list = D_23f7f0_pts;
+    float s = c->m16;
+    CoursePos v = CourseAt(list, s);
+    float s2 = s + *d;
+    float u = f_0af478(&s2);
+    CoursePos w = CourseAt(list, u);
+    out[1] = w.b - v.b;
+    out[0] = w.a - v.a;
+    out[3] = 1.0f;
+    out[2] = w.c - v.c;
+    return out;
+}
