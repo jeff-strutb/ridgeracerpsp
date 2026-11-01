@@ -1306,7 +1306,7 @@ void f_04ec30(char *a0) {
     GuardE g;
     *(void **)a0 = D_1a3810;
     f_05d6dc(a0);
-    f_04e4b4(a0 - 4);
+    f_04e4b4_nt(a0 - 4);
 }
 
 /* @draft 0x04ed28 us f_04ed28
@@ -5890,6 +5890,742 @@ void f_04c910(char *s, int a1, float fx, float fy) {
         if (c < x) c = x;
         *(int *)(e + 84) = (int)((c + 63.0f) * 0.015625f);
     }
+}
+
+}
+}
+
+/* ---- swg3d ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 fragment by worker swg3d (list_03). */
+namespace swg3d {
+
+#define W(o, off) (*(int *)((char *)(o) + (off)))
+#define B(o, off) (*(unsigned char *)((char *)(o) + (off)))
+typedef int (*vfn_t)(void *);
+typedef double (*dfn_t)(void *);
+#define DBL(o, off) (*(double *)((char *)(o) + (off)))
+
+struct Tmp16 {
+    int w[4];
+    ~Tmp16() {}
+};
+struct NodeIt { void *n; int pad[3]; };
+struct InsRes { void *it; unsigned char ok; };
+struct Empty { ~Empty() {} };
+struct It2 {
+    void **p;
+    void *&operator*() { return *p; }
+    It2 &operator++() { ++p; return *this; }
+    bool operator!=(const It2 &o) const { return p != o.p; }
+};
+
+extern "C" {
+
+extern char D_1a32b4[];
+extern char D_1a32bc[];
+extern char D_1a3fb0[];
+extern char D_1a3d60[];
+extern char D_1a43d0[];
+extern char D_1a4d14[];
+extern char D_1a30b4[];
+extern char D_1a4868[];
+extern char D_1a32dc[];
+extern double D_1a4d28;
+extern char D_1a3698[];
+extern char D_1a3370[];
+
+void f_05a3e8(void *self, const char *s, void *tmp);
+void f_0604dc(void *self);
+void f_04e8d8(void *self);
+void f_05db44(void *self);
+int f_15fb50(void *a, int b);
+int f_161d88(void *a, void *b);
+int f_15e1f0(void *a, void *b);
+char *f_15c098(void *a, int b, int c);
+int f_05dcb8(void *a, void *b);
+void f_05db84(void *o);
+void f_04e8c0(void *o) throw();
+void f_06523c(void *out, void *t, void *x, void *y, void *key);
+void f_064d8c(void *out, void *t, void *x, void *y, void *key);
+void f_060920(void *s, int pos, int n1, int n2);
+void *memcpy(void *d, const void *s, unsigned n);
+int f_15ea7c(void *a, void *b);
+int f_164a28(double a, double b);
+int iprintf(const char *fmt, ...);
+int f_12937c(void *a, int b);
+int f_129590(void *a, int b, int c);
+void f_04ee68(void *a, int b);
+void f_04e4b4(void *p);
+void f_064c6c(char **it);
+void *f_04dfa0(unsigned n);
+void f_1312d4(const char *s);
+
+/* @implements 0x0631e8 us f_0631e8
+   WHAT IT DOES: calls f_05a3e8(self, string, tmp) with D_1a32b4 if byte 8 of the argument is set, else D_1a32bc, and returns self. */
+void *f_0631e8(void *o, void *a)
+{
+    Tmp16 t;
+    f_05a3e8(o, B(a, 8) ? D_1a32b4 : D_1a32bc, &t);
+    return o;
+}
+
+struct B04e8d8 {
+    ~B04e8d8() { f_04e8d8(this); }
+};
+struct D0630c0 : B04e8d8 {
+    ~D0630c0() { f_0604dc((char *)this + 32); }
+};
+
+/* @implements 0x0630c0 us f_0630c0
+   WHAT IT DOES: destructor: stores the vtable D_1a3fb0, destroys the member at +32 (f_0604dc) and the base (f_04e8d8), then calls f_05db44(self). */
+void f_0630c0(void *o)
+{
+    *(void **)o = D_1a3fb0;
+    ((D0630c0 *)o)->~D0630c0();
+    f_05db44(o);
+}
+
+/* @implements 0x063880 us f_063880
+   WHAT IT DOES: walks the pointer vector at +36..+40 and calls f_15fb50(item, 0) on every non-null element. */
+void f_063880(void *o)
+{
+    It2 it; it.p = (void **)W(o, 36);
+    It2 e; e.p = (void **)W(o, 40);
+    for (; it != e; ++it) {
+        if (*it)
+            f_15fb50(*it, 0);
+    }
+}
+
+/* @implements 0x0637a4 us f_0637a4
+   WHAT IT DOES: walks the pointer vector at +36..+40 and calls f_161d88(owner at +24, item) on every non-null element. */
+void f_0637a4(void *o)
+{
+    It2 it; it.p = (void **)W(o, 36);
+    It2 e; e.p = (void **)W(o, 40);
+    for (; it != e; ++it) {
+        if (*it)
+            f_161d88((void *)W(o, 24), *it);
+    }
+}
+
+/* @implements 0x063810 us f_063810
+   WHAT IT DOES: walks the pointer vector at +36..+40 and calls f_15e1f0(item, arg) on every non-null element. */
+void f_063810(void *o, void *a)
+{
+    It2 it; it.p = (void **)W(o, 36);
+    It2 e; e.p = (void **)W(o, 40);
+    for (; it != e; ++it) {
+        if (*it)
+            f_15e1f0(*it, a);
+    }
+}
+
+/* @implements 0x064188 us f_064188
+   WHAT IT DOES: asks the argument object (virtual slot 23) for a level n; if n > 0 divides the int at +8 by 2^n. */
+void f_064188(void *o, void *a)
+{
+    int n = ((vfn_t *)*(void **)a)[23](a);
+    if (n > 0) {
+        int d = 2;
+        for (int i = 1; i < n; i++)
+            d *= 2;
+        W(o, 8) = W(o, 8) / d;
+    }
+}
+
+/* @implements 0x0644d0 us f_0644d0
+   WHAT IT DOES: returns whether a stream-like object is good: from the buffer at +28 if byte 8 is set, else reads the next character through f_15c098 (or the cached one) and returns whether it is non-zero. */
+int f_0644d0(void *o)
+{
+    if (B(o, 8))
+        return W(W(o, 28), -12) != 0;
+    char *r;
+    int c = W(o, 16);
+    if (c == -1) {
+        char **p = (char **)W(o, 24);
+        *(*p + W(*p, -12)) = D_1a4d14[0];
+        r = *p;
+    } else {
+        r = f_15c098((void *)W(W(o, 12), 4), 7, c);
+    }
+    return *r != 0;
+}
+
+/* @implements 0x064e98 us f_064e98
+   WHAT IT DOES: tree lower-bound search: descends from the root of tree t comparing key with f_05dcb8 and stores the best node into *out, returning out. */
+void *f_064e98(void **out, void *t, void *key)
+{
+    char *best = (char *)W(t, 4);
+    char *n = (char *)W(best, 4);
+    while (n) {
+        if (f_05dcb8(key, n + 16) & 0xff) {
+            best = n;
+            n = (char *)W(n, 8);
+        } else {
+            n = (char *)W(n, 12);
+        }
+    }
+    *out = best;
+    return out;
+}
+
+struct B1_21a0 { int w[6]; ~B1_21a0() { f_04e8d8(this); } };
+struct B2_21a0 { void *vt; int w[6]; ~B2_21a0() { f_04e8c0(this); } };
+struct M_21a0 { int w[1]; ~M_21a0() { f_05db84(this); } };
+struct D_21a0 : B1_21a0, B2_21a0 {
+    M_21a0 m;
+    ~D_21a0() {}
+};
+
+/* @implements 0x0621a0 us f_0621a0
+   WHAT IT DOES: destructor body: stores vtables D_1a3d60 and D_1a43d0, then destroys the member (f_05db84) and the two bases (f_04e8c0, f_04e8d8). */
+void f_0621a0(void *o)
+{
+    D_21a0 *d = (D_21a0 *)o;
+    *(void **)o = D_1a3d60;
+    ((B2_21a0 *)d)->vt = D_1a43d0;
+    d->~D_21a0();
+}
+
+/* @implements 0x064548 us f_064548
+   WHAT IT DOES: returns f_12937c(stream, 0) on the buffer at +28 if byte 8 is set, else fetches the next character via f_15c098 or the cached one and returns f_12937c on it. */
+int f_064548(void *o)
+{
+    if (B(o, 8)) {
+        char *q = (char *)W(o, 28);
+        *(q + W(q, -12)) = D_1a4d14[0];
+        return f_12937c((void *)W(o, 28), 0);
+    }
+    void *r;
+    int c = W(o, 16);
+    if (c == -1) {
+        char **p = (char **)W(o, 24);
+        *(*p + W(*p, -12)) = D_1a4d14[0];
+        r = *p;
+    } else {
+        r = f_15c098((void *)W(W(o, 12), 4), 7, c);
+    }
+    return f_12937c(r, 0);
+}
+
+/* @implements 0x06264c us f_06264c
+   WHAT IT DOES: returns f_129590(stream, 0, 0) on the buffer at +28 if byte 8 is set, else fetches the next character via f_15c098 or the cached one and returns f_129590 on it. */
+int f_06264c(void *o)
+{
+    if (B(o, 8)) {
+        char *q = (char *)W(o, 28);
+        *(q + W(q, -12)) = D_1a4d14[0];
+        return f_129590((void *)W(o, 28), 0, 0);
+    }
+    void *r;
+    int c = W(o, 16);
+    if (c == -1) {
+        char **p = (char **)W(o, 24);
+        *(*p + W(*p, -12)) = D_1a4d14[0];
+        r = *p;
+    } else {
+        r = f_15c098((void *)W(W(o, 12), 4), 7, c);
+    }
+    return f_129590(r, 0, 0);
+}
+
+/* @draft 0x065060 us f_065060
+   WHAT IT DOES: allocates a string buffer for a capacity (rounded to the allocator size classes, calling f_1312d4 on overflow) and returns it. */
+void *f_065060(unsigned cap)
+{
+    if (cap > 0x3ffffffc)
+        f_1312d4(D_1a3370);
+    unsigned adj = cap + 29;
+    if (adj > 4096) {
+        cap += (-(adj & 0xfff)) & 0xfff;
+    } else if (cap + 13 > 128) {
+        cap += (-(adj & 0x7f)) & 0x7f;
+    }
+    int *p = (int *)f_04dfa0(cap + 13);
+    p[1] = cap;
+    p[0] = 0;
+    p[2] = 0;
+    return p;
+}
+
+struct Hdr65b30 {
+    int w0;
+    void *hdr;
+    int cnt;
+    ~Hdr65b30() { f_04e4b4(hdr); }
+};
+struct Base65b30 {
+    void *vt;
+    int w[5];
+    ~Base65b30() { f_04e8d8(this); }
+};
+struct Tr65b30 : Base65b30 {
+    Hdr65b30 m;
+    ~Tr65b30() {
+        vt = D_1a3698;
+        if (m.cnt) {
+            f_04ee68(&m, W(m.hdr, 4));
+            m.cnt = 0;
+            W(m.hdr, 8) = (int)m.hdr;
+            W(m.hdr, 4) = 0;
+            W(m.hdr, 12) = (int)m.hdr;
+        }
+    }
+};
+
+/* @draft 0x065b30 us f_065b30
+   WHAT IT DOES: destructor of the tree container: empties the tree and frees its header node. */
+void f_065b30(void *o)
+{
+    ((Tr65b30 *)o)->~Tr65b30();
+}
+
+/* @draft 0x065e10 us f_065e10
+   WHAT IT DOES: destructor of the tree container (twin of f_065b30): empties the tree and frees its header node. */
+void f_065e10(void *o)
+{
+    ((Tr65b30 *)o)->~Tr65b30();
+}
+
+/* @draft 0x065bd4 us f_065bd4
+   WHAT IT DOES: deleting destructor of the tree container: runs the destructor, then calls f_05db44(self). */
+void f_065bd4(void *o)
+{
+    ((Tr65b30 *)o)->~Tr65b30();
+    f_05db44(o);
+}
+
+/* @draft 0x065eb4 us f_065eb4
+   WHAT IT DOES: deleting destructor of the tree container (twin of f_065bd4): runs the destructor, then calls f_05db44(self). */
+void f_065eb4(void *o)
+{
+    ((Tr65b30 *)o)->~Tr65b30();
+    f_05db44(o);
+}
+
+struct T44 {
+    void *vt;
+    int w[10];
+};
+
+/* @draft 0x061ee0 us f_061ee0
+   WHAT IT DOES: assignment copy of a range of 44-byte records from [first, last) to res, returning the end of res. */
+T44 *f_061ee0(T44 *first, T44 *last, T44 *res)
+{
+    for (; first != last; ++first, ++res) {
+        if (res) {
+            res->w[0] = first->w[0];
+            res->w[1] = first->w[1];
+            res->w[2] = first->w[2];
+            res->w[3] = first->w[3];
+            res->w[4] = first->w[4];
+            res->w[5] = first->w[5];
+            res->w[6] = first->w[6];
+            res->w[7] = first->w[7];
+            res->w[8] = first->w[8];
+            res->w[9] = first->w[9];
+            res->vt = D_1a4868;
+        }
+    }
+    return res;
+}
+
+struct T56 {
+    int w[14];
+};
+
+/* @draft 0x061e30 us f_061e30
+   WHAT IT DOES: assignment copy of a range of 56-byte records from [first, last) to res, returning the end of res. */
+T56 *f_061e30(T56 *first, T56 *last, T56 *res)
+{
+    for (; first != last; ++first, ++res) {
+        if (res)
+            *res = *first;
+    }
+    return res;
+}
+
+/* @implements 0x0636fc us f_0636fc
+   WHAT IT DOES: walks the pointer vector at +36..+40; for each non-null item either calls f_15fb50(item, 0) or f_15ea7c(owner at +24, item) depending on byte 340 of the item, then calls f_15fb50 again if that byte is set. */
+void f_0636fc(void *o)
+{
+    It2 it; it.p = (void **)W(o, 36);
+    It2 e; e.p = (void **)W(o, 40);
+    for (; it != e; ++it) {
+        if (*it) {
+            if (B(*it, 340))
+                f_15fb50(*it, 0);
+            else
+                f_15ea7c((void *)W(o, 24), *it);
+            if (B(*it, 340))
+                f_15fb50(*it, 0);
+        }
+    }
+}
+
+/* @implements 0x063bec us f_063bec
+   WHAT IT DOES: asks the argument (virtual slot 24) for a double r; if f_164a28(r, 0.0) is non-zero divides the double at +8 by r, else prints it with iprintf and sets it to D_1a4d28. */
+void f_063bec(void *o, void *a)
+{
+    double r = ((dfn_t *)*(void **)a)[24](a);
+    if (f_164a28(r, 0.0) != 0) {
+        DBL(o, 8) = DBL(o, 8) / r;
+    } else {
+        iprintf(D_1a32dc, DBL(o, 8));
+        DBL(o, 8) = D_1a4d28;
+    }
+}
+
+/* @draft 0x062050 us f_062050
+   WHAT IT DOES: string replace: checks the new length against the limit (f_1312d4 on overflow), calls f_060920 to open a gap at the iterator position, memcpy's the new characters in and returns self. */
+void *f_062050(char **self, char *i1, char *i2, char *k1, char *k2)
+{
+    unsigned n2 = k2 - k1;
+    unsigned n1 = i2 - i1;
+    if (n2 < 0x3ffffffcU) {
+    } else {
+        f_1312d4(D_1a30b4);
+    }
+    int pos = i1 - *self;
+    f_060920(self, pos, n1, n2);
+    if (n2)
+        memcpy(*self + pos, k1, n2);
+    return self;
+}
+
+/* @draft 0x0616fc us f_0616fc
+   WHAT IT DOES: ordered-tree unique insert: looks up key and, if absent, inserts a new node via f_06523c/f_064d8c; writes the iterator and a was-inserted flag to out. */
+InsRes *f_0616fc(InsRes *out, char *t, void *key)
+{
+    char *x;
+    char *y = (char *)W(t, 4);
+    x = (char *)W(y, 4);
+    int comp = 1;
+    while (x) {
+        y = x;
+        comp = f_05dcb8(key, x + 16) & 0xff;
+        x = (char *)(comp ? W(x, 8) : W(x, 12));
+    }
+    NodeIt j;
+    j.n = y;
+    if (comp) {
+        NodeIt lm;
+        lm.n = (void *)W(W(t, 4), 8);
+        if (j.n != lm.n)
+            f_064c6c((char **)&j);
+        else
+            goto ins;
+    }
+    if (!(f_05dcb8((char *)j.n + 16, key) & 0xff)) {
+        out->ok = 0;
+        out->it = j.n;
+        return out;
+    }
+ins:
+    {
+        NodeIt r;
+        f_06523c(&r, t, x, y, key);
+        out->ok = 1;
+        out->it = r.n;
+    }
+    return out;
+}
+
+/* @draft 0x061528 us f_061528
+   WHAT IT DOES: ordered-tree unique insert (twin of f_0616fc): looks up key and, if absent, inserts a new node; writes the iterator and a was-inserted flag to out. */
+InsRes *f_061528(InsRes *out, char *t, void *key)
+{
+    char *x;
+    char *y = (char *)W(t, 4);
+    x = (char *)W(y, 4);
+    int comp = 1;
+    while (x) {
+        y = x;
+        comp = f_05dcb8(key, x + 16) & 0xff;
+        x = (char *)(comp ? W(x, 8) : W(x, 12));
+    }
+    NodeIt j;
+    j.n = y;
+    if (comp) {
+        NodeIt lm;
+        lm.n = (void *)W(W(t, 4), 8);
+        if (j.n != lm.n)
+            f_064c6c((char **)&j);
+        else
+            goto ins;
+    }
+    if (!(f_05dcb8((char *)j.n + 16, key) & 0xff)) {
+        out->ok = 0;
+        out->it = j.n;
+        return out;
+    }
+ins:
+    {
+        NodeIt r;
+        f_064d8c(&r, t, x, y, key);
+        out->ok = 1;
+        out->it = r.n;
+    }
+    return out;
+}
+
+extern char D_1a3e10[];
+extern char D_1a4888[];
+extern char D_1a3e50[];
+void f_0606a0(void *a, void *b, int c);
+void f_060670(void *p);
+
+struct VB4888 { ~VB4888() { *(void **)this = D_1a4888; } };
+struct D0622bc : VB4888 {
+    ~D0622bc() {
+        Tmp16 tt;
+        *(void **)this = D_1a3e10;
+        void *c = (void *)W(this, 4);
+        ((int (*)(void *, int))((void **)*(void **)c)[3])(c, W(this, 28));
+        c = (void *)W(this, 4);
+        ((int (*)(void *, int))((void **)*(void **)c)[3])(c, W(this, 12));
+        c = (void *)W(this, 4);
+        ((int (*)(void *, int))((void **)*(void **)c)[3])(c, W(this, 16));
+    }
+};
+
+/* @implements 0x0622bc us f_0622bc
+   WHAT IT DOES: destructor: stores vtable D_1a3e10, releases three entries (+28, +12, +16) through virtual slot 3 of the object at +4, then stores vtable D_1a4888. */
+void f_0622bc(void *o)
+{
+    ((D0622bc *)o)->~D0622bc();
+}
+
+struct M060670 { int w[6]; ~M060670() { f_060670(this); } };
+struct D062528 : B04e8d8 {
+    int w[6];
+    M060670 m;
+    ~D062528() {
+        M060670 *p = &m;
+        *(void **)this = D_1a3e50;
+        f_0606a0((void *)W(p, 4), (void *)W(p, 8), 0);
+    }
+};
+
+/* @draft 0x062528 us f_062528
+   WHAT IT DOES: destructor: stores vtable D_1a3e50, calls f_0606a0 on the member at +24, destroys it (f_060670), then destroys the base (f_04e8d8). */
+void f_062528(void *o)
+{
+    ((D062528 *)o)->~D062528();
+}
+
+/* @draft 0x062220 us f_062220
+   WHAT IT DOES: deleting destructor: same as f_0621a0, then calls f_05db44(self). */
+void f_062220(void *o)
+{
+    D_21a0 *d = (D_21a0 *)o;
+    *(void **)o = D_1a3d60;
+    ((B2_21a0 *)d)->vt = D_1a43d0;
+    d->~D_21a0();
+    f_05db44(o);
+}
+
+struct Sub44 { int a, b, c; };
+struct E44 {
+    void *vt; int w1, w2, w3, w4; int b, c; int d1, d2, d3, d4;
+};
+/* @draft 0x061da4 us f_061da4
+   WHAT IT DOES: uninitialized copy: copy-constructs 44-byte records (vtable D_1a4868 plus fields) from [first, last) into dest and returns the end of dest. */
+void *f_061da4(char *first, char *last, char *dest)
+{
+    for (; first != last; first += 44, dest += 44) {
+        if (dest) {
+            E44 *s = (E44 *)first, *d = (E44 *)dest;
+            Sub44 *ss = (Sub44 *)&s->w4, *ds = (Sub44 *)&d->w4;
+            d->vt = D_1a4868;
+            ds->c = ss->c; ds->b = ss->b;
+            d->w1 = s->w1; d->w2 = s->w2; d->w3 = s->w3; d->w4 = s->w4;
+            d->d1 = s->d1; d->d2 = s->d2; d->d3 = s->d3; d->d4 = s->d4;
+        }
+    }
+    return dest;
+}
+
+/* @draft 0x0625ac us f_0625ac
+   WHAT IT DOES: deleting destructor: same as f_062528, then calls f_05db44(self). */
+void f_0625ac(void *o)
+{
+    ((D062528 *)o)->~D062528();
+    f_05db44(o);
+}
+
+/* @draft 0x062340 us f_062340
+   WHAT IT DOES: deleting destructor: same as f_0622bc, then calls f_04e4b4(self). */
+void f_062340(void *o)
+{
+    ((D0622bc *)o)->~D0622bc();
+    f_04e4b4(o);
+}
+
+/* @draft 0x064c6c us f_064c6c
+   WHAT IT DOES: red-black tree iterator increment: moves the node pointer in *it to its in-order successor. */
+void f_064c6c(char **it)
+{
+    char *n = *it;
+    char *x;
+    if (W(n, 0) == 0 && W(W(n, 4), 4) == (int)n) {
+        *it = (char *)W(n, 12);
+        return;
+    }
+    x = (char *)W(n, 8);
+    if (x) {
+        char *y = x;
+        while ((y = (char *)W(y, 12))) x = y;
+        *it = x;
+        return;
+    }
+    char *p = (char *)W(n, 4);
+    if (W(p, 8) == (int)n) {
+        *it = p;
+        for (;;) {
+            p = (char *)W(p, 4);
+            if (*it != (char *)W(p, 8)) break;
+            *it = p;
+        }
+    }
+    *it = p;
+}
+
+/* @draft 0x060c80 us f_060c80
+   WHAT IT DOES: walks a list from *it to *end, calling virtual slot 0 on each element's payload (at +8) and virtual slot 3 of dst with it; returns dst. */
+void *f_060c80(int **it, int **end, void *dst)
+{
+    while (*it != *end) {
+        void *e = (void *)(*it)[2];
+        ((vfn_t *)*(void **)e)[0](e);
+        ((int (*)(void *, void *))((void **)*(void **)dst)[3])(dst, e);
+        *it = (int *)**it;
+    }
+    return dst;
+}
+
+void f_065634(void *o, void *a, void *b, void *c);
+int f_05c950(void *a, void *b, void *c, int d, int e);
+struct L062108 { int w[4]; ~L062108() { f_05db84(this); } };
+
+/* @draft 0x062108 us f_062108
+   WHAT IT DOES: builds a temporary via f_065634, then calls f_05c950(a, b, c, t, t + t[-12]) with its first word and returns the result, destroying the temporary (f_05db84). */
+int f_062108(void *a, void *b, void *c, void *d, void *e)
+{
+    L062108 l;
+    Tmp16 w2;
+    f_065634(&l, d, e, &w2);
+    int t = l.w[0];
+    return f_05c950(a, b, c, t, t + W(t, -12));
+}
+
+extern char D_1a41c0[];
+void f_0655dc(void *t, int n);
+void f_05f4a0(void *p);
+struct HdrA { int a; int hdr; ~HdrA() { f_04e4b4((void *)hdr); } };
+struct Tree063 : HdrA {
+    int cnt;
+    ~Tree063() {
+        if (cnt) {
+            f_0655dc(this, W(hdr, 4));
+            cnt = 0;
+            W(hdr, 8) = hdr;
+            W(hdr, 4) = 0;
+            W(hdr, 12) = hdr;
+        }
+    }
+};
+struct M05f4a0 { int w[4]; ~M05f4a0() { f_05f4a0(this); } };
+struct D06357c : B04e8d8 {
+    int w[8];
+    M05f4a0 m;
+    Tree063 t;
+    ~D06357c() { *(void **)this = D_1a41c0; }
+};
+
+/* @draft 0x06357c us f_06357c
+   WHAT IT DOES: destructor: stores vtable D_1a41c0, empties the tree member at +48 (f_0655dc, reset header), frees its header (f_04e4b4), destroys the member at +32 (f_05f4a0) and the base (f_04e8d8). */
+void f_06357c(void *o)
+{
+    ((D06357c *)o)->~D06357c();
+}
+
+struct E56 {
+    int w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13;
+};
+/* @draft 0x061f88 us f_061f88
+   WHAT IT DOES: uninitialized copy: copies 56-byte records from [first, last) into dest and returns the end of dest. */
+void *f_061f88(char *first, char *last, char *dest)
+{
+    for (; first != last; first += 56, dest += 56) {
+        if (dest) {
+            E56 *s = (E56 *)first, *d = (E56 *)dest;
+            Sub44 *ss = (Sub44 *)&s->w3, *ds = (Sub44 *)&d->w3;
+            ds->c = ss->c;
+            d->w0 = s->w0; d->w1 = s->w1; d->w2 = s->w2; d->w3 = s->w3;
+            ds->b = ss->b;
+            d->w6 = s->w6; d->w7 = s->w7; d->w8 = s->w8; d->w9 = s->w9;
+            d->w10 = s->w10; d->w11 = s->w11; d->w12 = s->w12; d->w13 = s->w13;
+        }
+    }
+    return dest;
+}
+
+void f_05df24(void *d, void *s);
+void f_04ed28(void *p);
+struct Rng8 { char *b; char *c; };
+/* @draft 0x065670 us f_065670
+   WHAT IT DOES: vector erase of [first, last) with 8-byte elements: assigns the tail down with f_05df24, destroys the vacated elements with f_04ed28, shrinks the end pointer at +8 and returns first. */
+char *f_065670(void *v, char *first, char *last)
+{
+    char *s = last;
+    char *d = first;
+    int n = (W(v, 8) - (int)last) >> 3;
+    for (; n > 0; --n) {
+        f_05df24(d, s);
+        s += 8; d += 8;
+    }
+    char *end = (char *)W(v, 8);
+    Rng8 r; r.b = d; r.c = d;
+    char *c = r.c;
+    while (c != end) {
+        f_04ed28(c);
+        r.c += 8;
+        c = r.c;
+    }
+    W(v, 8) = W(v, 8) - (((last - first) >> 3) << 3);
+    return first;
+}
+
+void f_05e4a8(void *s, int a);
+void f_05fadc(void *a, void *b);
+void f_05c8d0(void *a, void *b);
+/* @draft 0x0645e0 us f_0645e0
+   WHAT IT DOES: on first call (flag byte 8) builds a string from the cached character or f_15c098/f_05e4a8 and stores it at +28 via f_05fadc; then builds a string through virtual slot 21 of the argument and stores it at +28 via f_05c8d0. */
+void f_0645e0(void *o, void *a)
+{
+    char *p = (char *)o + 28;
+    if (!B(o, 8)) {
+        char *q = p;
+        int c = W(o, 16);
+        B(o, 8) = 1;
+        L062108 s;
+        if (c == -1) {
+            f_05e4a8(&s, W(o, 24));
+        } else {
+            Tmp16 t;
+            f_05a3e8(&s, (char *)f_15c098((void *)W(W(o, 12), 4), 7, c), &t);
+        }
+        f_05fadc(q, &s);
+    }
+    L062108 s2;
+    ((void (*)(void *, void *))((void **)*(void **)a)[21])(&s2, a);
+    f_05c8d0(p, &s2);
 }
 
 }
