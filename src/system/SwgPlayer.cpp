@@ -6444,7 +6444,7 @@ void f_062528(void *o)
     ((D062528 *)o)->~D062528();
 }
 
-/* @draft 0x062220 us f_062220
+/* @implements 0x062220 us f_062220
    WHAT IT DOES: deleting destructor: same as f_0621a0, then calls f_05db44(self). */
 void f_062220(void *o)
 {
@@ -9860,3 +9860,233 @@ void f_0530a8(char *self) {
 }
 }
 #undef Q6
+
+/* ---- swg6d ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+namespace swg6d { extern "C" {
+void *f_05db08(int);
+void f_05daa4(void *, void *);
+void f_05e394(void *, void *, void *, void *);
+void f_04ed28(void *);
+extern char D_1a4480[];
+struct Holder { int a, b; ~Holder() { f_04ed28(this); } };
+struct Itr { char *p; Itr(char*q){p=q;} Itr(const Itr&o){p=o.p;} };
+struct It { char *p; It(char*q){p=q;} It(const It&o){p=o.p;} };
+/* @draft 0x062e80 us f_062e80
+   WHAT IT DOES: allocates an 8-byte object holding the D_1a4480 vtable and a zero, wraps it in a Holder, inserts the keyed entry into the tree with f_05e394, then walks the element array at +28..+32 of the first argument (8-byte entries) inserting each into the tree.
+   Remaining difference: stack layout of the insert temporaries and the iterator slot; two landing pads missing */
+void f_062e80(char *s0, char *s) {
+    int *p = (int *)f_05db08(8);
+    p[0] = (int)D_1a4480;
+    p[1] = 0;
+    Holder h;
+    f_05daa4(&h, p);
+    int out[4];
+    int v = *(int *)(s + 4);
+    f_05e394(out, s, &v, &h);
+    Itr it(*(char **)(s0 + 28));
+    char *end = *(char **)(s0 + 32);
+    while (it.p != end) {
+        int out2[4];
+        int v2 = *(int *)(s + 4);
+        f_05e394(out2, s, &v2, it.p);
+        it.p += 8;
+    }
+}
+extern char D_1a4320[];
+struct Vec8 { int a, b, c; int size() { return (c - b) >> 3; } };
+/* @draft 0x062d5c us f_062d5c
+   WHAT IT DOES: builds the same 8-byte keyed entry as f_062e80 and inserts it, then for each index of the 8-byte-element vector at +24 allocates a 12-byte object (vtable D_1a4320, zero, index), wraps it in a Holder and inserts it into the tree with f_05e394.
+   Remaining difference: register allocation (object and key pointers swapped between s0/s1) and landing-pad placement */
+void f_062d5c(char *s0, char *s) {
+    int *p = (int *)f_05db08(8);
+    p[0] = (int)D_1a4480;
+    p[1] = 0;
+    {
+    Holder h;
+    f_05daa4(&h, p);
+    int out[4];
+    int v = *(int *)(s + 4);
+    f_05e394(out, s, &v, &h);
+    }
+    Vec8 *vec = (Vec8 *)(s0 + 24);
+    unsigned i = 0;
+    for (;;) {
+        if (!(i < (unsigned)vec->size())) break;
+        int *q = (int *)f_05db08(12);
+        q[0] = (int)D_1a4320;
+        q[1] = 0;
+        Holder h;
+        f_05daa4(&h, q);
+        q[2] = i;
+        int v2 = *(int *)(s + 4);
+        int out2[4];
+        f_05e394(out2, s, &v2, &h);
+        i++;
+    }
+}
+
+struct Itn { char *p; Itn() {} Itn(const Itn &o) { p = o.p; } };
+struct Key { void **a; int b; };
+struct Obj { void **vt; int x, y; };
+struct KObj { void **vt; };
+struct Er { char *p; Er() {} Er(const Er &o) { p = o.p; } };
+Er f_05c790(char *self, Itn it);
+class VK { public: virtual void m0(); virtual void m1(); virtual void m2(); virtual void m3(void *); };
+class VE { public: virtual void d0(); };
+/* @draft 0x061458 us f_061458
+   WHAT IT DOES: walks the circular list whose header is at self+4; for each node whose element's field at +4 equals the key's second word, calls the element's virtual slot 0, the key object's virtual slot 3 with the element, then erases the node with f_05c790 (list remove-by-owner loop).
+   Remaining difference: register choice and scheduling in the first iteration (a1/a2, one load order), an extra nop vs move in the virtual-call slot */
+void f_061458(char *self, Key *kp) {
+    Key key = *kp;
+    Key *kk = &key;
+    char *hdr = *(char **)(self + 4);
+    Itn it; it.p = *(char **)hdr;
+    Itn end; end.p = hdr;
+    while (it.p != end.p) {
+        Itn nx(it);
+        nx.p = *(char **)it.p;
+        char *e = *(char **)(it.p + 8);
+        if (*(int *)(e + 4) == kk->b) {
+            (*(VE **)e)->d0();
+            ((VK *)kk->a)->m3(e);
+            f_05c790(self, it);
+        }
+        it = nx;
+    }
+}
+
+struct R4 { int w0, w1, w2, w3; };
+struct Pr { char *p; bool f; Pr() {} Pr(const Pr &o) { p = o.p; f = o.f; } };
+struct P2 { int a, b; P2() {} P2(const P2 &o) { a = o.a; b = o.b; } };
+extern unsigned char D_1a4d14;
+int f_15c07c(int, int, char *);
+void f_05e540(Pr *, void *, void *);
+/* @draft 0x06435c us f_06435c
+   WHAT IT DOES: returns a 16-byte result by hidden pointer: if the flag byte at +8 is clear it copies the 16 bytes at +12 out; otherwise it terminates the string at +28 with the D_1a4d14 byte, stores the f_15c07c(x[1], 7, str) status, and on -1 looks up the position with f_05e540 and fills the result's last two words.
+   Remaining difference: stack layout of the temporaries (retail keeps pair at sp+0, copies at 16/48) and register allocation; retail path structure partly differs */
+R4 f_06435c(char *o, char *x) {
+    R4 r;
+    if (*(unsigned char *)(o + 8) == 0) {
+        r.w0 = *(int *)(o + 12); r.w1 = *(int *)(o + 16);
+        r.w2 = *(int *)(o + 20); r.w3 = *(int *)(o + 24);
+        return r;
+    }
+    r.w0 = (int)x;
+    r.w2 = 0;
+    r.w3 = 0;
+    char *d = *(char **)(o + 28);
+    d[*(int *)(d - 12)] = D_1a4d14;
+    r.w1 = f_15c07c(*(int *)(x + 4), 7, *(char **)(o + 28));
+    if (r.w1 == -1) {
+        Pr q;
+        volatile P2 tp;
+        tp.a = r.w0 + 8;
+        f_05e540(&q, (void *)tp.a, o + 28);
+        Pr c1(q);
+        Pr c2(c1);
+        tp.b = (int)(q.p + 16);
+        r.w3 = tp.b;
+        r.w2 = tp.a;
+    }
+    return r;
+}
+
+extern unsigned char D_1a4d14;
+extern char D_1a43d0[];
+int f_15c098(int, int);
+void f_05a3e8(void *, int, void *);
+void f_05e4a8(void *, void *);
+int f_06264c(void *);
+void f_05db84(void *);
+void f_04e8c0(void *);
+void f_05daa4(void *, void *);
+void f_05df24(void *, void *);
+void f_04ed28(void *);
+struct StrT { int w; ~StrT() { f_05db84(this); } };
+struct Sx {
+    char *vt; int w4; unsigned char b8; int w12, w16, w20, w24; int s28;
+    ~Sx() { vt = D_1a43d0; f_05db84(&s28); f_04e8c0(this); }
+};
+/* @draft 0x062bd4 us f_062bd4
+   WHAT IT DOES: builds a source string pointer (via f_15c098 when the key at +4 is not -1, else by terminating the string held through the pointer at +12), wraps it in a COW string with f_05a3e8, builds a local stream-like object (vtable D_1a43d0, byte flag 1, field -1, string copy via f_05e4a8), gets an index from f_06264c, destroys the object, then stores a default Holder into slot idx (8-byte stride) of the array at self+28 with f_05df24.
+   Remaining difference: stack slot layout of the locals, landing-pad blocks and the register for the source pointer; 74 of 98 words differ */
+void f_062bd4(char *self, int *a) {
+    StrT tmp;
+    int g[4];
+    int src;
+    if (a[1] != -1) {
+        src = f_15c098(*(int *)(a[0] + 4), 7);
+    } else {
+        int *x = (int *)a[3];
+        char *d = *(char **)x;
+        d[*(int *)(d - 12)] = D_1a4d14;
+        src = *x;
+    }
+    f_05a3e8(&tmp, src, g);
+    int idx;
+    {
+    Sx o;
+    o.vt = D_1a43d0;
+    o.b8 = 1;
+    o.w16 = -1;
+    o.w4 = 0; o.w12 = 0; o.w20 = 0; o.w24 = 0;
+    f_05e4a8(&o.s28, &tmp);
+    idx = f_06264c(&o);
+    }
+    char *ptr = *(char **)(self + 28) + idx * 8;
+    Holder h;
+    f_05daa4(&h, 0);
+    f_05df24(ptr, &h);
+}
+
+struct KEnt { const char *name; int a, b, c; };
+extern char D_291688[];
+extern KEnt D_291694[11];
+extern char D_1a34c0[]; /* "DOWN" */
+extern char D_1a34c8[]; /* "UP" */
+extern char D_1a34cc[]; /* "RIGHT" */
+extern char D_1a34d4[]; /* "LEFT" */
+extern char D_1a34dc[]; /* "SPACE" */
+extern char D_1a34e4[]; /* "BACKSPACE" */
+extern char D_1a34f0[]; /* "getCode" */
+extern char D_1a34f8[]; /* "isDown" */
+extern char D_1a3500[]; /* "addListener" */
+extern char D_1a350c[]; /* "removeListener" */
+static inline void ini(KEnt *e, int a, int b, int c) { e->a = a; e->c = c; e->b = b; }
+/* @draft 0x0665bc us f_0665bc
+   WHAT IT DOES: on first call fills the static 11-entry key-name table at D_291694 (name pointer plus three ints per 16-byte entry, names DOWN/UP/RIGHT/LEFT/SPACE/BACKSPACE/getCode/isDown/addListener/removeListener, codes 0 to 9, null terminator entry), sets the init flag, and returns the table.
+   Remaining difference: instruction scheduling and constant register sharing (retail keeps 1 and 2 in a2/a3 from function entry) */
+KEnt *f_0665bc(void) {
+    if (!D_291688[0]) {
+        KEnt *t = D_291694;
+        ini(&t[0], 0, 0, 0);
+        ini(&t[1], 0, 0, 1);
+        ini(&t[2], 0, 0, 2);
+        ini(&t[3], 0, 0, 3);
+        ini(&t[4], 0, 0, 4);
+        ini(&t[5], 0, 0, 5);
+        ini(&t[6], 2, 0, 6);
+        ini(&t[7], 2, 1, 7);
+        ini(&t[8], 2, 1, 8);
+        ini(&t[9], 2, 1, 9);
+        ini(&t[10], 1, 0, 0);
+        t[0].name = D_1a34c8;
+        t[1].name = D_1a34c0;
+        t[2].name = D_1a34cc;
+        t[3].name = D_1a34d4;
+        t[4].name = D_1a34dc;
+        t[5].name = D_1a34e4;
+        t[6].name = D_1a34f0;
+        t[7].name = D_1a34f8;
+        t[8].name = D_1a3500;
+        t[9].name = D_1a350c;
+        t[10].name = 0;
+        D_291688[0] = 1;
+    }
+    return D_291694;
+}
+}}
