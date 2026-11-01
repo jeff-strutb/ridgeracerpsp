@@ -1964,12 +1964,15 @@ int f_0622a8(void *p)
     return 11;
 }
 
+/* Named by its retail address: the file's own string pool does not hold retail's neighbours. */
+extern char D_1a3278[]; /* "sound" */
+
 /* @implements 0x0622b0 us f_0622b0
    WHAT IT DOES: Returns the name string "sound". */
 const char *f_0622b0(void *p)
 {
     (void)p;
-    return "sound";
+    return D_1a3278;
 }
 
 /* @implements 0x05ca08 us f_05ca08
@@ -6432,12 +6435,13 @@ struct D062528 : B04e8d8 {
     M060670 m;
     ~D062528() {
         M060670 *p = &m;
+        void *a = (void *)W(p, 4); void *b = (void *)W(p, 8);
         *(void **)this = D_1a3e50;
-        f_0606a0((void *)W(p, 4), (void *)W(p, 8), 0);
+        f_0606a0(a, b, 0);
     }
 };
 
-/* @draft 0x062528 us f_062528
+/* @implements 0x062528 us f_062528
    WHAT IT DOES: destructor: stores vtable D_1a3e50, calls f_0606a0 on the member at +24, destroys it (f_060670), then destroys the base (f_04e8d8). */
 void f_062528(void *o)
 {
@@ -6476,7 +6480,7 @@ void *f_061da4(char *first, char *last, char *dest)
     return dest;
 }
 
-/* @draft 0x0625ac us f_0625ac
+/* @implements 0x0625ac us f_0625ac
    WHAT IT DOES: deleting destructor: same as f_062528, then calls f_05db44(self). */
 void f_0625ac(void *o)
 {
@@ -10668,3 +10672,1156 @@ void f_057c08(char *s3) {
 
 }  // extern "C"
 }  // namespace swg7c
+
+/* ---- swg7b ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 fragment swg7b: large untagged functions of the SWG player (big_b, second half). */
+namespace swg7b {
+extern "C" {
+#define Q7(o, off) (*(int *)((char *)(o) + (off)))
+void *f_04dfa0(unsigned); void f_04ed28(void *); void f_04e4b4(void *); void f_04eee8(void *, void *);
+void f_05daa4(void *, void *);
+int f_15c0f0(int, int); int f_15c07c(int, int, void *);
+void f_05a3e8(void *, void *, void *); void f_05e540(void *, void *, void *);
+void f_05f64c(void *, void *, void *); int f_05df80(void *, void *);
+unsigned sceKernelCpuSuspendIntr(void); void sceKernelCpuResumeIntr(unsigned);
+extern int D_1d2d7c[];
+struct Em7 { ~Em7() {} };
+struct Rc7 { int w[4]; };
+/* the virtual interface of the movie-clip / character objects (slot numbers are retail vtable slots) */
+struct Str7 {
+  char *p;
+  ~Str7() {
+    Em7 g; char *s0 = p; char *s2 = s0 - 12;
+    unsigned intr = sceKernelCpuSuspendIntr();
+    volatile int *c = (volatile int *)(s0 - 4);
+    int s1 = *c; *c += -1;
+    sceKernelCpuResumeIntr(intr);
+    if (s1 <= 0) f_04eee8(s2, &g);
+  }
+};
+struct Vo;
+struct Hd7 { Vo *p; int *c; ~Hd7() { f_04ed28(this); } };
+struct Vo {
+  virtual void s0();
+  virtual void s1();
+  virtual void s2();
+  virtual void s3();
+  virtual void s4();
+  virtual void s5();
+  virtual int s6();
+  virtual char *s7();
+  virtual void s8();
+  virtual int s9();
+  virtual Vo *s10();
+  virtual void *s11();
+  virtual void s12(void *);
+  virtual Hd7 s13(void *);
+  virtual void s14(void *, void *);
+  virtual void s15();
+  virtual void s16(void *);
+  virtual void s17();
+  virtual void s18();
+  virtual void s19();
+  virtual Rc7 s20(void *);
+  virtual Str7 s21();
+  virtual int s22();
+  virtual int s23();
+  virtual double s24();
+  virtual void s25();
+  virtual void s26();
+  virtual void s27();
+  virtual void s28();
+  virtual void s29();
+  virtual void s30();
+  virtual void s31();
+  virtual void s32();
+  virtual void s33();
+  virtual void s34();
+  virtual void s35();
+  virtual void s36();
+  virtual void s37();
+  virtual int s38(void *);
+  virtual void s39();
+  virtual void s40();
+  virtual int *s41();
+  virtual void s42(void *);
+  virtual void s43();
+  virtual void s44();
+  virtual int s45(void *, void *, void *);
+};
+static inline void grab7(Hd7 &h, char *q, void *out) {
+  int a = Q7(q, 4);
+  int *v = *(int **)(a + 4);
+  h.p = (Vo *)v[2]; h.c = (int *)v[3];
+  if (h.c) ++*h.c;
+  int b = *(int *)(a + 4);
+  f_05f64c(out, q, &b);
+}
+
+/* @draft 0x0539dc us f_0539dc
+   WHAT IT DOES: takes three copies of the counted handle two links down the chain at +328; while the second-chain object is a type-7 node it asks it (virtual slot 20) for the registration record and, when f_05df80 accepts the record against +24, replaces the handle with the next one in the list at +344; then builds a record {player, id, tree, name} (virtual slot 20 of the matching handle, or for a type-10 object whose partner is not type 7 and whose index is below 20 the id from f_15c07c on the name in the table at D_1d2d7c, falling back to a name-map lookup) and passes it, with a copy of the first handle, to virtual slot 14 of the current object.
+   Remaining difference: not scored; handle temporaries are open-coded copies, landing pads and register allocation unmatched. */
+void f_0539dc(char *self) {
+  char *q = self + 328;
+  Hd7 h0, h1, h2; int o[4];
+  grab7(h0, q, o); grab7(h1, q, o); grab7(h2, q, o);
+  Rc7 rec;
+  Vo *s0;
+  if (h2.p->s6() == 7) goto seven;
+again:
+  s0 = h2.p;
+  if (s0->s6() == 10) {
+    if (h1.p->s6() != 7) {
+      int x = h1.p->s23();
+      if ((unsigned)x < 20) {
+        int nm = D_1d2d7c[x];
+        rec.w[0] = (int)self; rec.w[2] = 0; rec.w[3] = 0;
+        rec.w[1] = f_15c07c(Q7(self, 4), 7, (void *)nm);
+        if (rec.w[1] == -1) {
+          Str7 s; char tag[16];
+          f_05a3e8(&s, (void *)nm, tag);
+          char *res[2];
+          f_05e540(res, self + 8, &s);
+          rec.w[2] = (int)(self + 8); rec.w[3] = (int)(res[0] + 16);
+        }
+        goto fin;
+      }
+    }
+  }
+  rec = h1.p->s20(self);
+fin:
+  {
+    Hd7 c; c.p = h0.p; c.c = h0.c; if (c.c) ++*c.c;
+    s0->s14(&rec, &c);
+  }
+  return;
+seven:
+  rec = h2.p->s20(self);
+  if (f_05df80(&rec, self + 24)) {
+    char *nd = *(char **)(Q7(self, 344) + 4);
+    if (&h2 != (Hd7 *)(nd + 8)) {
+      f_04ed28(&h2);
+      h2.p = *(Vo **)(nd + 8); h2.c = *(int **)(nd + 12);
+      if (h2.c) ++*h2.c;
+    }
+  }
+  goto again;
+}
+
+/* --- f_0502bc: native-call marshalling --- */
+void *f_04ebf4(void *, int);
+extern char *D_1a2c08[5]; extern char *D_1a2e60[5]; extern char D_1a4320[]; extern char D_1a4270[];
+extern void *D_1a2e74[];
+struct T5 { char *w[5]; };
+struct Cb {
+  virtual void c0(); virtual void c1(); virtual int c2(int); virtual int c3(int, int); virtual float c4(int);
+  virtual void c5(int, int); virtual void c6(int, float);
+};
+struct ObI {
+  static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+  static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+  ObI(int v) { Q7(this, 4) = 0; Q7(this, 0) = (int)D_1a4320; Q7(this, 8) = v; }
+};
+struct ObF {
+  static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+  static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+  ObF(float v) { double d = v; Q7(this, 0) = (int)D_1a4270; *(double *)((char *)this + 8) = d; Q7(this, 4) = 0; }
+};
+struct Pr7 {
+  void *p; int *cnt;
+  Pr7(void *o) { p = o; cnt = 0; if (o) { cnt = (int *)f_04dfa0(4); *cnt = 1; } }
+  ~Pr7() { f_04ed28(this); }
+};
+struct Ar { Vo *o; int x; };
+
+/* @draft 0x0502bc us f_0502bc
+   WHAT IT DOES: marshals the arguments of a native call: for the descriptor's kind (0..4, at +12) it reads the argument format string, gathers the call's arguments (objects at +52, count at +48) into a temporary word buffer, converting 'I' arguments through virtual slot 23 and 'F' ones through slot 24 (double to float), then dispatches on the kind to one of five virtual methods of the target object at +60 (void/int/float results, optionally with a float parameter), frees the buffer and wraps the result by the kind's return format ('I' as a 16-byte integer object, 'F' as a 20-byte float object, otherwise an empty handle).
+   Remaining difference: not scored beyond the draft; stack layout of the format tables and register allocation unmatched. */
+Pr7 f_0502bc(char *args, int unused, char *desc) {
+  unsigned kind = Q7(desc, 12);
+  if (kind < 5) {
+    T5 af = *(T5 *)D_1a2c08;
+    T5 rf = *(T5 *)D_1a2e60;
+    float fv = 0;
+    int iv = 0;
+    int *buf = 0;
+    int n = Q7(args, 48);
+    if (n > 0) {
+      buf = (int *)f_04ebf4(args, n * 4);
+      int *w = buf;
+      for (int i = 0; i < Q7(args, 48); i++) {
+        int c = af.w[kind][i];
+        if (c == 73) {
+          *w++ = (*(Ar **)(args + 52))[i].o->s23();
+        } else if (c == 70) {
+          *(float *)w++ = (float)(*(Ar **)(args + 52))[i].o->s24();
+        }
+      }
+    }
+    Cb *t = *(Cb **)(args + 60);
+    if (t) {
+      switch (kind) {
+        case 0: t->c5(buf[0], buf[1]); break;
+        case 1: iv = buf[1]; t->c6(buf[0], *(float *)&iv); break;
+        case 2: iv = t->c2(buf[0]); break;
+        case 3: fv = t->c4(buf[0]); break;
+        case 4: iv = t->c3(buf[0], buf[1]); break;
+      }
+    }
+    if (buf) f_04e4b4((char *)buf - 4);
+    int c = rf.w[kind][0];
+    if (c == 70) return Pr7(new ObF(fv));
+    if (c == 73) return Pr7(new ObI(iv));
+  }
+  return Pr7(0);
+}
+
+/* --- f_04e1a0: constructor of the player core object --- */
+void f_04ec74(void *, void *); void f_04eda0(void *); void f_04ee08(void *, void *);
+extern char D_1a4530[]; extern char D_1a4678[];
+struct Hn { int *p; int *c; Hn() { p = 0; c = 0; } ~Hn() { f_04ed28(this); } };
+struct Ent7 { int a, b, c, d; Ent7() { a = 0; b = -1; c = 0; d = 0; } };
+struct NdA { int a, b, c, d, e; };
+struct TrA {
+  int pad; NdA *h; int n;
+  TrA() { pad = 0; h = (NdA *)f_04dfa0(20); h->b = 0; n = 0; h->c = (int)h; h->a = 0; h->d = (int)h; }
+  ~TrA() {
+    if (n) { f_04ec74(this, (void *)h->b); n = 0; h->c = (int)h; h->b = 0; h->d = (int)h; }
+    f_04e4b4(h);
+  }
+};
+struct TrB {
+  int pad; int *h;
+  TrB() { h = (int *)f_04dfa0(16); h[1] = (int)h; h[0] = (int)h; }
+  ~TrB() { f_04eda0(this); f_04e4b4((void *)h); }
+};
+struct TrC {
+  int pad; int *h; int n;
+  TrC() { h = 0; h = (int *)f_04dfa0(44); h[1] = 0; n = 0; h[2] = (int)h; h[0] = 0; h[3] = (int)h; }
+  ~TrC() {
+    if (n) { f_04ee08(this, (void *)h[1]); n = 0; h[2] = (int)h; h[1] = 0; h[3] = (int)h; }
+    f_04e4b4(h);
+  }
+};
+struct TrD {
+  int pad; int *h;
+  TrD() { h = (int *)f_04dfa0(16); h[1] = (int)h; h[0] = (int)h; }
+  ~TrD() { f_04e4b4(h); }
+};
+struct CoreB { void *vt; CoreB() { vt = D_1a4678; } ~CoreB() {} };
+struct Core : CoreB {
+  TrA tree8; Ent7 ent[14]; char u1[16];
+  Hn h264, h272, h280, h288; Hn arr[4];
+  TrB t328; TrB t340; TrC t348; TrD t364; Hn h372; int w380, w384;
+  inline __attribute__((always_inline)) Core() { vt = D_1a4530; w384 = 0; w380 = 0; }
+};
+inline void *operator new(unsigned, void *p) throw() { return p; }
+
+/* @draft 0x04e1a0 us f_04e1a0
+   WHAT IT DOES: constructs the player core object in place: sets its vtable, builds the empty tree at +8, the fourteen {0,-1,0,0} slot records at +24, the counted-handle members at +264..+288 and the four-handle array at +296, the empty trees at +328, +340, +348 and +364, and the handle and words at +372..+384.
+   Remaining difference: not scored beyond the draft; the exception cleanup pads are generated from member destructors and are not matched. */
+void f_04e1a0(void *self) { new (self) Core; }
+
+/* --- f_04f940: emits the dotted names of a list of owners --- */
+void f_05e394(void *, void *, void *, void *); void f_05e4a8(void *, void *); int f_15c098(int, int);
+void f_05cbd4(void *);
+extern char D_1a4480[]; extern char D_1a43d0[];
+struct ObN {
+  static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+  static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+  ObN() { Q7(this, 0) = (int)D_1a4480; Q7(this, 4) = 0; }
+};
+struct Ob37 {
+  static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+  static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+  Ob37(void *path) {
+    Em7 e;
+    Q7(this, 0) = (int)D_1a43d0; Q7(this, 16) = -1; Q7(this, 4) = 0;
+    *((char *)this + 8) = 1;
+    Q7(this, 12) = 0; Q7(this, 24) = 0;
+    f_05e4a8((char *)this + 28, path);
+  }
+};
+
+/* @draft 0x04f940 us f_04f940
+   WHAT IT DOES: first reports an empty 8-byte marker object to f_05e394 for the target at the second argument; then walks the list of owner records hanging off +12 of the first argument, and for each builds a 36-byte named object from the record's name (the stored string at +28, or one built from the owner's id at +16 through f_15c098 when the index at +20 is not -1) and reports it to f_05e394 the same way.
+   Remaining difference: not scored beyond the draft; landing pads, flag for the conditional delete and register allocation unmatched. */
+void f_04f940(char *self, char *tgt) {
+  {
+    Pr7 pr(new ObN);
+    int o[4]; int a = Q7(tgt, 4);
+    f_05e394(o, tgt, &a, &pr);
+  }
+  char *end = (char *)Q7(self, 12);
+  char *it = (char *)Q7(end, 8);
+  while (it != end) {
+    {
+      Str7 s; char tag[16];
+      if (Q7(it, 20) == -1) f_05e4a8(&s, (void *)Q7(it, 28));
+      else f_05a3e8(&s, (void *)f_15c098(Q7(Q7(it, 16), 4), 7), tag);
+      Pr7 pr(new Ob37(&s));
+      int o[4]; int a = Q7(tgt, 4);
+      f_05e394(o, tgt, &a, &pr);
+    }
+    f_05cbd4(&it);
+  }
+}
+
+/* --- f_04f428: register a record with its owner, falling back to the local map --- */
+void f_05dff0(void *, void *, void *); void f_05e068(void *, void *, void *, void *); int f_05dcb8(void *, void *);
+void *f_154448(void *, void *, void *, int);
+extern char D_1a4900[]; extern char D_1a3b7c[];
+static inline bool eqk(int *a, int *b) {
+  int x = a[1], y = b[1];
+  if (x == -1 && y == -1) return a[3] == b[3];
+  if (x == -1 || y == -1) return false;
+  return x == y;
+}
+
+/* @draft 0x04f428 us f_04f428
+   WHAT IT DOES: offers the record (four words) and a counted handle to the owner at +4 through its virtual slot 45; when the owner accepts, returns 1 at once. Otherwise finds the record's key in the map at +8 (inserting {record, empty handle} when absent), stores the handle in the entry, and, if the handle's object (virtual slot 10) carries an identical registration key at +152, casts the handle's object with __dynamic_cast and reports it through virtual slot 12 of this object (or the result of the handle's virtual slot 11 when there is no cast). Always returns 1.
+   Remaining difference: not scored beyond the draft; handle copies and landing pads are open-coded, register allocation unmatched. */
+int f_04f428(Vo *self, int *rec, Hd7 *h) {
+  bool found = false;
+  {
+    Hd7 hc; hc.p = h->p; hc.c = h->c; if (hc.c) ++*hc.c;
+    if (Q7(self, 4)) {
+      Hd7 c; c.p = hc.p; c.c = hc.c; if (c.c) ++*c.c;
+      int r = ((Vo *)Q7(self, 4))->s45(self, rec, &c);
+      found = r != 0;
+    }
+  }
+  if (found) return 1;
+  char *tr = (char *)self + 8;
+  char *it; f_05dff0(&it, tr, rec);
+  char *end = *(char **)(tr + 4);
+  if (it == end || f_05dcb8(rec, it + 16)) {
+    int pair[6]; char *hint = it, *res;
+    pair[0] = rec[0]; pair[1] = rec[1]; pair[2] = rec[2]; pair[3] = rec[3]; pair[4] = 0; pair[5] = 0;
+    f_05e068(&res, tr, &hint, pair);
+    it = res;
+    f_04ed28(&pair[4]);
+  }
+  char *dst = it + 32;
+  if (dst != (char *)h) {
+    f_04ed28(dst);
+    Q7(it, 32) = (int)h->p; Q7(it, 36) = (int)h->c;
+    if (h->c) ++*h->c;
+  }
+  Vo *o = h->p->s10();
+  if (o) {
+    int *k = (int *)((char *)o + 152);
+    if (eqk(k, rec)) {
+      void *x = 0;
+      if (h->p) x = f_154448(h->p, D_1a4900, D_1a3b7c, 0);
+      if (x) self->s12(x); else self->s12(h->p->s11());
+    }
+  }
+  return 1;
+}
+
+/* --- f_04d8a4: allocator dump --- */
+int iprintf(const char *, ...); void f_126f1c(const char *);
+extern char D_1a2c28[], D_1a2c38[], D_1a2c40[], D_1a2c48[], D_1a2c54[], D_1a2c64[], D_1a2c74[], D_1a2c80[], D_1a2c8c[];
+extern char D_1a2c94[], D_1a2ca0[], D_1a2cb0[], D_1a2cc0[], D_1a2cd0[], D_1a2ce4[], D_1a2cf4[];
+extern unsigned D_291424; extern int D_291744, D_291420, D_291668, D_29166c;
+extern int **D_291690; extern int *D_291410; extern int *D_29174c;
+
+/* @draft 0x04d8a4 us f_04d8a4
+   WHAT IT DOES: prints a dump of the "lwalloc" small-block allocator: for every size class the free-list length and bytes held, then each free block address, then the used list and the leak list with each block's size (rounded to the class size plus a 16-byte header), and finally the allocator statistics (total, max used, header, free, used and leak byte counts).
+   Remaining difference: not scored beyond the draft; list-walk loop shapes and register allocation unmatched. */
+void f_04d8a4(void) {
+  int freeb = 0, usedb = 0, leakb = 0;
+  unsigned i;
+  int *p;
+  f_126f1c(D_1a2c28);
+  f_126f1c(D_1a2c38);
+  if (D_291424) {
+    for (i = 0; i < D_291424; i++) {
+      iprintf(D_1a2c48, i);
+      int cnt = 0;
+      for (p = D_291690[i]; p; p = (int *)*p) cnt++;
+      int sz = 1 << (i + D_291744 + 1);
+      int tot = (sz + 16) * cnt;
+      iprintf(D_1a2c54, sz, 16, cnt, tot);
+      freeb += tot;
+      for (p = D_291690[i]; p; p = (int *)*p) iprintf(D_1a2c64, p);
+    }
+  }
+  f_126f1c(D_1a2c40);
+  for (p = D_291410; p; p = (int *)*p) {
+    iprintf(D_1a2c74, p, p[2]);
+    unsigned n = p[2];
+    int sz = (n + 15) & -16;
+    if (n < D_291424) sz = 1 << (n + D_291744 + 1);
+    iprintf(D_1a2c80, sz, 16);
+    usedb += sz + 16;
+  }
+  f_126f1c(D_1a2c8c);
+  for (p = D_29174c; p; p = (int *)*p) {
+    iprintf(D_1a2c74, p, p[2]);
+    unsigned n = p[2];
+    int sz = (n + 15) & -16;
+    if (n < D_291424) sz = 1 << (n + D_291744 + 1);
+    iprintf(D_1a2c80, sz, 16);
+    leakb += sz + 16;
+  }
+  f_126f1c(D_1a2c94);
+  iprintf(D_1a2ca0, D_291420);
+  iprintf(D_1a2cb0, D_291420 - D_291668);
+  iprintf(D_1a2cc0, D_291424 << 2);
+  iprintf(D_1a2cd0, freeb, D_29166c);
+  iprintf(D_1a2ce4, usedb);
+  iprintf(D_1a2cf4, leakb);
+}
+
+/* --- f_05152c: unregister an object from the player --- */
+void f_05f56c(void *, void *, void *); void f_05f1f4(void *, void *, void *); void f_05f238(void *, void *, void *, void *);
+void f_05f5dc(void *, void *, void *); void *f_05cc58(void *, void *, void *, void *);
+extern char D_1a493c[];
+/* find the node for *kp in the tree, inserting a default entry (key, 4 zero-ish words, empty handle) when absent */
+static inline char *slot7(char *tree, int *kp) {
+  char *it;
+  f_05f1f4(&it, tree, kp);
+  char *end = *(char **)(tree + 4);
+  if (it == end || (unsigned)*kp < (unsigned)Q7(it, 16)) {
+    int tmp[6]; char *hint = it, *res;
+    tmp[0] = 0; tmp[1] = -1; tmp[2] = 0; tmp[3] = 0;
+    f_05daa4(&tmp[4], 0);
+    int pr[7];
+    pr[0] = *kp; pr[1] = tmp[0]; pr[2] = tmp[1]; pr[3] = tmp[2]; pr[4] = tmp[3]; pr[5] = tmp[4]; pr[6] = tmp[5];
+    if (pr[6]) ++*(int *)pr[6];
+    f_05f238(&res, tree, &hint, pr);
+    it = res;
+    f_04ed28(&pr[5]);
+    f_04ed28(&tmp[4]);
+  }
+  return it;
+}
+
+/* @draft 0x05152c us f_05152c
+   WHAT IT DOES: removes an object from the player's registry: looks the object up in the map at +348 and, when present, finds its parent's entry (defaulting it), casts the parent's handle object with __dynamic_cast, clears the parent's child-vector slot that holds the object, erases the object from the parent's index map at +48, asks the parent for its registered handle (virtual slot 13) and, when that handle's object is the removed one, tells the parent to drop the record (virtual slot 16); finally erases the object's own entry from the map at +348, destroying its handle and node.
+   Remaining difference: not scored beyond the draft; handle temporaries and landing pads are open-coded, register allocation unmatched. */
+void f_05152c(char *self, char *P) {
+  char *tree = self + 348;
+  int key = (int)P;
+  char *it0;
+  f_05f56c(&it0, tree, &key);
+  char *end = *(char **)(tree + 4);
+  if (it0 != end) {
+    int par = Q7(P, 20);
+    if (par) {
+      char *pn = slot7(tree, &par);
+      char *o = (char *)Q7(pn, 36);
+      char *tgt = 0;
+      if (o) tgt = (char *)f_154448(o, D_1a4900, D_1a493c, 0);
+      char *m = tgt + 48;
+      int k2 = (int)P;
+      char *it3;
+      f_05f5dc(&it3, m, &k2);
+      char *e3 = *(char **)(m + 4);
+      if (it3 != e3) {
+        int idx = Q7(it3, 20);
+        int *slot = &((int *)Q7(tgt, 36))[idx];
+        if (*slot == k2) *slot = 0;
+        void *nd = f_05cc58(it3, e3 + 4, e3 + 8, e3 + 12);
+        f_04e4b4(nd);
+        Q7(m, 8) = Q7(m, 8) - 1;
+      }
+      Hd7 t = ((Vo *)tgt)->s13(it0 + 20);
+      if (t.p->s9() == key) ((Vo *)tgt)->s16(it0 + 20);
+    }
+    char *e = *(char **)(tree + 4);
+    char *nd = (char *)f_05cc58(it0, e + 4, e + 8, e + 12);
+    f_04ed28(nd + 36);
+    f_04e4b4(nd);
+    Q7(tree, 8) = Q7(tree, 8) - 1;
+  }
+}
+
+/* --- f_050018: rebuild the name-to-id map from the owner's name table --- */
+void f_05e7bc(void *, void *, void *); void f_05e834(void *, void *, void *, void *); void f_04ee68(void *, void *);
+
+/* @draft 0x050018 us f_050018
+   WHAT IT DOES: stores the argument at +40 and empties the name map at +24; then asks this object (virtual slot 41) for its table of 16-byte entries and, for every entry up to the first null name, builds a record {name, id, tree, key} (the id from f_15c07c on the name, or, when that is -1, a string-map key built through f_05a3e8/f_05e540 on the map at +8 of the name's owner) and inserts it into the map at +24 unless an equal key is already there.
+   Remaining difference: not scored beyond the draft; the tree-find/insert inlines, landing pads and registers are open-coded. */
+void f_050018(Vo *self, char *tbl) {
+  char *tree = (char *)self + 24;
+  Q7(self, 40) = (int)tbl;
+  if (Q7(tree, 8)) {
+    f_04ee68(tree, (void *)((int *)Q7(tree, 4))[1]);
+    Q7(tree, 8) = 0;
+    int *h = (int *)Q7(tree, 4);
+    h[2] = (int)h; h[1] = 0; h[3] = (int)h;
+  }
+  int *e = self->s41();
+  if (e) {
+    char *nm = (char *)*e;
+    while (nm) {
+      int rec[4];
+      rec[0] = (int)nm; rec[2] = 0; rec[3] = 0;
+      rec[1] = f_15c07c(Q7(tbl, 4), 7, nm);
+      if (rec[1] == -1) {
+        char *s3 = nm + 8;
+        Str7 s; char tag[16];
+        f_05a3e8(&s, nm, tag);
+        char *res[2];
+        f_05e540(res, s3, &s);
+        rec[2] = (int)s3; rec[3] = (int)(res[0] + 16);
+      }
+      char *it; f_05e7bc(&it, tree, rec);
+      char *end = *(char **)(tree + 4);
+      if (it == end || f_05dcb8(rec, it + 16)) {
+        int pair[5]; char *hint = it, *res;
+        pair[0] = rec[0]; pair[1] = rec[1]; pair[2] = rec[2]; pair[3] = rec[3]; pair[4] = 0;
+        f_05e834(&res, tree, &hint, pair);
+        it = res;
+      }
+      e += 4;
+      nm = (char *)*e;
+    }
+  }
+}
+
+/* --- f_053e2c --- */
+extern char D_1a4110[];
+struct ObM {
+  static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+  static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+  ObM() { Q7(this, 0) = (int)D_1a4110; Q7(this, 4) = 0; }
+};
+
+/* @draft 0x053e2c us f_053e2c
+   WHAT IT DOES: picks a counted handle to pass along (when the flag is set, a copy of the handle two links down the chain at +328; otherwise a fresh empty 8-byte marker object), finds the chain's current object with f_05f64c, asks the second handle's object (virtual slot 20) for its registration record against this object, and hands the record plus a copy of the picked handle to virtual slot 14 of the found object.
+   Remaining difference: not scored beyond the draft; handle copies, landing pads and register allocation unmatched. */
+void f_053e2c(char *self, unsigned flag) {
+  char *q = self + 328;
+  Hd7 hold; hold.p = 0; hold.c = 0;
+  int o[4];
+  if (flag & 0xff) {
+    int *a = *(int **)(q + 4);
+    int *v = (int *)a[1];
+    if ((char *)&hold != (char *)(v + 2)) {
+      f_04ed28(&hold);
+      hold.p = (Vo *)v[2]; hold.c = (int *)v[3];
+      if (hold.c) ++*hold.c;
+    }
+  } else {
+    Pr7 pr(new ObM);
+    if ((char *)&hold != (char *)&pr) {
+      f_04ed28(&hold);
+      hold.p = (Vo *)pr.p; hold.c = pr.cnt;
+      if (hold.c) ++*hold.c;
+    }
+  }
+  int b = *(int *)(Q7(q, 4) + 4);
+  f_05f64c(o, q, &b);
+  Hd7 h1;
+  {
+    int a = Q7(q, 4);
+    int *v = *(int **)(a + 4);
+    h1.p = (Vo *)v[2]; h1.c = (int *)v[3];
+    if (h1.c) ++*h1.c;
+    int b2 = *(int *)(a + 4);
+    f_05f64c(o, q, &b2);
+  }
+  Vo *s0 = (Vo *)o[0];
+  Rc7 rec = h1.p->s20(self);
+  Hd7 c; c.p = hold.p; c.c = hold.c; if (c.c) ++*c.c;
+  s0->s14(&rec, &c);
+}
+
+/* --- f_05582c --- */
+/* @draft 0x05582c us f_05582c
+   WHAT IT DOES: takes the counted handle two links down the chain at +328, asks its object for its name (virtual slot 7), builds a string from it, wraps the string in a 36-byte named object held by a counted handle, and reports it to f_05e394 with the chain sub-object.
+   Remaining difference: not scored beyond the draft; handle copy, landing pads and register allocation unmatched. */
+void f_05582c(char *self) {
+  char *q = self + 328;
+  Hd7 h; int o[4];
+  grab7(h, q, o);
+  Str7 s; char tag[16];
+  f_05a3e8(&s, h.p->s7(), tag);
+  Pr7 pr(new Ob37(&s));
+  int o2[4]; int a2 = Q7(q, 4);
+  f_05e394(o2, q, &a2, &pr);
+}
+
+/* --- f_054574 --- */
+extern char D_1a4060[]; extern unsigned char D_1d2dc8[];
+struct ObT {
+  static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+  static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+  ObT(bool b) { Q7(this, 0) = (int)D_1a4060; Q7(this, 4) = 0; *((char *)this + 8) = b; }
+};
+
+/* @draft 0x054574 us f_054574
+   WHAT IT DOES: takes two counted handles from the chain at +328, looks up the pair of their object types (virtual slot 6) in the 14-byte-per-row compatibility table at D_1d2dc8 and, when the table allows it, asks the second object whether it accepts the first (virtual slot 38); wraps the yes/no answer in a 12-byte flag object held by a counted handle and reports it to f_05e394 with the chain sub-object.
+   Remaining difference: not scored beyond the draft; handle copies, landing pads and register allocation unmatched. */
+void f_054574(char *self) {
+  char *q = self + 328;
+  Hd7 h0, h1; int o[4];
+  grab7(h0, q, o);
+  grab7(h1, q, o);
+  int t0 = h0.p->s6();
+  int t1 = h1.p->s6();
+  bool ok = false;
+  if (D_1d2dc8[t1 * 14 + t0]) ok = h1.p->s38(h0.p) != 0;
+  Pr7 pr(new ObT(ok));
+  int o2[4]; int a2 = Q7(q, 4);
+  f_05e394(o2, q, &a2, &pr);
+}
+
+/* --- f_0555d4 --- */
+/* @draft 0x0555d4 us f_0555d4
+   WHAT IT DOES: takes the counted handle two links down the chain at +328, obtains its object's name string by value (virtual slot 21), wraps it in a 36-byte named object held by a counted handle and reports it to f_05e394 with the chain sub-object.
+   Remaining difference: not scored beyond the draft; handle copy, landing pads and register allocation unmatched. */
+void f_0555d4(char *self) {
+  char *q = self + 328;
+  Hd7 h; int o[4];
+  grab7(h, q, o);
+  Str7 s = h.p->s21();
+  Pr7 pr(new Ob37(&s));
+  int o2[4]; int a2 = Q7(q, 4);
+  f_05e394(o2, q, &a2, &pr);
+}
+
+/* --- f_050754: first-use setup of the root clip --- */
+void f_05e980(void); void f_05dc90(void *, void *); void f_05daec(void *); void f_05e6cc(void *, void *, void *);
+extern char D_1a3760[]; extern char D_1a2e90[];
+struct ObR {
+  static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+  static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+  ObR() {
+    Em7 e;
+    Q7(this, 0) = (int)D_1a3760; Q7(this, 4) = 0; Q7(this, 12) = 0;
+    int *n = (int *)f_04dfa0(40);
+    Q7(this, 12) = (int)n; n[1] = 0;
+    Q7(this, 16) = 0; n[2] = (int)n; n[0] = 0; n[3] = (int)n;
+  }
+};
+struct HdR { Vo *p; int *c; HdR(Vo *o) { p = o; c = 0; if (o) { c = (int *)f_04dfa0(4); *c = 1; } } ~HdR() { f_04ed28(this); } };
+
+/* @draft 0x050754 us f_050754
+   WHAT IT DOES: once per player (when the root object at +388 exists and the done-flag at +392 is clear): runs f_05e980, tells the root object about this player (virtual slot 42), builds an empty 24-byte registry object held by a counted handle, hands it a copy of its own handle plus the player's key record at +152 through virtual slot 14, then creates the "SWG" record with f_05e6cc and registers that too, and finally sets the done-flag.
+   Remaining difference: not scored beyond the draft; handle copies are via f_05dc90/f_05daec, landing pads and register allocation unmatched. */
+void f_050754(char *self) {
+  if (Q7(self, 388) && !*(char *)(self + 392)) {
+    f_05e980();
+    ((Vo *)Q7(self, 388))->s42(self);
+    HdR root((Vo *)Q7(self, 388));
+    Pr7 pr(new ObR);
+    Vo *o = (Vo *)pr.p;
+    char t[8];
+    f_05dc90(t, &root);
+    o->s14(self + 152, t);
+    f_04ed28(t);
+    char rec[16];
+    f_05e6cc(rec, self, D_1a2e90);
+    f_05dc90(t, &pr);
+    o->s14(rec, t);
+    f_05daec(t);
+    *(char *)(self + 392) = 1;
+  }
+}
+
+/* --- f_056168 --- */
+static inline Hd7 two7(Vo *h, char *self) {
+  Hd7 r1 = h->s13(self + 152);
+  return r1.p->s13(self + 136);
+}
+
+/* @draft 0x056168 us f_056168
+   WHAT IT DOES: takes two counted handles from the chain at +328, resolves the second one's registered handle for the key at +152 and that one's for the key at +136 (virtual slot 13 each time), then wraps whether the result is the same object as the first handle in a 12-byte flag object held by a counted handle and reports it to f_05e394 with the chain sub-object.
+   Remaining difference: not scored beyond the draft; handle copies, landing pads and register allocation unmatched. */
+void f_056168(char *self) {
+  char *q = self + 328;
+  Hd7 h0, h1; int o[4];
+  grab7(h0, q, o);
+  grab7(h1, q, o);
+  Hd7 r2 = two7(h1.p, self);
+  bool same = h0.p == r2.p;
+  Pr7 pr(new ObT(same));
+  int o2[4]; int a2 = Q7(q, 4);
+  f_05e394(o2, q, &a2, &pr);
+}
+
+/* --- f_055d80 --- */
+/* @draft 0x055d80 us f_055d80
+   WHAT IT DOES: takes two counted handles from the chain at +328, asks the first object (virtual slot 20) for the registration record of this player, has the second object resolve a handle for that record (virtual slot 13), notes whether that handle's object type (virtual slot 6) is other than 3, tells the second object to drop the record (virtual slot 16), and reports the flag as a 12-byte flag object held by a counted handle to f_05e394 with the chain sub-object.
+   Remaining difference: not scored beyond the draft; handle copies, landing pads and register allocation unmatched. */
+void f_055d80(char *self) {
+  char *q = self + 328;
+  Hd7 h0, h1; int o[4];
+  grab7(h0, q, o);
+  grab7(h1, q, o);
+  Rc7 rec = h0.p->s20(self);
+  bool flag;
+  {
+    Hd7 r = h1.p->s13(&rec);
+    flag = r.p->s6() != 3;
+  }
+  h1.p->s16(&rec);
+  Pr7 pr(new ObT(flag));
+  int o2[4]; int a2 = Q7(q, 4);
+  f_05e394(o2, q, &a2, &pr);
+}
+
+/* --- f_054e28 / f_054c08 --- */
+/* @draft 0x054e28 us f_054e28
+   WHAT IT DOES: takes two counted handles from the chain at +328 and reports to f_05e394, as a 12-byte flag object held by a counted handle, whether either object answers true to virtual slot 22 (the second is asked first, the first only when the second says no).
+   Remaining difference: not scored beyond the draft; handle copies, landing pads and register allocation unmatched. */
+void f_054e28(char *self) {
+  char *q = self + 328;
+  Hd7 h0, h1; int o[4];
+  grab7(h0, q, o);
+  grab7(h1, q, o);
+  bool flag = false;
+  if (h1.p->s22()) flag = true;
+  else if (h0.p->s22()) flag = true;
+  Pr7 pr(new ObT(flag));
+  int o2[4]; int a2 = Q7(q, 4);
+  f_05e394(o2, q, &a2, &pr);
+}
+
+/* @draft 0x054c08 us f_054c08
+   WHAT IT DOES: takes two counted handles from the chain at +328 and reports to f_05e394, as a 12-byte flag object held by a counted handle, whether both objects answer true to virtual slot 22 (the second is asked first, the first only when the second says yes).
+   Remaining difference: not scored beyond the draft; handle copies, landing pads and register allocation unmatched. */
+void f_054c08(char *self) {
+  char *q = self + 328;
+  Hd7 h0, h1; int o[4];
+  grab7(h0, q, o);
+  grab7(h1, q, o);
+  bool flag = false;
+  if (h1.p->s22()) { if (h0.p->s22()) flag = true; }
+  Pr7 pr(new ObT(flag));
+  int o2[4]; int a2 = Q7(q, 4);
+  f_05e394(o2, q, &a2, &pr);
+}
+
+/* --- f_054358 / f_0547d0 / f_0549ec: member-pointer predicate wrappers --- */
+extern char D_1a2fc4[], D_1a2fcc[], D_1a2fd4[];
+typedef char (Vo::*Pm7)(Vo *);
+struct Rf7 { void *p; int *c; Rf7(void *o) { f_05daa4(this, o); } ~Rf7() { f_04ed28(this); } };
+struct ObT2 {
+  static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+  static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+  ObT2(char b) { Q7(this, 0) = (int)D_1a4060; *((char *)this + 8) = b; Q7(this, 4) = 0; }
+};
+
+/* @draft 0x054358 us f_054358
+   WHAT IT DOES: takes two counted handles from the chain at +328, calls the member function whose pointer is stored at D_1a2fc4 on the second object with the first object as argument, stores the result in a 12-byte flag object held by a counted handle and reports it to f_05e394 with the chain sub-object.
+   Remaining difference: not scored beyond the draft; handle copies, landing pads and register allocation unmatched. */
+void f_054358(char *self) {
+  Pm7 pm = *(Pm7 *)D_1a2fc4;
+  char *q = self + 328;
+  Hd7 h0, h1; int o[4];
+  grab7(h0, q, o);
+  grab7(h1, q, o);
+  Rf7 pr(new ObT2((h1.p->*pm)(h0.p)));
+  int o2[4]; int a2 = Q7(q, 4);
+  f_05e394(o2, q, &a2, &pr);
+}
+
+/* @draft 0x0547d0 us f_0547d0
+   WHAT IT DOES: same as f_054358 with the member function pointer at D_1a2fcc: calls it on the second object with the first as argument and reports the result as a flag object to f_05e394.
+   Remaining difference: not scored beyond the draft; handle copies, landing pads and register allocation unmatched. */
+void f_0547d0(char *self) {
+  Pm7 pm = *(Pm7 *)D_1a2fcc;
+  char *q = self + 328;
+  Hd7 h0, h1; int o[4];
+  grab7(h0, q, o);
+  grab7(h1, q, o);
+  Rf7 pr(new ObT2((h1.p->*pm)(h0.p)));
+  int o2[4]; int a2 = Q7(q, 4);
+  f_05e394(o2, q, &a2, &pr);
+}
+
+/* @draft 0x0549ec us f_0549ec
+   WHAT IT DOES: same as f_054358 with the member function pointer at D_1a2fd4: calls it on the second object with the first as argument and reports the result as a flag object to f_05e394.
+   Remaining difference: not scored beyond the draft; handle copies, landing pads and register allocation unmatched. */
+void f_0549ec(char *self) {
+  Pm7 pm = *(Pm7 *)D_1a2fd4;
+  char *q = self + 328;
+  Hd7 h0, h1; int o[4];
+  grab7(h0, q, o);
+  grab7(h1, q, o);
+  Rf7 pr(new ObT2((h1.p->*pm)(h0.p)));
+  int o2[4]; int a2 = Q7(q, 4);
+  f_05e394(o2, q, &a2, &pr);
+}
+
+/* --- f_055bc0 --- */
+int f_05aaf8(void *, void *, void *, void *);
+/* @draft 0x055bc0 us f_055bc0
+   WHAT IT DOES: takes two counted handles from the chain at +328, makes a copy of each, and returns f_05aaf8(this, arg, copy of the first, copy of the second).
+   Remaining difference: not scored beyond the draft; handle copies, landing pads and register allocation unmatched. */
+int f_055bc0(char *self, void *arg) {
+  char *q = self + 328;
+  Hd7 h0, h1; int o[4];
+  grab7(h0, q, o);
+  grab7(h1, q, o);
+  Hd7 c0; c0.p = h0.p; c0.c = h0.c; if (c0.c) ++*c0.c;
+  Hd7 c1; c1.p = h1.p; c1.c = h1.c; if (c1.c) ++*c1.c;
+  return f_05aaf8(self, arg, &c0, &c1);
+}
+
+/* --- f_055fa4 --- */
+/* @draft 0x055fa4 us f_055fa4
+   WHAT IT DOES: takes a counted handle from the chain at +328, asks its object (virtual slot 20) for the registration record of this player, has the root object stored at +288 resolve a handle for that record (virtual slot 13), notes whether that handle's object type (virtual slot 6) is other than 3, tells the root object to drop the record (virtual slot 16), and reports the flag as a 12-byte flag object held by a counted handle to f_05e394 with the chain sub-object.
+   Remaining difference: not scored beyond the draft; handle copies, landing pads and register allocation unmatched. */
+void f_055fa4(char *self) {
+  char *q = self + 328;
+  Hd7 h0; int o[4];
+  grab7(h0, q, o);
+  Rc7 rec = h0.p->s20(self);
+  bool flag;
+  {
+    Hd7 r = ((Vo *)Q7(self, 288))->s13(&rec);
+    flag = r.p->s6() != 3;
+  }
+  ((Vo *)Q7(self, 288))->s16(&rec);
+  Pr7 pr(new ObT(flag));
+  int o2[4]; int a2 = Q7(q, 4);
+  f_05e394(o2, q, &a2, &pr);
+}
+
+}
+}
+
+/* ---- swg7a ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 fragment swg7a: untagged functions of the SWG player (big_e, big_a). */
+
+namespace swg7a {
+extern "C" {
+void *f_05db08(unsigned n);
+void f_05daa4(void *self, void *a1);
+void f_05db44(void *);
+void f_04ed28(void *);
+void f_05df24(void *, void *);
+void f_05e6cc(void *, int, void *);
+void f_15f1e8(void *, float *, float *);
+void f_15f238(void *, float *, float *);
+void f_05db84(void *);
+void f_05e4a8(void *, void *);
+void f_05fadc(void *, void *);
+void f_05a3e8(void *, const char *, void *);
+char *f_05f0b8(void *, void *);
+char *f_15c098(void *, int, int);
+void f_04e8c0(void *) throw();
+int sceKernelCpuSuspendIntr(void);
+void sceKernelCpuResumeIntr(int);
+extern char D_291400[], D_1a43d0[], D_1a2e9c[], D_1a2ea0[];
+int f_15c0f0(int, int);
+void *f_154448(void *, void *, void *, int);
+void f_06b050(void *, int);
+void f_15fb50(void *, int);
+void f_05f6a8(void *, unsigned, void *);
+void f_05f954(void *, void *, void *);
+void f_05f998(void *, void *, void *, void *);
+void f_04e6d0(void *);
+void f_0604dc(void *);
+void f_05b780(void *, int);
+void f_06053c(void *, void *, void *);
+void *f_04dfa0(unsigned n);
+extern char D_1a3760[], D_1a3fb0[];
+extern char D_1a4900[], D_1a4990[], D_1a493c[];
+extern char D_1a4270[], D_1a35bc[], D_1a35c0[];
+}
+
+struct Rf {
+    int a, b;
+    Rf() {}
+    Rf(void *p) { f_05daa4(this, p); }
+    ~Rf() { f_04ed28(this); }
+    Rf &operator=(const Rf &o) { f_05df24(this, (void *)&o); return *this; }
+};
+struct NumD {
+    void *vt; int z; double d;
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    NumD(double x) { vt = (void *)D_1a4270; d = x; z = 0; }
+};
+struct VA { virtual void v0(); virtual void v1(); virtual void v2(); virtual void v3(); virtual void v4();
+    virtual void v5(); virtual void v6(); virtual void v7(); virtual void v8(); virtual void *v9(); };
+struct VB { virtual void v0(); virtual void v1(); virtual void v2(); virtual void v3(); virtual void v4();
+    virtual void v5(); virtual void v6(); virtual void v7(); virtual void v8(); virtual void v9();
+    virtual void v10(); virtual void v11(); virtual void v12(); virtual Rf v13(void *k); virtual void v14(void *k, const Rf &r); };
+struct VC { virtual void v0(); virtual void v1(); virtual void v2(); virtual void v3(); virtual void v4();
+    virtual void v5(); virtual void v6(); virtual void v7(); virtual void v8(); virtual void v9();
+    virtual void v10(); virtual void v11(); virtual void v12(); virtual void v13(); virtual void v14();
+    virtual void v15(); virtual void v16(); virtual void v17(); virtual void v18(); virtual void v19();
+    virtual void v20(); virtual void v21(); virtual void v22(); virtual void v23(); virtual double v24(); };
+
+struct Tmp16 { int w[4]; ~Tmp16() {} };
+struct StrT {
+    char *p;
+    StrT() {}
+    ~StrT() { f_05db84(this); }
+    StrT &operator=(const StrT &o) { f_05fadc(this, (void *)&o); return *this; }
+};
+extern "C" {
+StrT f_05a44c(const char *, const StrT &);
+StrT f_05a578(const StrT &, const StrT &);
+}
+struct NameStr : StrT {
+    NameStr(char *node, Tmp16 &tg) {
+        if (*(int *)(node + 4) == -1) {
+            f_05e4a8(this, node + 12);
+        } else {
+            f_05a3e8(this, f_15c098(((void **)*(void **)node)[1], 7, *(int *)(node + 4)), &tg);
+        }
+    }
+};
+struct It4 { int *p; It4() {} It4(const It4 &o) { p = o.p; } };
+struct Pr { int k, v; };
+struct ObjBase { void *vt; int z; unsigned char b; int w[4]; ~ObjBase() { f_04e8c0(this); } };
+struct ObjS : ObjBase {
+    StrT s;
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    ObjS(StrT &a) {
+        vt = D_1a43d0; b = 1; w[0] = -1;
+        z = 0; w[1] = 0; w[2] = 0; w[3] = 0;
+        f_05e4a8(&s, &a);
+    }
+};
+struct Key4 { int a, b, c, d; };
+struct ObjR : ObjBase {
+    StrT s;
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    void fin(const Key4 &k) {
+        Tmp16 g;
+        vt = D_1a43d0; z = 0; b = 0;
+        w[0] = k.a; w[1] = k.b; w[2] = k.c; w[3] = k.d;
+        char *e = D_291400;
+        int st = sceKernelCpuSuspendIntr();
+        volatile int *c = (volatile int *)(e + 8);
+        int o = *c; (void)o;
+        *c += 1;
+        sceKernelCpuResumeIntr(st);
+        s.p = e + 12;
+    }
+    ObjR(char *self, char *v) {
+        Key4 k;
+        k.a = *(int *)(self + 40); k.b = f_15c0f0(*(int *)(self + 56), *(int *)(v + 164)); k.c = 0; k.d = 0;
+        fin(k);
+    }
+    ObjR(char *self) {
+        Key4 k;
+        f_05e6cc(&k, *(int *)(self + 40), D_1a2e9c);
+        fin(k);
+    }
+};
+struct ObjSt : ObjS {
+    ObjSt(StrT &a) : ObjS(a) {}
+    ~ObjSt() { vt = D_1a43d0; }
+};
+struct VS { virtual void v0(); virtual void v1(); virtual void v2(); virtual void v3(); virtual void v4();
+    virtual void v5(); virtual void v6(); virtual void v7(); virtual void v8(); virtual void v9();
+    virtual void v10(); virtual void v11(); virtual void v12(); virtual void v13(); virtual void v14();
+    virtual void v15(); virtual void v16(); virtual void v17(); virtual void v18(); virtual void v19();
+    virtual void v20(); virtual StrT v21(); };
+struct B8c0 { void *vt; int x; B8c0() { vt = D_1a3760; x = 0; } ~B8c0() { f_04e8c0(this); } };
+struct M6d0 {
+    int w8; int *hdr; int cnt; int w20;
+    M6d0() {
+        hdr = 0;
+        int *nd = (int *)f_04dfa0(40);
+        hdr = nd; nd[1] = 0;
+        nd[2] = (int)nd; cnt = 0; nd[3] = (int)nd; nd[0] = 0;
+    }
+    ~M6d0() { f_04e6d0(this); }
+};
+struct Mid : B8c0 { M6d0 m; ~Mid() __asm__("f_04e8d8"); };
+struct VecM { int pad; int *b, *e, *c; ~VecM() { f_0604dc(this); } };
+struct Fin6b4 : Mid {
+    int a24, a28;
+    VecM vec;
+    Fin6b4(int a1, int a2, int n, unsigned char *p) __attribute__((always_inline));
+};
+inline Fin6b4::Fin6b4(int a1, int a2, int n, unsigned char *p) {
+    vt = D_1a3fb0;
+    a24 = a1; a28 = a2;
+    vec.b = 0; vec.e = 0; vec.c = 0;
+    f_05b780(&vec, n);
+    for (int i = 0; i < n; i++) {
+        int val = p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24);
+        p += 4;
+        if (vec.e == vec.c) {
+            f_06053c(&vec, vec.e, &val);
+        } else {
+            if (vec.e) *vec.e = val;
+            vec.e++;
+        }
+    }
+}
+inline void *operator new(unsigned, void *p) { return p; }
+
+extern "C" {
+/* @implements 0x0682fc us f_0682fc
+   WHAT IT DOES: looks up two keyed values (D_1a35bc, D_1a35c0) in the object's table through its virtual getter, and when the first yields a handle, reads two doubles from it, builds two boxed double values and stores them under the keys through the object's virtual setter; always returns an empty handle. */
+Rf f_0682fc(char *self)
+{
+    VA *va = *(VA **)(self + 44);
+    void *s0 = va->v9();
+    char k1[16];
+    f_05e6cc(k1, *(int *)(self + 40), D_1a35bc);
+    Rf h(0);
+    VB *vb = **(VB ***)(self + 52);
+    h = vb->v13(k1);
+    if (!h.a) return Rf(0);
+    float fa = (float)((VC *)h.a)->v24();
+    char k2[16];
+    f_05e6cc(k2, *(int *)(self + 40), D_1a35c0);
+    vb = **(VB ***)(self + 52);
+    h = vb->v13(k2);
+    if (!h.a) return Rf(0);
+    float fb = (float)((VC *)h.a)->v24();
+    f_15f1e8(s0, &fa, &fb);
+    VB *p1 = **(VB ***)(self + 52);
+    p1->v14(k1, Rf(new NumD(fa)));
+    VB *p2 = **(VB ***)(self + 52);
+    p2->v14(k2, Rf(new NumD(fb)));
+    return Rf(0);
+}
+/* @implements 0x067ebc us f_067ebc
+   WHAT IT DOES: looks up two keyed values (D_1a35bc, D_1a35c0) in the object's table through its virtual getter, and when the first yields a handle, reads two doubles from it, builds two boxed double values and stores them under the keys through the object's virtual setter; always returns an empty handle. */
+Rf f_067ebc(char *self)
+{
+    VA *va = *(VA **)(self + 44);
+    void *s0 = va->v9();
+    char k1[16];
+    f_05e6cc(k1, *(int *)(self + 40), D_1a35bc);
+    Rf h(0);
+    VB *vb = **(VB ***)(self + 52);
+    h = vb->v13(k1);
+    if (!h.a) return Rf(0);
+    float fa = (float)((VC *)h.a)->v24();
+    char k2[16];
+    f_05e6cc(k2, *(int *)(self + 40), D_1a35c0);
+    vb = **(VB ***)(self + 52);
+    h = vb->v13(k2);
+    if (!h.a) return Rf(0);
+    float fb = (float)((VC *)h.a)->v24();
+    f_15f238(s0, &fa, &fb);
+    VB *p1 = **(VB ***)(self + 52);
+    p1->v14(k1, Rf(new NumD(fa)));
+    VB *p2 = **(VB ***)(self + 52);
+    p2->v14(k2, Rf(new NumD(fb)));
+    return Rf(0);
+}
+/* @draft 0x068ff8 us f_068ff8
+   WHAT IT DOES: builds a dotted path string for an object: starts from an empty string, walks the parent chain from the object's first link (virtual slot 9 of the object at +44), and for each parent looks up its record in the map at +348 of the owner, takes its stored name or the name built from the id (f_15c098/f_05a3e8), joins it with a separator ("." style D_1a2ea0 when more parents follow, D_1a2e9c otherwise) in front of the string built so far, and finally returns a new 32-byte string object (vtable D_1a43d0) holding the result, wrapped in a handle.
+   Remaining difference: the compiler threads the s0==0 separator test into a duplicated loop tail, and the string temporaries take s3..s5 in a different order. */
+Rf f_068ff8(char *self)
+{
+    StrT r;
+    {
+        char *e = D_291400;
+        int st = sceKernelCpuSuspendIntr();
+        volatile int *c = (volatile int *)(e + 8);
+        int o = *c; (void)o;
+        *c += 1;
+        sceKernelCpuResumeIntr(st);
+        r.p = e + 12;
+    }
+    VA *va = *(VA **)(self + 44);
+    char *s0 = (char *)va->v9();
+    if (s0) {
+        do {
+            int key = (int)s0;
+            s0 = *(char **)(s0 + 20);
+            char *node = f_05f0b8(*(char **)(self + 40) + 348, &key);
+            Tmp16 tg;
+            r = f_05a578(f_05a44c(s0 ? D_1a2ea0 : D_1a2e9c, NameStr(node, tg)), r);
+        } while (s0);
+    }
+    return Rf(new ObjS(r));
+}
+/* @draft 0x068588 us f_068588
+   WHAT IT DOES: takes the first parent of the object (virtual slot 9 of the object at +44) and returns a handle to a new 32-byte string object (vtable D_1a43d0) holding an empty string and a four-word record: when the parent's id at +164 is set the record is {object's key at +40, f_15c0f0(object's table at +56, id), 0, 0}, otherwise it is built by f_05e6cc from the key and D_1a2e9c.
+   Remaining difference: landing pads and frame (retail 560 bytes, the build 464). */
+Rf f_068588(char *self)
+{
+    VA *va = *(VA **)(self + 44);
+    char *v = (char *)va->v9();
+    if (*(int *)(v + 164) != -1)
+        return Rf(new ObjR(self, v));
+    return Rf(new ObjR(self));
+}
+/* @draft 0x067024 us f_067024
+   WHAT IT DOES: when the object has a parent at +44 that casts (f_154448) to the target type, builds a string through virtual slot 21 of the object's helper at +52, puts it in a temporary string object (vtable D_1a43d0, flag 1, id -1), copies the temporary's flag byte and four words into the target at +24 and assigns its string to the target's string at +52 (f_05fadc), then destroys the temporary; always returns an empty handle.
+   Remaining difference: block order (retail places the shared empty-handle return before the body), s0/s1 swapped, 8 bytes of size. */
+Rf f_067024(char *self)
+{
+    char *p = *(char **)(self + 44);
+    if (!p) return Rf(0);
+    char *t = (char *)f_154448(p, D_1a4900, D_1a4990, 0);
+    if (!t) return Rf(0);
+    VS *vs = **(VS ***)(self + 52);
+    StrT str = vs->v21();
+    ObjSt o(str);
+    *(unsigned char *)(t + 32) = o.b;
+    *(int *)(t + 28) = o.z;
+    *(int *)(t + 36) = o.w[0]; *(int *)(t + 40) = o.w[1];
+    *(int *)(t + 44) = o.w[2]; *(int *)(t + 48) = o.w[3];
+    f_05fadc(t + 52, &o.s);
+    return Rf(0);
+}
+/* @draft 0x068e6c us f_068e6c
+   WHAT IT DOES: when the object has a non-zero parent at +20, finds the parent in the owner's list at +348, narrows it with a checked cast, frees the previous entry of its slot vector at the given index (f_15fb50), removes the object from the parent (f_06b050), then stores the object into that slot (growing the vector as needed) and records the index in the parent's map at +48. */
+void f_068e6c(char *self, char *obj, unsigned idx)
+{
+    int k = *(int *)(obj + 20);
+    if (k) {
+    char *n = f_05f0b8(self + 348, &k);
+    void *pa0 = *(void **)(n + 16);
+    char *par = 0;
+    if (pa0) par = (char *)f_154448(pa0, D_1a4900, D_1a493c, 0);
+    char *vec = par + 32;
+    void *sl = 0;
+    if (idx < (unsigned)((*(int *)(vec + 8) - *(int *)(vec + 4)) >> 2))
+        sl = ((void **)*(void **)(par + 36))[idx];
+    if (sl) f_15fb50(sl, 0);
+    f_06b050(par, (int)obj);
+    char *ko = obj;
+    if (!(idx < (unsigned)((*(int *)(vec + 8) - *(int *)(vec + 4)) >> 2))) {
+        int z = 0;
+        f_05f6a8(vec, idx + 1, &z);
+    }
+    (*(char ***)(par + 36))[idx] = ko;
+    char *m = par + 48;
+    It4 i0; It4 i16; It4 i32; It4 i48; Pr p64; It4 i80;
+    f_05f954(&i0, m, &ko);
+    int *hd = *(int **)(m + 4);
+    i16.p = hd;
+    int *t = i0.p;
+    if (t == hd || (unsigned)ko < (unsigned)t[4]) {
+        p64.k = (int)ko; p64.v = 0;
+        i80.p = t;
+        i48.p = t;
+        f_05f998(&i32, m, &i80, &p64);
+        i0.p = i32.p;
+        t = i0.p;
+    }
+    t[5] = idx;
+    }
+}
+/* @draft 0x06b4a4 us f_06b4a4
+   WHAT IT DOES: constructor of a table object: stores the vtables D_1a3760 then D_1a3fb0, builds an empty 40-byte tree header node (f_04dfa0), keeps the two leading arguments at +24 and +28, reserves room (f_05b780) for count entries in the vector at +32 and fills it with count little-endian 32-bit words read from the byte pointer, using f_06053c when the vector is full.
+   Remaining difference: landing-pad block layout (12 bytes) and a smaller frame than retail's 80 bytes. */
+void f_06b4a4(void *self, int a1, int a2, int n, unsigned char *p)
+{
+    new (self) Fin6b4(a1, a2, n, p);
+}
+}
+}
