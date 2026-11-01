@@ -1064,3 +1064,290 @@ extern "C" void f_0af140(CarPhys *p, CarPhys *q, int i)
     ((float *)((char *)q + 336))[i] = g;
     ((unsigned short *)((char *)p + 368))[i] = ((unsigned short *)((char *)q + 368))[i];
 }
+
+extern "C" float f_0ac400(CarPhys *p, const float *y, int *s);
+
+/* @draft 0x0ab4ac us f_0ab4ac
+   WHAT IT DOES: The force curve of one wheel state. The state *s (its sign gives the direction, its size one of 65 curves) and the slip *x pick a piecewise curve, most shaped by the load *y; a positive slip and a non-positive one use separate tables. A result of zero or less resets the state.
+   Remaining difference (8 of 981 words): retail keeps the direction flag in t0 and the object pointer in a3; here they are the other way round. Not the flag's type, its declaration order, the sign split's spelling or a pointer copy. */
+extern "C" float f_0ab4ac(CarPhys *p, const float *x, const float *y, int *s)
+{
+    int n;
+    int neg = 1;
+    if (*s >= 0) {
+        n = *s;
+        neg = 0;
+    } else {
+        n = -*s;
+    }
+    float r = 0.0f;
+    if (r < *x) {
+        switch (n) {
+        case 1:
+            if (*x < 1.0f)
+                r = 80.0f;
+            else
+                r = 0.0f;
+            break;
+        case 2:
+            if (*x < 1.0f) {
+                if (*y < 0.25f)
+                    r = *x * ((0.25f - *y) * 120.0f + 10.0f) + 15.0f;
+                else
+                    r = *x * 40.0f * *y + 15.0f;
+            } else if (neg) {
+                if (*x < 1.55f) {
+                    if (*y < 0.25f)
+                        r = (1.55f - *x) / 0.55f * ((0.25f - *y) * 120.0f + 25.0f);
+                    else
+                        r = (1.55f - *x) / 0.55f * (*y * 40.0f + 15.0f);
+                }
+            } else if (*x < 1.1f) {
+                if (*y < 0.25f)
+                    r = (1.1f - *x) * ((0.25f - *y) * 1200.0f + 250.0f);
+                else
+                    r = (1.1f - *x) * (*y * 400.0f + 150.0f);
+            }
+            break;
+        case 9:
+            if (*x < 0.6f)
+                r = *x * 50.0f + 10.0f;
+            else if (neg) {
+                if (*x < 1.2f)
+                    r = (1.2f - *x) * 100.0f;
+            } else if (*x < 0.8f)
+                r = (0.8f - *x) * 250.0f + 10.0f;
+            else if (*x < 0.9f)
+                r = (0.9f - *x) * 100.0f;
+            break;
+        case 21:
+            if (*x < 1.0f) {
+                if (*y < 0.75f)
+                    r = *x * 40.0f * (1.0f - *y) + 15.0f;
+                else
+                    r = *x * ((*y - 0.75f) * 120.0f + 10.0f) + 15.0f;
+            } else if (neg) {
+                if (*x < 1.55f) {
+                    if (*y < 0.75f)
+                        r = (1.55f - *x) / 0.55f * ((1.0f - *y) * 40.0f + 15.0f);
+                    else
+                        r = (1.55f - *x) / 0.55f * ((*y - 0.75f) * 120.0f + 25.0f);
+                }
+            } else if (*x < 1.1f) {
+                if (*y < 0.75f)
+                    r = (1.1f - *x) * 550.0f * (1.0f - *y);
+                else
+                    r = (1.1f - *x) * ((*y - 0.75f) * 1200.0f + 250.0f);
+            }
+            break;
+        case 3: case 4: case 5: case 6: case 7: case 8: case 10: case 11: case 12: case 13:
+        case 14: case 15: case 16: case 17: case 18: case 19: case 20: case 22: case 23: case 24: {
+            float lim = f_0ac400(p, y, s);
+            if (*x < lim)
+                r = 10.0f;
+            else if (*x < lim + 0.1f)
+                r = (lim + 0.1f - *x) * 100.0f;
+            break;
+        }
+        case 25:
+            if (*x < 0.3f)
+                r = *x * 166.66666f + 10.0f;
+            else if (*x < 0.75f)
+                r = 60.0f;
+            else if (*x < 1.05f)
+                r = (1.05f - *x) * 166.66666f + 10.0f;
+            else if (*x < 1.15f)
+                r = (1.15f - *x) * 100.0f;
+            break;
+        case 26:
+            if (*x < 0.44f)
+                r = *x * 136.36363f + 10.0f;
+            else if (neg) {
+                if (*x < 1.14f)
+                    r = (1.14f - *x) * 100.0f;
+            } else if (*x < 0.44f)
+                r = (0.54f - *x) * 700.0f;
+            break;
+        case 44:
+            if (*x < 0.390625f)
+                r = *x * 60.0f / 0.390625f + 10.0f;
+            else if (*x < 0.9765625f)
+                r = (0.9765625f - *x) * 60.0f / 0.5859375f + 10.0f;
+            else if (*x < 1.0765625f)
+                r = (1.0765625f - *x) * 100.0f;
+            break;
+        case 45: case 46: case 47: case 48:
+            if (*x < 0.9765625f)
+                r = 10.0f;
+            else if (*x < 1.0765625f)
+                r = (1.0765625f - *x) * 100.0f;
+            break;
+        case 49:
+            if (*x < 0.9765625f) {
+                if (*y < 0.25f)
+                    r = *x / 0.9765625f * (60.0f - *y * 45.0f * 4.0f) + 10.0f;
+                else
+                    r = *x / 0.9765625f * 60.0f * *y + 10.0f;
+            } else if (*x < 1.0765625f) {
+                if (*y < 0.25f)
+                    r = (1.0765625f - *x) / 0.1f * (60.0f - *y * 45.0f * 4.0f) + 10.0f;
+                else
+                    r = (1.0765625f - *x) / 0.1f * (*y * 60.0f) + 10.0f;
+            }
+            break;
+        case 50:
+            r = *y * 100.0f;
+            break;
+        case 51:
+            r = 100.0f;
+            break;
+        case 52:
+            r = (1.0f - *y) * 100.0f;
+            break;
+        case 53:
+            if (*x < 0.9765625f)
+                r = *x * 50.0f;
+            else if (*x < 1.0765625f)
+                r = (1.0765625f - *x) / 0.1f * 50.0f;
+            break;
+        case 54:
+            if (*x < 0.9765625f) {
+                if (*y < 0.95f) {
+                    if (*y * 0.9765625f / 0.95f < *x)
+                        r = *y / 0.95f * 50.0f;
+                    else
+                        r = *x / 0.9765625f * 50.0f;
+                } else {
+                    float k = (*y - 0.95f) / 0.05f;
+                    if (0.9765625f - k < *x)
+                        r = k * 50.0f;
+                    else
+                        r = *x / 0.9765625f * 50.0f;
+                }
+            } else if (*x < 1.0765625f) {
+                if (*y < 0.95f) {
+                    float k = *y / 0.95f;
+                    if (*x < 1.0765625f - k * 0.1f)
+                        r = k * 50.0f;
+                    else
+                        r = (1.0765625f - *x) / 0.1f * 50.0f;
+                } else {
+                    float k = (*y - 0.95f) / 0.05f;
+                    if (*x < k * 0.1f + 0.9765625f)
+                        r = k * 50.0f;
+                    else
+                        r = (1.0765625f - *x) / 0.1f * 50.0f;
+                }
+            }
+            break;
+        case 55:
+            r = *y * 160.0f;
+            break;
+        case 56:
+            r = 160.0f;
+            break;
+        case 57:
+            r = (1.0f - *y) * 160.0f;
+            break;
+        case 58:
+            r = *y * 150.0f;
+            break;
+        case 59:
+            r = 150.0f;
+            break;
+        case 60:
+            r = (1.0f - *y) * 150.0f;
+            break;
+        case 61:
+            if (*x < 0.78125f)
+                r = *x * 40.0f + 10.0f;
+            else if (*x < 0.9765625f)
+                r = (0.9765625f - *x) * 40.0f / 0.1953125f + 10.0f;
+            else if (*x < 1.0765625f)
+                r = (1.0765625f - *x) * 10.0f / 0.1f;
+            break;
+        case 62:
+            r = *y * 160.0f;
+            break;
+        case 63:
+            r = 160.0f;
+            break;
+        case 64:
+            r = (1.0f - *y) * 160.0f;
+            break;
+        }
+    } else {
+        switch (n) {
+        case 1:
+            if (-0.1f < *x)
+                r = *x * 800.0f + 80.0f;
+            else
+                r = 0.0f;
+            break;
+        case 2: case 21:
+            if (-0.1f < *x)
+                r = *x * 150.0f + 15.0f;
+            break;
+        case 3: case 4: case 5: case 6: case 7: case 8: case 9: case 10: case 11: case 12:
+        case 13: case 14: case 15: case 16: case 17: case 18: case 19: case 20: case 25: case 26:
+            if (-0.1f < *x)
+                r = *x * 100.0f + 10.0f;
+            break;
+        case 50:
+            if (-0.9765625f < *x)
+                r = *y * 100.0f * (*x + 0.9765625f);
+            break;
+        case 51:
+            if (-0.9765625f < *x)
+                r = (*x + 0.9765625f) * 100.0f;
+            break;
+        case 52:
+            if (-0.9765625f < *x)
+                r = (1.0f - *y) * 100.0f * (*x + 0.9765625f);
+            break;
+        case 55:
+            if (-0.29296875f < *x)
+                r = *y * 160.0f * (*x + 0.29296875f) / 0.29296875f;
+            break;
+        case 56:
+            if (-0.29296875f < *x)
+                r = (*x + 0.29296875f) * 160.0f / 0.29296875f;
+            break;
+        case 57:
+            if (-0.29296875f < *x)
+                r = (1.0f - *y) * 160.0f * (*x + 0.29296875f) / 0.29296875f;
+            break;
+        case 58:
+            if (-0.78125f < *x)
+                r = *y * 150.0f * (*x + 0.78125f) / 0.78125f;
+            break;
+        case 59:
+            if (-0.78125f < *x)
+                r = (*x + 0.78125f) * 150.0f / 0.78125f;
+            break;
+        case 60:
+            if (-0.78125f < *x)
+                r = (1.0f - *y) * 150.0f * (*x + 0.78125f) / 0.78125f;
+            break;
+        case 61:
+            if (-0.1f < *x)
+                r = *x * 100.0f + 10.0f;
+            break;
+        case 62:
+            if (-0.29296875f < *x)
+                r = *y * 160.0f * (*x + 0.29296875f) / 0.29296875f;
+            break;
+        case 63:
+            if (-0.29296875f < *x)
+                r = (*x + 0.29296875f) * 160.0f / 0.29296875f;
+            break;
+        case 64:
+            if (-0.29296875f < *x)
+                r = (1.0f - *y) * 160.0f * (*x + 0.29296875f) / 0.29296875f;
+            break;
+        }
+    }
+    if (r <= 0.0f)
+        *s = 0;
+    return r;
+}
