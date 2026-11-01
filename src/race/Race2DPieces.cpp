@@ -30,6 +30,7 @@ static inline float VCos(float a)
 extern "C" {
 int strcmp(const char *a, const char *b);
 int iprintf(const char *fmt, ...);
+int rand(void);
 }
 
 /* The race in progress (null outside a race). */
@@ -39,20 +40,80 @@ struct RaceInfo {
     char m12[20];
     int timeLeft;
     int laps;
-    char m40[16];
+    char m40[8];
+    int m48;
+    char m52[4];
     int mode;
     int cars;
-    char m64[44];
+    char m64[20];
+    int m84;
+    char m88[20];
     int lap;
     int position;
-    char m116[76];
+    int m116;
+    int m120;
+    int m124;
+    char m128[4];
+    int m132;
+    char m136[44];
+    float nitro[3];
     int m192;
+    struct InfoSub *sub;
+    struct Records *rec;
+    char m204[16];
+    struct CarObj *car;
 };
 extern RaceInfo *D_2407fc;
 
-struct Race;
+/* The race's other record tables: the sub table the info window checks, and the table of
+   records (three columns per row) that the info window lists. */
+/* A car's record (its map position and the like). */
+struct CarObj {
+    char m0[76];
+    int m76;
+    char m80[64];
+    float x;
+    char m148[4];
+    float z;
+};
+struct InfoSub {
+    char m0[144];
+    float x;
+    char m148[4];
+    float z;
+    char m156[1952];
+    int m2108;
+    char m2112[100];
+    int m2212;
+    char m2216[7836];
+    int m10052;
+};
+struct Records {
+    int a[297];
+    int b[297];
+    int m2376, m2380, m2384, m2388;
+    char m2392[12];
+    int m2404;
+    char m2408[15600];
+    int c[297];
+};
+
+/* The race object (only its clock is read here). */
+struct RaceClock {
+    int t;
+    int m4;
+    char m8[4];
+    float lo, hi;
+};
+struct Race {
+    char m0[136];
+    RaceClock clk;
+};
 int f_0f6450(Race *r);
 int f_0f6420(Race *r);
+int f_0f6438(Race *r);
+void f_0f64f4(Race *r, int v);
+void f_0e71e4(float s);
 
 /* The sprite group the pieces draw with. */
 struct Group;
@@ -70,10 +131,24 @@ struct Corner {
 void f_04bf6c(Group *g, int sprite, Corner *c);
 void f_04c1c8(Group *g, int sprite, Rgba c);
 void f_04c248(Group *g, int sprite, unsigned char on);
+void f_04c0a8(Group *g, int sprite, int x0, int y0, int x1, int y1);
 void f_04c3c8(Group *g, int sprite, float x, float y);
+void f_04c278(Group *g, int sprite, float x, float y);
 void f_04c668(Group *g, int sprite, float r, float gr, float b, float a);
 void f_04d16c(Group *g, int sprite);
 void f_04d19c(Group *g, int sprite);
+
+/* The digit sprites' texture rectangles (the ten digits, then the plus and minus signs), and
+   the two digit colours (white, red). */
+extern const Rgba D_1b065c[];
+extern const Rgba D_1b07bc[];
+extern const Rgba D_1b084c[];
+extern const Rgba D_1b071c[];
+extern const float D_1b063c[][4];
+
+/* The info window's panel textures: for each of four panel kinds the rectangle (u, v, width,
+   height) on the texture. */
+extern float D_1d5f74[][4];
 
 /* The sprite set names. */
 extern const char *D_1d5fb4;
@@ -123,6 +198,13 @@ public:
         Group *g = group;
 
         f_04c668(g, f_101f54(i), 1.0f, 1.0f, 1.0f, t);
+    }
+    /* Moves one sprite. */
+    void Move(int i, float x, float y)
+    {
+        Group *g = group;
+
+        f_04c3c8(g, f_101f54(i), x, y);
     }
     /* The start animation has not finished. */
     bool Starting() { return state < 3; }
@@ -223,9 +305,7 @@ public:
     void f_103138(int i, float x, float y, float z);
 
     int sprite[9];
-    int m60;
-    int m64;
-    int m68;
+    int m60[3];
 };
 
 class C2DTotalTime : public C2DDecorationBase {
@@ -329,10 +409,16 @@ public:
     virtual int Draw();
     virtual int f_101b54();
 
+    void f_105fa8(float x, float y);
+    void f_106090(float x, float y, int sprite, int n);
+    void f_106120(float x, float y, int a, int b);
+    void f_10636c(int slot, int value, float *p, int flag);
+
     int sprite[30];
     int m144;
     int m148;
-    char m152[8];
+    int m152;
+    int m156;
     int m160;
     int m164;
     int m168;
@@ -341,10 +427,8 @@ public:
     int m180;
     bool m184;
     int m188;
-    int m192;
-    int m196;
-    int m200;
-    int m204;
+    int m192[4];
+    float m208, m212, m216, m220;
 };
 
 class C2DAllTime : public C2DDecorationBase {
@@ -354,7 +438,7 @@ public:
     virtual int Draw();
     virtual int f_101b54();
     virtual void f_101f74(float t);
-    void f_106e8c(int i, int a, int b, int c, int d, int on);
+    void f_106e8c(int row, int mn, int sc, int ms, int color, unsigned char show);
 
     int sprite[54];
     int m240;
@@ -362,14 +446,39 @@ public:
     unsigned char m248;
     int m252;
     int m256;
-    int m260;
-    int m264;
-    int m268;
+    int m260[3];
 };
 
 }
 
 using namespace Fj;
+
+/* Fades and moves a sprite by an expression (evaluated after the sprite is looked up). */
+#define FADE(i, a)                                           \
+    {                                                        \
+        Group *g_ = group;                                   \
+        f_04c668(g_, f_101f54(i), 1.0f, 1.0f, 1.0f, a);      \
+    }
+#define MOVE(i, x, y)                                        \
+    {                                                        \
+        Group *g_ = group;                                   \
+        f_04c3c8(g_, f_101f54(i), x, y);                     \
+    }
+
+/* Colours a sprite of a time row by the row of the colour table. */
+#define TCOLOR(i, c)                                                       \
+    {                                                                      \
+        Group *g_ = group;                                                 \
+        f_04c668(g_, f_101f54(i), D_1b063c[c][0], D_1b063c[c][1],          \
+                 D_1b063c[c][2], D_1b063c[c][3]);                          \
+    }
+
+/* Sets the texture rectangle of a sprite. */
+#define RECT(i, r)                                           \
+    {                                                        \
+        Group *g_ = group;                                   \
+        f_04c1c8(g_, f_101f54(i), r);                        \
+    }
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
@@ -377,6 +486,7 @@ using namespace Fj;
 extern const MapInfo D_1b0be4[];
 
 /* @draft 0x101f7c us C2DCourseMap8f_101f7c
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
    WHAT IT DOES: Turns a world position into a position on the course map: scales it to map
    pixels around the course's centre, turns it by the course's map rotation (mirrored when the
    course runs reversed) and offsets it to the map's centre on the sprite.
@@ -402,6 +512,7 @@ void C2DCourseMap::f_101f7c(float x, float z, float *mx, float *my)
 }
 
 /* @draft 0x10207c us C2DCourseMap8f_10207c
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
    WHAT IT DOES: Places the map sprite: 104 pixels square at the course's map centre, its
    texture mirrored when the course runs reversed.
    Remaining difference: the corner stores' order and registers. */
@@ -453,6 +564,7 @@ void C2DCourseMap::f_10207c()
 extern Corner D_1d5e44[];
 
 /* @draft 0x102190 us C2DCourseMap8f_102190
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
    WHAT IT DOES: Places a car marker sprite at a map position with one of the marker texture
    rectangles, and shows or hides it.
    Remaining difference: retail loads the rectangle's words 4, 0, 8, 12 and stores the corners
@@ -484,6 +596,7 @@ void C2DCourseMap::f_102190(int s, int rect, unsigned char show, float x, float 
 }
 
 /* @draft 0x102254 us C2DCourseMap8f_102254
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
    WHAT IT DOES: Finds the race's course among the 25 course names and keeps its number for
    the map; returns 1 when found, 0 (printing a debug message) when not or outside a race.
    Remaining difference: none in the bytes; the debug message is followed in retail .rodata by
@@ -556,6 +669,40 @@ int C2DCourseMapNormal::f_101b1c(Group *g, Race *r)
 int C2DCourseMapNormal::Draw()
 {
     return 1;
+}
+
+/* @draft 0x102730 us C2DCourseMapNormal8f_101b54
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
+   WHAT IT DOES: Updates the normal course map: places the first car's marker (sprite 1, texture
+   rectangle 0) at the car's map position; once the race has started (blink) and with two
+   or more cars, places the second car's marker (sprite 8): in kind 2 races it is rectangle 1
+   and hidden unless that car is set and the race flags it, then blinking with the race
+   clock, in other races rectangle 2, shown. Returns 0.
+   Remaining difference: not compared in detail; the transcription is complete. */
+int C2DCourseMapNormal::f_101b54()
+{
+    float mx, my;
+    int s;
+
+    if (!C2DDecorationBase::f_101b54())
+        return 0;
+    f_101f7c(D_2407fc->sub->x, D_2407fc->sub->z, &mx, &my);
+    f_102190(f_101f54(1), 0, 1, mx, my);
+    if (!blink && D_2407fc->sub->m2212 >= 0)
+        blink = 1;
+    if (!blink)
+        return 0;
+    if (D_2407fc->cars < 2)
+        return 0;
+    f_101f7c(D_2407fc->car->x, D_2407fc->car->z, &mx, &my);
+    s = f_101f54(8);
+    if (f_0f6438(race) != 2)
+        f_102190(s, 2, 1, mx, my);
+    else if (D_2407fc->car->m76 == 0 || D_2407fc->m84 == 0)
+        f_102190(s, 1, 0, mx, my);
+    else
+        f_102190(s, 1, ((unsigned)(race->clk.t / 50) >> 3 ^ 1) & 1, mx, my);
+    return 0;
 }
 
 /* @implements 0x1028f0 us C2DCourseMapWbattle8f_101b1c
@@ -655,6 +802,7 @@ void C2DLapTime::f_101f74(float t)
 }
 
 /* @draft 0x102e34 us C2DNitro8f_101b1c
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
    WHAT IT DOES: Sets the nitro gauge up: its three bars empty, nothing counted.
    Remaining difference (4 words): for the first bar retail sets the three float arguments
    before this; here this comes first. */
@@ -666,9 +814,9 @@ int C2DNitro::f_101b1c(Group *g, Race *r)
     f_103138(0, z, z, z);
     f_103138(1, z, z, z);
     f_103138(2, z, z, z);
-    m68 = 0;
-    m64 = 0;
-    m60 = 0;
+    m60[2] = 0;
+    m60[1] = 0;
+    m60[0] = 0;
     return 1;
 }
 
@@ -677,6 +825,120 @@ int C2DNitro::f_101b1c(Group *g, Race *r)
 int C2DNitro::Draw()
 {
     return 1;
+}
+
+/* @draft 0x102ec4 us C2DNitro8f_101b54
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
+   WHAT IT DOES: Steps the nitro gauge. During the start animation it places the three bars
+   (f_103138) from the race's nitro levels (scaled by one hundredth) and clears the race's
+   word at +140. After it, each bar starts a refill state (m60[i] = 1) when its level reaches
+   100; when the race flags a boost on bar i (kind 1 or 2 and i the selected bar) the bar is
+   set to state 2 with a random shake offset (0 to 5, minus 2), and a state 2 bar otherwise
+   returns to 0; then the bars are placed with their shake offsets and an alpha taken from
+   the race (the second value when a boost began, else the first). Returns 0.
+   Remaining difference: about 40 percent of the words; the test of the boost kind (1 or 2) is
+   merged into one range test here, retail compares the two kinds one after the other. */
+int C2DNitro::f_101b54()
+{
+    int i;
+
+    if (!C2DDecorationBase::f_101b54())
+        return 0;
+    if (Starting()) {
+        for (i = 0; i < 3; i++)
+            f_103138(i, D_2407fc->nitro[i] * 0.01f, 0.0f, 0.0f);
+        race->clk.m4 = 0;
+        return 0;
+    }
+    float a[3] = { 0.0f, 0.0f, 0.0f };
+    float b[3] = { 0.0f, 0.0f, 0.0f };
+    int boost = 0;
+    RaceClock *clk = &race->clk;
+    float lo = clk->lo;
+    float hi = clk->hi;
+
+    for (i = 0; i < 3; i++) {
+        if (m60[i] == 0) {
+            if (D_2407fc->nitro[i] >= 100.0f)
+                m60[i] = 1;
+        } else if ((D_2407fc->sub->m2108 == 1 || D_2407fc->sub->m2108 == 2) &&
+                   i == D_2407fc->sub->m10052) {
+            m60[i] = 2;
+            boost = 1;
+            a[i] = rand() % 6 + -2.0f;
+        } else if (m60[i] == 2) {
+            m60[i] = 0;
+        }
+    }
+    for (i = 0; i < 3; i++) {
+        if (m60[i])
+            b[i] = boost ? hi : lo;
+        f_103138(i, D_2407fc->nitro[i] * 0.01f, b[i], a[i]);
+    }
+    return 0;
+}
+
+/* @draft 0x103138 us C2DNitro8f_103138
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
+   WHAT IT DOES: Places the three sprites of one nitro gauge bar (bar i, three bars across 35
+   pixels apart from x 6, y at 139 plus an offset): the first sprite is drawn scaled by the
+   bar's fill (70 percent size, the width scaled by it too), the other two at 70 percent
+   size and fixed width, each from the bar's texture and placement table; then the last
+   sprite is given the bar's alpha.
+   Remaining difference: the order of the corner stores of each quad (the values and the loop agree). */
+void C2DNitro::f_103138(int i, float scale, float alpha, float dy)
+{
+    int idx[9] = { 3, 4, 5, 7, 8, 6, 0, 1, 2 };
+    float tbl[3][4] = {
+        { 0.0f, 0.0f, 48.0f, 23.0f },
+        { -3.0f, 0.0f, 54.0f, 23.0f },
+        { -20.0f, -15.0f, 88.0f, 54.0f },
+    };
+    Corner c[3][4];
+    float x = i * 35.0f + 6.0f;
+    float y = dy + 139.0f;
+    float x0, y0, x1, y1;
+    int k;
+
+    x0 = x + tbl[0][0] * 0.7f;
+    y0 = y + tbl[0][1] * 0.7f;
+    x1 = x0 + tbl[0][2] * 0.7f * scale;
+    y1 = y0 + tbl[0][3] * 0.7f;
+    c[0][0].x = c[0][2].x = x0;
+    c[0][0].y = c[0][1].y = y0;
+    c[0][3].x = c[0][1].x = x1;
+    c[0][3].y = c[0][2].y = y1;
+    c[0][2].u = c[0][0].u = 0;
+    c[0][0].v = c[0][1].v = 0;
+    c[0][3].u = c[0][1].u = tbl[0][2] * scale;
+    c[0][2].v = c[0][3].v = tbl[0][3];
+    {
+        Group *g = group;
+
+        f_04bf6c(g, f_101f54(idx[i]), c[0]);
+    }
+    for (k = 1; k < 3; k++) {
+        x0 = x + tbl[k][0] * 0.7f;
+        y0 = y + tbl[k][1] * 0.7f;
+        c[k][0].x = c[k][2].x = x0;
+        c[k][0].y = c[k][1].y = y0;
+        c[k][2].u = c[k][0].u = 0;
+        c[k][0].v = c[k][1].v = 0;
+        c[k][3].u = c[k][1].u = tbl[k][2];
+        c[k][2].v = c[k][3].v = tbl[k][3];
+        c[k][3].x = c[k][1].x = x0 + tbl[k][2] * 0.7f;
+        c[k][3].y = c[k][2].y = y0 + tbl[k][3] * 0.7f;
+        {
+            Group *g = group;
+
+            f_04bf6c(g, f_101f54(idx[i + 3 * k]), c[k]);
+        }
+    }
+    {
+        Group *g = group;
+
+        f_04c668(g, f_101f54(idx[i + 6]), 1.0f, 1.0f, 1.0f, alpha);
+    }
 }
 
 /* @implements 0x1035b0 us C2DTotalTime8f_101b1c
@@ -740,23 +1002,6 @@ void C2DRecordTime::f_101f74(float t)
 }
 
 
-/* @implements 0x1036f8 us C2DPosition8f_101b1c
-   WHAT IT DOES: Sets the position display up in a race: the label's colour, then the
-   player's position out of the number of cars. */
-int C2DPosition::f_101b1c(Group *g, Race *r)
-{
-    C2DDecorationBase::f_101b1c(g, r);
-    if (D_2407fc) {
-        {
-            Group *gr = group;
-
-            f_04c1c8(gr, f_101f54(0), (Rgba){ 0, 0, 128, 20 });
-        }
-        f_103820(D_2407fc->position + 1, D_2407fc->cars, 0);
-    }
-    return 1;
-}
-
 /* @implements 0x1037b0 us C2DPosition4Draw
    WHAT IT DOES: Nothing to draw here; returns 1. */
 int C2DPosition::Draw()
@@ -774,44 +1019,51 @@ int C2DPosition::f_101b54()
     return 0;
 }
 
-/* @implements 0x103de4 us C2DPositionTour8f_101b1c
-   WHAT IT DOES: Sets the tour position display up in a race: the label's colour, then the
-   player's position out of the number of cars. */
-int C2DPositionTour::f_101b1c(Group *g, Race *r)
+/* @implements 0x103820 us C2DPosition8f_103820
+   WHAT IT DOES: Shows the position as sprites: the player's place n (two digits, the tens sprite
+   hidden when zero, the units one pulled left by 10) and the number of cars of (two digits,
+   the tens sprite hidden when zero, the units one pulled left by 6), each digit with its
+   texture rectangle (the place from a second table when m is set). */
+void C2DPosition::f_103820(int n, int of, int m)
 {
-    C2DDecorationBase::f_101b1c(g, r);
-    if (D_2407fc) {
-        {
-            Group *gr = group;
+    int tens;
+    int units;
 
-            f_04c1c8(gr, f_101f54(0), (Rgba){ 0, 0, 128, 20 });
-        }
-        f_103820(D_2407fc->position + 1, D_2407fc->cars, 0);
+    n %= 100;
+    of %= 100;
+    tens = n / 10;
+    units = n % 10;
+    if (tens == 0) {
+        Show(4, 0);
+        MOVE(5, -10.0f, 0.0f);
+    } else {
+        Show(4, 1);
+        MOVE(5, 0.0f, 0.0f);
     }
-    return 1;
+    if (m == 0) {
+        RECT(4, D_1b07bc[tens]);
+        RECT(5, D_1b07bc[units]);
+    } else {
+        RECT(4, D_1b084c[units]);
+        RECT(5, D_1b084c[units]);
+    }
+    tens = of / 10;
+    units = of % 10;
+    if (tens == 0) {
+        Show(2, 0);
+        MOVE(3, -6.0f, 0.0f);
+    } else {
+        Show(2, 1);
+        MOVE(3, 0.0f, 0.0f);
+    }
+    RECT(2, D_1b071c[tens]);
+    RECT(3, D_1b071c[units]);
 }
 
 /* @implements 0x103e9c us C2DPositionTour4Draw
    WHAT IT DOES: Nothing to draw here; returns 1. */
 int C2DPositionTour::Draw()
 {
-    return 1;
-}
-
-/* @implements 0x104058 us C2DLap8f_101b1c
-   WHAT IT DOES: Sets the lap counter up in a race: the label's colour, then the lap out of
-   the race's laps. */
-int C2DLap::f_101b1c(Group *g, Race *r)
-{
-    C2DDecorationBase::f_101b1c(g, r);
-    if (D_2407fc) {
-        {
-            Group *gr = group;
-
-            f_04c1c8(gr, f_101f54(0), (Rgba){ 130, 0, 240, 20 });
-        }
-        f_104184(D_2407fc->lap + 1, D_2407fc->laps, -20.0f);
-    }
     return 1;
 }
 
@@ -835,6 +1087,31 @@ int C2DLap::f_101b54()
         f_104184(lap, D_2407fc->laps, -20.0f);
     }
     return 0;
+}
+
+/* @draft 0x104184 us C2DLap8f_104184
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
+   WHAT IT DOES: Shows the lap counter as sprites at a horizontal position: the label sprites
+   (0 and 1) placed at the position (the first one 40 pixels right of it), the tens sprite (4)
+   hidden, the lap digit (sprite 5, 10 pixels left) with its texture rectangle and the number
+   of laps digit (sprite 3, 6 further left) with its rectangle, the second tens sprite (2)
+   hidden.
+   Remaining difference: not compared in detail; the transcription is complete. */
+void C2DLap::f_104184(int n, int of, float x)
+{
+    float y = 0.0f;
+
+    n %= 10;
+    of %= 10;
+    MOVE(0, x + 40.0f, y);
+    MOVE(1, x, y);
+    Show(4, 0);
+    RECT(5, D_1b07bc[n % 10]);
+    MOVE(5, x + -10.0f, y);
+    Show(2, 0);
+    RECT(3, D_1b071c[of % 10]);
+    x += -6.0f;
+    MOVE(3, x, y);
 }
 
 /* @implements 0x104420 us C2DFlag8f_101b1c
@@ -898,6 +1175,72 @@ int C2DRaceInfoStart::Draw()
     return 1;
 }
 
+/* @implements 0x1047ec us C2DRaceInfoStart8f_101b54
+   WHAT IT DOES: Runs the start banner from the race clock (the milliseconds since the start,
+   negative before it): in each 3000 millisecond step one sprite fades in while the one
+   before it fades out and slides, so the count down numbers (sprites 3, 2, 1) follow each
+   other from -10500 and the start sign (sprite 0) fades in from the start, then out and away
+   by 4500, when it is hidden. Returns 0. */
+int C2DRaceInfoStart::f_101b54()
+{
+
+    if (!C2DDecorationBase::f_101b54())
+        return 0;
+    if (D_2407fc->m48 > 0) {
+        if ((float)D_2407fc->m48 < 3000.0f) {
+            Show(1, 0);
+            float f = (float)(D_2407fc->m48 - D_2407fc->m48 / 3000 * 3000);
+            f /= 1500.0f;
+            if (f >= 1.0f)
+                f = 1.0f;
+            Show(0, 1);
+            FADE(0, f);
+        } else if ((float)D_2407fc->m48 < 4500.0f) {
+            float f = (float)(D_2407fc->m48 - D_2407fc->m48 / 3000 * 3000);
+            f /= 1500.0f;
+            if (f >= 1.0f)
+                f = 1.0f;
+            FADE(0, 1.0f - f);
+            MOVE(0, 0.0f, -(f * 16.0f));
+        } else if ((float)D_2407fc->m48 >= 4500.0f) {
+            Show(0, 0);
+        }
+    } else if ((float)D_2407fc->m48 > -1500.0f) {
+        float f = (float)(D_2407fc->m48 / 3000 * 3000 - D_2407fc->m48);
+            f /= 1500.0f;
+        FADE(1, f);
+        MOVE(1, 0.0f, -(1.0f - f) * 16.0f);
+    } else if (D_2407fc->m48 >= -2999) {
+        Show(2, 0);
+    } else if ((float)D_2407fc->m48 > -4500.0f) {
+        Show(1, 1);
+        float f = (float)(D_2407fc->m48 / 3000 * 3000 - D_2407fc->m48);
+            f /= 1500.0f;
+        FADE(1, 1.0f - f);
+        MOVE(1, 0.0f, f * 16.0f);
+        FADE(2, f);
+        MOVE(2, 0.0f, -(1.0f - f) * 16.0f);
+    } else if (D_2407fc->m48 >= -5999) {
+        Show(3, 0);
+    } else if ((float)D_2407fc->m48 > -7500.0f) {
+        Show(2, 1);
+        float f = (float)(D_2407fc->m48 / 3000 * 3000 - D_2407fc->m48);
+            f /= 1500.0f;
+        FADE(2, 1.0f - f);
+        MOVE(2, 0.0f, f * 16.0f);
+        FADE(3, f);
+        MOVE(3, 0.0f, -(1.0f - f) * 16.0f);
+    } else if (D_2407fc->m48 >= -8999) {
+    } else if ((float)D_2407fc->m48 > -10500.0f) {
+        Show(3, 1);
+        float f = (float)(D_2407fc->m48 / 3000 * 3000 - D_2407fc->m48);
+            f /= 1500.0f;
+        FADE(3, 1.0f - f);
+        MOVE(3, 0.0f, f * 16.0f);
+    }
+    return 0;
+}
+
 /* @implements 0x104f3c us C2DRaceInfoFinish8f_101b1c
    WHAT IT DOES: Sets the finish banner up hidden. */
 int C2DRaceInfoFinish::f_101b1c(Group *g, Race *r)
@@ -947,14 +1290,14 @@ int C2DInfoWin::f_101b1c(Group *g, Race *r)
     m160 = 0;
     m172 = 0;
     m168 = 0;
-    m204 = 0;
+    m192[3] = 0;
     m180 = 0;
     m184 = 0;
     m144 = 0;
     m188 = 0;
-    m200 = 0;
-    m196 = 0;
-    m192 = 0;
+    m192[2] = 0;
+    m192[1] = 0;
+    m192[0] = 0;
     {
         Group *gr = group;
 
@@ -976,7 +1319,456 @@ int C2DInfoWin::Draw()
     return 1;
 }
 
+/* @draft 0x10522c us C2DInfoWin8f_101b54
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
+   WHAT IT DOES: Steps the info window (the lap record list, two panels that slide in over the
+   race) after the start animation. It flags the record selection that changed in m176 (bit 0
+   for the best, bit 1 for the second table) and remembers which in m192[3]; then, by state
+   m148: 0 waits for a flagged change (or the start of a race of kind 4 or 5), picks the next
+   record row and its two panels' places (49,287 and 120,272, or the reverse for the second
+   table) and sets them; 1 shows the panels, sets the disc scale to 0 and grows the frame
+   with the time that passed (state 2); 2 does the same until the frame is 60 wide (state 3);
+   3 slides the panels up the screen until one is above 188 (state 4); 4 waits 180 time
+   units, hides the line sprites (state 5) or, while waiting, draws the lines of the
+   records; 5 slides the panels back until one is above 128 (state 6); 6 shrinks the frame
+   away and returns to state 0. Every call ends by scrolling the background strip
+   (f_105fa8). Returns 0.
+   Remaining difference: far (about 80 percent of the words); the two clamps use two registers more than here, the sprite lookup calls set their arguments in another order, and the layout of the state 0 branches differs. */
+int C2DInfoWin::f_101b54()
+{
+    float p[2];
+    int t;
+    int w;
+    int h;
+
+    if (!C2DDecorationBase::f_101b54())
+        return 0;
+    if (m160 != D_2407fc->rec->m2384 || m164 != D_2407fc->rec->m2376) {
+        m176 |= 1;
+        if (!m192[3])
+            m192[3] = 1;
+    }
+    if (m160 != D_2407fc->rec->m2388 || m164 != D_2407fc->rec->m2380) {
+        m176 |= 2;
+        if (!m192[3])
+            m192[3] = 2;
+    }
+    switch (m148) {
+    case 0:
+        if (f_0f6438(race) == 2 && (m176 & 1) && D_2407fc->mode != 2) {
+            if (m160 == 0 && m164 == 0)
+                m192[0] = D_2407fc->rec->c[0];
+            m168 = D_2407fc->rec->a[m160 * 3 + m164];
+            m208 = 49.0f;
+            m212 = 287.0f;
+            m216 = 120.0f;
+            m220 = 272.0f;
+            f_106090(m208, m212, f_101f54(2), 5);
+            f_106090(m216, m220, f_101f54(3), 4);
+            m180 = 1;
+            m164 = D_2407fc->rec->m2376;
+            if (m164 == 0)
+                m160++;
+            m192[m164] = D_2407fc->rec->c[m160 * 3 + m164];
+            m148 = 1;
+            m176 = 0;
+            break;
+        }
+        if ((m176 & 3) == 3 && D_2407fc->mode != 2 &&
+            (f_0f6438(race) == 1 || f_0f6438(race) == 3 || f_0f6438(race) == 4 ||
+             f_0f6438(race) == 5)) {
+            if (m192[3] != 1) {
+                m168 = D_2407fc->rec->a[m160 * 3 + m164];
+                m172 = D_2407fc->rec->b[m160 * 3 + m164];
+                m208 = 40.0f;
+                m212 = 302.0f;
+                m216 = 58.0f;
+                m220 = 272.0f;
+                f_106090(m208, m212, f_101f54(2), 5);
+                f_106090(m216, m220, f_101f54(3), 4);
+                m180 = 1;
+                m164 = D_2407fc->rec->m2376;
+            } else {
+                m168 = D_2407fc->rec->a[m160 * 3 + m164];
+                m172 = D_2407fc->rec->b[m160 * 3 + m164];
+                m208 = 58.0f;
+                m212 = 272.0f;
+                m216 = 40.0f;
+                m220 = 302.0f;
+                f_106090(m208, m212, f_101f54(2), 5);
+                f_106090(m216, m220, f_101f54(3), 4);
+                m180 = 0;
+                m164 = D_2407fc->rec->m2380;
+            }
+            if (m164 == 0)
+                m160++;
+            m148 = 1;
+            m176 = 0;
+            m192[3] = 0;
+            break;
+        }
+        if (!m184 && (f_0f6438(race) == 4 || f_0f6438(race) == 5) &&
+            !D_2407fc->sub->m2212) {
+            m180 = 2;
+            m208 = 49.0f;
+            m212 = 287.0f;
+            m216 = 120.0f;
+            m220 = 272.0f;
+            f_106090(m208, m212, f_101f54(2), 5);
+            f_106090(m216, m220, f_101f54(3), 4);
+            m184 = 1;
+            m148 = 1;
+        }
+        break;
+    case 1:
+        m152 = D_2407fc->m48 / 50;
+        Show(2, 1);
+        Show(3, 1);
+        m156 = 0;
+        f_04c0a8(group, f_101f54(2), 10, 162, 110, 262);
+        f_04c0a8(group, f_101f54(3), 10, 162, 110, 262);
+        Fade(0, 0.5f);
+        f_0e71e4(0.0f);
+        f_0f64f4(race, 1);
+        m148 = 2;
+        /* fall through */
+    case 2:
+        t = D_2407fc->m48 / 50;
+        m156 += t - m152;
+        m152 = t;
+        t = m156 * 2;
+        w = t;
+        h = t;
+        if (t > 60)
+            w = 60;
+        if (t > 60)
+            h = 60;
+        if (m156 >= 31) {
+            m148 = 3;
+            w = 60;
+            h = 60;
+        }
+        f_04c0a8(group, f_101f54(0), 60 - w, 212 - w, h + 60, h + 212);
+        Show(0, 1);
+        f_0e71e4((float)h / 60.0f);
+        break;
+    case 3:
+        t = D_2407fc->m48 / 50;
+        {
+            float d = (float)(t - m152) * 2;
+
+            m152 = t;
+            m212 -= d;
+            m220 -= d;
+        }
+        if ((m180 ? m220 : m212) < 188.0f) {
+            m148 = 4;
+            m156 = 0;
+            break;
+        }
+        f_106090(m208, m212, f_101f54(2), 5);
+        f_106090(m216, m220, f_101f54(3), 4);
+        break;
+    case 4:
+        t = D_2407fc->m48 / 50;
+        m156 += t - m152;
+        m152 = t;
+        if (m156 > 180) {
+            if (m180 == 2) {
+                Show(29, 0);
+                Show(11, 0);
+            } else if (m180 == 3) {
+                Show(29, 0);
+            } else {
+                int i;
+
+                if (f_0f6438(race) == 2)
+                    m188 = m168;
+                for (i = 0; i < 20; i++)
+                    Show(9 + i, 0);
+            }
+            m148 = 5;
+        } else {
+            if (m180 == 2) {
+                p[0] = m208 + 20.0f;
+                p[1] = m212;
+                f_106120(p[0], p[1], 1, f_0f6420(race));
+            } else if (m180 == 3) {
+                p[0] = m216 + 25.0f;
+                p[1] = m220;
+                f_106120(p[0], p[1], 0, 0);
+            } else if (f_0f6438(race) == 2) {
+                int n = D_2407fc->rec->m2404;
+                int d;
+
+                p[0] = m208 + 20.0f;
+                p[1] = m212 - 8.0f;
+                d = m168 - m192[(m164 + n - 1) % n];
+                f_10636c(0, d, p, d < 0);
+                p[1] = m212 + 16.0f;
+                f_10636c(1, m168, p, 0);
+            } else {
+                p[0] = m208 + 20.0f;
+                p[1] = m212;
+                f_10636c(0, m168 - m172, p, 0);
+            }
+        }
+        break;
+    case 5:
+        t = D_2407fc->m48 / 50;
+        {
+            float d = (float)(t - m152) * 2;
+
+            m152 = t;
+            m220 -= d;
+            m212 -= d;
+        }
+        if ((m180 ? m212 : m220) < 128.0f) {
+            m148 = 6;
+            m156 = 0;
+            Show(2, 0);
+            Show(3, 0);
+            break;
+        }
+        f_106090(m208, m212, f_101f54(2), 5);
+        f_106090(m216, m220, f_101f54(3), 4);
+        break;
+    case 6:
+        t = D_2407fc->m48 / 50;
+        m156 += t - m152;
+        m152 = t;
+        t = m156 * 2;
+        w = t;
+        h = t;
+        if (t > 60)
+            w = 60;
+        if (t > 60)
+            h = 60;
+        if (m156 < 31) {
+            f_0e71e4((float)(60 - h) / 60.0f);
+            f_04c0a8(group, f_101f54(0), w, w + 152, 120 - h, 272 - h);
+        } else {
+            m148 = 0;
+            Show(0, 0);
+            h = 60;
+            w = 60;
+            f_0e71e4((float)(60 - h) / 60.0f);
+            f_04c0a8(group, f_101f54(0), w, w + 152, 120 - h, 272 - h);
+        }
+        break;
+    }
+    f_105fa8(10.0f, 162.0f);
+    return 0;
+}
+
+/* @draft 0x105fa8 us C2DInfoWin8f_105fa8
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
+   WHAT IT DOES: Scrolls the info window's background strip: advances the scroll position by 2
+   (wrapping at 120) and places the 100 pixel square sprite 0 at the position, its texture
+   rectangle starting at 120 minus the scroll. */
+void C2DInfoWin::f_105fa8(float x, float y)
+{
+    Corner c[4];
+    float s = 100.0f;
+    float v0, v1;
+    int t = (m144 + 2) % 120;
+
+    v0 = 120.0f - t;
+    v1 = v0 + s;
+    m144 = t;
+    c[2].x = c[0].x = x;
+    c[1].y = c[0].y = y;
+    c[0].u = c[2].u = 0.0f;
+    c[0].v = c[1].v = v0;
+    c[1].x = c[3].x = x + s;
+    c[2].y = c[3].y = y + s;
+    c[1].u = c[3].u = s;
+    c[2].v = c[3].v = v1;
+    {
+        Group *g = group;
+
+        f_04bf6c(g, f_101f54(0), c);
+    }
+}
+
+/* @draft 0x106090 us C2DInfoWin8f_106090
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
+   WHAT IT DOES: Places a 24 pixel square sprite at a position with the texture row n of a strip
+   of 24 pixel rows (the texture rectangle from row n to row n + 1). */
+void C2DInfoWin::f_106090(float x, float y, int sprite, int n)
+{
+    Corner c[4];
+    float s = 24.0f;
+    float v0 = n * s;
+    float v1 = (n + 1) * s;
+
+    c[2].x = c[0].x = x;
+    c[1].y = c[0].y = y;
+    c[0].u = c[2].u = 0.0f;
+    c[0].v = c[1].v = v0;
+    c[1].x = c[3].x = x + s;
+    c[2].y = c[3].y = y + s;
+    c[1].u = c[3].u = s;
+    c[2].v = c[3].v = v1;
+    f_04bf6c(group, sprite, c);
+}
+
+/* @draft 0x106120 us C2DInfoWin8f_106120
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
+   WHAT IT DOES: Draws a panel's name tag at a position (offset 52 left and 25 up): the tag sprite
+   (29) gets its corners and texture rectangle from the table row of the panel kind b (b - 1
+   clamped to 0 to 3). For kind a = 1 it also shows the number sprite (11) with the texture
+   rectangle of the digit b, 2 right and 16 below the tag, in red.
+   Remaining difference: not compared in detail; the transcription is complete. */
+void C2DInfoWin::f_106120(float x, float y, int a, int b)
+{
+    int k = b - 1;
+    float x0, y0, u0, v0, u1, v1, x1, y1;
+    Corner c[4];
+
+    if (k < 0)
+        k = 0;
+    if (k > 3)
+        k = 3;
+    x0 = x - 52.0f;
+    y0 = y - 25.0f;
+    Show(29, 1);
+    u0 = D_1d5f74[k][0];
+    x1 = x0 + D_1d5f74[k][2];
+    y1 = y0 + D_1d5f74[k][3];
+    u1 = u0 + D_1d5f74[k][2];
+    v0 = D_1d5f74[k][1];
+    v1 = v0 + D_1d5f74[k][3];
+    c[0].x = x0;
+    c[0].y = y0;
+    c[0].u = u0;
+    c[0].v = v0;
+    c[1].x = x1;
+    c[1].y = y0;
+    c[1].u = u1;
+    c[1].v = v0;
+    c[2].x = x0;
+    c[2].y = y1;
+    c[2].u = u0;
+    c[2].v = v1;
+    c[3].x = x1;
+    c[3].y = y1;
+    c[3].u = u1;
+    c[3].v = v1;
+    {
+        Group *g = group;
+
+        f_04bf6c(g, f_101f54(29), c);
+    }
+    if (a == 1) {
+        Show(11, 1);
+        RECT(11, D_1b065c[b]);
+        MOVE(11, x0 + 2.0f, y0 + 16.0f);
+        {
+            Group *g = group;
+
+            f_04c668(g, f_101f54(11), 1.0f, 0.1f, 0.1f, 1.0f);
+        }
+    }
+}
+
+/* @draft 0x10636c us C2DInfoWin8f_10636c
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
+   WHAT IT DOES: Shows a time as sprites for one of the info window's lines (slot 0 to 3, ten
+   sprites each from slot * 10): a sign for the first line (plus or minus, the value turned
+   positive), then the minutes in two digits (the tens hidden when zero), a colon, the seconds in
+   two digits, a point and the milliseconds in three digits, each placed one digit width right
+   of the last from the given position and coloured white or red (flag).
+   Remaining difference: about a third of the words; the register assignment (retail keeps the sprite set high part in a saved register) and the order of the arguments set for the texture and colour calls. */
+void C2DInfoWin::f_10636c(int slot, int value, float *p, int flag)
+{
+    float x = 0.0f;
+    int d[3];
+    int mn, sc, ms;
+    int s, i;
+    int base = slot * 10;
+
+    if (slot == 0) {
+        s = f_101f54(base + 11);
+        if (value < 0) {
+            f_04c1c8(group, s, D_1b065c[11]);
+            value = -value;
+        } else {
+            f_04c1c8(group, s, D_1b065c[10]);
+        }
+        f_04c248(group, s, 1);
+        f_04c278(group, s, p[0] + x, p[1]);
+        f_04c668(group, s, D_1b063c[flag][0], D_1b063c[flag][1], D_1b063c[flag][2],
+                 D_1b063c[flag][3]);
+        s++;
+    }
+    x = 11.0f;
+    f_101cf4(value, &mn, &sc, &ms);
+    mn %= 100;
+    sc %= 100;
+    ms %= 1000;
+    d[0] = mn / 10;
+    d[1] = mn % 10;
+    s = f_101f54(base + 12);
+    if (d[0]) {
+        f_04c248(group, s, 1);
+        f_04c1c8(group, s, D_1b065c[d[0]]);
+        f_04c278(group, s, p[0] + x, p[1]);
+        x += 11.0f;
+        f_04c668(group, s, D_1b063c[flag][0], D_1b063c[flag][1], D_1b063c[flag][2],
+                 D_1b063c[flag][3]);
+        s++;
+    } else {
+        f_04c248(group, s, 0);
+    }
+    s = f_101f54(base + 13);
+    f_04c248(group, s, 1);
+    f_04c1c8(group, s, D_1b065c[d[1]]);
+    f_04c278(group, s, p[0] + x, p[1]);
+    f_04c668(group, s, D_1b063c[flag][0], D_1b063c[flag][1], D_1b063c[flag][2],
+                 D_1b063c[flag][3]);
+    x += 11.0f;
+    s = f_101f54(base + 9);
+    f_04c248(group, s, 1);
+    f_04c278(group, s, p[0] + x, p[1]);
+    f_04c668(group, s, D_1b063c[flag][0], D_1b063c[flag][1], D_1b063c[flag][2],
+                 D_1b063c[flag][3]);
+    d[0] = sc / 10;
+    d[1] = sc % 10;
+    x += 7.0f;
+    s = f_101f54(base + 14);
+    for (i = 0; i < 2; i++) {
+        f_04c248(group, s, 1);
+        f_04c1c8(group, s, D_1b065c[d[i]]);
+        f_04c278(group, s, p[0] + x, p[1]);
+        x += 11.0f;
+        f_04c668(group, s, D_1b063c[flag][0], D_1b063c[flag][1], D_1b063c[flag][2],
+                 D_1b063c[flag][3]);
+        s++;
+    }
+    s = f_101f54(base + 10);
+    f_04c248(group, s, 1);
+    f_04c278(group, s, p[0] + x, p[1]);
+    f_04c668(group, s, D_1b063c[flag][0], D_1b063c[flag][1], D_1b063c[flag][2],
+                 D_1b063c[flag][3]);
+    d[0] = ms / 100;
+    d[1] = ms % 100 / 10;
+    d[2] = ms % 10;
+    x += 7.0f;
+    s = f_101f54(base + 16);
+    for (i = 0; i < 3; i++) {
+        f_04c248(group, s, 1);
+        f_04c1c8(group, s, D_1b065c[d[i]]);
+        f_04c278(group, s, p[0] + x, p[1]);
+        x += 11.0f;
+        f_04c668(group, s, D_1b063c[flag][0], D_1b063c[flag][1], D_1b063c[flag][2],
+                 D_1b063c[flag][3]);
+        s++;
+    }
+}
+
 /* @draft 0x106a5c us C2DAllTime8f_101b1c
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
    WHAT IT DOES: Sets the all-time records table up: its six rows cleared (all but the third
    shown), its nine number sprites placed, and its state reset.
    Remaining difference (7 words, scheduling): retail stores 248, 240, 260, 244, 252, 256,
@@ -998,12 +1790,12 @@ int C2DAllTime::f_101b1c(Group *g, Race *r)
         f_04c3c8(group, base + i, -5.0f, 16.0f);
     m248 = 1;
     m240 = -1;
-    m260 = 0;
+    m260[0] = 0;
     m244 = 0;
     m252 = 0;
     m256 = -1;
-    m268 = 0;
-    m264 = 0;
+    m260[2] = 0;
+    m260[1] = 0;
     return 1;
 }
 
@@ -1015,6 +1807,132 @@ int C2DAllTime::Draw()
 }
 
 /* The pieces' inline methods, emitted with their vtables. */
+
+/* @draft 0x106bdc us C2DAllTime8f_101b54
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
+   WHAT IT DOES: Updates the all-time records table once the start animation is over: shows the
+   record time of the race clock in row 1; tracks when the lap count changes (blinking row 0,
+   the lap time, for 120 time units after a lap, from the lap's start clock); shows the lap
+   time in row 0 and the time left in row 2 (zero when out of time, hidden past six
+   minutes); notes the best lap times by lap and which is the current best; and shows the
+   three best times in rows 3 to 5, the best one in the highlight colour. Returns 0.
+   Remaining difference: scheduling only (the race pointer load and the first call's argument order). */
+int C2DAllTime::f_101b54()
+{
+    int min, sec, ms;
+    int i;
+
+    if (!C2DDecorationBase::f_101b54())
+        return 0;
+    if (Starting())
+        return 0;
+    f_101cf4(D_2407fc->m132, &min, &sec, &ms);
+    f_106e8c(1, min, sec, ms, 0, 1);
+    if (m252 != D_2407fc->m124) {
+        if (m252) {
+            m248 = 1;
+            m240 = race->clk.t;
+        }
+        m252 = D_2407fc->m124;
+    }
+    if ((m240 > 0) & ((race->clk.t - m240) / 50 < 120))
+        m248 = ((unsigned)(race->clk.t / 50) >> 3 ^ 1) & 1;
+    else
+        m248 = 1;
+    f_101cf4(m252, &min, &sec, &ms);
+    f_106e8c(0, min, sec, ms, 0, m248);
+    f_101cf4(D_2407fc->timeLeft, &min, &sec, &ms);
+    if (min < 6) {
+        if (D_2407fc->timeLeft < 0)
+            min = sec = ms = 0;
+        f_106e8c(2, min, sec, ms, 0, 1);
+    } else {
+        f_106e8c(2, min, sec, ms, 0, 0);
+    }
+    if (m244 != D_2407fc->lap) {
+        m260[m244] = D_2407fc->m120;
+        if (D_2407fc->m124 == D_2407fc->m120)
+            m256 = m244;
+        m244 = D_2407fc->lap;
+    }
+    m260[D_2407fc->lap] = D_2407fc->m116;
+    for (i = 0; i < 3; i++) {
+        f_101cf4(m260[i], &min, &sec, &ms);
+        if (m256 == i)
+            f_106e8c(i + 3, min, sec, ms, 1, 1);
+        else
+            f_106e8c(i + 3, min, sec, ms, 0, 1);
+    }
+    return 0;
+}
+
+/* @draft 0x106e8c us C2DAllTime8f_106e8c
+   DRAFT: complete transcription, not byte-exact (see the remaining difference).
+   WHAT IT DOES: Shows one row of the all-time records table (row 0 to 5, nine sprites each from
+   row * 9): its two background sprites, then a time as sprites: the minutes in two digits
+   (the tens hidden when zero), the seconds in two digits and the milliseconds in three, each
+   with its texture rectangle and the colour of the given row of the colour table. Rows other
+   than the third show blank glyphs (11) in place of the digits of a time that is all zero.
+   Remaining difference: most words; the register assignment and the order of the scheduling around the sprite lookups differ. */
+void C2DAllTime::f_106e8c(int row, int mn, int sc, int ms, int color, unsigned char show)
+{
+    int d[3];
+    int base = row * 9;
+    int s;
+    int i;
+
+    mn %= 100;
+    sc %= 100;
+    ms %= 1000;
+    Show(base, show);
+    s = base;
+    TCOLOR(s++, color);
+    Show(s, show);
+    TCOLOR(s, color);
+    s = base + 2;
+    d[0] = mn / 10;
+    d[1] = mn % 10;
+    if (row != 2 && mn == 0) {
+        if ((sc | ms) == 0)
+            d[1] = 11;
+    }
+    f_04c1c8(group, f_101f54(s), D_1b065c[d[0]]);
+    Show(s, d[0] ? show : 0);
+    TCOLOR(s++, color);
+    f_04c1c8(group, f_101f54(s), D_1b065c[d[1]]);
+    Show(s, show);
+    TCOLOR(s, color);
+    s = base + 4;
+    d[0] = sc / 10;
+    d[1] = sc % 10;
+    if (row != 2 && mn == 0) {
+        if ((sc | ms) == 0) {
+            d[0] = 11;
+            d[1] = 11;
+        }
+    }
+    for (i = 0; i < 2; i++) {
+        f_04c1c8(group, f_101f54(s + i), D_1b065c[d[i]]);
+        Show(s + i, show);
+        TCOLOR(s + i, color);
+    }
+    s = base + 6;
+    d[0] = ms / 100;
+    d[1] = ms % 100 / 10;
+    d[2] = ms % 10;
+    if (row != 2 && mn == 0) {
+        if ((sc | ms) == 0) {
+            d[0] = 11;
+            d[1] = 11;
+            d[2] = 11;
+        }
+    }
+    for (i = 0; i < 3; i++) {
+        f_04c1c8(group, f_101f54(s + i), D_1b065c[d[i]]);
+        Show(s + i, show);
+        TCOLOR(s + i, color);
+    }
+}
 
 /* @implements 0x1076c8 us _ZN2Fj12C2DCourseMapD1Ev
    WHAT IT DOES: The course map destructor (only the base vtable store is left). */
@@ -1321,3 +2239,57 @@ int C2DAllTime::Draw()
 
 /* @implements 0x107eb4 us C2DAllTime8f_101f54
    WHAT IT DOES: The handle of one of the all-time records table's sprites. */
+
+/* The three labels below keep a rectangle literal each; the object file ends its read only
+   data with those literals, after the jump table, so they are placed last here. */
+
+/* @implements 0x1036f8 us C2DPosition8f_101b1c
+   WHAT IT DOES: Sets the position display up in a race: the label's colour, then the
+   player's position out of the number of cars. */
+int C2DPosition::f_101b1c(Group *g, Race *r)
+{
+    C2DDecorationBase::f_101b1c(g, r);
+    if (D_2407fc) {
+        {
+            Group *gr = group;
+
+            f_04c1c8(gr, f_101f54(0), (Rgba){ 0, 0, 128, 20 });
+        }
+        f_103820(D_2407fc->position + 1, D_2407fc->cars, 0);
+    }
+    return 1;
+}
+
+/* @implements 0x103de4 us C2DPositionTour8f_101b1c
+   WHAT IT DOES: Sets the tour position display up in a race: the label's colour, then the
+   player's position out of the number of cars. */
+int C2DPositionTour::f_101b1c(Group *g, Race *r)
+{
+    C2DDecorationBase::f_101b1c(g, r);
+    if (D_2407fc) {
+        {
+            Group *gr = group;
+
+            f_04c1c8(gr, f_101f54(0), (Rgba){ 0, 0, 128, 20 });
+        }
+        f_103820(D_2407fc->position + 1, D_2407fc->cars, 0);
+    }
+    return 1;
+}
+
+/* @implements 0x104058 us C2DLap8f_101b1c
+   WHAT IT DOES: Sets the lap counter up in a race: the label's colour, then the lap out of
+   the race's laps. */
+int C2DLap::f_101b1c(Group *g, Race *r)
+{
+    C2DDecorationBase::f_101b1c(g, r);
+    if (D_2407fc) {
+        {
+            Group *gr = group;
+
+            f_04c1c8(gr, f_101f54(0), (Rgba){ 130, 0, 240, 20 });
+        }
+        f_104184(D_2407fc->lap + 1, D_2407fc->laps, -20.0f);
+    }
+    return 1;
+}
