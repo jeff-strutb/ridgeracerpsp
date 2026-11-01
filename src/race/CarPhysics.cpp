@@ -316,23 +316,23 @@ extern "C" void f_0a85b4(CarPhys *p)
 
 /* @draft 0x0a862c us f_0a862c
    WHAT IT DOES: Copies the car's position and height to their stored copies, updates the car's mode flag from its index and runs the matching step.
-   Remaining difference: the branch layout at the end (the return jumps to a different block) and the order of the first copies. */
+   Remaining difference: 2 of 33 words: retail loads m104 into v1 (the 2 for the store goes into v0 in the bltz slot); this loads it into v0. Not the return type, a predicate, a local, a status variable or a goto (all tried). */
 extern "C" void f_0a862c(CarPhys *p)
 {
     p->m24 = p->m16;
     p->m28 = p->m20;
-    int s0 = p->m108 < 2;
+    int m = p->m108;
     f_0ae9f8(p);
     f_099b98((char *)p + 8);
     if (p->m104 < 0) {
         p->m108 = 2;
-    } else {
-        p->m108 = 0;
-        if (s0)
-            f_0a9158(p);
-        else
-            f_0a9248(p);
+        return;
     }
+    p->m108 = 0;
+    if (m < 2)
+        f_0a9158(p);
+    else
+        f_0a9248(p);
 }
 
 /* @implements 0x0a87a0 us f_0a87a0
