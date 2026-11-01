@@ -1067,18 +1067,18 @@ extern "C" void f_0af140(CarPhys *p, CarPhys *q, int i)
 
 extern "C" float f_0ac400(CarPhys *p, const float *y, int *s);
 
-/* @draft 0x0ab4ac us f_0ab4ac
-   WHAT IT DOES: The force curve of one wheel state. The state *s (its sign gives the direction, its size one of 65 curves) and the slip *x pick a piecewise curve, most shaped by the load *y; a positive slip and a non-positive one use separate tables. A result of zero or less resets the state.
-   Remaining difference (8 of 981 words): retail keeps the direction flag in t0 and the object pointer in a3; here they are the other way round. Not the flag's type, its declaration order, the sign split's spelling or a pointer copy. */
+/* @implements 0x0ab4ac us f_0ab4ac
+   WHAT IT DOES: The force curve of one wheel state. The state *s (its sign gives the direction, its size one of 65 curves) and the slip *x pick a piecewise curve, most shaped by the load *y; a positive slip and a non-positive one use separate tables. A result of zero or less resets the state. */
 extern "C" float f_0ab4ac(CarPhys *p, const float *x, const float *y, int *s)
 {
+    int neg;
     int n;
-    int neg = 1;
-    if (*s >= 0) {
-        n = *s;
-        neg = 0;
-    } else {
+    if (*s < 0) {
+        neg = 1;
         n = -*s;
+    } else {
+        neg = 0;
+        n = *s;
     }
     float r = 0.0f;
     if (r < *x) {
