@@ -182,26 +182,22 @@ void f_049b74(void) {
     f_1166d4(1);
 }
 
-/* @draft 0x04a500 us f_04a500
-   WHAT IT DOES: calls the function pointer in the word at offset 8 with the object, returning its result, or returns zero if the pointer is null.
-   Remaining difference: retail is 48 bytes, not 40. Its not-taken arm keeps a dead move of the second argument into a0 and repeats the epilogue, so the returns are not merged.
-*/
+/* @implements 0x04a500 us f_04a500
+   WHAT IT DOES: calls the function pointer in the word at offset 8 with the second argument and returns its result; returns the (null) pointer value itself, zero, when there is none. */
 int f_04a500(char *s, void *a1) {
-    int (*fp)(void *) = *(int (**)(void *))(s + 8);
-    (void)a1;
-    if (fp) return fp(s);
-    return 0;
+    int r = *(int *)(s + 8);
+    if (r)
+        r = ((int (*)(void *))r)(a1);
+    return r;
 }
 
-/* @draft 0x04a530 us f_04a530
-   WHAT IT DOES: calls the function pointer in the word at offset 12 with the object, returning its result, or returns zero if the pointer is null.
-   Remaining difference: retail is 48 bytes, not 40. Its not-taken arm keeps a dead move of the second argument into a0 and repeats the epilogue, so the returns are not merged.
-*/
+/* @implements 0x04a530 us f_04a530
+   WHAT IT DOES: calls the function pointer in the word at offset 12 with the second argument and returns its result; returns the (null) pointer value itself, zero, when there is none. */
 int f_04a530(char *s, void *a1) {
-    int (*fp)(void *) = *(int (**)(void *))(s + 12);
-    (void)a1;
-    if (fp) return fp(s);
-    return 0;
+    int r = *(int *)(s + 12);
+    if (r)
+        r = ((int (*)(void *))r)(a1);
+    return r;
 }
 
 /* @implements 0x04a560 us f_04a560
@@ -965,16 +961,24 @@ void f_04e65c(char *a0, char *a1) {
     }
 }
 
-/* @draft 0x04e694 us f_04e694
+/* @implements 0x04e694 us f_04e694
    WHAT IT DOES: allocates a 12-byte node, stores it in the object at +4, and makes it a
    self-linked node (its words at 0 and +4 point at itself).
    Remaining difference: 4/15 words differ, first at +0x24; size 52 vs 60. */
+struct GuardC694 {
+    int a;
+    void *b;
+    GuardE m;
+    GuardC694() {
+        void *p = f_04dfa0((void *)12);
+        b = p;
+        *(void **)p = p;
+        FLD(void *, p, 4) = p;
+    }
+};
+inline void *operator new(unsigned, void *p) { return p; }
 void f_04e694(void *self) {
-    GuardE g;
-    void *p = f_04dfa0((void *)12);
-    FLD(void *, self, 4) = p;
-    FLD(void *, p, 4) = p;
-    *(void **)p = p;
+    new (self) GuardC694;
 }
 
 /* @draft 0x04e8c0 us f_04e8c0
@@ -984,12 +988,13 @@ void f_04e8c0(void *self) {
     *(void **)self = D_1a3ab0;
 }
 
-/* @draft 0x04ebf4 us f_04ebf4
+/* @implements 0x04ebf4 us f_04ebf4
    WHAT IT DOES: allocates a node for the pointer a1+4, stores that pointer in the node and
    returns the node address plus 4.
    Remaining difference: 10/15 words differ, first at +0x0; size 52 vs 60. */
 char *f_04ebf4(void *a0, char *a1) {
     (void)a0;
+    GuardE g;
     char *s0 = a1 + 4;
     char *v0 = (char *)f_04dfa0(s0);
     *(char **)v0 = s0;
@@ -1171,15 +1176,15 @@ void f_04d648(char *self) {
     FLD(void *, self, 36) = 0;
 }
 
-/* @draft 0x04d68c us f_04d68c
+/* @implements 0x04d68c us f_04d68c
    WHAT IT DOES: calls f_0466ac on the global D_24100c when a0 is 1 and a1 is 0xffff; calls f_0466f0
    on it when a0 is 0 and a1 is 0xffff.
    Remaining difference: 2/31 words differ, first at +0x1c; size 124 vs 124. */
 void f_04d68c(int a0, int a1) {
-    if (a0 == 1 && a1 == 0xffff) {
+    if ((a1 == 0xffff) & (a0 == 1)) {
         f_0466ac(D_24100c);
     }
-    if (a0 == 0 && a1 == 0xffff) {
+    if ((a1 == 0xffff) & (a0 == 0)) {
         f_0466f0(D_24100c);
     }
 }
@@ -1294,6 +1299,7 @@ void f_04ea4c(char *a0) {
    frees the object at -4 with f_04e4b4.
    Remaining difference: 8/17 words differ, first at +0x8; size 60 vs 68. */
 void f_04ec30(char *a0) {
+    GuardE g;
     *(void **)a0 = D_1a3810;
     f_05d6dc(a0);
     f_04e4b4(a0 - 4);
@@ -1780,31 +1786,34 @@ void *f_059c74(void *p, char *q)
     return (char *)r + 4;
 }
 
-/* @draft 0x052b14 us f_052b14
+/* @implements 0x052b14 us f_052b14
    WHAT IT DOES: Passes the output buffer, obj+328, the word at obj+328+4 and the
    sub-object at obj+296+index*8 to f_05e394.    Remaining difference: argument setup order: retail sets a2 (sp+16) before a0 (sp); ours the reverse (2 of 16 words differ, first at +0x24).
    */
 void f_052b14(char *p, int idx)
 {
     char *q = p + 328;
-    int out[4];
-    int v = *(int *)(q + 4);
-    f_05e394(out, q, &v, p + 296 + idx * 8);
+    int L1[4];
+    int L2[4];
+    L2[0] = *(int *)(q + 4);
+    f_05e394(L1, q, L2, p + 296 + idx * 8);
 }
 
-/* @draft 0x052dbc us f_052dbc
+/* @implements 0x052dbc us f_052dbc
    WHAT IT DOES: Passes the chain obj+328 -> +4 -> +4 value and its advanced pointer to
    f_05e394.    Remaining difference: store/load order: retail loads the inner word before storing the outer one to sp+16; ours stores first (2 of 16 words differ, first at +0x20).
    */
 void f_052dbc(char *p)
 {
     char *q = p + 328;
+    int L1[4];
+    int L2[4];
     int x = *(int *)(q + 4);
-    int out[4];
-    out[0] = x;
+    L1[0] = x;
     int v = *(int *)(x + 4);
-    out[0] = v;
-    f_05e394(out, q, &x, (char *)v + 8);
+    L2[0] = x;
+    L1[0] = v;
+    f_05e394(L1, q, L2, (char *)v + 8);
 }
 
 /* @draft 0x059848 us f_059848
@@ -2107,36 +2116,57 @@ void f_062444(int *p, int a1, int a2, int a3, int a4, unsigned char a5)
     fn(s, a1, a2, a3, a4, a5);
 }
 
-/* @draft 0x05f4a0 us f_05f4a0
-   WHAT IT DOES: Releases the object at +4 through f_04e4b4 when that pointer is non-null.    Remaining difference: retail has an EH landing pad (_Unwind_Resume) and a frame of 16 bytes with beqzl; an empty local guard object gives the pad but a 32-byte frame and a different branch. */
+/* @implements 0x05f4a0 us f_05f4a0
+   WHAT IT DOES: Releases the object at +4 through f_04e4b4 when that pointer is non-null. */
+struct SwgDM { ~SwgDM() {} };
+struct SwgD5f4a0 {
+    int a;
+    void *b;
+    SwgDM m;
+    ~SwgD5f4a0() { if (!b) return; f_04e4b4(b); }
+};
 void f_05f4a0(int *p)
 {
-    if (p[1])
-        f_04e4b4((void *)p[1]);
+    ((SwgD5f4a0 *)p)->~SwgD5f4a0();
 }
 
-/* @draft 0x0604dc us f_0604dc
-   WHAT IT DOES: Releases the object at +4 through f_04e4b4 when that pointer is non-null.    Remaining difference: same as f_05f4a0: the EH landing pad and the beqzl branch shape are not reproduced. */
+/* @implements 0x0604dc us f_0604dc
+   WHAT IT DOES: Releases the object at +4 through f_04e4b4 when that pointer is non-null. */
+struct SwgD0604dc {
+    int a;
+    void *b;
+    SwgDM m;
+    ~SwgD0604dc() { if (!b) return; f_04e4b4(b); }
+};
 void f_0604dc(int *p)
 {
-    if (p[1])
-        f_04e4b4((void *)p[1]);
+    ((SwgD0604dc *)p)->~SwgD0604dc();
 }
 
-/* @draft 0x06050c us f_06050c
-   WHAT IT DOES: Releases the object at +4 through f_04e4b4 when that pointer is non-null.    Remaining difference: same as f_05f4a0: the EH landing pad and the beqzl branch shape are not reproduced. */
+/* @implements 0x06050c us f_06050c
+   WHAT IT DOES: Releases the object at +4 through f_04e4b4 when that pointer is non-null. */
+struct SwgD06050c {
+    int a;
+    void *b;
+    SwgDM m;
+    ~SwgD06050c() { if (!b) return; f_04e4b4(b); }
+};
 void f_06050c(int *p)
 {
-    if (p[1])
-        f_04e4b4((void *)p[1]);
+    ((SwgD06050c *)p)->~SwgD06050c();
 }
 
-/* @draft 0x060670 us f_060670
-   WHAT IT DOES: Releases the object at +4 through f_04e4b4 when that pointer is non-null.    Remaining difference: same as f_05f4a0: the EH landing pad and the beqzl branch shape are not reproduced. */
+/* @implements 0x060670 us f_060670
+   WHAT IT DOES: Releases the object at +4 through f_04e4b4 when that pointer is non-null. */
+struct SwgD060670 {
+    int a;
+    void *b;
+    SwgDM m;
+    ~SwgD060670() { if (!b) return; f_04e4b4(b); }
+};
 void f_060670(int *p)
 {
-    if (p[1])
-        f_04e4b4((void *)p[1]);
+    ((SwgD060670 *)p)->~SwgD060670();
 }
 
 /* @implements 0x05ca78 us f_05ca78
@@ -3087,8 +3117,7 @@ int f_0633f0(void *o, void *a)
 {
     int res = 0;
     if (B(o, 8) != 0) {
-        int r = ((vfn_t *)*(void **)a)[22](a);
-        if (r)
+        if (((vfn_t *)*(void **)a)[22](a))
             res = 1;
     }
     return res;
@@ -3497,119 +3526,170 @@ extern "C" void *f_068938(void *self, unsigned *obj) {
     return self;
 }
 
-/* @draft 0x067e14 us f_067e14
+/* @implements 0x067e14 us f_067e14
    Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
    Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
    WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320, zeroes its two words after the vtable and hands it to f_05daa4 together with this. Returns this. */
-struct SwgFScope {
-    ~SwgFScope() {}
+struct SwgFM { ~SwgFM() {} };
+struct SwgFC {
+    SwgFM m;
+    SwgFC() {
+        unsigned *n = (unsigned *)f_05db08(12);
+        n[0] = (unsigned)&D_1a4320;
+        n[1] = 0;
+        n[2] = 0;
+        f_05daa4(this, n);
+    }
 };
+inline void *operator new(unsigned, void *p) { return p; }
 
 extern "C" void *f_067e14(void *self) {
-    unsigned *n = (unsigned *)f_05db08(12);
-    SwgFScope guard;
-    n[0] = (unsigned)&D_1a4320;
-    n[1] = 0;
-    n[2] = 0;
-    f_05daa4(self, n);
+    new (self) SwgFC;
     return self;
 }
 
-/* @draft 0x067e68 us f_067e68
-   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
-   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+/* @implements 0x067e68 us f_067e68
    WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320, zeroes its two words after the vtable and hands it to f_05daa4 together with this. Returns this. */
-extern "C" void *f_067e68(void *self) {
+struct SwgFC067e68 {
+    SwgFM m;
+    SwgFC067e68() {
     unsigned *n = (unsigned *)f_05db08(12);
     n[0] = (unsigned)&D_1a4320;
     n[1] = 0;
     n[2] = 0;
-    f_05daa4(self, n);
+    f_05daa4(this, n);
+    
+    }
+};
+extern "C" void *f_067e68(void *self) {
+    new (self) SwgFC067e68;
     return self;
 }
 
-/* @draft 0x069ad0 us f_069ad0
-   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+/* @implements 0x069ad0 us f_069ad0
    WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320 and tag 38 in its third word, hands it to f_05daa4 together with this, and returns this. */
-extern "C" void *f_069ad0(void *self) {
+struct SwgFC069ad0 {
+    SwgFM m;
+    SwgFC069ad0() {
     unsigned *n = (unsigned *)f_05db08(12);
     n[0] = (unsigned)&D_1a4320;
     n[2] = 38;
     n[1] = 0;
-    f_05daa4(self, n);
+    f_05daa4(this, n);
+    
+    }
+};
+extern "C" void *f_069ad0(void *self) {
+    new (self) SwgFC069ad0;
     return self;
 }
 
-/* @draft 0x069b28 us f_069b28
-   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+/* @implements 0x069b28 us f_069b28
    WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320 and tag 40 in its third word, hands it to f_05daa4 together with this, and returns this. */
-extern "C" void *f_069b28(void *self) {
+struct SwgFC069b28 {
+    SwgFM m;
+    SwgFC069b28() {
     unsigned *n = (unsigned *)f_05db08(12);
     n[0] = (unsigned)&D_1a4320;
     n[2] = 40;
     n[1] = 0;
-    f_05daa4(self, n);
+    f_05daa4(this, n);
+    
+    }
+};
+extern "C" void *f_069b28(void *self) {
+    new (self) SwgFC069b28;
     return self;
 }
 
-/* @draft 0x069b80 us f_069b80
-   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+/* @implements 0x069b80 us f_069b80
    WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320 and tag 39 in its third word, hands it to f_05daa4 together with this, and returns this. */
-extern "C" void *f_069b80(void *self) {
+struct SwgFC069b80 {
+    SwgFM m;
+    SwgFC069b80() {
     unsigned *n = (unsigned *)f_05db08(12);
     n[0] = (unsigned)&D_1a4320;
     n[2] = 39;
     n[1] = 0;
-    f_05daa4(self, n);
+    f_05daa4(this, n);
+    
+    }
+};
+extern "C" void *f_069b80(void *self) {
+    new (self) SwgFC069b80;
     return self;
 }
 
-/* @draft 0x069bd8 us f_069bd8
-   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+/* @implements 0x069bd8 us f_069bd8
    WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320 and tag 37 in its third word, hands it to f_05daa4 together with this, and returns this. */
-extern "C" void *f_069bd8(void *self) {
+struct SwgFC069bd8 {
+    SwgFM m;
+    SwgFC069bd8() {
     unsigned *n = (unsigned *)f_05db08(12);
     n[0] = (unsigned)&D_1a4320;
     n[2] = 37;
     n[1] = 0;
-    f_05daa4(self, n);
+    f_05daa4(this, n);
+    
+    }
+};
+extern "C" void *f_069bd8(void *self) {
+    new (self) SwgFC069bd8;
     return self;
 }
 
-/* @draft 0x069c30 us f_069c30
-   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+/* @implements 0x069c30 us f_069c30
    WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320 and tag 32 in its third word, hands it to f_05daa4 together with this, and returns this. */
-extern "C" void *f_069c30(void *self) {
+struct SwgFC069c30 {
+    SwgFM m;
+    SwgFC069c30() {
     unsigned *n = (unsigned *)f_05db08(12);
     n[0] = (unsigned)&D_1a4320;
     n[2] = 32;
     n[1] = 0;
-    f_05daa4(self, n);
+    f_05daa4(this, n);
+    
+    }
+};
+extern "C" void *f_069c30(void *self) {
+    new (self) SwgFC069c30;
     return self;
 }
 
-/* @draft 0x069c88 us f_069c88
-   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
+/* @implements 0x069c88 us f_069c88
    WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320 and tag 8 in its third word, hands it to f_05daa4 together with this, and returns this. */
-extern "C" void *f_069c88(void *self) {
+struct SwgFC069c88 {
+    SwgFM m;
+    SwgFC069c88() {
     unsigned *n = (unsigned *)f_05db08(12);
     n[0] = (unsigned)&D_1a4320;
     n[2] = 8;
     n[1] = 0;
-    f_05daa4(self, n);
+    f_05daa4(this, n);
+    
+    }
+};
+extern "C" void *f_069c88(void *self) {
+    new (self) SwgFC069c88;
     return self;
 }
 
 /* @draft 0x069ce0 us f_069ce0
-   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted; the byte or pointer stores are ordered as the listing has them.
    WHAT IT DOES: allocates a 12-byte object with the rodata vtable at D_1a4320, takes the byte at offset 328 of the object held at +56 of the source as its tag word, hands it to f_05daa4 together with this, and returns this. */
-extern "C" void *f_069ce0(void *self, unsigned *obj) {
+struct SwgFC069ce0 {
+    SwgFM m;
+    SwgFC069ce0(unsigned *obj) {
     unsigned *n = (unsigned *)f_05db08(12);
     unsigned char *src = (unsigned char *)obj[14];
     n[0] = (unsigned)&D_1a4320;
     n[2] = (unsigned)(int)(signed char)src[328];
     n[1] = 0;
-    f_05daa4(self, n);
+    f_05daa4(this, n);
+    
+    }
+};
+extern "C" void *f_069ce0(void *self, unsigned *obj) {
+    new (self) SwgFC069ce0(obj);
     return self;
 }
 
@@ -3626,80 +3706,117 @@ extern "C" void *f_069e08(void *self, unsigned *obj) {
 }
 
 /* @draft 0x06a534 us f_06a534
-   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted; the byte or pointer stores are ordered as the listing has them.
    WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d38 and D_1a4d3c after it, hands it to f_05daa4 together with this, and returns this. */
+struct SwgFC06a534 {
+    SwgFM m;
+    SwgFC06a534() {
+        unsigned *n = (unsigned *)f_05db08(16);
+        unsigned y = D_1a4d3c;
+        unsigned x = D_1a4d38;
+        n[0] = (unsigned)&D_1a4270;
+        n[2] = x;
+        n[3] = y;
+        n[1] = 0;
+        f_05daa4(this, n);
+    }
+};
 extern "C" void *f_06a534(void *self) {
-    unsigned *n = (unsigned *)f_05db08(16);
-    n[0] = (unsigned)&D_1a4270;
-    n[2] = D_1a4d38;
-    n[3] = D_1a4d3c;
-    n[1] = 0;
-    f_05daa4(self, n);
+    new (self) SwgFC06a534;
     return self;
 }
 
 /* @draft 0x06a7b8 us f_06a7b8
-   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted; the byte or pointer stores are ordered as the listing has them.
    WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d40 and D_1a4d44 after it, hands it to f_05daa4 together with this, and returns this. */
-extern "C" void *f_06a7b8(void *self) {
+struct SwgFC06a7b8 {
+    SwgFM m;
+    SwgFC06a7b8() {
     unsigned *n = (unsigned *)f_05db08(16);
     n[0] = (unsigned)&D_1a4270;
     n[2] = D_1a4d40;
     n[3] = D_1a4d44;
     n[1] = 0;
-    f_05daa4(self, n);
+    f_05daa4(this, n);
+    
+    }
+};
+extern "C" void *f_06a7b8(void *self) {
+    new (self) SwgFC06a7b8;
     return self;
 }
 
 /* @draft 0x06a8f0 us f_06a8f0
-   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
    WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d58 and D_1a4d5c after it, hands it to f_05daa4 together with this, and returns this. */
-extern "C" void *f_06a8f0(void *self) {
+struct SwgFC06a8f0 {
+    SwgFM m;
+    SwgFC06a8f0() {
     unsigned *n = (unsigned *)f_05db08(16);
     n[0] = (unsigned)&D_1a4270;
     n[2] = D_1a4d58;
     n[3] = D_1a4d5c;
     n[1] = 0;
-    f_05daa4(self, n);
+    f_05daa4(this, n);
+    
+    }
+};
+extern "C" void *f_06a8f0(void *self) {
+    new (self) SwgFC06a8f0;
     return self;
 }
 
 /* @draft 0x06aa50 us f_06aa50
-   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
    WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d60 and D_1a4d64 after it, hands it to f_05daa4 together with this, and returns this. */
-extern "C" void *f_06aa50(void *self) {
+struct SwgFC06aa50 {
+    SwgFM m;
+    SwgFC06aa50() {
     unsigned *n = (unsigned *)f_05db08(16);
     n[0] = (unsigned)&D_1a4270;
     n[2] = D_1a4d60;
     n[3] = D_1a4d64;
     n[1] = 0;
-    f_05daa4(self, n);
+    f_05daa4(this, n);
+    
+    }
+};
+extern "C" void *f_06aa50(void *self) {
+    new (self) SwgFC06aa50;
     return self;
 }
 
 /* @draft 0x06aecc us f_06aecc
-   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
    WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d70 and D_1a4d74 after it, hands it to f_05daa4 together with this, and returns this. */
-extern "C" void *f_06aecc(void *self) {
+struct SwgFC06aecc {
+    SwgFM m;
+    SwgFC06aecc() {
     unsigned *n = (unsigned *)f_05db08(16);
     n[0] = (unsigned)&D_1a4270;
     n[2] = D_1a4d70;
     n[3] = D_1a4d74;
     n[1] = 0;
-    f_05daa4(self, n);
+    f_05daa4(this, n);
+    
+    }
+};
+extern "C" void *f_06aecc(void *self) {
+    new (self) SwgFC06aecc;
     return self;
 }
 
 /* @draft 0x06af34 us f_06af34
-   Remaining difference: the retail landing pad (jal _Unwind_Resume after the body) is not emitted.
    WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d78 and D_1a4d7c after it, hands it to f_05daa4 together with this, and returns this. */
-extern "C" void *f_06af34(void *self) {
+struct SwgFC06af34 {
+    SwgFM m;
+    SwgFC06af34() {
     unsigned *n = (unsigned *)f_05db08(16);
     n[0] = (unsigned)&D_1a4270;
     n[2] = D_1a4d78;
     n[3] = D_1a4d7c;
     n[1] = 0;
-    f_05daa4(self, n);
+    f_05daa4(this, n);
+    
+    }
+};
+extern "C" void *f_06af34(void *self) {
+    new (self) SwgFC06af34;
     return self;
 }
 
@@ -4288,8 +4405,9 @@ void *f_05df24(char *self, char *o) {
     if (self != o) {
         f_04ed28(self);
         char *v1 = *(char **)(o + 4);
+        char *v0 = *(char **)o;
         *(char **)(self + 4) = v1;
-        *(char **)self = *(char **)o;
+        *(char **)self = v0;
         if (v1) (*(int *)v1)++;
     }
     return self;
