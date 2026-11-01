@@ -1232,5 +1232,104 @@ void f_0a4d5c(Vec3 *d, const float *m)
     *(Quat4 *)d = r;
 }
 
+
+struct EulOut {
+    AngI e[3];
+    int order;
+    static void *operator new(unsigned, void *p) { return p; }
+    EulOut(const float *m, int order_, const float &eps) __attribute__((always_inline));
+};
+extern "C" { extern const signed char D_1abf6c[]; }
+inline EulOut::EulOut(const float *m, int order_, const float &eps)
+{
+    const signed char *t = D_1abf6c + order_ * 3;
+    int i = t[0];
+    int j = t[1];
+    int k = t[2];
+    int i3 = 3 * i;
+    float cy = sqrtf(m[i3 + i] * m[i3 + i] + m[i3 + j] * m[i3 + j]);
+    AngI last;
+    if (cy > eps) {
+        e[i] = Ang(c_atan2(m[3 * j + k], m[4 * k]));
+        e[j] = Ang(c_atan2(-m[i3 + k], cy));
+        last = Ang(c_atan2(m[i3 + j], m[i3 + i]));
+    } else {
+        e[i] = Ang(c_atan2(-m[3 * k + j], m[4 * j]));
+        e[j] = Ang(c_atan2(-m[i3 + k], cy));
+        last = Ang(0.0f);
+    }
+    e[k] = last;
+    if (order_ & 1) {
+        e[0] = Ang(-*(float *)&e[0]);
+        e[1] = Ang(-*(float *)&e[1]);
+        e[2] = Ang(-*(float *)&e[2]);
+    }
+    order = order_;
+}
+extern "C" { extern const float D_1ac090; extern const float D_1ac094; }
+/* @draft 0x0a3938 us f_0a3938
+   WHAT IT DOES: Extracts three Euler angles from a 3x3 rotation matrix for the axis order code (0..23, three signed bytes per order in the table at D_1abf6c plus a parity bit): the middle angle from atan2 of the off-axis element and the sqrt of the sum of squares of two elements, with the gimbal-lock fallback when that is below a threshold; every angle is wrapped by f_099b98, negated first when the order's low bit is set, and the order code is stored after the three angles.
+   Remaining difference: same size (704 bytes) but register assignment differs: retail keeps the two element addresses in saved registers and reuses the first axis register for the angle slot address, this source gets a different assignment and spills one address. */
+void f_0a3938(EulOut *d, const float *m, int order)
+{
+    new (d) EulOut(m, order, D_1ac090);
+}
+
+/* @draft 0x0a3bf8 us f_0a3bf8
+   WHAT IT DOES: Extracts three Euler angles from a 3x3 rotation matrix for the axis order code (0..23, three signed bytes per order in the table at D_1abf6c plus a parity bit): the middle angle from atan2 of the off-axis element and the sqrt of the sum of squares of two elements, with the gimbal-lock fallback when that is below a threshold; every angle is wrapped by f_099b98, negated first when the order's low bit is set, and the order code is stored after the three angles.
+   Remaining difference: same size (704 bytes) but register assignment differs: retail keeps the two element addresses in saved registers and reuses the first axis register for the angle slot address, this source gets a different assignment and spills one address. */
+void f_0a3bf8(EulOut *d, const float *m, int order)
+{
+    new (d) EulOut(m, order, D_1ac094);
+}
+
+struct EulOutB {
+    AngI e[3];
+    int order;
+    static void *operator new(unsigned, void *p) { return p; }
+    EulOutB(const float *m, int order_, const float &eps) __attribute__((always_inline));
+};
+inline EulOutB::EulOutB(const float *m, int order_, const float &eps)
+{
+    const signed char *t = D_1abf6c + order_ * 3;
+    int i = t[0];
+    int j = t[1];
+    int k = t[2];
+    int i4 = 4 * i;
+    float cy = sqrtf(m[i4 + i] * m[i4 + i] + m[i4 + j] * m[i4 + j]);
+    if (cy > eps) {
+        e[i] = Ang(c_atan2(m[4 * j + k], m[5 * k]));
+        e[j] = Ang(c_atan2(-m[i4 + k], cy));
+        e[k] = Ang(c_atan2(m[i4 + j], m[i4 + i]));
+    } else {
+        e[i] = Ang(c_atan2(-m[4 * k + j], m[5 * j]));
+        e[j] = Ang(c_atan2(-m[i4 + k], cy));
+        e[k] = Ang(0.0f);
+    }
+    if (order_ & 1) {
+        e[0] = Ang(-*(float *)&e[0]);
+        e[1] = Ang(-*(float *)&e[1]);
+        e[2] = Ang(-*(float *)&e[2]);
+    }
+    order = order_;
+}
+extern "C" { extern const float D_1ac098; extern const float D_1ac09c; }
+
+/* @draft 0x0a3eb8 us f_0a3eb8
+   WHAT IT DOES: Extracts three Euler angles from a 3x3 rotation matrix for the axis order code (0..23, three signed bytes per order in the table at D_1abf6c plus a parity bit): the middle angle from atan2 of the off-axis element and the sqrt of the sum of squares of two elements, with the gimbal-lock fallback when that is below a threshold; every angle is wrapped by f_099b98, negated first when the order's low bit is set; the rows of the matrix are four floats wide.
+   Remaining difference: 47 of 170 words differ, all after the first branch: retail stores the last angle in the delay slot of the parity test after the two branches join (plain bnez), this source gets bnezl with the first negation load in the slot; moving the last angle into a joined local fixes the shape but changes the register assignment. */
+void f_0a3eb8(EulOutB *d, const float *m, int order)
+{
+    new (d) EulOutB(m, order, D_1ac098);
+}
+
+/* @draft 0x0a4160 us f_0a4160
+   WHAT IT DOES: Extracts three Euler angles from a 3x3 rotation matrix for the axis order code (0..23, three signed bytes per order in the table at D_1abf6c plus a parity bit): the middle angle from atan2 of the off-axis element and the sqrt of the sum of squares of two elements, with the gimbal-lock fallback when that is below a threshold; every angle is wrapped by f_099b98, negated first when the order's low bit is set; the rows of the matrix are four floats wide.
+   Remaining difference: 47 of 170 words differ, all after the first branch: retail stores the last angle in the delay slot of the parity test after the two branches join (plain bnez), this source gets bnezl with the first negation load in the slot; moving the last angle into a joined local fixes the shape but changes the register assignment. */
+void f_0a4160(EulOutB *d, const float *m, int order)
+{
+    new (d) EulOutB(m, order, D_1ac09c);
+}
+
 }
 }
