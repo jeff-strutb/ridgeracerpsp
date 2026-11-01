@@ -9029,3 +9029,344 @@ void f_068bc0(char *self, char *a, char *b)
 }
 }
 }
+
+/* ---- swg6c ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 wave 4, worker swg6c */
+namespace swg6c {
+extern "C" {
+
+void *f_04dfa0(int);
+int rand(void);
+extern char D_1a4320[];
+void f_04ed28(void *);
+void f_04e4b4(void *);
+void f_04e8c0(void *);
+void f_04e8d8(void *);
+int f_05df80(void *, void *);
+void f_05f64c(void *, void *, void *);
+void f_05e394(void *, void *, void *, void *);
+void f_05daa4(void *, void *);
+void f_05daec(void *);
+void f_05db84(void *);
+void f_05e4a8(void *, void *);
+void f_05a61c(void *, void *, void *);
+void *f_154448(void *, void *, void *, int);
+int f_15c098(void *, int);
+int iprintf(const char *, ...);
+void *f_05b964(void *, void *, void *, void *, int);
+int sceKernelCpuSuspendIntr(void);
+void sceKernelCpuResumeIntr(int);
+extern char D_291400[];
+extern char D_1a3014[], D_1a301c[], D_1a3024[], D_1a302c[], D_1a4060[], D_1a4270[], D_1a43d0[];
+extern char D_1a3760[], D_1a3d60[], D_1a4900[], D_1a4960[], D_1a4d14[];
+
+/* reference-counted pointer pair: object and a heap count; the destructor is f_04ed28 */
+struct Ref {
+    char *p;
+    int *rc;
+    ~Ref() { f_04ed28(this); }
+};
+struct Tag { char *p0; int b; int p2; char *p3; };
+struct StrH { char *p; StrH() {} StrH(const StrH &a) { f_05e4a8(this, (void *)&a); } };
+struct P8 { int a, b; };
+struct Pa { virtual char m() = 0; };
+struct Pb { virtual P8 m() = 0; };
+struct Pc { virtual StrH m() = 0; };
+typedef char (Pa::*PmA)();
+typedef P8 (Pb::*PmB)();
+typedef StrH (Pc::*PmC)();
+
+static inline void *vf(void *p, int i) { return (*(void ***)p)[i]; }
+static inline char *top(char *t) { return *(char **)(*(char **)(t + 4) + 4); }
+static inline void ref_load(Ref *r, char *t) {
+    char *n = top(t);
+    r->p = *(char **)(n + 8);
+    r->rc = *(int **)(n + 12);
+    if (r->rc) *r->rc += 1;
+}
+static inline void pop(char *t) {
+    char out[16];
+    char *it = top(t);
+    f_05f64c(out, t, &it);
+}
+static inline void push(char *t, Ref *h) {
+    char out[16];
+    int pos = *(int *)(t + 4);
+    f_05e394(out, t, &pos, h);
+}
+static inline char *empty_str() {
+    char *s = D_291400;
+    int st = sceKernelCpuSuspendIntr();
+    *(int *)(s + 8) += 1;
+    sceKernelCpuResumeIntr(st);
+    return s + 12;
+}
+/* empty tree header: node allocated and linked to itself */
+static inline void init_map(char *m) {
+    *(int *)(m + 4) = 0;
+    int *n = (int *)f_04dfa0(40);
+    *(int **)(m + 4) = n;
+    n[1] = 0;
+    *(int *)(m + 8) = 0;
+    n[2] = (int)n;
+    n[0] = 0;
+    n[3] = (int)n;
+}
+
+/* @draft 0x05aaf8 us f_05aaf8
+   WHAT IT DOES: ActionScript context native-call dispatcher. Asks the called object (virtual +80) for a tag, then compares it with the name entries at +168..+248 of the context. +168 and +216 run virtual hooks +264 and +268. +184, +200 and +232 pop the argument on top of the stack at +328, call a pointer-to-member getter on the next argument (char, 8-byte pair or string), pop that many further entries and push a new boxed value object (vtables D_1a4060, D_1a4270, D_1a43d0). +248 pops its arguments and pushes a new 60-byte object configured via virtual +56 with the context's reference at +380. Otherwise it looks the tag up with f_05a61c and, if the result casts (f_154448) builds a 28-byte object and hands it to f_05b964; if not it prints the "ASContextImpl::NewInternal" diagnostic via iprintf and discards the arguments. Always finishes with virtual +68 on the context and returns the hidden result pointer.
+   Remaining difference: not compared; draft transcription of the whole body, register allocation and landing-pad layout will differ. */
+char *f_05aaf8(char *s0, char *s6, void **a2) {
+    Tag tag;
+    void *obj = *a2;
+    ((void (*)(Tag *, void *, void *))vf(obj, 20))(&tag, obj, s0);
+    char *t = s0 + 328;
+    if (f_05df80(&tag, s0 + 168)) {
+        ((void (*)(void *))vf(s0, 66))(s0);
+        ((void (*)(void *))vf(s0, 17))(s0);
+        return s6;
+    }
+    if (f_05df80(&tag, s0 + 184)) {
+        PmA pm = *(PmA *)D_1a3014;
+        Ref a;
+        ref_load(&a, t);
+        pop(t);
+        int n = ((int (*)(void *))vf(a.p, 23))(a.p);
+        int *o = (int *)f_04dfa0(16);
+        o[0] = 16;
+        int *ob = o + 1;
+        char v = 0;
+        if (n > 0) {
+            Pa *tg = (Pa *)*(char **)(top(t) + 8);
+            v = (tg->*pm)();
+        }
+        ob[0] = (int)D_1a4060;
+        *(char *)(ob + 2) = v;
+        ob[1] = 0;
+        for (int i = 0; i < n; i++) pop(t);
+        Ref h;
+        f_05daa4(&h, ob);
+        push(t, &h);
+        ((void (*)(void *))vf(s0, 17))(s0);
+        return s6;
+    }
+    if (f_05df80(&tag, s0 + 200)) {
+        PmB pm = *(PmB *)D_1a301c;
+        Ref a;
+        ref_load(&a, t);
+        pop(t);
+        int n = ((int (*)(void *))vf(a.p, 23))(a.p);
+        int *o = (int *)f_04dfa0(20);
+        o[0] = 20;
+        int *ob = o + 1;
+        P8 v;
+        v.a = 0;
+        v.b = 0;
+        if (n > 0) {
+            Pb *tg = (Pb *)*(char **)(top(t) + 8);
+            v = (tg->*pm)();
+        }
+        ob[0] = (int)D_1a4270;
+        ob[2] = v.a;
+        ob[3] = v.b;
+        ob[1] = 0;
+        for (int i = 0; i < n; i++) pop(t);
+        Ref h;
+        f_05daa4(&h, ob);
+        push(t, &h);
+        ((void (*)(void *))vf(s0, 17))(s0);
+        return s6;
+    }
+    if (f_05df80(&tag, s0 + 216)) {
+        ((void (*)(void *))vf(s0, 67))(s0);
+        ((void (*)(void *))vf(s0, 17))(s0);
+        return s6;
+    }
+    if (f_05df80(&tag, s0 + 232)) {
+        PmC pm = *(PmC *)D_1a3024;
+        Ref a;
+        ref_load(&a, t);
+        pop(t);
+        int n = ((int (*)(void *))vf(a.p, 23))(a.p);
+        int *o = (int *)f_04dfa0(36);
+        o[0] = 36;
+        int *ob = o + 1;
+        StrH str;
+        bool have = true;
+        if (n > 0) {
+            Pc *tg = (Pc *)*(char **)(top(t) + 8);
+            str = (tg->*pm)();
+        } else {
+            str.p = empty_str();
+        }
+        ob[0] = (int)D_1a43d0;
+        *(char *)(ob + 2) = 1;
+        ob[4] = -1;
+        ob[1] = 0;
+        ob[3] = 0;
+        ob[5] = 0;
+        ob[6] = 0;
+        f_05e4a8(ob + 7, &str);
+        have = false;
+        f_05db84(&str);
+        for (int i = 0; i < n; i++) pop(t);
+        Ref h;
+        f_05daa4(&h, ob);
+        push(t, &h);
+        f_05daec(&h);
+        ((void (*)(void *))vf(s0, 17))(s0);
+        return s6;
+    }
+    if (f_05df80(&tag, s0 + 248)) {
+        char *a1 = *(char **)(top(t) + 8);
+        int n = ((int (*)(void *))vf(a1, 23))(a1);
+        pop(t);
+        while (n > 0) { n--; pop(t); }
+        int *o = (int *)f_04dfa0(60);
+        o[0] = 60;
+        char *s1 = (char *)(o + 1);
+        char *s3 = (char *)(o + 3);
+        *(char **)s1 = D_1a3760;
+        *(int *)(s1 + 4) = 0;
+        *(int *)(s3 + 4) = 0;
+        init_map(s3);
+        *(char **)s1 = D_1a3d60;
+        *(char **)(s1 + 24) = D_1a43d0;
+        *(char *)(s1 + 32) = 1;
+        *(int *)(s1 + 40) = -1;
+        *(int *)(s1 + 36) = 0;
+        *(int *)(s1 + 44) = 0;
+        *(int *)(s1 + 48) = 0;
+        *(int *)(s1 + 28) = 0;
+        *(char **)(s1 + 52) = empty_str();
+        {
+            Ref r;
+            r.p = *(char **)(s0 + 380);
+            r.rc = *(int **)(s0 + 384);
+            if (r.rc) *r.rc += 1;
+            ((void (*)(void *, void *, Ref *))vf(s1, 14))(s1, s0 + 152, &r);
+        }
+        Ref h;
+        h.p = s1;
+        h.rc = 0;
+        int *c = (int *)f_04dfa0(4);
+        *c = 1;
+        h.rc = c;
+        push(t, &h);
+        return s6;
+    }
+    Ref r;
+    f_05a61c(&r, s0, &tag);
+    void *s3;
+    if (r.p && (s3 = f_154448(r.p, D_1a4900, D_1a4960, 0)) != 0) {
+        char *o = (char *)f_04dfa0(28);
+        *(int *)o = 28;
+        char *s2 = o + 4;
+        char *s1 = o + 12;
+        *(char **)s2 = D_1a3760;
+        *(int *)(s2 + 4) = 0;
+        init_map(s1);
+        Ref r2;
+        r2.p = s2;
+        r2.rc = 0;
+        if (s2) {
+            int *c = (int *)f_04dfa0(4);
+            *c = 1;
+            r2.rc = c;
+        }
+        {
+            Ref out;
+            ((void (*)(Ref *, void *, void *))vf(s3, 13))(&out, s3, s0 + 120);
+            ((void (*)(void *, void *, Ref *))vf(s2, 14))(s2, s0 + 152, &out);
+        }
+        Ref cp;
+        cp.p = r2.p;
+        cp.rc = r2.rc;
+        if (cp.rc) *cp.rc += 1;
+        s6 = (char *)f_05b964(s0, &cp, s3, s6, 1);
+        return s6;
+    }
+    long s1;
+    if (tag.b == -1) {
+        char *a1 = tag.p3;
+        char *vt = *(char **)a1;
+        *(char *)(vt + *(int *)(vt - 12)) = *D_1a4d14;
+        s1 = *(int *)a1;
+    } else {
+        s1 = f_15c098(*(char **)(tag.p0 + 4), 7);
+    }
+    iprintf(D_1a302c, s1, ((void *(*)(void *))vf(r.p, 7))(r.p));
+    {
+        Ref a;
+        ref_load(&a, t);
+        int n = ((int (*)(void *))vf(a.p, 23))(a.p);
+        pop(t);
+        for (int i = 0; i < n; i++) pop(t);
+    }
+    ((void (*)(void *))vf(s0, 17))(s0);
+    ((void (*)(void *))vf(s0, 17))(s0);
+    return s6;
+}
+
+/* @draft 0x05687c us f_05687c
+   WHAT IT DOES: takes a reference to the top argument of the stack at +328 and pops it, asks it (virtual +80) for a tag, looks the tag up with f_05a61c and casts the result with f_154448, then calls f_05b964 with a copy of the reference pair at +288 and returns its result.
+   Remaining difference: the iterator temporaries (retail keeps a stack-slot iterator at sp+16 and a 144-byte frame; ours is 128), 88/93 words differ. */
+char *f_05687c(char *s0, char *s2) {
+    Ref a;
+    ref_load(&a, s0 + 328);
+    pop(s0 + 328);
+    Tag tag;
+    ((void (*)(Tag *, void *, void *))vf(a.p, 20))(&tag, a.p, s0);
+    Ref r;
+    f_05a61c(&r, s0, &tag);
+    void *c = 0;
+    if (r.p) c = f_154448(r.p, D_1a4900, D_1a4960, 0);
+    struct Ref16 : Ref { int pad[2]; } cp;
+    cp.p = *(char **)(s0 + 288);
+    cp.rc = *(int **)(s0 + 292);
+    if (cp.rc) *cp.rc += 1;
+    return (char *)f_05b964(s0, &cp, c, s2, 0);
+}
+
+struct It { char *n; It() {} It(const It &o) { n = o.n; } };
+static inline It begin_it(char *t) { It r; r.n = *(char **)(t + 4); r.n = *(char **)(r.n + 4); return r; }
+static inline void load(Ref *a, const It &b) {
+    a->p = *(char **)(b.n + 8);
+    a->rc = *(int **)(b.n + 12);
+    if (a->rc) *a->rc += 1;
+}
+static inline It erase(char *t, It pos) { It r; f_05f64c(&r, t, &pos); return r; }
+static inline It end_it(char *t) { It r; r.n = *(char **)(t + 4); return r; }
+static inline It insert(char *t, It pos, Ref *h) { It r; f_05e394(&r, t, &pos, h); return r; }
+
+/* @draft 0x058c10 us f_058c10
+   WHAT IT DOES: pops the top argument off the stack at +328 and asks it for a count (virtual +92), then pushes a new 16-byte boxed object (vtable D_1a4320) holding rand() modulo that count (zero when the count is zero).
+   Remaining difference: the stack-slot iterator temporaries (size 364 vs 388); the iterator class does not yet reproduce retail's 16/32/48 slot layout. */
+void f_058c10(char *s) {
+    char *t = s + 328;
+    Ref a;
+    load(&a, begin_it(t));
+    erase(t, begin_it(t));
+    int n = ((int (*)(void *))vf(a.p, 23))(a.p);
+    int *o = (int *)f_04dfa0(16);
+    o[0] = 16;
+    int *ob = o + 1;
+    int r = rand();
+    int v = 0;
+    if (n) v = r % n;
+    ob[0] = (int)D_1a4320;
+    ob[2] = v;
+    ob[1] = 0;
+    Ref h;
+    h.p = (char *)ob;
+    h.rc = 0;
+    if (ob) { int *c = (int *)f_04dfa0(4); *c = 1; h.rc = c; }
+    insert(t, end_it(t), &h);
+}
+
+}  // extern "C"
+}  // namespace swg6c
