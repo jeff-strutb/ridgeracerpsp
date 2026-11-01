@@ -6493,12 +6493,27 @@ void f_0625ac(void *o)
     f_05db44(o);
 }
 
-/* @draft 0x062340 us f_062340
-   WHAT IT DOES: deleting destructor: same as f_0622bc, then calls f_04e4b4(self). */
+/* the f_0622bc destructor body without its scratch local; the deleting twin keeps that
+   local (Tmp16) around the free call instead */
+struct D062340 : VB4888 {
+    ~D062340() {
+        *(void **)this = D_1a3e10;
+        void *c = (void *)W(this, 4);
+        ((int (*)(void *, int))((void **)*(void **)c)[3])(c, W(this, 28));
+        c = (void *)W(this, 4);
+        ((int (*)(void *, int))((void **)*(void **)c)[3])(c, W(this, 12));
+        c = (void *)W(this, 4);
+        ((int (*)(void *, int))((void **)*(void **)c)[3])(c, W(this, 16));
+    }
+};
+/* @implements 0x062340 us f_062340
+   WHAT IT DOES: deleting destructor: same as f_0622bc, then calls f_04e4b4(self).
+   The empty-dtor local lives only around the free call: its landing pad is the _Unwind_Resume
+   call itself (retail's LSDA), leaving a nop in that call's delay slot. */
 void f_062340(void *o)
 {
-    ((D0622bc *)o)->~D0622bc();
-    f_04e4b4(o);
+    ((D062340 *)o)->~D062340();
+    { Tmp16 g; f_04e4b4(o); }
 }
 
 /* @draft 0x064c6c us f_064c6c
@@ -14776,5 +14791,423 @@ void f_0578dc(char *s) {
     Pq2 pr((char *)o);
     r.n = *(char **)(t + 4);
     f_05e394(&arg, t, &r, &pr);
+}
+}
+
+/* ---- swg10d ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 wave 4, worker swg10d */
+namespace swg10d {
+extern "C" {
+
+void f_04ed28(void *);
+void *f_04dfa0(unsigned);
+void f_04e4b4(void *);
+void f_04eee8(void *s, void *tag);
+void f_04e8c0(void *) throw();
+void f_05e4a8(void *, void *);
+void f_05a3e8(void *, void *, void *);
+void f_05f64c(void *, void *, void *);
+void f_05e394(void *, void *, void *, void *);
+void f_05be04(void *, int);
+void f_0606e4(void *);
+void *f_154448(void *, void *, void *, int);
+int f_15c35c(int, void *, void *, void *, int);
+int sceKernelCpuSuspendIntr(void);
+void sceKernelCpuResumeIntr(int);
+extern char D_1a43d0[];
+extern char D_1a4110[];
+extern char D_1a4900[];
+extern char D_1a4960[];
+extern char D_1a4d14[];
+extern char D_1a2e9c[]; /* the empty-list name string */
+
+struct Rf {
+    char *p;
+    int *rc;
+    Rf() {}
+    Rf(void *o) { p = (char *)o; rc = 0; if (o) { rc = (int *)f_04dfa0(4); *rc = 1; } }
+    Rf(const Rf &o) { p = o.p; rc = o.rc; if (rc) *rc += 1; }
+    Rf &operator=(const Rf &o) {
+        if (this != &o) { f_04ed28(this); rc = o.rc; p = o.p; if (rc) *rc += 1; }
+        return *this;
+    }
+    ~Rf() { f_04ed28(this); }
+};
+int f_05b964(void *, Rf, void *, int, int);
+struct G2 { int w[4]; ~G2() {} };
+struct Str {
+    char *p;
+    Str() {}
+    Str(const char *c) { G2 g; f_05a3e8(this, (void *)c, &g); }
+    ~Str() {
+        G2 g;
+        char *s0 = p;
+        char *s2 = s0 - 12;
+        int intr = sceKernelCpuSuspendIntr();
+        volatile int *c = (volatile int *)(s0 - 4);
+        int s1 = *c;
+        *c += -1;
+        sceKernelCpuResumeIntr(intr);
+        if (s1 <= 0) f_04eee8(s2, &g);
+    }
+};
+struct It { char *n; It() {} It(const It &o) { n = o.n; } };
+struct Em { ~Em() {} };
+struct ObjBase { void *vt; int z; unsigned char b; int w[4]; ~ObjBase() { f_04e8c0(this); } };
+struct Ob37 : ObjBase {
+    char *s;
+    static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+    static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+    Ob37(const Str &a) {
+        vt = D_1a43d0; b = 1; w[0] = -1;
+        z = 0; w[1] = 0; w[2] = 0; w[3] = 0;
+        f_05e4a8(&s, (void *)&a);
+    }
+};
+struct Ob8 {
+    void *vt; int x;
+    static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+    static void operator delete(void *) {}
+    Ob8() { Em e; vt = D_1a4110; x = 0; }
+};
+struct K16 { int a, b, c, d; };
+struct RfVec {
+    int pad; Rf *b; Rf *e; Rf *c;
+    ~RfVec() {
+        for (Rf *q = b; q != e; q++) q->~Rf();
+        if (b) f_04e4b4(b);
+    }
+};
+struct Vq {
+    virtual void s0(); virtual void s1(); virtual void s2(); virtual void s3(); virtual void s4();
+    virtual void s5(); virtual int s6(); virtual void s7(); virtual void s8(); virtual char *s9();
+    virtual void s10(); virtual void s11(); virtual void s12(); virtual Rf s13(void *); virtual void s14();
+    virtual Rf s15(void *, void *); virtual void s16(); virtual void s17(); virtual void s18(); virtual void s19();
+    virtual K16 s20(void *); virtual Str s21(); virtual void s22(); virtual int s23();
+};
+#define POP(R) do { \
+    nd = *(char **)(it.n + 4); \
+    R.rc = *(int * volatile *)(nd + 12); \
+    R.p = *(char * volatile *)(nd + 8); \
+    it.n = nd; \
+    if (R.rc) *R.rc += 1; \
+} while (0)
+
+/* @draft 0x0569f0 us f_0569f0
+   Remaining difference: 2840 vs 3024 bytes; GCC lays the f_154448 cast call and the early-return block out of line (retail keeps the cast inline, the early return's tail shared with the other exits), frame is 16 bytes smaller, landing pads differ; the vector push_back and the stream branch are transcribed but unmatched.
+   WHAT IT DOES: pops two handles from the argument stack at +328, asks the first object for a record (virtual slot 20) and the second to build a handle from it (slot 13); if that handle casts to the expected class (f_154448) calls f_05b964 with a copy of the second handle and returns its result. Otherwise pops a third handle, collects a counted number (slot 23) of further handles into a vector, and either (type 10 with a formatter object) formats the first object's name against the first vector entry into a 256-byte buffer with f_15c35c and reports a string object, or temporarily installs the second handle at +288, asks it for a handle (slot 15) and reports that (or an empty 8-byte object). Returns the second argument unchanged. */
+int f_0569f0(char *s, int arg0) {
+    char *t = s + 328;
+    Rf A;
+    It it, r, arg;
+    char *nd;
+    it.n = *(char **)(t + 4);
+    POP(A);
+    it.n = *(char **)(t + 4);
+    arg.n = (it.n = *(char **)(it.n + 4));
+    f_05f64c(&r, t, &arg);
+    Rf B;
+    arg.n = *(char **)(t + 4);
+    nd = *(char **)(arg.n + 4);
+    B.rc = *(int * volatile *)(nd + 12);
+    B.p = *(char * volatile *)(nd + 8);
+    arg.n = nd;
+    if (B.rc) *B.rc += 1;
+    arg.n = *(char **)(t + 4);
+    it.n = (arg.n = *(char **)(arg.n + 4));
+    f_05f64c(&r, t, &it);
+    K16 k = ((Vq *)A.p)->s20(s);
+    Rf c = ((Vq *)B.p)->s13(&k);
+    if (c.p) {
+        void *x = f_154448(c.p, D_1a4900, D_1a4960, 0);
+        if (x) return f_05b964(s, Rf(B), x, arg0, 0);
+    }
+    Rf C;
+    arg.n = *(char **)(t + 4);
+    nd = *(char **)(arg.n + 4);
+    C.rc = *(int * volatile *)(nd + 12);
+    C.p = *(char * volatile *)(nd + 8);
+    arg.n = nd;
+    if (C.rc) *C.rc += 1;
+    arg.n = *(char **)(t + 4);
+    it.n = (arg.n = *(char **)(arg.n + 4));
+    f_05f64c(&r, t, &it);
+    int n = ((Vq *)C.p)->s23();
+    RfVec v;
+    v.b = 0; v.e = 0; v.c = 0;
+    f_05be04(&v, n);
+    int i;
+    for (i = 0; i < n; i++) {
+        arg.n = *(char **)(t + 4);
+        nd = *(char **)(arg.n + 4);
+        arg.n = nd;
+        if (v.e == v.c) {
+            f_0606e4(&v);
+        } else {
+            if (v.e) {
+                Rf *src = (Rf *)(nd + 8);
+                int *rc = src->rc;
+                v.e->p = src->p;
+                v.e->rc = rc;
+                if (rc) *rc += 1;
+            }
+            v.e++;
+        }
+        arg.n = *(char **)(t + 4);
+        it.n = (arg.n = *(char **)(arg.n + 4));
+        f_05f64c(&r, t, &it);
+    }
+    if (((Vq *)B.p)->s6() == 10) {
+        char *q = ((Vq *)B.p)->s9() + 336;
+        int qv = *(int *)q;
+        if (qv) {
+            Rf G;
+            G.p = 0; G.rc = 0;
+            if (v.b == v.e) G = Rf(new Ob37(Str(D_1a2e9c)));
+            else G = *v.b;
+            char buf[256];
+            int st;
+            {
+                Str s1 = ((Vq *)A.p)->s21();
+                s1.p[*(int *)(s1.p - 12)] = D_1a4d14[0];
+                Str s2 = ((Vq *)G.p)->s21();
+                s2.p[*(int *)(s2.p - 12)] = D_1a4d14[0];
+                st = f_15c35c(qv, s1.p, s2.p, buf, 256);
+            }
+            if (st >= 0) {
+                Rf H(new Ob37(Str(buf)));
+                r.n = *(char **)(t + 4);
+                f_05e394(&arg, t, &r, &H);
+                return arg0;
+            }
+        }
+    }
+    Rf *f288 = (Rf *)(s + 288);
+    Rf E(*f288);
+    *f288 = B;
+    {
+        K16 k2 = ((Vq *)A.p)->s20(s);
+        Rf F = ((Vq *)B.p)->s15(&k2, &v);
+        if (F.p) {
+            r.n = *(char **)(t + 4);
+            f_05e394(&arg, t, &r, &F);
+        } else {
+            Rf P(new Ob8);
+            r.n = *(char **)(t + 4);
+            f_05e394(&arg, t, &r, &P);
+        }
+        *f288 = E;
+    }
+    return arg0;
+}
+
+void f_05daa4(void *, void *);
+void f_05dc90(void *, const void *);
+void f_05df24(void *, void *);
+void *f_05db08(unsigned);
+void f_050018(void *, void *);
+void f_04ea4c(void *, void *, void *);
+void f_04ec74(void *, int);
+void f_04ee08(void *, int);
+void f_04eda0(void *);
+K16 f_05e6cc(void *, const char *);
+extern char D_1a3760[];
+extern char D_1a3698[];
+extern char D_1a4fe0[];
+extern char D_1a4f18[];
+extern char D_1a4e50[];
+extern char D_1a4d88[];
+extern char D_1a3214[]; /* "Math" */
+extern char D_1a321c[]; /* "Key" */
+extern char *D_1d2e8c[];
+#define I5(o, off) (*(int *)((char *)(o) + (off)))
+
+struct Rg {
+    char *p; int *rc;
+    Rg(void *o) { f_05daa4(this, o); }
+    Rg(const Rg &o) { f_05dc90(this, &o); }
+    ~Rg() { f_04ed28(this); }
+};
+struct Vk {
+    virtual void s0(); virtual void s1(); virtual void s2(); virtual void s3(); virtual void s4();
+    virtual void s5(); virtual void s6(); virtual void s7(); virtual void s8(); virtual void s9();
+    virtual void s10(); virtual void s11(); virtual void s12(); virtual void s13();
+    virtual void s14(const K16 &, Rg);
+};
+struct Vm {
+    virtual void s0(); virtual void s1(); virtual void s2(); virtual void s3(); virtual void s4();
+    virtual void s5(); virtual void s6(); virtual void s7(); virtual void s8(); virtual void s9();
+    virtual void s10(); virtual void s11(); virtual void s12(); virtual void s13(); virtual void s14();
+    virtual void s15(); virtual void s16(); virtual void s17(); virtual void s18(); virtual void s19();
+    virtual void s20(); virtual void s21(); virtual void s22(); virtual void s23(); virtual void s24();
+    virtual void s25(); virtual void s26(); virtual void s27(); virtual void s28(); virtual void s29();
+    virtual void s30(); virtual void s31(); virtual void s32(); virtual void s33(); virtual void s34();
+    virtual void s35(); virtual void s36(); virtual void s37(); virtual void s38(); virtual void s39();
+    virtual void s40(); virtual void s41(); virtual void s42(void *);
+};
+/* the 24-byte tree-bearing object: vtable, a zero word and a tree whose header node is 40 bytes */
+static inline char *mk_tree_obj(unsigned n) {
+    char *o = (char *)f_05db08(n);
+    char *t = o + 8;
+    I5(o, 0) = (int)D_1a3760;
+    I5(o, 4) = 0;
+    I5(t, 4) = 0;
+    char *nd = (char *)f_04dfa0(40);
+    I5(t, 4) = (int)nd;
+    I5(nd, 4) = 0;
+    int h = I5(t, 4);
+    I5(t, 8) = 0;
+    I5(h, 8) = h;
+    int h2 = I5(t, 4);
+    I5(nd, 0) = 0;
+    I5(h2, 12) = h2;
+    return o;
+}
+
+/* @draft 0x05e980 us f_05e980
+   Remaining difference: 1680 vs 1848 bytes; landing pads (the object classes are written as raw field stores here) are not reproduced.
+   WHAT IT DOES: stores the argument at +4, empties the two trees at +8 and +348 if they hold entries, fills the 15 sixteen-byte records at +24 from the name table D_1d2e8c (f_05e6cc), then builds the manager objects: two handles installed at +280 and +264 (a 24-byte and a 56-byte tree object, the latter initialised through its virtual slot 42), registers them under the keys at +152, "Math" and "Key", and creates three 60-byte tree objects whose handles are stored at +372 and +380 (and one registered), finishing with f_04eda0 on +364. */
+void f_05e980(char *s, int a1) {
+    char *t = s + 8;
+    I5(s, 4) = a1;
+    if (I5(t, 8)) {
+        f_04ec74(t, I5(I5(t, 4), 4));
+        int h = I5(t, 4);
+        I5(t, 8) = 0;
+        I5(h, 8) = h;
+        I5(I5(t, 4), 4) = 0;
+        h = I5(t, 4);
+        I5(h, 12) = h;
+    }
+    int i;
+    for (i = 0; i < 15; i++) *(K16 *)(s + 24 + 16 * i) = f_05e6cc(s, D_1d2e8c[i]);
+    char *u = s + 348;
+    if (I5(u, 8)) {
+        f_04ee08(u, I5(I5(u, 4), 4));
+        int h = I5(u, 4);
+        I5(u, 8) = 0;
+        I5(h, 8) = h;
+        I5(I5(u, 4), 4) = 0;
+        h = I5(u, 4);
+        I5(h, 12) = h;
+    }
+    {
+        Rg e(0);
+        f_05df24(s + 280, &e);
+    }
+    {
+        char *o = mk_tree_obj(24);
+        Rg r(o);
+        f_05df24(s + 264, &r);
+    }
+    char *o2 = (char *)f_05db08(56);
+    I5(o2, 0) = (int)D_1a3760;
+    I5(o2, 4) = 0;
+    I5(o2 + 8, 4) = 0;
+    {
+        char *nd = (char *)f_04dfa0(40);
+        I5(o2 + 8, 4) = (int)nd;
+        I5(nd, 4) = 0;
+        int h = I5(o2 + 8, 4);
+        I5(o2 + 8, 8) = 0;
+        I5(h, 8) = h;
+        I5(nd, 0) = 0;
+    }
+    char c1[16], c2[16];
+    I5(o2, 0) = (int)D_1a3698;
+    f_04ea4c(o2 + 24, c1, c2);
+    I5(o2, 0) = (int)D_1a4fe0;
+    ((Vm *)o2)->s42(s);
+    Rg e2(o2);
+    Rg r1(mk_tree_obj(24));
+    {
+        Rg cp(e2);
+        ((Vk *)r1.p)->s14(*(K16 *)(s + 152), cp);
+    }
+    {
+        K16 k = f_05e6cc(s, D_1a3214);
+        Rg cp(r1);
+        ((Vk *)I5(s, 264))->s14(k, cp);
+    }
+    char *o4 = (char *)f_05db08(60);
+    I5(o4, 0) = (int)D_1a3760;
+    I5(o4, 4) = 0;
+    I5(o4 + 8, 4) = 0;
+    {
+        char *nd = (char *)f_04dfa0(40);
+        I5(o4 + 8, 4) = (int)nd;
+        I5(nd, 4) = 0;
+        int h = I5(o4 + 8, 4);
+        I5(o4 + 8, 8) = 0;
+        I5(h, 8) = h;
+        I5(nd, 0) = 0;
+    }
+    I5(o4, 0) = (int)D_1a3698;
+    f_04ea4c(o4 + 24, c1 + 1, c2);
+    I5(o4, 0) = (int)D_1a4f18;
+    f_050018(o4, s);
+    I5(o4, 56) = I5(s, 4);
+    Rg e4(o4);
+    Rg r2(mk_tree_obj(24));
+    {
+        Rg cp(e4);
+        ((Vk *)r1.p)->s14(*(K16 *)(s + 152), cp);
+    }
+    {
+        K16 k = f_05e6cc(s, D_1a321c);
+        Rg cp(r2);
+        ((Vk *)I5(s, 264))->s14(k, cp);
+    }
+    char *o6 = (char *)f_05db08(60);
+    I5(o6, 0) = (int)D_1a3760;
+    I5(o6, 4) = 0;
+    I5(o6 + 8, 4) = 0;
+    {
+        char *nd = (char *)f_04dfa0(40);
+        I5(o6 + 8, 4) = (int)nd;
+        I5(nd, 4) = 0;
+        int h = I5(o6 + 8, 4);
+        I5(o6 + 8, 8) = 0;
+        I5(h, 8) = h;
+        I5(nd, 0) = 0;
+    }
+    I5(o6, 0) = (int)D_1a3698;
+    f_04ea4c(o6 + 24, c1 + 2, c2);
+    I5(o6, 0) = (int)D_1a4e50;
+    f_050018(o6, s);
+    I5(o6, 56) = I5(s, 4);
+    {
+        Rg h6(o6);
+        f_05df24(s + 372, &h6);
+    }
+    char *o7 = (char *)f_05db08(60);
+    I5(o7, 0) = (int)D_1a3760;
+    I5(o7, 4) = 0;
+    I5(o7 + 8, 4) = 0;
+    {
+        char *nd = (char *)f_04dfa0(40);
+        I5(o7 + 8, 4) = (int)nd;
+        I5(nd, 4) = 0;
+        int h = I5(o7 + 8, 4);
+        I5(o7 + 8, 8) = 0;
+        I5(h, 8) = h;
+        I5(nd, 0) = 0;
+    }
+    I5(o7, 0) = (int)D_1a3698;
+    f_04ea4c(o7 + 24, c1 + 3, c2);
+    I5(o7, 0) = (int)D_1a4d88;
+    f_050018(o7, s);
+    I5(o7, 56) = I5(s, 4);
+    {
+        Rg h7(o7);
+        f_05df24(s + 380, &h7);
+    }
+    f_04eda0(s + 364);
+}
+
 }
 }
