@@ -642,9 +642,25 @@ struct GroundSet {
     char m0[80];
     GroundRec *recs;
 };
+/* A course area record (24 bytes): its base height at +8 and its row in the height table at +18. */
+struct CourseArea {
+    float m0, m4, y;
+    int m12;
+    short m16;
+    unsigned short row;
+    int m20;
+};
+/* The course areas at D_23c820 + 12240: the area list and a table of 64 heights per row. */
+struct CourseAreas {
+    CourseArea *list;
+    short *tab;
+    char m8[104];
+};
 struct RaceState {
-    char m0[12352];
+    char m0[12240];
+    CourseAreas areas;
     GroundSet polys;
+    CourseAreas *Areas() { return &areas; }
     GroundSet *Polys() { return &polys; }
 };
 extern RaceState D_23c820_state __asm__("D_23c820");
@@ -793,4 +809,34 @@ extern "C" void f_0af064(CarPhys *p, CarPhys *q, float t)
         ((float *)((char *)p + 288))[i] = r;
         ((float *)((char *)p + 352))[i] = e;
     }
+}
+
+/* @draft 0x0ab0fc us f_0ab0fc
+   WHAT IT DOES: Sets the car's ground height from the course areas: the position along the area (offset by 32, clamped to 1..62) picks two neighbouring entries of each of the two areas' height rows, each pair is interpolated, added to its area's base height, and the two results are blended by the car's blend factor.
+   Remaining difference (29 of 73 words): register choice only: retail keeps the first area's base height in $f11 and the second's in $f10 (here the reverse), and forms the row addresses in v0/v1 the other way round; the instruction sequence is otherwise retail's. */
+extern "C" void f_0ab0fc(CarPhys *p)
+{
+    float x = p->m140 + 32.0f;
+    CourseAreas *ar = D_23c820_state.Areas();
+    CourseArea *e0 = &ar->list[p->m156];
+    CourseArea *e1 = &ar->list[p->m160];
+    float y0 = e0->y;
+    float y1 = e1->y;
+    if (x < 1.0f)
+        x = 1.0f;
+    else if (62.0f < x)
+        x = 62.0f;
+    int n = (int)x;
+    short *t0 = &ar->tab[e0->row * 64 + n];
+    short *t1 = &ar->tab[e1->row * 64 + n];
+    float a0 = t0[0], a1 = t0[1];
+    float b0 = t1[0], b1 = t1[1];
+    float da = a1 - a0;
+    float db = b1 - b0;
+    float f = x - n;
+    float b = b0 + db * f;
+    float a = a0 + da * f;
+    float h1 = y1 + b;
+    float h0 = y0 + a;
+    p->m144 = (h1 - h0) * p->m168 + h0;
 }
