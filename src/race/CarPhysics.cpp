@@ -1856,7 +1856,7 @@ struct CVec2 {
     CVec2 operator-(const CVec2 &o) const { return CVec2(x - o.x, y - o.y); }
     CVec2 operator+(const CVec2 &o) const { return CVec2(x + o.x, y + o.y); }
     CVec2 operator*(float k) const { return CVec2(x * k, y * k); }
-    float Dot(const CVec2 &o) const { return x * o.x + y * o.y; }
+    float Dot(CVec2 o) const { return x * o.x + y * o.y; }
     float Len() const { return sqrtf(x * x + y * y); }
 };
 
@@ -1883,7 +1883,7 @@ static inline int SegWrap(int i)
 
 /* @draft 0x0aa748 us f_0aa748
    WHAT IT DOES: Tracks the probe point (m148, m152) along the course segments: finds the segment from the stored one (searching the whole ring the first time, by course position), steps forward or back to the segment that holds the point, projects the point onto it (a straight or a curve), and stores the course position (m136), its fraction (m168) and the signed distance from the course line (m140).
-   Remaining difference: retail is 268 bytes longer: its vector type copies values through the stack (the point stored to the stack first, a segment point copied with float stores, each difference stored, block-copied with integer loads to two places, then reloaded). A grid of 136 class shapes (copy constructor, assignment, by-value or reference operands, member or free dot) on the first dot product came closest with a const-reference operator- assigned into a local and a member Dot, which matches the instruction and stack-access counts but not their order. */
+   Remaining difference: retail is 268 bytes longer: its vector type copies values through the stack (the point stored to the stack first, a segment point copied with float stores, each difference stored, block-copied with integer loads to two places, then reloaded). A grid of 136 class shapes (copy constructor, assignment, by-value or reference operands, member or free dot) on the first dot product came closest with a const-reference operator- assigned into a local and a by-value member Dot (the form used here: 1,864 bytes against 2,080). Reasoned from retail's slot use: the segment point is copied with float stores (a by-value operand with a user copy constructor reproduces that), but retail then keeps the result in its own temporary and block-copies it twice, which this compiler removes once a user copy constructor exists. */
 extern "C" void f_0aa748(CarPhys *p)
 {
     CourseSeg *list = D_23f7fc_segs;
