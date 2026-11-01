@@ -663,3 +663,80 @@ extern "C" void f_0ab2a4(CarPhys *p)
         p->m144 = p->m12;
     }
 }
+
+/* An angle passed by value in an integer register. */
+union Angle {
+    float a;
+};
+
+struct Vec4 {
+    float x, y, z, w;
+};
+
+extern "C" {
+void f_09b394(Angle a, float *x, float *y);
+void f_0a98d8(CarPhys *p);
+void f_0a9330(CarPhys *p);
+}
+
+/* @draft 0x0a9158 us f_0a9158
+   WHAT IT DOES: Stores the truncated speed, then for each of the four wheels turns the wheel's offset by the car's heading, adds the car's position, stores the result as the wheel's position and as the probe point, runs the ground probe f_0a98d8 and keeps its two results for the wheel.
+   Remaining difference: the order of the four float loads before the two sums. */
+extern "C" void f_0a9158(CarPhys *p)
+{
+    p->m180 = (int)p->m128;
+    Vec4 v;
+    Angle a;
+    Angle *pa = &a;
+    for (int i = 0; i < 4; i++) {
+        v.x = ((float *)((char *)p + 224))[i];
+        v.y = 0.0f;
+        v.z = ((float *)((char *)p + 240))[i];
+        v.w = 1.0f;
+        a.a = p->m8;
+        f_099b98(pa);
+        f_09b394(a, &v.z, &v.x);
+        float x = p->m0 + v.x;
+        float z = p->m4 + v.z;
+        ((float *)((char *)p + 192))[i] = x;
+        ((float *)((char *)p + 208))[i] = z;
+        p->m148 = x;
+        p->m152 = z;
+        f_0a98d8(p);
+        int c = p->m156;
+        int d = p->m160;
+        ((int *)((char *)p + 256))[i] = c;
+        ((int *)((char *)p + 272))[i] = d;
+    }
+}
+
+/* @draft 0x0a9248 us f_0a9248
+   WHAT IT DOES: Runs the wheel update f_0a9330, then for each of the four wheels turns the wheel's offset by the car's heading, adds the car's position, stores the result as the wheel's position and as the probe point, runs the ground probe f_0a98d8 and keeps its two results for the wheel.
+   Remaining difference: the order of the four float loads before the two sums. */
+extern "C" void f_0a9248(CarPhys *p)
+{
+    f_0a9330(p);
+    Vec4 v;
+    Angle a;
+    Angle *pa = &a;
+    for (int i = 0; i < 4; i++) {
+        v.x = ((float *)((char *)p + 224))[i];
+        v.y = 0.0f;
+        v.z = ((float *)((char *)p + 240))[i];
+        v.w = 1.0f;
+        a.a = p->m8;
+        f_099b98(pa);
+        f_09b394(a, &v.z, &v.x);
+        float x = p->m0 + v.x;
+        float z = p->m4 + v.z;
+        ((float *)((char *)p + 192))[i] = x;
+        ((float *)((char *)p + 208))[i] = z;
+        p->m148 = x;
+        p->m152 = z;
+        f_0a98d8(p);
+        int c = p->m156;
+        int d = p->m160;
+        ((int *)((char *)p + 256))[i] = c;
+        ((int *)((char *)p + 272))[i] = d;
+    }
+}
