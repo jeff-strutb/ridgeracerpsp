@@ -25,7 +25,7 @@ struct StateObj {
 extern "C" {
 int f_0b2120_3(int a, int b, int c, float *out) __asm__("f_0b2120");
 extern const float D_1ac7e0;
-void f_0b2f18(int a, int b, int c, int d, int e, int f, int g, int h, float x, float y, void *s, void *t);
+void f_0b2f18_i(int a, int b, int c, int d, int e, int f, int g, int h, float x, float y, void *s, void *t) __asm__("f_0b2f18");
 /* The caller at 0x0b6738 passes no floats: it sees the routine through an alias with eight
    integer arguments. */
 void f_0b6710_8(int a, int b, int c, int d, int e, int f, int g, int h) __asm__("f_0b6710");
@@ -141,7 +141,7 @@ void f_0b6710(int a, int b, int c, int d, int e, int f, int g, int h, float x, f
 {
     V4 p, q;
 
-    f_0b2f18(a, b, c, d, e, f, g, h, x, y, &p, &q);
+    f_0b2f18_i(a, b, c, d, e, f, g, h, x, y, &p, &q);
 }
 
 /* @implements 0x0b6738 us f_0b6738
@@ -225,11 +225,19 @@ struct PlaneRec {
     float x, y, z, w;
 };
 
+/* A car outline: a vertex count, the centre of its bounding circle (x, z), the circle's radius,
+   and up to sixteen outline vertices. */
+struct Shape {
+    int n;
+    float cx, cz, r;
+    Vec2 v[16];
+};
+
 /* A list of plane records: two halfword counts, then a word, then the pointer array. */
 struct PlaneList {
     unsigned short m0;
     unsigned short m2;
-    int m4;
+    Shape *m4;
     PlaneRec *m8[1];
 };
 
@@ -736,3 +744,1072 @@ extern "C" int f_0b2120(const PlaneList *o, const Pt3 *pa, const Pt3 *pb, Vec2 *
     out->y = out->y + best.y;
     return found;
 }
+
+
+/* The height query of the course areas, reached through the map manager. */
+struct CourseAreas2 {
+    float f_0e2944(float x, float y, float z);
+};
+struct MapMgr2 {
+    CourseAreas2 *Areas() { return &m12240; }
+    char m0[12240];
+    CourseAreas2 m12240;
+};
+extern MapMgr2 D_23c820;
+
+/* The rotation helper used all over the body: wrap the angle, then rotate (x, y) by it. */
+static inline void Rot(float ang, float *x, float *y)
+{
+    Angle t;
+    t.a = ang;
+    f_099b98(&t);
+    f_09b394(t, x, y);
+}
+
+struct PVec {
+    float x, y, z, w;
+};
+
+#define SQ3(a, b, c) ((a) * (a) + (b) * (b) + (c) * (c))
+
+/* Sweep the outline vertices (from the A to the B arrays) across the edge ep: for every vertex
+   path that crosses the edge, form the overshoot, and keep the longest one, pushed on by ten
+   units. */
+#define SWEEP_EDGE(ep, TRACK, LBL)                                                             \
+    {                                                                                       \
+        float ex = (ep)[0] - (ep)[2];                                                       \
+        float ey = (ep)[1] - (ep)[3];                                                       \
+        short k = 0;                                                                        \
+        if (o->m4->n > 0) {                                                                 \
+            do {                                                                            \
+                float ax = Ax[k], ay = Ay[k], bx = Bx[k], by = By[k];                       \
+                dA = ex * (ay - (ep)[1]) + ey * ((ep)[0] - ax);                          \
+                dB = ex * (by - (ep)[1]) + ey * ((ep)[0] - bx);                          \
+                pA = dA * dB;                                                      \
+                if (pA > 0.0f)                                                           \
+                    goto LBL;                                                  \
+                sA = (ax - bx) * ((ep)[1] - ay) + (ay - by) * (ax - (ep)[0]);            \
+                sB = (ax - bx) * ((ep)[3] - ay) + (ay - by) * (ax - (ep)[2]);            \
+                pB = sA * sB;                                                      \
+                if (pB > 0.0f)                                                           \
+                    goto LBL;                                                  \
+                aA = dA < 0.0f ? -dA : dA;                                      \
+                aB = dB < 0.0f ? -dB : dB;                                      \
+                if (aA == 0.0f && aB == 0.0f) {                                       \
+                    if (ax == bx) {                                                         \
+                        dA = (ep)[1] - ay;                                               \
+                        dB = (ep)[3] - ay;                                               \
+                        if (dA < dB) {                                                \
+                            V1808.y = dA;                                                \
+                            V1808.x = (ep)[0] - ax;                                         \
+                        } else {                                                            \
+                            V1808.y = dB;                                                \
+                            V1808.x = (ep)[2] - ax;                                         \
+                        }                                                                   \
+                    } else {                                                                \
+                        dA = (ep)[0] - ax;                                               \
+                        dB = (ep)[2] - ax;                                               \
+                        if (dA < dB)                                                  \
+                            V1808.y = (ep)[1] - ay;                                         \
+                        else                                                                \
+                            V1808.y = (ep)[3] - ay;                                         \
+                        V1808.x = dA;                                                    \
+                    }                                                                       \
+                } else {                                                                    \
+                    float fr = aB / (aA + aB);                                     \
+                    V1808.x = (ax - bx) * fr;                                               \
+                    V1808.y = (ay - by) * fr;                                               \
+                }                                                                           \
+                if (best < __builtin_sqrtf(V1808.x * V1808.x + V1808.y * V1808.y)) {        \
+                    best = __builtin_sqrtf(V1808.x * V1808.x + V1808.y * V1808.y);          \
+                    V1824 = V1808;                                                          \
+                    float il = 1.0f / __builtin_sqrtf(V1824.x * V1824.x + V1824.y * V1824.y); \
+                    V2048.y = il * V1824.y;                                                 \
+                    V2048.x = il * V1824.x;                                                 \
+                    V1824 = V2048;                                                          \
+                    V1840 = V2048;                                                          \
+                    V2016 = V2048;                                                          \
+                    float uy = V1824.y * eps;                                             \
+                    float ux = V1824.x * eps;                                             \
+                    V1824.x = ux + V1808.x;                                                 \
+                    V1824.y = uy + V1808.y;                                                 \
+                    V2032 = V2048;                                                          \
+                    if (TRACK) {                                                            \
+                        bestEdge = (unsigned short)i;                                       \
+                        bestVert = (unsigned short)k;                                       \
+                        w.a[0] = V1808.x;                                                   \
+                        w.a[2] = V1808.y;                                                   \
+                    }                                                                       \
+                }                                                                           \
+            LBL:                                                             \
+                k = k + 1;                                                                  \
+            } while (k < o->m4->n);                                                         \
+        }                                                                                   \
+    }
+
+/* @draft 0x0b2f18 us f_0b2f18
+   WHAT IT DOES: Moves a car outline (the shape at the list's offset 4: a bounding circle and up
+   to sixteen vertices) from the position Q to the position P (the orientations are the two
+   float arguments) against the wall edges of the list, and reports how it was blocked. Edges
+   are first culled in a frame turned along the motion; the vertices of the outline at both
+   ends are swept across the surviving edges, the longest overshoot (pushed on by ten units)
+   becomes the first correction. The corrected outline is then tested against the remaining
+   edges for a vertex bisector contact (result 2) and for edges that cut into the outline
+   (result 3). The corrections add up into the first output (x, height, z), the second output
+   gets the final slide along the contact edge (height from the course areas), and the
+   remaining outputs get the contact vertex angle, a speed, the edge direction and the edge's
+   two end points. Returns 0 (no contact) to 3.
+   DRAFT: complete transcription of every path; size 13,716 vs 14,328 bytes and about 3,550 of
+   3,582 words differ. The frame (2400 bytes) and the stack slots of the temporaries, the angle
+   slots and the 16-aligned vertex arrays match retail's offsets, and the first loops are
+   close, but: retail keeps the four result/edge counters in memory where this keeps them in
+   registers (hitAny), retail's prologue has a four-iteration empty counting loop (127 down by
+   32) that is not reproduced, the loops index the edge array with a halfword doubled index
+   instead of this file's strength-reduced pointer, register choice and scheduling differ
+   throughout, and retail reloads the shape pointer and its count after every call.
+   Layout aids with no counterpart in the original: the two unused angle locals (retail leaves
+   a hole of two slots after the first outline loop) and the packed scratch array tt.
+   Retail also reads a stale vector in the slide's second box (V1808 is the leftover of the
+   last cull iteration); that is kept here as in retail. */
+extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, float *out4,
+                        float *outAng, float *outSpd, float *out7, float fx, float fy,
+                        float *outA, float *outB)
+{
+#define V448 (*(Vec2 *)&v448)
+#define V464 (*(Vec2 *)&v464)
+#define V480 (*(Vec2 *)&v480)
+    float tt[12];
+#define dA tt[0]
+#define dB tt[1]
+#define sA tt[2]
+#define sB tt[3]
+#define aA tt[4]
+#define aB tt[5]
+#define pA tt[8]
+#define pB tt[9]
+    V4 w;
+    float Ax[16], Ay[16], Bx[16], By[16], Cx[16], Cy[16];
+    PVec v448, v464, v480;
+    float pts[64][4];
+    unsigned short flags[128];
+    Vec2 Qp, Pp, V1808, V1824, V1840, V1856, V1872, V1888, V1904;
+    PlaneRec seg;
+    Vec2 V1936;
+    V4 D, acc;
+    Vec2 V1984, V2000, V2016, V2032, V2048;
+    V4 v2064, v2080, v2096;
+    int bestEdge, bestVert, result, hitAny, side;
+    float best, bestLen2, ang, xlo, xhi, yhi, ylo, rad, zero, ang2, xi;
+    short i, k;
+    unsigned short cnt;
+
+    float eps = 10.0f;
+    w.a[0] = 0.0f;
+    w.a[1] = 0.0f;
+    w.a[2] = 0.0f;
+    w.a[3] = 0.0f;
+    bestEdge = 0xffff;
+    bestVert = 0xffff;
+    result = 0;
+    out3[0] = 0.0f;
+    out3[1] = 0.0f;
+    out3[2] = 0.0f;
+    out3[3] = 0.0f;
+    out4[0] = 0.0f;
+    out4[1] = 0.0f;
+    out4[2] = 0.0f;
+    out4[3] = 0.0f;
+    hitAny = 0;
+    *outAng = 0.0f;
+    *outSpd = 0.0f;
+    if (o->m0 == 0)
+        return 0;
+
+    /* Frame along the motion, and the outline's reach. */
+    Qp.x = Q->x;
+    Qp.y = Q->z;
+    Pp.x = P->x;
+    Pp.y = P->z;
+    V1872.x = Pp.x - Qp.x;
+    V1872.y = Pp.y - Qp.y;
+    V1808 = V1872;
+    ang = -f_09a9dc(V1808.y, V1808.x);
+    rad = o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+    xlo = -rad;
+    xhi = __builtin_sqrtf(V1808.x * V1808.x + V1808.y * V1808.y) - xlo;
+    yhi = rad;
+    ylo = xlo;
+
+    /* Cull the edges: flag 1 = outside the box around the motion. */
+    i = 0;
+    do {
+        PlaneRec *e = o->m8[i];
+        pts[i][0] = e->x;
+        pts[i][1] = e->y;
+        pts[i][3] = e->w;
+        pts[i][2] = e->z;
+        V1808 = *(Vec2 *)&pts[i][0];
+        V1808.x = V1808.x - Qp.x;
+        V1808.y = V1808.y - Qp.y;
+        Rot(ang, &V1808.x, &V1808.y);
+        V1824 = *(Vec2 *)&pts[i][2];
+        V1824.x = V1824.x - Qp.x;
+        V1824.y = V1824.y - Qp.y;
+        Rot(ang, &V1824.x, &V1824.y);
+        short j = i;
+        i = i + 1;
+        flags[j] = 1;
+        if (V1808.x < xlo && V1824.x < xlo)
+            continue;
+        if (xhi < V1808.x && xhi < V1824.x)
+            continue;
+        if (yhi < V1808.y && yhi < V1824.y)
+            continue;
+        if (V1808.y < ylo && V1824.y < ylo)
+            continue;
+        hitAny = 1;
+        flags[j] = 0;
+    } while (i < o->m0);
+    if (!hitAny)
+        return 0;
+
+    /* The outline at the start (A, turned by fy) and at the end (B, turned by fx). */
+    best = 0.0f;
+    V1824.x = 0.0f;
+    V1824.y = 0.0f;
+    i = 0;
+    if (o->m4->n > 0) {
+        do {
+            V448 = o->m4->v[i];
+            Rot(-fy, &V448.x, &V448.y);
+            V448.x = V448.x + Q->x;
+            V448.y = V448.y + Q->z;
+            Ax[i] = V448.x;
+            Ay[i] = V448.y;
+            V448 = o->m4->v[i];
+            Rot(-fx, &V448.x, &V448.y);
+            V448.x = V448.x + P->x;
+            V448.y = V448.y + P->z;
+            Bx[i] = V448.x;
+            By[i] = V448.y;
+            i = i + 1;
+        } while (i < o->m4->n);
+    }
+
+    Angle pad1, pad2;
+    __asm__("" : : "m"(pad1), "m"(pad2));
+
+    /* Sweep the outline across every surviving edge. */
+    if (o->m0 != 0) {
+        i = 0;
+        do {
+            if (flags[i] == 0) {
+                SWEEP_EDGE(pts[i], 1, sw1)
+            }
+            i = i + 1;
+        } while (i < (int)o->m0);
+    }
+
+    /* First correction. */
+    V1888 = Pp;
+    out3[0] = V1824.x;
+    out3[2] = V1824.y;
+    if (bestEdge != 0xffff) {
+        V1888.x = V1888.x + V1824.x;
+        V1888.y = V1888.y + V1824.y;
+        result = 1;
+        i = 0;
+        if (o->m4->n > 0) {
+            do {
+                Bx[i] = Bx[i] + V1824.x;
+                By[i] = By[i] + V1824.y;
+                i = i + 1;
+            } while (i < o->m4->n);
+        }
+        V1840.x = V1888.x - Qp.x;
+        V1840.y = V1888.y - Qp.y;
+        V1808 = V1840;
+        ang = -f_09a9dc(V1808.y, V1808.x);
+        {
+            float c0 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+            float len = __builtin_sqrtf(V1808.x * V1808.x + V1808.y * V1808.y);
+            xlo = -(o->m4->r + c0);
+            float c1 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+            xhi = len + o->m4->r + c1;
+            float c2 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+            float c3 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+            yhi = o->m4->r + c2;
+            ylo = -(o->m4->r + c3);
+        }
+        i = 0;
+        do {
+            V1808 = *(Vec2 *)&pts[i][0];
+            V1808.x = V1808.x - Qp.x;
+            V1808.y = V1808.y - Qp.y;
+            Rot(ang, &V1808.x, &V1808.y);
+            V1824 = *(Vec2 *)&pts[i][2];
+            V1824.x = V1824.x - Qp.x;
+            V1824.y = V1824.y - Qp.y;
+            Rot(ang, &V1824.x, &V1824.y);
+            short j = i;
+            i = i + 1;
+            flags[j] = 1;
+            if (V1808.x < xlo && V1824.x < xlo)
+                continue;
+            if (xhi < V1808.x && xhi < V1824.x)
+                continue;
+            if (yhi < V1808.y && yhi < V1824.y)
+                continue;
+            if (V1808.y < ylo && V1824.y < ylo)
+                continue;
+            flags[j] = 0;
+        } while (i < o->m0);
+    }
+
+    /* Second look: the outline after the first correction against the vertex contacts. */
+    i = 0;
+    if (o->m4->n > 0) {
+        do {
+            Cx[i] = Bx[i];
+            Cy[i] = By[i];
+            i = i + 1;
+        } while (i < o->m4->n);
+    }
+    zero = 0.0f;
+    V1872.x = zero;
+    V1872.y = zero;
+    bestLen2 = zero;
+    ang2 = zero;
+    if (o->m0 != 0) {
+        i = 0;
+        do {
+            if (flags[i] == 0) {
+                float *ep = pts[i];
+                float ex = ep[0] - ep[2];
+                float ey = ep[1] - ep[3];
+                k = 0;
+                if (o->m4->n > 0) {
+                    do {
+                        short k1 = (k + 1) % o->m4->n;
+                        float c0x = Cx[k], c0y = Cy[k], c1x = Cx[k1], c1y = Cy[k1];
+                        dA = ex * (c0y - ep[1]) + ey * (ep[0] - c0x);
+                        dB = ex * (c1y - ep[1]) + ey * (ep[0] - c1x);
+                        pA = dA * dB;
+                        if (pA > 0.0f)
+                            goto h_next;
+                        sA = (c0x - c1x) * (ep[1] - c0y) + (c0y - c1y) * (c0x - ep[0]);
+                        sB = (c0x - c1x) * (ep[3] - c0y) + (c0y - c1y) * (c0x - ep[2]);
+                        pB = sA * sB;
+                        if (pB > 0.0f)
+                            goto h_next;
+                        V464.x = c0x;
+                        V464.y = c0y;
+                        side = 1;
+                        V480.x = Cx[k1];
+                        V480.y = Cy[k1];
+                        if (!(f_0b1b28(&V464, &V480, (const Vec2 *)&ep[2]) > 0.0f))
+                            side = 0;
+                        {
+                            Vec2 *vv = (Vec2 *)((char *)o->m8[i] + 8 * (side ^ 1));
+                            side = side ^ 1;
+                            V448.x = vv[1].x - vv[0].x;
+                            V448.y = vv[1].y - vv[0].y;
+                            V1808.x = vv[-1].x - vv[0].x;
+                            V1808.y = vv[-1].y - vv[0].y;
+                            V1904.x = V448.x + V1808.x;
+                            V1904.y = V448.y + V1808.y;
+                            Vec2 *rv = &((Vec2 *)pts)[2 * i + side];
+                            V464.y = Cy[k] - rv->y;
+                            V464.x = Cx[k] - rv->x;
+                            V480.y = Cy[k1] - rv->y;
+                            V480.x = Cx[k1] - rv->x;
+                            V1824 = V1904;
+                            ang = -f_09a9dc(V1824.y, V1824.x);
+                            Rot(ang, &V464.x, &V464.y);
+                            Rot(ang, &V480.x, &V480.y);
+                            if (V464.y * V480.y > 0.0f)
+                                goto h_next;
+                            if (V464.y != 0.0f) {
+                                if (V480.y == 0.0f)
+                                    xi = V480.x;
+                                else
+                                    xi = V464.x - V464.y * ((V480.x - V464.x) / (V480.y - V464.y));
+                            } else
+                                xi = V464.x;
+                            V1840.x = Pp.x - Qp.x;
+                            V1840.y = Pp.y - Qp.y;
+                            V1856 = V1840;
+                            V1904 = V1840;
+                            float l1 = __builtin_sqrtf(V1904.x * V1904.x + V1904.y * V1904.y);
+                            V1904.x = Cx[k] - Ax[k];
+                            V1904.y = Cy[k] - Ay[k];
+                            float l2 = __builtin_sqrtf(V1904.x * V1904.x + V1904.y * V1904.y);
+                            short k2 = (k + 1) % o->m4->n;
+                            V1904.x = Cx[k2] - Ax[k2];
+                            V1904.y = Cy[k2] - Ay[k2];
+                            float l3 = __builtin_sqrtf(V1904.x * V1904.x + V1904.y * V1904.y);
+                            (void)l1;
+                            (void)l2;
+                            (void)l3;
+                            if (2314.81494140625f < xi)
+                                goto h_next;
+                            if (xi <= bestLen2)
+                                goto h_next;
+                            bestEdge = (unsigned short)i;
+                            bestLen2 = xi;
+                            if (side != 0) {
+                                if (o->m0 != 0) {
+                                    unsigned short a;
+                                    for (a = 0; a < o->m0; a++) {
+                                        PlaneRec *q = o->m8[a];
+                                        if (vv->x == q->x) {
+                                            if (vv->y == q->y)
+                                                bestEdge = a;
+                                        }
+                                    }
+                                }
+                            }
+                            ang2 = ang;
+                            V1872.x = -(xi + eps);
+                            V1872.y = 0.0f;
+                            bestVert = (unsigned short)k;
+                            Rot(-ang, &V1872.x, &V1872.y);
+                        }
+                    h_next:
+                        k = k + 1;
+                    } while (k < o->m4->n);
+                }
+            }
+            i = i + 1;
+        } while (i < (int)o->m0);
+    }
+    if (bestLen2 != 0.0f) {
+        result = 2;
+        V1824.y = 0.0f;
+        V1824.x = eps;
+        Rot(-ang2, &V1824.x, &V1824.y);
+        out3[0] = out3[0] + V1872.x;
+        out3[2] = out3[2] + V1872.y;
+        w.a[0] = w.a[0] + (V1872.x + V1824.x);
+        w.a[2] = w.a[2] + (V1872.y + V1824.y);
+    }
+
+    /* Third look: the outline after the second correction, against the edge boxes. */
+    if (result != 0) {
+        V1888.x = V1888.x + V1872.x;
+        V1888.y = V1888.y + V1872.y;
+        i = 0;
+        if (o->m4->n > 0) {
+            do {
+                Bx[i] = Bx[i] + V1872.x;
+                By[i] = By[i] + V1872.y;
+                i = i + 1;
+            } while (i < o->m4->n);
+        }
+        {
+            float c0 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+            float c1 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+            xlo = V1888.x - (o->m4->r + c0);
+            xhi = V1888.x + o->m4->r + c1;
+            float c2 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+            float c3 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+            yhi = V1888.y + o->m4->r + c2;
+            ylo = V1888.y - (o->m4->r + c3);
+        }
+        cnt = o->m0;
+        if (cnt != 0) {
+            i = 0;
+            do {
+                PlaneRec *e = o->m8[i];
+                pts[i][0] = e->x;
+                pts[i][1] = e->y;
+                pts[i][3] = e->w;
+                pts[i][2] = e->z;
+                short j = i;
+                i = i + 1;
+                flags[j] = 1;
+                if (e->x < xlo && e->z < xlo)
+                    continue;
+                if (xhi < e->x && xhi < e->z)
+                    continue;
+                if (yhi < e->y && yhi < e->w)
+                    continue;
+                if (e->y < ylo && e->w < ylo)
+                    continue;
+                flags[j] = 0;
+            } while (i < cnt);
+            cnt = o->m0;
+            i = 0;
+            if (cnt != 0) {
+                do {
+                    if (flags[i] == 0) {
+                        float *ep = pts[i];
+                        float ex = ep[0] - ep[2];
+                        float ey = ep[1] - ep[3];
+                        k = 0;
+                        if (o->m4->n > 0) {
+                            int n = o->m4->n;
+                            do {
+                                short k1 = (k + 1) % n;
+                                dA = ex * (By[k] - ep[1]) + ey * (ep[0] - Bx[k]);
+                                dB = ey * (ep[0] - Bx[k1]) + ex * (By[k1] - ep[1]);
+                                pA = dA * dB;
+                                if (pA > 0.0f)
+                                    goto i_next;
+                                sA = (Bx[k] - Bx[k1]) * (ep[1] - By[k]) + (By[k] - By[k1]) * (Bx[k] - ep[0]);
+                                sB = (Bx[k] - Bx[k1]) * (ep[3] - By[k]) + (By[k] - By[k1]) * (Bx[k] - ep[2]);
+                                pB = sA * sB;
+                                if (pB > 0.0f)
+                                    goto i_next;
+                                break;
+                            i_next:
+                                k = k + 1;
+                            } while (k < n);
+                        }
+                        if (k < o->m4->n) {
+                            V1904.x = 0.0f;
+                            bestLen2 = V1904.x;
+                            V1904.y = 0.0f;
+                            V464.x = ep[2] - ep[0];
+                            V464.y = ep[3] - ep[1];
+                            ang = -f_09a9dc(V464.y, V464.x);
+                            V1856.x = __builtin_sqrtf(V464.x * V464.x + V464.y * V464.y);
+                            V1856.y = 0.0f;
+                            k = 0;
+                            if (o->m4->n > 0) {
+                                do {
+                                    V1808.x = Bx[k] - ep[0];
+                                    V1808.y = By[k] - ep[1];
+                                    Rot(ang, &V1808.x, &V1808.y);
+                                    Cx[k] = V1808.x;
+                                    Cy[k] = -V1808.y;
+                                    k = k + 1;
+                                } while (k < o->m4->n);
+                            }
+                            if (o->m4->n > 0) {
+                                k = 0;
+                                do {
+                                    if (!(Cy[k] < 0.0f)) {
+                                        if (Cx[k] < 0.0f)
+                                            goto c_next;
+                                        if (V1856.x < Cx[k])
+                                            goto c_next;
+                                        if (Cy[k] <= bestLen2)
+                                            goto c_next;
+                                        bestEdge = (unsigned short)i;
+                                        bestVert = (unsigned short)k;
+                                        bestLen2 = Cy[k];
+                                    }
+                                c_next:
+                                    k = k + 1;
+                                } while (k < o->m4->n);
+                            }
+                            if (o->m4->n > 0) {
+                                int n = o->m4->n;
+                                k = 0;
+                                do {
+                                    short k1 = (k + 1) % n;
+                                    short lo, hi;
+                                    float y;
+                                    if (Cx[k] < Cx[k1]) {
+                                        lo = k;
+                                        hi = k1;
+                                    } else {
+                                        lo = k1;
+                                        hi = k;
+                                    }
+                                    if (Cx[lo] <= 0.0f && 0.0f <= Cx[hi]) {
+                                        if (Cx[hi] - Cx[lo] < 9.999999747378752e-05f) {
+                                            y = Cy[k] < Cy[k1] ? Cy[k] : Cy[k1];
+                                        } else {
+                                            y = Cy[lo] - Cx[lo] * ((Cy[k1] - Cy[k]) / (Cx[k1] - Cx[k]));
+                                        }
+                                        if (y <= bestLen2)
+                                            goto s_next;
+                                        bestEdge = (unsigned short)i;
+                                        bestVert = (unsigned short)k;
+                                        bestLen2 = y;
+                                    } else if (Cx[lo] <= V1856.x && V1856.x <= Cx[hi]) {
+                                        if (Cx[hi] - Cx[lo] < 9.999999747378752e-05f) {
+                                            y = Cy[k] < Cy[k1] ? Cy[k] : Cy[k1];
+                                        } else {
+                                            y = Cy[lo] + (V1856.x - Cx[lo]) * ((Cy[k1] - Cy[k]) / (Cx[k1] - Cx[k]));
+                                        }
+                                        if (y <= bestLen2)
+                                            goto s_next;
+                                        bestEdge = (unsigned short)i;
+                                        bestVert = (unsigned short)k;
+                                        bestLen2 = y;
+                                    }
+                                s_next:
+                                    k = k + 1;
+                                } while (k < n);
+                            }
+                            if (bestLen2 != 0.0f) {
+                                result = 3;
+                                V1904.x = 0.0f;
+                                V1904.y = -(bestLen2 + eps);
+                                Rot(-ang, &V1904.x, &V1904.y);
+                                V1808.x = 0.0f;
+                                V1808.y = eps;
+                                Rot(-ang, &V1808.x, &V1808.y);
+                                w.a[0] = w.a[0] - (V1904.x + V1808.x);
+                                w.a[2] = w.a[2] - (V1904.y + V1808.y);
+                                out3[0] = out3[0] - V1904.x;
+                                out3[2] = out3[2] - V1904.y;
+                                V1888.x = V1888.x - V1904.x;
+                                V1888.y = V1888.y - V1904.y;
+                                k = 0;
+                                if (o->m4->n > 0) {
+                                    do {
+                                        Bx[k] = Bx[k] - V1904.x;
+                                        By[k] = By[k] - V1904.y;
+                                        k = k + 1;
+                                    } while (k < o->m4->n);
+                                }
+                                {
+                                    float c0 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+                                    float c1 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+                                    xlo = -(V1888.x + o->m4->r + c0);
+                                    xhi = V1888.x + o->m4->r + c1;
+                                    float c2 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+                                    float c3 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+                                    yhi = V1888.y + o->m4->r + c2;
+                                    ylo = -(V1888.y + o->m4->r + c3);
+                                }
+                                {
+                                    short j = i + 1;
+                                    cnt = o->m0;
+                                    while (j < (int)cnt) {
+                                        PlaneRec *e = o->m8[j];
+                                        short jj = j;
+                                        j = j + 1;
+                                        flags[jj] = 0;
+                                        if (e->x < xlo && e->z < xlo)
+                                            continue;
+                                        if (xhi < e->x && xhi < e->z)
+                                            continue;
+                                        if (yhi < e->y && yhi < e->w)
+                                            continue;
+                                        if (e->y < ylo && e->w < ylo)
+                                            continue;
+                                        flags[jj] = 0;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    i = i + 1;
+                } while (i < (int)o->m0);
+            }
+        }
+    }
+
+    /* Slide along the contact edge (or the contact vertex's edge). */
+    Angle a2172;
+    a2172.a = 0.0f;
+    zero = a2172.a;
+    acc.a[0] = zero;
+    acc.a[1] = zero;
+    acc.a[2] = zero;
+    acc.a[3] = zero;
+    if (bestEdge != 0xffff) {
+        float f22, f20, f24, f21;
+        if (result & 1) {
+            PlaneRec *e = o->m8[bestEdge];
+            V448.x = e->z - e->x;
+            V448.y = e->w - e->y;
+            f22 = f_09a9dc(V448.y, V448.x);
+            f21 = -f22;
+            V1808.y = -out3[2];
+            V1808.x = -out3[0];
+            f20 = -f_09a9dc(V1808.y, V1808.x);
+            float lenv = __builtin_sqrtf(V1808.x * V1808.x + V1808.y * V1808.y);
+            a2172.a = f20 - f21;
+            f_099b98(&a2172);
+            if (a2172.a < zero)
+                a2172.a = -a2172.a;
+            float along = lenv * f_09a07c(a2172.a);
+            V1824.y = zero;
+            V1824.x = along;
+            Rot(f22, &V1824.x, &V1824.y);
+            ang = -f_09a9dc(V1824.y, V1824.x);
+            V1904.x = zero;
+            V1904.y = eps;
+            Rot(f22, &V1904.x, &V1904.y);
+            acc.a[0] = V1824.x + V1904.x;
+            acc.a[1] = zero;
+            acc.a[2] = V1824.y + V1904.y;
+            acc.a[3] = 1.0f;
+            V1824.x = acc.a[0];
+            V1824.y = acc.a[2];
+        } else {
+            Shape *s = o->m4;
+            int vn = bestVert + 1;
+            V2000.x = s->v[bestVert].x + s->cx;
+            V2000.y = s->v[bestVert].y + s->cz;
+            V1840 = V2000;
+            V1984 = V2000;
+            V448 = V2000;
+            short nx = (short)(vn % s->n);
+            V1840.y = s->v[nx].y + s->cz;
+            V1840.x = s->v[nx].x + s->cx;
+            V1808 = V1840;
+            V1984 = V1840;
+            V2000 = V1840;
+            Rot(-fx, &V448.x, &V448.y);
+            Rot(-fx, &V1808.x, &V1808.y);
+            float bx0 = P->x + out3[0];
+            float bz0 = P->z + out3[2];
+            V448.x = V448.x + bx0;
+            V1808.x = V1808.x + bx0;
+            V1808.y = V1808.y + bz0;
+            V448.y = V448.y + bz0;
+            V1840.x = V1808.x - V448.x;
+            V1840.y = V1808.y - V448.y;
+            V1824 = V1840;
+            V1984 = V1840;
+            V2000 = V1840;
+            f22 = f_09a9dc(V1824.y, V1824.x);
+            f24 = -f22;
+            f20 = __builtin_sqrtf(out3[0] * out3[0] + out3[1] * out3[1] + out3[2] * out3[2]);
+            a2172.a = f24 + f_09a9dc(-out3[2], -out3[0]);
+            float along = f20 * f_09a07c(a2172.a);
+            V1856.y = zero;
+            V1856.x = along;
+            Rot(f22, &V1856.x, &V1856.y);
+            ang = -f_09a9dc(V1856.y, V1856.x);
+            V1904.y = -eps;
+            V1904.x = zero;
+            Rot(f22, &V1904.x, &V1904.y);
+            acc.a[0] = V1856.x + V1904.x;
+            acc.a[1] = zero;
+            acc.a[2] = V1856.y + V1904.y;
+            acc.a[3] = 1.0f;
+            V1856.x = acc.a[0];
+            V1856.y = acc.a[2];
+        }
+
+        /* Cull the edges around the slid outline and find how far it must be pushed back. */
+        V448.x = P->x + out3[0];
+        V448.y = P->z + out3[2];
+        {
+            float c0 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+            float la = __builtin_sqrtf(acc.a[0] * acc.a[0] + acc.a[1] * acc.a[1] + acc.a[2] * acc.a[2]);
+            rad = o->m4->r + c0;
+            xlo = -rad;
+            xhi = la - xlo;
+            yhi = rad;
+        }
+        hitAny = 0;
+        cnt = o->m0;
+        if (cnt != 0) {
+            i = 0;
+            do {
+                PlaneRec *e = o->m8[i];
+                V1808.x = e->x - V448.x;
+                V1808.y = e->y - V448.y;
+                Rot(ang, &V1808.x, &V1808.y);
+                *(Vec2 *)&pts[i][0] = V1808;
+                V1824.y = e->w - V448.y;
+                V1824.x = e->z - V448.x;
+                Rot(ang, &V1824.x, &V1824.y);
+                *(Vec2 *)&pts[i][2] = V1824;
+                short j = i;
+                i = i + 1;
+                flags[j] = 1;
+                if (V1808.x < zero && V1824.x < zero)
+                    continue;
+                if (xhi < V1808.x && xhi < V1824.x)
+                    continue;
+                if (yhi < V1808.y && yhi < V1824.y)
+                    continue;
+                if (V1808.y < xlo && V1824.y < xlo)
+                    continue;
+                hitAny = 1;
+                flags[j] = 0;
+            } while (i < o->m0);
+        }
+        if (hitAny) {
+            i = 0;
+            best = 0.0f;
+            if (o->m4->n > 0) {
+                do {
+                    V448 = o->m4->v[i];
+                    Rot(-fx, &V448.x, &V448.y);
+                    V448.x = V448.x + acc.a[0];
+                    V448.y = V448.y + acc.a[2];
+                    Rot(ang, &V448.x, &V448.y);
+                    Bx[i] = V448.x;
+                    By[i] = V448.y;
+                    i = i + 1;
+                } while (i < o->m4->n);
+            }
+            cnt = o->m0;
+            if (cnt != 0) {
+                i = 0;
+                do {
+                    if (flags[i] == 0) {
+                        seg = *(PlaneRec *)&pts[i][0];
+                        V1840.x = seg.z - seg.x;
+                        V1840.y = seg.w - seg.y;
+                        V1936 = V1840;
+                        V1984 = V1840;
+                        V2000 = V1840;
+                        int s2 = 1;
+                        if (!(seg.y < seg.w))
+                            s2 = 0;
+                        s2 = s2 ^ 1;
+                        k = 0;
+                        if (o->m4->n > 0) {
+                            do {
+                                short k1 = (k + 1) % o->m4->n;
+                                V1904.y = By[k];
+                                V1904.x = Bx[k];
+                                V448.x = Bx[k1];
+                                V448.y = By[k1];
+                                if (V1904.y < V448.y) {
+                                    V1984 = V448;
+                                    V2000 = V1904;
+                                } else {
+                                    V1984 = V1904;
+                                    V2000 = V448;
+                                }
+                                if (f_0b1b28((const Vec2 *)&seg.x, (const Vec2 *)&seg.z, &V448) > 0.0f)
+                                    goto j_next;
+                                {
+                                    Vec2 *ea = &((Vec2 *)&seg)[s2];
+                                    Vec2 *eb = &((Vec2 *)&seg)[(s2 + 1) % 2];
+                                    float gap8, gap0, g;
+                                    if (eb->y < V2000.y)
+                                        goto j_next;
+                                    if (V1984.y < ea->y)
+                                        goto j_next;
+                                    if (V2000.y < ea->y)
+                                        gap8 = (V2000.x + (ea->y - V2000.y) * ((V1984.x - V2000.x) / (V1984.y - V2000.y))) - ea->x;
+                                    else
+                                        gap8 = -((ea->x + (V2000.y - ea->y) * ((eb->x - ea->x) / (eb->y - ea->y))) - V2000.x);
+                                    if (eb->y < V1984.y)
+                                        gap0 = (V2000.x + (eb->y - V2000.y) * ((V1984.x - V2000.x) / (V1984.y - V2000.y))) - eb->x;
+                                    else
+                                        gap0 = -((ea->x + (V1984.y - ea->y) * ((eb->x - ea->x) / (eb->y - ea->y))) - V1984.x);
+                                    g = gap0 < gap8 ? gap0 : gap8;
+                                    if (best < g) {
+                                        if (g <= __builtin_sqrtf(acc.a[0] * acc.a[0] + acc.a[1] * acc.a[1] + acc.a[2] * acc.a[2])) {
+                                            bestEdge = (unsigned short)i;
+                                            best = g;
+                                        }
+                                    }
+                                }
+                            j_next:
+                                k = k + 1;
+                            } while (k < o->m4->n);
+                        }
+                    }
+                    i = i + 1;
+                } while (i < (int)o->m0);
+            }
+            if (0.0f < best) {
+                V1824.y = 0.0f;
+                V1824.x = -(best + eps);
+                Rot(-ang, &V1824.x, &V1824.y);
+                acc.a[0] = acc.a[0] + V1824.x;
+                acc.a[2] = acc.a[2] + V1824.y;
+            }
+        }
+
+        /* The other group of edges, against the outline in world coordinates. */
+        cnt = o->m0;
+        if (o->m2 < cnt) {
+            short istart = (bestEdge < o->m2) ? o->m2 : 0;
+            V2000.x = P->x + out3[0];
+            V2000.y = P->z + out3[2];
+            V1984.x = V2000.x + acc.a[0];
+            V1984.y = V2000.y + acc.a[2];
+            ang = -f_09a9dc(acc.a[2], acc.a[0]);
+            {
+                float c0 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+                float lv = __builtin_sqrtf(V1808.x * V1808.x + V1808.y * V1808.y);
+                rad = o->m4->r + c0;
+                xlo = -rad;
+                xhi = lv - xlo;
+                yhi = rad;
+            }
+            i = istart;
+            hitAny = 0;
+            if (i < (int)cnt) {
+                do {
+                    PlaneRec *e = o->m8[i];
+                    pts[i][0] = e->x;
+                    pts[i][1] = e->y;
+                    pts[i][3] = e->w;
+                    pts[i][2] = e->z;
+                    V1808 = *(Vec2 *)&pts[i][0];
+                    V1808.x = V1808.x - V2000.x;
+                    V1808.y = V1808.y - V2000.y;
+                    Rot(ang, &V1808.x, &V1808.y);
+                    V1824 = *(Vec2 *)&pts[i][2];
+                    V1824.x = V1824.x - V2000.x;
+                    V1824.y = V1824.y - V2000.y;
+                    Rot(ang, &V1824.x, &V1824.y);
+                    short j = i;
+                    i = i + 1;
+                    flags[j] = 1;
+                    if (V1808.x < xlo && V1824.x < xlo)
+                        continue;
+                    if (xhi < V1808.x && xhi < V1824.x)
+                        continue;
+                    if (yhi < V1808.y && yhi < V1824.y)
+                        continue;
+                    if (V1808.y < xlo && V1824.y < xlo)
+                        continue;
+                    hitAny = 1;
+                    flags[j] = 0;
+                } while (i < (int)cnt);
+                if (hitAny) {
+                    best = 0.0f;
+                    V1824.x = 0.0f;
+                    V1824.y = 0.0f;
+                    k = 0;
+                    if (o->m4->n > 0) {
+                        do {
+                            V2032.y = o->m4->v[k].y + o->m4->cz;
+                            V2032.x = o->m4->v[k].x + o->m4->cx;
+                            V448 = V2032;
+                            V2016 = V2032;
+                            V1840 = V2032;
+                            Rot(-fx, &V448.x, &V448.y);
+                            V448.x = V448.x + V2000.x;
+                            V448.y = V448.y + V2000.y;
+                            Ax[k] = V448.x;
+                            Ay[k] = V448.y;
+                            Bx[k] = V448.x + acc.a[0];
+                            By[k] = V448.y + acc.a[2];
+                            k = k + 1;
+                        } while (k < o->m4->n);
+                    }
+                    i = istart;
+                    if (i < (int)cnt) {
+                        do {
+                            if (flags[i] == 0) {
+                                SWEEP_EDGE(pts[i], 0, sw2)
+                            }
+                            i = i + 1;
+                        } while (i < (int)cnt);
+                    }
+                    acc.a[0] = acc.a[0] + V1824.x;
+                    acc.a[2] = acc.a[2] + V1824.y;
+                }
+            }
+        }
+        out3[0] = out3[0] + acc.a[0];
+        w.a[0] = w.a[0] + acc.a[0];
+        w.a[2] = w.a[2] + acc.a[2];
+        out3[2] = out3[2] + acc.a[2];
+    }
+
+    /* The final slide and the contact data. */
+    pA = 0.0f;
+    pB = 0.0f;
+    D.a[0] = 0.0f;
+    D.a[1] = 0.0f;
+    D.a[2] = 0.0f;
+    D.a[3] = 0.0f;
+    if (result == 0)
+        return 0;
+    {
+        float h1 = D_23c820.Areas()->f_0e2944(P->x + out3[0], P->y + out3[1], P->z + out3[2]);
+        float h0 = D_23c820.Areas()->f_0e2944(P->x, P->y, P->z);
+        out3[1] = h1 - h0;
+        v2080.a[0] = P->x + w.a[0];
+        v2080.a[1] = P->y + out3[1];
+        v2080.a[2] = P->z + w.a[2];
+        v2080.a[3] = 1.0f;
+        pA = h0;
+        w.a[1] = h1 - h0;
+        PlaneRec *e = o->m8[bestEdge];
+        V448.x = e->z - e->x;
+        V448.y = e->w - e->y;
+        float eang = f_09a9dc(V448.y, V448.x);
+        v2096.a[0] = v2080.a[0] - P->x;
+        v2096.a[1] = v2080.a[1] - P->y;
+        v2096.a[2] = v2080.a[2] - P->z;
+        v2096.a[3] = 1.0f;
+        v2064 = v2096;
+        Rot(eang, &v2064.a[2], &v2064.a[0]);
+        if (v2064.a[0] * v2064.a[0] + v2064.a[2] * v2064.a[2] < 9.999999747378752e-05f) {
+            v2064.a[1] = 0.0f;
+        } else {
+            float q = v2064.a[2] / __builtin_sqrtf(v2064.a[0] * v2064.a[0] + v2064.a[2] * v2064.a[2]);
+            if (q < 0.0f)
+                q = -q;
+            v2064.a[1] = v2064.a[1] * q;
+        }
+        float vlen = __builtin_sqrtf(SQ3(v2064.a[0], v2064.a[1], v2064.a[2]));
+        v2096.a[0] = P->x - Q->x;
+        v2096.a[1] = P->y - Q->y;
+        v2096.a[2] = P->z - Q->z;
+        v2096.a[3] = 1.0f;
+        D = v2096;
+        if (__builtin_sqrtf(SQ3(D.a[0], D.a[1], D.a[2])) < vlen) {
+            float dl = __builtin_sqrtf(SQ3(D.a[0], D.a[1], D.a[2]));
+            float vl = __builtin_sqrtf(SQ3(v2064.a[0], v2064.a[1], v2064.a[2]));
+            float sc = dl / vl;
+            pB = sc;
+            v2064.a[0] = v2064.a[0] * sc;
+            v2064.a[1] = v2064.a[1] * sc;
+            v2064.a[2] = v2064.a[2] * sc;
+        }
+        v2064.a[1] = v2064.a[1] < 163.3333740234375f ? v2064.a[1] : 163.3333740234375f;
+        v2064.a[0] = 0.0f;
+        Rot(-eang, &v2064.a[2], &v2064.a[0]);
+        *(V4 *)out4 = v2064;
+        {
+            int vn = bestVert + 1;
+            Shape *s = o->m4;
+            int modv = vn % s->n;
+            (void)modv;
+            V2016.y = s->v[bestVert].y + s->cz;
+            V2016.x = s->v[bestVert].x + s->cx;
+            V448 = V2016;
+            V2032 = V2016;
+            V2048 = V2016;
+            *outAng = -f_09a9dc(V448.x, -V448.y);
+        }
+        *outSpd = __builtin_sqrtf(SQ3(out4[0], out4[1], out4[2])) * 0.009999999776482582f;
+        PlaneRec *ee = o->m8[bestEdge];
+        V448.y = P->z - Q->z;
+        V448.x = P->x - Q->x;
+        if (ee->z == ee->x && ee->w == ee->y)
+            ee = o->m8[bestEdge + 1];
+        float zz = 0.0f;
+        out7[0] = ee->z - ee->x;
+        out7[1] = zz;
+        out7[2] = ee->w - ee->y;
+        out7[3] = 1.0f;
+        float inv = 1.0f / __builtin_sqrtf(out7[0] * out7[0] + zz + out7[2] * out7[2]);
+        out7[0] = out7[0] * inv;
+        out7[2] = out7[2] * inv;
+        out7[1] = out7[1] * inv;
+        outA[3] = 1.0f;
+        outA[0] = ee->x;
+        outA[2] = ee->y;
+        outA[1] = zz;
+        outB[3] = 1.0f;
+        outB[0] = ee->z;
+        outB[1] = zz;
+        outB[2] = ee->w;
+    }
+    return result;
+}
+#undef dA
+#undef dB
+#undef sA
+#undef sB
+#undef aA
+#undef aB
+#undef pA
+#undef pB
+#undef V448
+#undef V464
+#undef V480
