@@ -2125,3 +2125,559 @@ int f_0722bc(char *obj, unsigned limit, int idx, int base, int *X, unsigned char
 }
 }
 }
+
+/* ---- menuH ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* menuH fragment: TU 119 large menu movie functions. */
+namespace menuH {
+template <class T> inline T &at(void *p, unsigned int off) { return *(T *)((char *)p + off); }
+extern "C" {
+int atoi(const char *);
+void *f_092970(void);
+void f_0929b4(void *, int);
+void *f_092ce4(void);
+void f_092d40(void *, int);
+
+/* @implements 0x06b7b4 us f_06b7b4
+   WHAT IT DOES: parses the number after the 5-char prefix of the name with atoi and
+   maps it through a big switch to a table index; selects the type-A or type-B
+   record getter (f_092970 / f_092ce4) and passes the index to its setter
+   (f_0929b4 / f_092d40); unknown numbers use type A index 1. */
+void f_06b7b4(const char *name)
+{
+    switch (atoi(name + 5)) {
+    case 100001001:
+        { void *r = f_092ce4(); f_092d40(r, 3); } return;
+    case 100001002:
+        { void *r = f_092ce4(); f_092d40(r, 4); } return;
+    case 100001003:
+        { void *r = f_092ce4(); f_092d40(r, 5); } return;
+    case 100001004:
+        { void *r = f_092ce4(); f_092d40(r, 6); } return;
+    case 100001005:
+        { void *r = f_092ce4(); f_092d40(r, 7); } return;
+    case 100001006:
+        { void *r = f_092ce4(); f_092d40(r, 8); } return;
+    case 100001007:
+        { void *r = f_092ce4(); f_092d40(r, 11); } return;
+    case 100001008:
+        { void *r = f_092970(); f_0929b4(r, 6); } return;
+    case 100001009:
+        { void *r = f_092970(); f_0929b4(r, 9); } return;
+    case 100001011:
+        { void *r = f_092970(); f_0929b4(r, 2); } return;
+    case 100001014:
+        { void *r = f_092970(); f_0929b4(r, 23); } return;
+    case 110001001:
+        { void *r = f_092970(); f_0929b4(r, 24); } return;
+    case 110001002:
+        { void *r = f_092970(); f_0929b4(r, 25); } return;
+    case 130001001:
+        { void *r = f_092ce4(); f_092d40(r, 33); } return;
+    case 130001002:
+        { void *r = f_092ce4(); f_092d40(r, 34); } return;
+    case 130001003:
+        { void *r = f_092ce4(); f_092d40(r, 28); } return;
+    case 130001004:
+        { void *r = f_092ce4(); f_092d40(r, 27); } return;
+    case 130001005:
+        { void *r = f_092ce4(); f_092d40(r, 29); } return;
+    case 130001006:
+        { void *r = f_092ce4(); f_092d40(r, 30); } return;
+    case 130001007:
+        { void *r = f_092ce4(); f_092d40(r, 31); } return;
+    case 130001008:
+        { void *r = f_092ce4(); f_092d40(r, 32); } return;
+    case 130001009:
+        { void *r = f_092ce4(); f_092d40(r, 35); } return;
+    case 130001010:
+        { void *r = f_092ce4(); f_092d40(r, 36); } return;
+    case 130001011:
+        { void *r = f_092ce4(); f_092d40(r, 25); } return;
+    case 130001012:
+        { void *r = f_092ce4(); f_092d40(r, 26); } return;
+    case 130001013:
+        { void *r = f_092ce4(); f_092d40(r, 45); } return;
+    case 130001014:
+        { void *r = f_092ce4(); f_092d40(r, 46); } return;
+    case 130001015:
+        { void *r = f_092ce4(); f_092d40(r, 40); } return;
+    case 130001016:
+        { void *r = f_092ce4(); f_092d40(r, 39); } return;
+    case 130001017:
+        { void *r = f_092ce4(); f_092d40(r, 41); } return;
+    case 130001018:
+        { void *r = f_092ce4(); f_092d40(r, 42); } return;
+    case 130001019:
+        { void *r = f_092ce4(); f_092d40(r, 43); } return;
+    case 130001020:
+        { void *r = f_092ce4(); f_092d40(r, 44); } return;
+    case 130001021:
+        { void *r = f_092ce4(); f_092d40(r, 47); } return;
+    case 130001022:
+        { void *r = f_092ce4(); f_092d40(r, 48); } return;
+    case 130001023:
+        { void *r = f_092ce4(); f_092d40(r, 37); } return;
+    case 130001024:
+        { void *r = f_092ce4(); f_092d40(r, 38); } return;
+    case 140001001:
+        { void *r = f_092ce4(); f_092d40(r, 49); } return;
+    case 140001002:
+        { void *r = f_092ce4(); f_092d40(r, 50); } return;
+    case 140001003:
+        { void *r = f_092ce4(); f_092d40(r, 51); } return;
+    case 140001004:
+        { void *r = f_092ce4(); f_092d40(r, 52); } return;
+    case 140001005:
+        { void *r = f_092ce4(); f_092d40(r, 53); } return;
+    case 140001006:
+        { void *r = f_092ce4(); f_092d40(r, 54); } return;
+    case 140001007:
+        { void *r = f_092ce4(); f_092d40(r, 55); } return;
+    case 140001008:
+        { void *r = f_092ce4(); f_092d40(r, 56); } return;
+    case 140001009:
+        { void *r = f_092ce4(); f_092d40(r, 57); } return;
+    case 140001010:
+        { void *r = f_092ce4(); f_092d40(r, 58); } return;
+    case 140001011:
+        { void *r = f_092ce4(); f_092d40(r, 59); } return;
+    case 140001012:
+        { void *r = f_092ce4(); f_092d40(r, 60); } return;
+    case 140001013:
+        { void *r = f_092ce4(); f_092d40(r, 61); } return;
+    case 140001014:
+        { void *r = f_092ce4(); f_092d40(r, 62); } return;
+    case 140001015:
+        { void *r = f_092ce4(); f_092d40(r, 63); } return;
+    case 140001016:
+        { void *r = f_092ce4(); f_092d40(r, 64); } return;
+    case 140001017:
+        { void *r = f_092ce4(); f_092d40(r, 65); } return;
+    case 140001018:
+        { void *r = f_092ce4(); f_092d40(r, 66); } return;
+    case 140001019:
+        { void *r = f_092ce4(); f_092d40(r, 67); } return;
+    case 140001020:
+        { void *r = f_092ce4(); f_092d40(r, 68); } return;
+    case 140001021:
+        { void *r = f_092ce4(); f_092d40(r, 69); } return;
+    case 140001022:
+        { void *r = f_092ce4(); f_092d40(r, 70); } return;
+    case 200001001:
+        { void *r = f_092ce4(); f_092d40(r, 1); } return;
+    case 200001002:
+        { void *r = f_092ce4(); f_092d40(r, 1); } return;
+    case 200001006:
+        { void *r = f_092ce4(); f_092d40(r, 0); } return;
+    case 200001009:
+        { void *r = f_092ce4(); f_092d40(r, 0); } return;
+    case 200001010: case 200001011: case 200001012:
+        { void *r = f_092970(); f_0929b4(r, 0); } return;
+    case 200001013:
+        { void *r = f_092970(); f_0929b4(r, 22); } return;
+    case 200001014:
+        { void *r = f_092970(); f_0929b4(r, 23); } return;
+    case 200003001:
+        { void *r = f_092970(); f_0929b4(r, 4); } return;
+    case 200006001:
+        { void *r = f_092970(); f_0929b4(r, 10); } return;
+    case 200006002:
+        { void *r = f_092ce4(); f_092d40(r, 72); } return;
+    case 200006003:
+        { void *r = f_092970(); f_0929b4(r, 12); } return;
+    case 200007001:
+        { void *r = f_092ce4(); f_092d40(r, 9); } return;
+    case 200007002:
+        { void *r = f_092970(); f_0929b4(r, 13); } return;
+    case 200100001:
+        { void *r = f_092970(); f_0929b4(r, 34); } return;
+    case 300001001:
+        { void *r = f_092ce4(); f_092d40(r, 23); } return;
+    case 300001002:
+        { void *r = f_092970(); f_0929b4(r, 9); } return;
+    case 300001003:
+        { void *r = f_092ce4(); f_092d40(r, 21); } return;
+    case 300001004:
+        { void *r = f_092970(); f_0929b4(r, 5); } return;
+    case 300001100:
+        { void *r = f_092970(); f_0929b4(r, 4); } return;
+    case 300002001:
+        { void *r = f_092ce4(); f_092d40(r, 71); } return;
+    case 300003001:
+        { void *r = f_092ce4(); f_092d40(r, 24); } return;
+    case 300005001:
+        { void *r = f_092ce4(); f_092d40(r, 15); } return;
+    case 300005002:
+        { void *r = f_092ce4(); f_092d40(r, 16); } return;
+    case 400003001:
+        { void *r = f_092ce4(); f_092d40(r, 12); } return;
+    case 400003002:
+        { void *r = f_092970(); f_0929b4(r, 26); } return;
+    case 400012001:
+        { void *r = f_092ce4(); f_092d40(r, 13); } return;
+    case 400012005:
+        { void *r = f_092ce4(); f_092d40(r, 14); } return;
+    case 500001001:
+        { void *r = f_092ce4(); f_092d40(r, 22); } return;
+    case 600001001:
+        { void *r = f_092970(); f_0929b4(r, 20); } return;
+    case 600002001:
+        { void *r = f_092970(); f_0929b4(r, 17); } return;
+    case 600004001:
+        { void *r = f_092970(); f_0929b4(r, 19); } return;
+    case 600005001:
+        { void *r = f_092970(); f_0929b4(r, 27); } return;
+    case 600006004:
+        { void *r = f_092970(); f_0929b4(r, 28); } return;
+    case 600009001:
+        { void *r = f_092970(); f_0929b4(r, 29); } return;
+    case 600011001:
+        { void *r = f_092970(); f_0929b4(r, 30); } return;
+    case 600011002:
+        { void *r = f_092970(); f_0929b4(r, 31); } return;
+    case 600012001:
+        { void *r = f_092970(); f_0929b4(r, 32); } return;
+    case 600015001:
+        { void *r = f_092970(); f_0929b4(r, 33); } return;
+    case 800004001:
+        { void *r = f_092ce4(); f_092d40(r, 10); } return;
+    case 800004002:
+        { void *r = f_092970(); f_0929b4(r, 14); } return;
+    case 100001010:
+    default:
+        break;
+    }
+    { void *r = f_092970(); f_0929b4(r, 1); }
+}
+
+extern char D_1a5d88[]; /* "%d" */
+extern char D_1a5e08[]; /* "%03d" */
+extern char D_1a5e28[]; /* "%02d" */
+extern char D_1a61fc[]; /* "%02d:%02d.%03d" */
+extern char D_1a620c[]; /* "+%02d:%02d.%03d" */
+extern char D_1a621c[]; /* "+%02d.%03d" */
+extern float D_1a52a4;
+extern float D_1d3140;
+extern unsigned int D_24518c;
+int sprintf(char *, const char *, ...);
+void *f_04b280(void *);
+void f_046894(void *, int, int);
+void f_0468e8(void *, int, char *, int);
+int f_046c8c(void *, int, int);
+void *f_0477b0(void *, int, int, float, float, float, float, int, int, void *);
+void *f_046de0(void *, int, int, float, float, float, float, int, int, void *);
+void f_049188(void *, int, int, float, float, float, float, int, int, int, int, void *, void *);
+void f_07b018(void *, int, int, float, float, float, float, int, void *);
+int f_06e86c(int);
+int f_06e888(int);
+int f_06b714(int);
+void f_07ac1c(void *);
+void f_07ac38(void *, int);
+void f_07ac40(void *, int);
+
+#define D77(id) f_0477b0(o, (int)x, (int)y, xa, xb, xc, xd, (id), 480, at<char *>(self, 12) + 44)
+#define D46(id) f_046de0(o, (int)x, (int)y, xa, xb, xc, xd, (id), 480, at<char *>(self, 12) + 44)
+#define DZ77(id) f_0477b0(o, (int)x, (int)y, D_1a52a4, 0.0f, 0.0f, D_1a52a4, (id), 480, at<char *>(self, 12) + 44)
+#define DZ46(id) f_046de0(o, (int)x, (int)y, D_1a52a4, 0.0f, 0.0f, D_1a52a4, (id), 480, at<char *>(self, 12) + 44)
+
+#define PT3(tv0) { int tv = (tv0); int s1 = tv / 1000; sprintf(buf, D_1a5e08, tv % 1000); f_0468e8(o, 2, buf, 0); \
+    sprintf(buf, D_1a5e28, s1 % 60); f_0468e8(o, 1, buf, 0); sprintf(buf, D_1a5e28, s1 / 60); f_0468e8(o, 0, buf, 0); }
+
+/* @draft 0x074430 us f_074430
+   WHAT IT DOES: menu movie text/sprite dispatcher: parses the number after the first four
+   characters of the name and, depending on it, prints strings from the parent's
+   records (results, lap times as mm:ss.ms, ids), selects a glyph with f_046894 or draws a sprite
+   with f_0477b0 / f_046de0 / the text style f_07b018; numbers above 99999999 run the
+   f_049188 scroll path. Returns 1 when something was drawn, 0 otherwise.
+   Remaining difference: 3372 vs 3572 bytes; callee-saved allocation differs (6 saved s registers against retail's 5: the multiply-by-reciprocal temporaries of the time splitting get their own registers) and the shared sprite-draw tails are not all merged. */
+int f_074430(void *self, char *name, float x, float y, float xa, float xb, float xc, float xd)
+{
+    char buf[256];
+    char ts[16];
+    f_07ac1c(ts);
+    f_07ac40(ts, 0);
+    f_07ac38(ts, (int)at<char *>(self, 12) + 44);
+    void *o = f_04b280(at<char *>(self, 12) + 4);
+    char *nm = name + 4;
+    int n = atoi(nm);
+    if (n > 99999999) {
+        at<char>(at<void *>(self, 12), 452) = 1;
+        if (f_046c8c(o, n, 480) < 480)
+            return 0;
+        char *p = at<char *>(self, 12);
+        int c = at<int>(p, 448);
+        if (c > 120) {
+            if (D_24518c & 0x100)
+                at<float>(p, 444) += D_1d3140;
+            else if (D_24518c & 0x200)
+                at<float>(p, 444) -= D_1d3140 + D_1d3140;
+            else
+                at<float>(p, 444) -= D_1d3140;
+        } else
+            at<int>(p, 448) = c + 1;
+        f_049188(o, (int)x, (int)y, xa, xb, xc, xd, n, 0, 480, 150, p + 44, p + 444);
+        return 1;
+    }
+    switch (n) {
+    case 0x2dcab0: {
+        int t = at<int>(at<char *>(self, 12), 900);
+        if (t >= 25)
+            t -= 24;
+        f_046894(o, 0, t + 0xc66128);
+        return 0;
+    }
+    case 0x4c5ecc: {
+        int t = at<int>(at<char *>(self, 12), 904);
+        if (t == 255)
+            return 1;
+        f_046894(o, 0, f_06e888(t));
+        return 0;
+    }
+    case 0x4c5ecd: {
+        int t = at<int>(at<char *>(self, 12), 904);
+        if (t != 255) {
+            f_046894(o, 0, f_06e86c(t));
+            return 0;
+        }
+        sprintf(buf, D_1a5d88, at<int>(at<char *>(self, 12), 1000));
+        f_0468e8(o, 0, buf, 0);
+        D77(0xe4e5d1);
+        return 1;
+    }
+    case 0x4c5ed1: {
+        char *p = at<char *>(self, 12);
+        int t = at<int>(p, 904);
+        if (t == 255)
+            return 1;
+        f_046894(o, 0, at<unsigned char>(p, 1368 + t) + 0xd5af24);
+        return 0;
+    }
+    case 0x4c5ed5: {
+        char *p = at<char *>(self, 12);
+        unsigned int t;
+        if (at<int>(p, 904) == 255) {
+            f_046894(o, 0, at<int>(p, 900) + 0xc66510);
+            p = at<char *>(self, 12);
+            unsigned int a = at<unsigned int>(p, 908);
+            if (a == 1)
+                t = 0x4c5ece;
+            else
+                t = a + 0x4c5ed3;
+            if (a >= 7)
+                t = a + 0x895855;
+            if (at<unsigned int>(p, 1004) == a)
+                t = 0x89582e;
+        } else {
+            f_046894(o, 0, at<unsigned char>(p, 1416 + at<int>(p, 904) * 10 + at<int>(p, 908)) + 0xc66510);
+            p = at<char *>(self, 12);
+            unsigned int a = at<unsigned int>(p, 908);
+            if (a == 1)
+                t = 0x4c5ece;
+            else
+                t = a + 0x4c5ed3;
+            if (a == at<unsigned char>(p, 1272 + at<int>(p, 904)))
+                t = 0x89582e;
+        }
+        D77(t);
+        return 1;
+    }
+    case 0x89582d: {
+        char *p = at<char *>(self, 12);
+        int a = at<int>(p, 908);
+        if (a == at<unsigned char>(p, 1272 + at<int>(p, 904))) {
+            D77(0x89582e);
+            return 1;
+        }
+        sprintf(buf, D_1a5d88, a);
+        f_0468e8(o, 0, buf, 0);
+        return 0;
+    }
+    case 0x895831: {
+        char *p = at<char *>(self, 12);
+        if ((unsigned)(at<int>(p, 904) - 19) < 3) {
+            if (at<int>(p, 892) == 1)
+                D46(0x89582f);
+            else
+                D46(0x895830);
+            return 1;
+        }
+        f_046894(o, 0, at<int>(p, 892) + n);
+        return 0;
+    }
+    case 0x89584f: {
+        char *p = at<char *>(self, 12);
+        f_046894(o, 0, at<unsigned char>(p, 3277 + at<int>(p, 896)) + 0xd5af24);
+        f_046894(o, 1, at<int>(at<char *>(self, 12), 896) + 0xd5a750);
+        return 0;
+    }
+    case 0x895850:
+    case 0x895851:
+    case 0x895852: {
+        char *p = at<char *>(self, 12);
+        if (at<int>(p, 972) == n - 0x89584f) {
+            DZ77(n);
+            return 1;
+        }
+        return 0;
+    }
+    case 0x895853: {
+        if (!at<unsigned char>(at<char *>(self, 12), 976))
+            return 0;
+        DZ77(n);
+        return 1;
+    }
+    case 0x895854:
+    case 0x895855:
+    case 0x895856:
+    case 0x895857: {
+        int idx = n - 0x895854;
+        int t;
+        char *p = at<char *>(self, 12);
+        if (idx == 3) {
+            if (at<int>(p, 880) == idx) {
+                t = at<int>(p, 968);
+                PT3(t);
+                {
+                    float z = D_1a52a4;
+                    f_0477b0(o, 196, 136, 0.0f, 0.0f, 0.0f, z, 0x89586e, 240, at<char *>(self, 12) + 44);
+                    f_0477b0(o, 308, 136, 0.0f, 0.0f, 0.0f, z, n, 240, at<char *>(self, 12) + 44);
+                }
+            }
+            p = at<char *>(self, 12);
+            t = at<int>(p, 912);
+        } else
+            t = at<int>(p, 916 + idx * 4);
+        if (t == 0) {
+            D77(0x895844);
+            return 1;
+        }
+        PT3(t);
+        {
+            char *q = at<char *>(self, 12);
+            int k = n - 0x895853;
+            if (at<int>(q, 972) == k || (k == 4 && at<unsigned char>(q, 976))) {
+                DZ77(n);
+                return 1;
+            }
+        }
+        return 0;
+    }
+    case 0x895858:
+    case 0x895859:
+    case 0x89585a:
+    case 0x89585b: {
+        int idx = n - 0x895858;
+        char *p = at<char *>(self, 12);
+        int t;
+        if (idx == 3)
+            t = at<int>(p, 940);
+        else
+            t = at<int>(p, 944 + idx * 4);
+        if (t == 0) {
+            D77(0x895846);
+            return 1;
+        }
+        {
+            int v = f_06b714(t);
+            int s0 = v / 1000;
+            sprintf(buf, D_1a5e08, v - s0 * 1000);
+            f_0468e8(o, 1, buf, 0);
+            sprintf(buf, D_1a5e08, s0);
+            f_0468e8(o, 0, buf, 0);
+        }
+        {
+            char *q = at<char *>(self, 12);
+            int k = n - 0x895857;
+            if (at<int>(q, 972) == k || (k == 4 && at<unsigned char>(q, 976))) {
+                DZ77(n);
+                return 1;
+            }
+        }
+        return 0;
+    }
+    case 0x895c24:
+    case 0x895c25:
+    case 0x895c26:
+    case 0x895c27:
+    case 0x895c28:
+    case 0x895c29:
+    case 0x895c2a:
+    case 0x895c2b: {
+        char *rec = at<char *>(self, 12) + (n - 0x895c24) * 28;
+        if (!at<char>(rec, 1064))
+            return 1;
+        f_046894(o, 0, at<int>(rec, 1048) + 0x895c13);
+        return 0;
+    }
+    case 0x895c2c:
+    case 0x895c2d:
+    case 0x895c2e:
+    case 0x895c2f:
+    case 0x895c30:
+    case 0x895c31:
+    case 0x895c32:
+    case 0x895c33: {
+        char *rec = at<char *>(self, 12) + (n - 0x895c2c) * 28;
+        if (!at<char>(rec, 1064))
+            return 1;
+        f_07b018(ts, (int)x, (int)y, xa, xb, xc, xd, 0, rec + 1064);
+        return 1;
+    }
+    case 0x895c34:
+    case 0x895c35:
+    case 0x895c36:
+    case 0x895c37:
+    case 0x895c38:
+    case 0x895c39:
+    case 0x895c3a:
+    case 0x895c3b: {
+        int idx = n - 0x895c34;
+        char *c0 = at<char *>(self, 12);
+        char *rec = c0 + idx * 28;
+        if (!at<char>(rec, 1064))
+            return 1;
+        int t;
+        if (idx == 0)
+            t = at<int>(c0, 1056);
+        else
+            t = at<int>(rec, 1056);
+        if (t == 0) {
+            f_046894(o, 0, 0x895844);
+            return 0;
+        }
+        {
+            int s = t / 1000;
+            int ms = t - s * 1000;
+            int m = s / 60;
+            int sec = s - m * 60;
+            if (idx == 0)
+                sprintf(buf, D_1a61fc, m, sec, ms);
+            else if (m > 0)
+                sprintf(buf, D_1a620c, m, sec, ms);
+            else
+                sprintf(buf, D_1a621c, sec, ms);
+        }
+        f_07b018(ts, (int)x, (int)y, xa, xb, xc, xd, 0, buf);
+        return 1;
+    }
+    case 0x895c42: {
+        char *p = at<char *>(self, 12);
+        f_046894(o, 0, at<int>(p, 4356) + 0xc66510);
+        if (at<unsigned char>(at<char *>(self, 12), 1020))
+            DZ46(0x895c42);
+        else
+            DZ46(0x895c43);
+        return 1;
+    }
+    case 0x896401:
+        f_0468e8(o, 0, at<char *>(self, 12) + 977, 0);
+        return 0;
+    }
+    return 0;
+}
+}
+}
