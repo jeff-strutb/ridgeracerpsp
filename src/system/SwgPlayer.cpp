@@ -8420,7 +8420,7 @@ void f_04f874(char *self, void *obj) {
    WHAT IT DOES: calls virtual slot 25 of the object, then copies the counted handle two links down the chain at +328 (bumping its refcount), calls f_05f64c with that chain, and calls virtual slot 18 of the handle's object with the +328 sub-object.
    Remaining difference: same stack-store ordering as f_055220. */
 void f_0540a0(char *p) {
-  H h; volatile int t[4]; int out[4]; int b;
+  H h; volatile int t[4]; int out[4]; volatile int b;
   char *q = p + 328;
   void **pv = *(void***)p;
   ((void(*)(void*))pv[25])(p);
@@ -8431,7 +8431,7 @@ void f_0540a0(char *p) {
   t[0]=a;
   int w=*(int*)(a+4);
   b=w; t[0]=w;
-  f_05f64c(out,q,&b);
+  f_05f64c(out,q,(int*)&b);
   void **vt=*(void***)h.o;
   ((void(*)(void*,void*))vt[18])(h.o, q);
 }
@@ -8440,7 +8440,7 @@ void f_0540a0(char *p) {
    WHAT IT DOES: same as f_0540a0 but calls virtual slot 19 of the handle's object.
    Remaining difference: same as f_0540a0. */
 void f_05414c(char *p) {
-  H h; volatile int t[4]; int out[4]; int b;
+  H h; volatile int t[4]; int out[4]; volatile int b;
   char *q = p + 328;
   void **pv = *(void***)p;
   ((void(*)(void*))pv[25])(p);
@@ -8451,7 +8451,7 @@ void f_05414c(char *p) {
   t[0]=a;
   int w=*(int*)(a+4);
   b=w; t[0]=w;
-  f_05f64c(out,q,&b);
+  f_05f64c(out,q,(int*)&b);
   void **vt=*(void***)h.o;
   ((void(*)(void*,void*))vt[19])(h.o, q);
 }
@@ -10090,3 +10090,581 @@ KEnt *f_0665bc(void) {
     return D_291694;
 }
 }}
+
+/* ---- swg7c ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+namespace swg7c {
+extern "C" {
+void *f_04dfa0(int);
+void f_04ed28(void *);
+void f_04e4b4(void *);
+void f_05daa4(void *, void *);
+void f_05db84(void *);
+void f_05e4a8(void *, void *);
+void f_05dff0(void *, void *, void *);
+void f_064e98(void *, void *, void *);
+void f_064f10(void *, void *, void *);
+void f_05cbd4(void *);
+void f_064c6c(void *);
+void f_05f64c(void *, void *, void *);
+void f_05e394(void *, void *, void *, void *);
+void f_04e8c0(void *);
+extern char D_1a3760[];
+struct RbN { int color; RbN *parent, *left, *right; };
+void f_064cfc(RbN *, RbN **);
+void f_064d44(RbN *, RbN **);
+void f_04eda0(void *);
+void f_04ee08(void *, void *);
+void f_04ec74(void *, void *);
+extern char D_1a4530[], D_1a4678[];
+void f_061da4(void *, void *, void *, int);
+void f_061e30(void *, void *, void *, int);
+void f_04e65c2(void *, void *, int) __asm__("f_04e65c");
+void f_061c38(void *, void *, void *, int);
+void f_1312d4(const char *);
+extern char D_1a3074[]; /* "vector::reserve" */
+void f_0654a0(void *, void *, void *, void *, void *);
+void f_061910(void *, void *, void *);
+void f_065348(void *, void *, void *, void *, void *);
+void f_0617f4(void *, void *, void *);
+void f_05f1f4(void *, void *, void *);
+bool f_160a30(void *, int);
+void f_05c790(void *, void *, void *);
+void f_05a3e8(void *, void *, void *);
+void f_05e540(void *, void *, void *);
+int f_15c07c(void *, int);
+struct It4 { int p; It4() {} It4(const It4 &o) { p = o.p; } };
+struct RefH { int p, rc; RefH() {} RefH(void *x) { f_05daa4(this, x); } RefH(const RefH &o) { p = o.p; rc = o.rc; if (rc) ++*(int *)rc; } ~RefH() { f_04ed28(this); } };
+struct Val24 { int a, b, c, d; RefH r; Val24() : r((void *)0) {} };
+struct KV28 { int key; Val24 v; };
+struct KV28;
+It4 *f_05f238(It4 *, char *, It4 *, unsigned *);
+struct KV28;
+It4 *f_05f238(It4 *, char *, It4 *, unsigned *);
+struct Pair4 { It4 a, b; };
+/* @draft 0x05e2c4 us f_05e2c4
+   WHAT IT DOES: erases every entry of the tree that matches a key: finds the equal range of the key (f_05dff0 / f_064e98), counts the entries in it by stepping an iterator (f_05cbd4) until it reaches the end of the range, then erases the range (f_064f10) and returns the count.
+   Remaining difference: not compared. */
+int f_05e2c4(char *self, void *key) {
+    It4 a, b;
+    f_05dff0(&a, self, key);
+    f_064e98(&b, self, key);
+    Pair4 pr;
+    pr.a = a;
+    pr.b = b;
+    b = pr.a;
+    a = pr.b;
+    It4 cur = a, last = b;
+    int n = 0;
+    while (cur.p != last.p) { f_05cbd4(&cur); n++; }
+    last = pr.a;
+    cur = pr.b;
+    f_064f10(self, &last, &cur);
+    return n;
+}
+
+struct Tmp { char *p; ~Tmp() { f_05db84(this); } };
+struct G2 { int w[4]; ~G2() {} };
+struct Rs { int a; char b; Rs() {} Rs(const Rs &o) { a = o.a; b = o.b; } };
+struct E8 { int a, b; E8() {} E8(const E8 &o) { a = o.a; b = o.b; } };
+/* @draft 0x05e6cc us f_05e6cc
+   WHAT IT DOES: initialises a tree-map iterator/handle: stores the owning object, looks the name up with f_15c07c (id 7) and stores the id; when the id is -1 it builds a temporary string from the name (f_05a3e8), inserts it into the owner's tree at +8 (f_05e540) and stores the tree and the new entry address (+16) in the handle. The temporary string is destroyed with f_05db84.
+   Remaining difference: not compared. */
+void f_05e6cc(int *self, char *owner, void *name) {
+    self[0] = (int)owner;
+    self[2] = 0;
+    self[3] = 0;
+    int v = f_15c07c(*(void **)(owner + 4), 7);
+    self[1] = v;
+    if (v == -1) {
+        char *m = *(char **)self + 8;
+        G2 g;
+        Tmp t;
+        f_05a3e8(&t, name, &g);
+        Rs r;
+        f_05e540(&r, m, &t);
+        E8 e;
+        e.a = (int)m;
+        e.b = r.a + 16;
+        *(E8 *)(self + 2) = e;
+        Rs r2(r);
+        Rs r3(r);
+    }
+}
+
+extern char D_1a3760[], D_1a41c0[];
+/* @draft 0x05f374 us f_05f374
+   WHAT IT DOES: constructs a movie-clip style object: base part (vtable D_1a3760, an empty tree at +8 with an allocated 40-byte header node linked to itself), then the derived vtable D_1a41c0, a pointer at +24, a flag byte at +28, an empty four-word vector at +32 and a second empty tree at +48 with a 24-byte header node linked to itself.
+   Remaining difference: the three landing pads (base destroy f_04e8c0, vector buffer free f_04e4b4, map destroy f_04e8d8) are not reproduced. */
+void f_05f374(char *s0, char *a1, int flag) {
+    *(char **)s0 = D_1a3760;
+    *(int *)(s0 + 4) = 0;
+    *(int *)(s0 + 12) = 0;
+    int *n = (int *)f_04dfa0(40);
+    *(int **)(s0 + 12) = n;
+    n[1] = 0;
+    *(char **)s0 = D_1a41c0;
+    int *h = *(int **)(s0 + 12);
+    h[2] = (int)h;
+    int *h2 = *(int **)(s0 + 12);
+    *(char **)(s0 + 24) = a1;
+    h2[3] = (int)h2;
+    *(char *)(s0 + 28) = (char)flag;
+    *(int *)(s0 + 16) = 0;
+    n[0] = 0;
+    *(int *)(s0 + 36) = 0;
+    *(int *)(s0 + 40) = 0;
+    *(int *)(s0 + 44) = 0;
+    *(int *)(s0 + 52) = 0;
+    int *m = (int *)f_04dfa0(24);
+    *(int **)(s0 + 52) = m;
+    m[1] = 0;
+    int *m1 = *(int **)(s0 + 52);
+    *(int *)(s0 + 56) = 0;
+    m1[2] = (int)m1;
+    int *m2 = *(int **)(s0 + 52);
+    m[0] = 0;
+    m2[3] = (int)m2;
+}
+
+/* @draft 0x05c698 us f_05c698
+   WHAT IT DOES: walks the list at +4 of the object; for each node it tests the node's value against the first word of the range argument (f_160a30); on a match it calls the value's virtual +0 and then virtual +12 of the second word with the value, and erases that node (f_05c790). Steps to the next link saved before the erase.
+   Remaining difference: not compared. */
+void f_05c698(char *self, int *rng) {
+    int r[2];
+    r[1] = rng[1];
+    r[0] = rng[0];
+    int *hdr = *(int **)(self + 4);
+    It4 it, nx, end;
+    it.p = *hdr;
+    end.p = (int)hdr;
+    while (it.p != end.p) {
+        nx.p = it.p;
+        char *v = *(char **)(it.p + 8);
+        nx.p = *(int *)it.p;
+        bool hit = f_160a30(v, r[0]);
+        if (hit) {
+            (*(void (**)(void *))*(void **)v)(v);
+            void *o = (void *)r[1];
+            (*(void (**)(void *, void *))((char *)*(void **)o + 12))(o, v);
+        }
+        if (hit) {
+            It4 out, a;
+            a.p = it.p;
+            f_05c790(&out, self, &a);
+        }
+        it = nx;
+    }
+}
+
+/* @draft 0x05f0b8 us f_05f0b8
+   WHAT IT DOES: map subscript: finds the entry for the key (f_05f1f4); when it is the end or its key is greater than the requested one, builds a default value (zero fields, -1, an empty counted reference) and inserts the key/value pair at that position with f_05f238; returns the address of the value (+20) of the found or inserted node.
+   Remaining difference: not compared. */
+char *f_05f0b8(char *self, unsigned *key) {
+    It4 pos;
+    f_05f1f4(&pos, self, key);
+    int end = *(int *)(self + 4);
+    if (pos.p != end && !(*key < *(unsigned *)(pos.p + 16))) return (char *)pos.p + 20;
+    Val24 v;
+    v.a = 0;
+    v.b = -1;
+    v.c = 0;
+    v.d = 0;
+    KV28 kv;
+    kv.key = *key;
+    kv.v = v;
+    It4 h;
+    h.p = pos.p;
+    It4 res;
+    f_05f238(&res, self, &h, (unsigned *)&kv);
+    pos = res;
+    return (char *)pos.p + 20;
+}
+
+/* @draft 0x05f238 us f_05f238
+   WHAT IT DOES: red-black tree unique insert with a position hint. At the leftmost position it inserts there when the tree is non-empty and the key is smaller; at the end position it inserts after the rightmost when that key is smaller; otherwise it steps the hint back one (f_064c6c) and inserts between neighbours when the key fits, choosing the left or right slot by the predecessor's right child. In every other case it falls back to the plain unique insert (f_0617f4). Result is written through the first argument.
+   Remaining difference: not compared. */
+It4 *f_05f238(It4 *out, char *self, It4 *pos, unsigned *v) {
+    char *hdr = *(char **)(self + 4);
+    char *p = (char *)pos->p;
+    if (p == *(char **)(hdr + 8)) {
+        if (*(int *)(self + 8) != 0 && *v < *(unsigned *)(p + 16)) {
+            f_065348(out, self, p, p, v);
+            return out;
+        }
+    } else if (p == hdr) {
+        char *rm = *(char **)(p + 12);
+        if (*(unsigned *)(rm + 16) < *v) {
+            f_065348(out, self, 0, rm, v);
+            return out;
+        }
+    } else {
+        It4 before;
+        before.p = (int)p;
+        f_064c6c(&before);
+        char *b = (char *)before.p;
+        if (*(unsigned *)(b + 16) < *v && *v < *(unsigned *)(p + 16)) {
+            if (*(int *)(b + 12) == 0) f_065348(out, self, 0, b, v);
+            else f_065348(out, self, p, p, v);
+            return out;
+        }
+    }
+    It4 r;
+    f_0617f4(&r, self, v);
+    out->p = r.p;
+    return out;
+}
+
+/* @draft 0x05f998 us f_05f998
+   WHAT IT DOES: red-black tree unique insert with a position hint. At the leftmost position it inserts there when the tree is non-empty and the key is smaller; at the end position it inserts after the rightmost when that key is smaller; otherwise it steps the hint back one (f_064c6c) and inserts between neighbours when the key fits, choosing the left or right slot by the predecessor's right child. In every other case it falls back to the plain unique insert (f_061910). Result is written through the first argument.
+   Remaining difference: not compared. */
+It4 *f_05f998(It4 *out, char *self, It4 *pos, unsigned *v) {
+    char *hdr = *(char **)(self + 4);
+    char *p = (char *)pos->p;
+    if (p == *(char **)(hdr + 8)) {
+        if (*(int *)(self + 8) != 0 && *v < *(unsigned *)(p + 16)) {
+            f_0654a0(out, self, p, p, v);
+            return out;
+        }
+    } else if (p == hdr) {
+        char *rm = *(char **)(p + 12);
+        if (*(unsigned *)(rm + 16) < *v) {
+            f_0654a0(out, self, 0, rm, v);
+            return out;
+        }
+    } else {
+        It4 before;
+        before.p = (int)p;
+        f_064c6c(&before);
+        char *b = (char *)before.p;
+        if (*(unsigned *)(b + 16) < *v && *v < *(unsigned *)(p + 16)) {
+            if (*(int *)(b + 12) == 0) f_0654a0(out, self, 0, b, v);
+            else f_0654a0(out, self, p, p, v);
+            return out;
+        }
+    }
+    It4 r;
+    f_061910(&r, self, v);
+    out->p = r.p;
+    return out;
+}
+
+static inline void destroy_r(char *f, char *l) { for (;;) { if (f == l) break; f_04ed28(f); f += 8; } }
+/* @draft 0x05be04 us f_05be04
+   WHAT IT DOES: vector reserve for a vector of 8-byte counted references (start +4, finish +8, end of storage +12): throws length_error "vector::reserve" above 0x1fffffff elements; if the capacity is smaller, allocates n*8 bytes, copies the elements over (f_061c38, freeing the new block and rethrowing on an exception), destroys the old elements (f_04ed28), frees the old block (f_04e4b4) and installs the new start/finish/end.
+   Remaining difference: not compared. */
+void f_05be04(int *v, unsigned n) {
+    if (n > 0x1fffffff) f_1312d4(D_1a3074);
+    if ((v[3] - v[1]) >> 3 < n) {
+        char *s2 = (char *)v[1];
+        char *s0 = (char *)v[2];
+        int cnt = (s0 - s2) >> 3;
+        char *tmp = (char *)f_04dfa0(n * 8);
+        try {
+            f_061c38(s2, s0, tmp, 0);
+        } catch (...) {
+            if (tmp) f_04e4b4(tmp);
+            throw;
+        }
+        destroy_r((char *)v[1], (char *)v[2]);
+        if (v[1]) f_04e4b4((void *)v[1]);
+        v[3] = (int)(tmp + n * 8);
+        v[2] = (int)(tmp + cnt * 8);
+        v[1] = (int)tmp;
+    }
+}
+
+struct E44 { char b[44]; };
+static inline void destroy_44(E44 *f, E44 *l) {
+    for (;;) {
+        if (f == l) break;
+        (*(void (**)(void *))*(void **)f)(f);
+        f++;
+    }
+}
+/* @draft 0x05bfe4 us f_05bfe4
+   WHAT IT DOES: vector reserve for a vector of 44-byte polymorphic elements (start +4, finish +8, end of storage +12): throws length_error "vector::reserve" above 0x5d1745d elements; if the capacity is smaller, allocates n*44 bytes, copies the elements over (f_061da4, freeing the new block and rethrowing on an exception), calls each old element's virtual +0, frees the old block (f_04e4b4) and installs the new start/finish/end.
+   Remaining difference: not compared. */
+void f_05bfe4(int *v, unsigned n) {
+    if (n > 0x5d1745d) f_1312d4(D_1a3074);
+    if ((E44 *)v[3] - (E44 *)v[1] < (int)n) {
+        E44 *s1 = (E44 *)v[1];
+        E44 *s0 = (E44 *)v[2];
+        int cnt = s0 - s1;
+        E44 *tmp = (E44 *)f_04dfa0(n * 44);
+        try {
+            f_061da4(s1, s0, tmp, 0);
+        } catch (...) {
+            if (tmp) f_04e4b4(tmp);
+            throw;
+        }
+        destroy_44((E44 *)v[1], (E44 *)v[2]);
+        if (v[1]) f_04e4b4((void *)v[1]);
+        v[1] = (int)tmp;
+        v[3] = (int)(tmp + n);
+        v[2] = (int)(tmp + cnt);
+    }
+}
+
+struct E56 { char b[56]; };
+/* @draft 0x05c154 us f_05c154
+   WHAT IT DOES: vector reserve for a vector of 56-byte elements (start +4, finish +8, end of storage +12): throws length_error "vector::reserve" above the maximum element count; if the capacity is smaller, allocates n*56 bytes, copies the elements over (f_061e30, freeing the new block and rethrowing on an exception), destroys the old range (f_04e65c), frees the old block (f_04e4b4) and installs the new start/finish/end.
+   Remaining difference: not compared. */
+void f_05c154(int *v, unsigned n) {
+    if (n > 0x4924924) f_1312d4(D_1a3074);
+    if ((E56 *)v[3] - (E56 *)v[1] < (int)n) {
+        E56 *s1 = (E56 *)v[1];
+        E56 *s0 = (E56 *)v[2];
+        int cnt = s0 - s1;
+        E56 *tmp = (E56 *)f_04dfa0(n * 56);
+        try {
+            f_061e30(s1, s0, tmp, 0);
+        } catch (...) {
+            if (tmp) f_04e4b4(tmp);
+            throw;
+        }
+        f_04e65c2((void *)v[1], (void *)v[2], 0);
+        if (v[1]) f_04e4b4((void *)v[1]);
+        v[3] = (int)(tmp + n);
+        v[2] = (int)(tmp + cnt);
+        v[1] = (int)tmp;
+    }
+}
+
+struct HRef { char *p; int *rc; ~HRef() { f_04ed28(this); } };
+struct HTag { char *p0; int b; int p2; char *p3; };
+static inline void *vfn(void *p, int i) { return (*(void ***)p)[i]; }
+static inline char *top_(char *t) { return *(char **)(*(char **)(t + 4) + 4); }
+static inline void ref_load_(HRef *r, char *t) {
+    char *n = top_(t);
+    r->p = *(char **)(n + 8);
+    r->rc = *(int **)(n + 12);
+    if (r->rc) *r->rc += 1;
+}
+static inline void pop_(char *t) {
+    char out[16];
+    char *it = top_(t);
+    f_05f64c(out, t, &it);
+}
+static inline void push_(char *t, HRef *h) {
+    char out[16];
+    int pos = *(int *)(t + 4);
+    f_05e394(out, t, &pos, h);
+}
+static inline void init_map_(char *m) {
+    *(int *)(m + 4) = 0;
+    int *n = (int *)f_04dfa0(40);
+    *(int **)(m + 4) = n;
+    n[1] = 0;
+    *(int *)(m + 8) = 0;
+    n[2] = (int)n;
+    n[0] = 0;
+    n[3] = (int)n;
+}
+
+struct RefD { char *p; int *rc; ~RefD() { f_04ed28(this); } };
+struct VecD3 { int a, b, c; ~VecD3() { f_04eda0(this); f_04e4b4((void *)b); } };
+struct VecD2 { int a, b; ~VecD2() { f_04eda0(this); f_04e4b4((void *)b); } };
+struct MapE { int a; int *hdr; int cnt;
+    ~MapE() { if (cnt) f_04ee08(this, (void *)hdr[1]); cnt = 0; hdr[2] = (int)hdr; hdr[1] = 0; hdr[3] = (int)hdr; f_04e4b4(hdr); } };
+struct MapE16 { int a; int *hdr; int cnt; int d;
+    ~MapE16() { if (cnt) f_04ee08(this, (void *)hdr[1]); cnt = 0; hdr[2] = (int)hdr; hdr[1] = 0; hdr[3] = (int)hdr; f_04e4b4(hdr); } };
+struct MapF { int a; int *hdr; int cnt;
+    ~MapF() { if (cnt) f_04ec74(this, (void *)hdr[1]); cnt = 0; hdr[2] = (int)hdr; hdr[1] = 0; hdr[3] = (int)hdr; f_04e4b4(hdr); } };
+struct CtxBase { char *vt; ~CtxBase() { vt = D_1a4678; } };
+struct Ctx : CtxBase {
+    int pad4;
+    MapF m8;
+    char pad20[244];
+    RefD r264, r272, r280, r288;
+    RefD ra[4];
+    VecD3 v328;
+    VecD2 v340;
+    MapE16 m348;
+    VecD2 v364;
+    RefD r372, r380;
+    ~Ctx() { vt = D_1a4530; }
+};
+/* @draft 0x05d368 us f_05d368
+   WHAT IT DOES: destructor of the ActionScript context object: sets the derived vtable (D_1a4530), then destroys the members from the last to the first (two counted references at +380 and +372, the vector at +364, the tree at +348, the vectors at +340 and +328, the array of four references at +296, the references at +288..+264, and the tree at +8) and finally stores the base vtable D_1a4678. The landing pads destroy the not yet destroyed members when one destructor throws.
+   Remaining difference: not compared. */
+void f_05d368(Ctx *self) {
+    self->~Ctx();
+}
+
+/* @draft 0x05d6dc us f_05d6dc
+   WHAT IT DOES: second copy of the context object destructor (same member destruction sequence as f_05d368, at a different address).
+   Remaining difference: not compared. */
+void f_05d6dc(Ctx *self) {
+    self->~Ctx();
+}
+
+/* @draft 0x05cc58 us f_05cc58
+   WHAT IT DOES: red-black tree node removal with rebalancing (the standard rebalance-for-erase): unlinks node z, substituting its in-order successor when it has two children, then recolours and rotates (f_064cfc rotate left, f_064d44 rotate right) up from the replacement until the black-height is restored; the root, leftmost and rightmost slots are passed by address (leftmost and rightmost are updated when z was one of them). Returns z.
+   Remaining difference: not compared. */
+RbN *f_05cc58(RbN *z, RbN **root, RbN **lm, RbN **rm) {
+    RbN *y = z;
+    RbN *x;
+    RbN *xp;
+    if (y->left == 0) x = y->right;
+    else if (y->right == 0) x = y->left;
+    else {
+        y = y->right;
+        while (y->left != 0) y = y->left;
+        x = y->right;
+    }
+    if (y != z) {
+        z->left->parent = y;
+        y->left = z->left;
+        if (y != z->right) {
+            xp = y->parent;
+            if (x) x->parent = y->parent;
+            y->parent->left = x;
+            y->right = z->right;
+            z->right->parent = y;
+        } else xp = y;
+        if (*root == z) *root = y;
+        else if (z->parent->left == z) z->parent->left = y;
+        else z->parent->right = y;
+        y->parent = z->parent;
+        int c = y->color;
+        y->color = z->color;
+        z->color = c;
+        y = z;
+    } else {
+        xp = y->parent;
+        if (x) x->parent = y->parent;
+        if (*root == z) *root = x;
+        else if (z->parent->left == z) z->parent->left = x;
+        else z->parent->right = x;
+        if (*lm == z) {
+            if (z->right == 0) *lm = z->parent;
+            else {
+                RbN *t = x;
+                while (t->left) t = t->left;
+                *lm = t;
+            }
+        }
+        if (*rm == z) {
+            if (z->left == 0) *rm = z->parent;
+            else {
+                RbN *t = x;
+                while (t->right) t = t->right;
+                *rm = t;
+            }
+        }
+    }
+    if (y->color != 0) {
+        while (x != *root && (x == 0 || x->color == 1)) {
+            if (x == xp->left) {
+                RbN *w = xp->right;
+                if (w->color == 0) {
+                    w->color = 1;
+                    xp->color = 0;
+                    f_064cfc(xp, root);
+                    w = xp->right;
+                }
+                if ((w->left == 0 || w->left->color == 1) && (w->right == 0 || w->right->color == 1)) {
+                    w->color = 0;
+                    x = xp;
+                    xp = xp->parent;
+                } else {
+                    if (w->right == 0 || w->right->color == 1) {
+                        if (w->left) w->left->color = 1;
+                        w->color = 0;
+                        f_064d44(w, root);
+                        w = xp->right;
+                    }
+                    w->color = xp->color;
+                    xp->color = 1;
+                    if (w->right) w->right->color = 1;
+                    f_064cfc(xp, root);
+                    break;
+                }
+            } else {
+                RbN *w = xp->left;
+                if (w->color == 0) {
+                    w->color = 1;
+                    xp->color = 0;
+                    f_064d44(xp, root);
+                    w = xp->left;
+                }
+                if ((w->right == 0 || w->right->color == 1) && (w->left == 0 || w->left->color == 1)) {
+                    w->color = 0;
+                    x = xp;
+                    xp = xp->parent;
+                } else {
+                    if (w->left == 0 || w->left->color == 1) {
+                        if (w->right) w->right->color = 1;
+                        w->color = 0;
+                        f_064cfc(w, root);
+                        w = xp->left;
+                    }
+                    w->color = xp->color;
+                    xp->color = 1;
+                    if (w->left) w->left->color = 1;
+                    f_064d44(xp, root);
+                    break;
+                }
+            }
+        }
+        if (x) x->color = 1;
+    }
+    return y;
+}
+
+/* @draft 0x05cfe8 us f_05cfe8
+   WHAT IT DOES: deleting destructor of the ActionScript context object: runs the same member destruction sequence as f_05d368 and then frees the allocation, which starts 4 bytes before the object (the size word written by the allocator), with f_04e4b4.
+   Remaining difference: not compared. */
+void f_05cfe8(Ctx *self) {
+    self->~Ctx();
+    f_04e4b4((char *)self - 4);
+}
+
+/* @draft 0x057c08 us f_057c08
+   WHAT IT DOES: builds a new 28-byte dictionary object (base vtable D_1a3760 plus an empty tree) from the argument stack at +328: pops the count argument and asks it for a number n (virtual +92); then n times pops a value and a key, asks the key for its name tag (virtual +20) and stores the value under it with the object's virtual +56; finally wraps the object in a new counted reference and pushes it on the stack.
+   Remaining difference: not compared; the stack-slot iterator temporaries of the pop/push helpers do not reproduce retail's 224-byte frame. */
+void f_057c08(char *s3) {
+    char *t = s3 + 328;
+    HRef a;
+    ref_load_(&a, t);
+    pop_(t);
+    int n = ((int (*)(void *))vfn(a.p, 23))(a.p);
+    int *o = (int *)f_04dfa0(28);
+    o[0] = 28;
+    char *s4 = (char *)(o + 1);
+    char *s1 = (char *)(o + 3);
+    *(char **)s4 = D_1a3760;
+    *(int *)(s4 + 4) = 0;
+    init_map_(s1);
+    for (int i = 0; i < n; i++) {
+        HRef b;
+        ref_load_(&b, t);
+        pop_(t);
+        HRef c;
+        ref_load_(&c, t);
+        pop_(t);
+        HTag tag;
+        ((void (*)(HTag *, void *, void *))vfn(c.p, 20))(&tag, c.p, s3);
+        HRef cp;
+        cp.p = b.p;
+        cp.rc = b.rc;
+        if (cp.rc) *cp.rc += 1;
+        ((void (*)(void *, void *, HRef *))vfn(s4, 14))(s4, &tag, &cp);
+    }
+    HRef h;
+    h.p = s4;
+    h.rc = 0;
+    if (s4) {
+        int *cnt = (int *)f_04dfa0(4);
+        *cnt = 1;
+        h.rc = cnt;
+    }
+    push_(t, &h);
+}
+
+}  // extern "C"
+}  // namespace swg7c
