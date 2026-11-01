@@ -5621,8 +5621,9 @@ void f_04bef8(char *s) {
    WHAT IT DOES: if index a1 is valid, either clears the entry's flag byte (a4 or a5 not positive) or stores a2..a5 into the entry and sets the flag byte. */
 void f_04c0a8(char *s, int a1, int a2, int a3, int a4, int a5) {
     if (*(int *)(s + 32) >= a1) {
+        int bad = a4 <= 0 || a5 <= 0;
         char *e = *(char **)(s + 36) + a1 * 172;
-        if (a4 <= 0 || a5 <= 0) {
+        if (bad) {
             *(char *)(e + 137) = 0;
         } else {
             *(int *)(e + 152) = a5;
@@ -5667,7 +5668,7 @@ void f_04c1c8(char *s, int a1, Rec16 r) {
     }
 }
 
-/* @draft 0x046d50 us f_046d50
+/* @implements 0x046d50 us f_046d50
    WHAT IT DOES: caches a lookup: if the key pair (a1, a2) differs from the cached one, calls f_07dacc, stores the result (returns 0 on -1) and the key; returns the first int of the buffer. */
 int f_046d50(char *s, int a1, int a2) {
     int *p = *(int **)(s + 4);
@@ -7350,5 +7351,353 @@ int f_0451b4(unsigned a0) {
     return 0;
 }
 
+}
+}
+
+/* ---- swg4d ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 wave 3 worker swg4d (rest_d2) */
+namespace swg4d {
+extern "C" {
+struct Tmp16 { int w[4]; ~Tmp16() {} };
+struct It2 {
+    void **p;
+    void *&operator*() { return *p; }
+    It2 &operator++() { ++p; return *this; }
+    bool operator!=(const It2 &o) const { return p != o.p; }
+};
+void *f_05db08(unsigned n);
+void f_05db44(void *);
+void f_04e8c0(void *) throw();
+void f_04e8d8(void *);
+void f_04e4b4(void *);
+void f_04ee68(void *, void *);
+void f_05e4a8(void *, void *);
+extern char D_1a43d0[];
+extern char D_1a3698[];
+extern char D_1a41c0[];
+}
+struct Base0 { void *vt; int z; unsigned char b; int w[4]; ~Base0() { f_04e8c0(this); } };
+struct Obj0 : Base0 {
+    int s;
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    Obj0(Obj0 *o) {
+        z = 0;
+        vt = D_1a43d0;
+        b = ((Base0*)o)->b; w[0]=o->w[0]; w[1]=o->w[1]; w[2]=o->w[2]; w[3]=o->w[3];
+        f_05e4a8(&s, &o->s);
+    }
+};
+extern "C" {
+/* @draft 0x0642c0 us f_0642c0
+   WHAT IT DOES: clones an object: allocates 32 bytes, copies the byte and four words and the string member. */
+void *f_0642c0(Obj0 *o) { return new Obj0(o); }
+}
+
+struct Node1 { Node1*l; Node1*p; Node1*r; Node1*q; };
+struct Lst1 { int pad; Node1 *head; int size;
+ void clear(){
+  if (size) {
+    f_04ee68(this, head->p);
+    size=0;
+    head->r = head;
+    head->p = 0;
+    head->q = head;
+  } }
+ ~Lst1(){ Node1 *h = head; f_04e4b4(h);} };
+struct BaseT { void *vt; int w[5]; ~BaseT() { f_04e8d8(this); } };
+struct Tr1 : BaseT { Lst1 m; ~Tr1() { vt = D_1a3698; m.clear(); } };
+void f_05f4a0(void *);
+void f_0655dc(void *, void *);
+struct Lst2 { int pad; Node1 *head; int size;
+ void clear(){
+  if (size) {
+    f_0655dc(this, head->p);
+    size=0;
+    head->r = head;
+    head->p = 0;
+    head->q = head;
+  } }
+ ~Lst2(){ Node1 *h = head; f_04e4b4(h);} };
+struct M32 { int w[4]; ~M32() { f_05f4a0(this); } };
+struct Tr2 : BaseT { int pad2[2]; M32 m32; Lst2 m; ~Tr2() { vt = D_1a41c0; m.clear(); } };
+extern "C" {
+/* @implements 0x06646c us f_06646c
+   WHAT IT DOES: destructor of a tree container: empties the tree and frees its header node. */
+void f_06646c(Tr1 *o) { o->~Tr1(); }
+/* @implements 0x0667a4 us f_0667a4
+   WHAT IT DOES: destructor of a tree container (twin of f_06646c): empties the tree and frees its header node. */
+void f_0667a4(Tr1 *o) { o->~Tr1(); }
+/* @implements 0x066510 us f_066510
+   WHAT IT DOES: deleting destructor of the tree container: runs the destructor, then frees the object with f_05db44. */
+void f_066510(Tr1 *o) { o->~Tr1(); f_05db44(o); }
+/* @implements 0x066848 us f_066848
+   WHAT IT DOES: deleting destructor of the tree container (twin of f_066510). */
+void f_066848(Tr1 *o) { o->~Tr1(); f_05db44(o); }
+/* @implements 0x063638 us f_063638
+   WHAT IT DOES: deleting destructor of a tree container with an extra member at +32: empties the tree at +48, frees its header, destroys the member and base, then frees the object with f_05db44. */
+void f_063638(Tr2 *o) { o->~Tr2(); f_05db44(o); }
+inline bool lt4d(unsigned a, unsigned b) { return a < b; }
+char *f_066f5c(void *, void *);
+void f_066cdc(void *, void *);
+/* @implements 0x065348 us f_065348
+   WHAT IT DOES: tree insert helper: creates a node for the key with f_066f5c, links it as the left or right child of y (updating the header's leftmost/rightmost), rebalances with f_066cdc, bumps the count and returns the iterator in *out. */
+int *f_065348(int *out, char *t, char *x, char *y, void *key) {
+    char *z;
+    if (y == *(char **)(t + 4) || x != 0 || lt4d(*(unsigned *)key, *(unsigned *)(y + 16))) {
+        z = f_066f5c(t, key);
+        *(char **)(y + 8) = z;
+        if (y == *(char **)(t + 4)) {
+            *(char **)(y + 4) = z;
+            *(char **)(*(char **)(t + 4) + 12) = z;
+        } else if (y == *(char **)(*(char **)(t + 4) + 8)) {
+            *(char **)(*(char **)(t + 4) + 8) = z;
+        }
+    } else {
+        z = f_066f5c(t, key);
+        *(char **)(y + 12) = z;
+        if (y == *(char **)(*(char **)(t + 4) + 12))
+            *(char **)(*(char **)(t + 4) + 12) = z;
+    }
+    *(char **)(z + 4) = y;
+    *(char **)(z + 8) = 0;
+    *(char **)(z + 12) = 0;
+    f_066cdc(z, *(char **)(t + 4) + 4);
+    *(int *)(t + 8) += 1;
+    *(char **)out = z;
+    return out;
+}
+char *f_066fe0(void *, void *);
+char *f_066f04(void *, void *);
+char *f_066e1c(void *, void *);
+int f_05dcb8(void *, void *);
+/* @implements 0x0654a0 us f_0654a0
+   WHAT IT DOES: tree insert helper (twin of f_065348): creates a node for the key with f_066fe0, links it as the left or right child of y (updating the header's leftmost/rightmost), rebalances with f_066cdc, bumps the count and returns the iterator in *out. */
+int *f_0654a0(int *out, char *t, char *x, char *y, void *key) {
+    char *z;
+    if (y == *(char **)(t + 4) || x != 0 || lt4d(*(unsigned *)key, *(unsigned *)(y + 16))) {
+        z = f_066fe0(t, key);
+        *(char **)(y + 8) = z;
+        if (y == *(char **)(t + 4)) {
+            *(char **)(y + 4) = z;
+            *(char **)(*(char **)(t + 4) + 12) = z;
+        } else if (y == *(char **)(*(char **)(t + 4) + 8)) {
+            *(char **)(*(char **)(t + 4) + 8) = z;
+        }
+    } else {
+        z = f_066fe0(t, key);
+        *(char **)(y + 12) = z;
+        if (y == *(char **)(*(char **)(t + 4) + 12))
+            *(char **)(*(char **)(t + 4) + 12) = z;
+    }
+    *(char **)(z + 4) = y;
+    *(char **)(z + 8) = 0;
+    *(char **)(z + 12) = 0;
+    f_066cdc(z, *(char **)(t + 4) + 4);
+    *(int *)(t + 8) += 1;
+    *(char **)out = z;
+    return out;
+}
+/* @implements 0x06523c us f_06523c
+   WHAT IT DOES: tree insert helper (twin of f_065348): creates a node for the key with f_066f04, links it as the left or right child of y (updating the header's leftmost/rightmost), rebalances with f_066cdc, bumps the count and returns the iterator in *out. */
+int *f_06523c(int *out, char *t, char *x, char *y, void *key) {
+    char *z;
+    if (y == *(char **)(t + 4) || x != 0 || (f_05dcb8(key, y + 16) & 0xff)) {
+        z = f_066f04(t, key);
+        *(char **)(y + 8) = z;
+        if (y == *(char **)(t + 4)) {
+            *(char **)(y + 4) = z;
+            *(char **)(*(char **)(t + 4) + 12) = z;
+        } else if (y == *(char **)(*(char **)(t + 4) + 8)) {
+            *(char **)(*(char **)(t + 4) + 8) = z;
+        }
+    } else {
+        z = f_066f04(t, key);
+        *(char **)(y + 12) = z;
+        if (y == *(char **)(*(char **)(t + 4) + 12))
+            *(char **)(*(char **)(t + 4) + 12) = z;
+    }
+    *(char **)(z + 4) = y;
+    *(char **)(z + 8) = 0;
+    *(char **)(z + 12) = 0;
+    f_066cdc(z, *(char **)(t + 4) + 4);
+    *(int *)(t + 8) += 1;
+    *(char **)out = z;
+    return out;
+}
+/* @implements 0x064d8c us f_064d8c
+   WHAT IT DOES: tree insert helper (twin of f_065348): creates a node for the key with f_066e1c, links it as the left or right child of y (updating the header's leftmost/rightmost), rebalances with f_066cdc, bumps the count and returns the iterator in *out. */
+int *f_064d8c(int *out, char *t, char *x, char *y, void *key) {
+    char *z;
+    if (y == *(char **)(t + 4) || x != 0 || (f_05dcb8(key, y + 16) & 0xff)) {
+        z = f_066e1c(t, key);
+        *(char **)(y + 8) = z;
+        if (y == *(char **)(t + 4)) {
+            *(char **)(y + 4) = z;
+            *(char **)(*(char **)(t + 4) + 12) = z;
+        } else if (y == *(char **)(*(char **)(t + 4) + 8)) {
+            *(char **)(*(char **)(t + 4) + 8) = z;
+        }
+    } else {
+        z = f_066e1c(t, key);
+        *(char **)(y + 12) = z;
+        if (y == *(char **)(*(char **)(t + 4) + 12))
+            *(char **)(*(char **)(t + 4) + 12) = z;
+    }
+    *(char **)(z + 4) = y;
+    *(char **)(z + 8) = 0;
+    *(char **)(z + 12) = 0;
+    f_066cdc(z, *(char **)(t + 4) + 4);
+    *(int *)(t + 8) += 1;
+    *(char **)out = z;
+    return out;
+}
+int memcmp(const void *, const void *, unsigned);
+char *f_066e94(void *, void *);
+inline const unsigned &min4d(const unsigned &a, const unsigned &b) { return a <= b ? a : b; }
+struct Sp4d { char *p; };
+inline int cmp4d(Sp4d &ka, Sp4d &kb) {
+    char *ap = ka.p;
+    unsigned a = *(unsigned *)(ap - 12);
+    unsigned b = *(unsigned *)(kb.p - 12);
+    int r = memcmp(ap, kb.p, min4d(a, b));
+    if (!r) r = a - b;
+    return r;
+}
+/* @draft 0x0650fc us f_0650fc
+   WHAT IT DOES: tree insert helper (twin of f_065348): creates a node for the key with f_066e94, links it as the left or right child of y (updating the header's leftmost/rightmost), rebalances with f_066cdc, bumps the count and returns the iterator in *out. */
+int *f_0650fc(int *out, char *t, char *x, char *y, void *key) {
+    char *z;
+    if (y == *(char **)(t + 4) || x != 0 || (cmp4d(*(Sp4d *)key, *(Sp4d *)(y + 16)) < 0)) {
+        z = f_066e94(t, key);
+        *(char **)(y + 8) = z;
+        if (y == *(char **)(t + 4)) {
+            *(char **)(y + 4) = z;
+            *(char **)(*(char **)(t + 4) + 12) = z;
+        } else if (y == *(char **)(*(char **)(t + 4) + 8)) {
+            *(char **)(*(char **)(t + 4) + 8) = z;
+        }
+    } else {
+        z = f_066e94(t, key);
+        *(char **)(y + 12) = z;
+        if (y == *(char **)(*(char **)(t + 4) + 12))
+            *(char **)(*(char **)(t + 4) + 12) = z;
+    }
+    *(char **)(z + 4) = y;
+    *(char **)(z + 8) = 0;
+    *(char **)(z + 12) = 0;
+    f_066cdc(z, *(char **)(t + 4) + 4);
+    *(int *)(t + 8) += 1;
+    *(char **)out = z;
+    return out;
+}
+void f_064c6c(void *);
+struct NodeIt4 { char *n; int pad[3]; };
+
+/* @draft 0x0617f4 us f_0617f4
+   WHAT IT DOES: unique insert into the tree: walks down comparing the key, finds the insertion parent, checks the predecessor for an equal key and either inserts through f_065348 (returning the node and 1) or returns the existing node and 0. */
+struct InsRes4 { char *it; unsigned char ok; };
+InsRes4 *f_0617f4(InsRes4 *out, char *t, unsigned *key) {
+    char *x;
+    char *y = *(char **)(t + 4);
+    x = *(char **)(y + 4);
+    int comp = 1;
+    while (x) {
+        y = x;
+        comp = lt4d(*key, *(unsigned *)(x + 16));
+        x = comp ? *(char **)(x + 8) : *(char **)(x + 12);
+    }
+    NodeIt4 j;
+    NodeIt4 lm;
+    NodeIt4 r;
+    j.n = y;
+    if (comp) {
+        lm.n = *(char **)(*(char **)(t + 4) + 8);
+        if (j.n != lm.n)
+            f_064c6c(&j);
+        else
+            goto ins;
+    }
+    if (!lt4d(*(unsigned *)(j.n + 16), *key)) {
+        out->ok = 0;
+        out->it = j.n;
+        return out;
+    }
+ins:
+    {
+        f_065348((int *)&r, t, x, y, key);
+        out->ok = 1;
+        out->it = r.n;
+    }
+    return out;
+}
+/* @draft 0x061910 us f_061910
+   WHAT IT DOES: unique insert into the tree (twin of f_0617f4, inserting through f_0654a0): finds the insertion parent, checks the predecessor for an equal key and either inserts (returning the node and 1) or returns the existing node and 0. */
+InsRes4 *f_061910(InsRes4 *out, char *t, unsigned *key) {
+    char *x;
+    char *y = *(char **)(t + 4);
+    x = *(char **)(y + 4);
+    int comp = 1;
+    while (x) {
+        y = x;
+        comp = lt4d(*key, *(unsigned *)(x + 16));
+        x = comp ? *(char **)(x + 8) : *(char **)(x + 12);
+    }
+    NodeIt4 j;
+    NodeIt4 lm;
+    NodeIt4 r;
+    j.n = y;
+    if (comp) {
+        lm.n = *(char **)(*(char **)(t + 4) + 8);
+        if (j.n != lm.n)
+            f_064c6c(&j);
+        else
+            goto ins;
+    }
+    if (!lt4d(*(unsigned *)(j.n + 16), *key)) {
+        out->ok = 0;
+        out->it = j.n;
+        return out;
+    }
+ins:
+    {
+        f_0654a0((int *)&r, t, x, y, key);
+        out->ok = 1;
+        out->it = r.n;
+    }
+    return out;
+}
+struct E44 { void **vt; int w1, w2, w3, w4, w5, w6, w7, w8, w9, w10; };
+struct P44 { E44 *p; };
+/* @draft 0x060d18 us f_060d18
+   WHAT IT DOES: vector erase of the range [first,last) of 44-byte elements: moves the tail down over it field by field, runs the virtual destructor (slot 0) of the vacated tail elements and shrinks the end pointer; returns first. */
+E44 *f_060d18(char *v, E44 *first, E44 *last) {
+    int n = *(E44 **)(v + 8) - last;
+    E44 *d = first;
+    E44 *s = last;
+    for (; n > 0; --n) {
+        d->w1 = s->w1; d->w2 = s->w2; d->w3 = s->w3; d->w4 = s->w4;
+        d->w7 = s->w7; d->w8 = s->w8; d->w9 = s->w9; d->w10 = s->w10;
+        d->w6 = s->w6; d->w5 = s->w5;
+        ++d; ++s;
+    }
+    P44 b, e;
+    b.p = d;
+    e.p = d;
+    E44 *end = *(E44 **)(v + 8);
+    if (b.p != end) {
+        do {
+            void *o = e.p;
+            (*(void (**)(void *))*e.p->vt)(o);
+            ++e.p;
+        } while (e.p != end);
+    }
+    *(E44 **)(v + 8) = end - (last - first);
+    return first;
+}
 }
 }
