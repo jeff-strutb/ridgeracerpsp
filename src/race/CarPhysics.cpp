@@ -629,34 +629,74 @@ extern "C" void f_0a88ac(CarPhys *p)
     f_0aea84(p);
 }
 
+/* The ground lookup's query point (16-byte aligned), one 6-byte result record, and the
+   polygon set inside the race state at D_23c820 + 12352 whose record table is at +80. */
+struct GroundPt {
+    float x, y, z, w;
+} __attribute__((aligned(16)));
+struct GroundRec {
+    signed char n0, n1;
+    unsigned short idx, base;
+};
+struct GroundSet {
+    char m0[80];
+    GroundRec *recs;
+};
+struct RaceState {
+    char m0[12352];
+    GroundSet polys;
+    GroundSet *Polys() { return &polys; }
+};
+extern RaceState D_23c820_state __asm__("D_23c820");
+
 extern "C" {
-unsigned short f_0b0500(void *p, const float *v, float *h, int *o);
-unsigned short f_0afc38(void *p, const float *v, float *h, int *o);
+unsigned short f_0b0500(GroundSet *p, const GroundPt *v, float *h, const GroundRec **rec);
+unsigned short f_0afc38(GroundSet *p, const GroundPt *v, float *h, const GroundRec **rec);
 float f_0af478(const float *a);
 }
 
-/* @draft 0x0ab2a4 us f_0ab2a4
-   WHAT IT DOES: Looks up the track piece under the wheel position with the lookup chosen by the car's flag, stores the short result, and stores the piece number (the offset into the table, halved and divided by 6 via the 0xaaaaaaab multiply) or zero and the car height when nothing is found. */
+/* @implements 0x0ab2a4 us f_0ab2a4
+   WHAT IT DOES: Looks up the ground polygon under the wheel probe point with the lookup chosen by the car's flag and stores the polygon id; when nothing is found it zeroes the record number and puts the ground height back to the car's height. The record number (the result record's index in the set's table) is then stored unconditionally, so the zero never survives: retail behaviour, kept as is. */
 extern "C" void f_0ab2a4(CarPhys *p)
 {
-    char *b = (char *)&D_23c820;
-    char *s = b + 12352;
-    float v[4];
-    int o[4];
-    v[0] = *(float *)((char *)p + 148);
-    v[1] = p->m12;
-    v[2] = *(float *)((char *)p + 152);
-    v[3] = 1.0f;
-    if (p->m116 == 0)
-        *(short *)((char *)p + 184) = f_0afc38(s, v, &p->m144, o + 4);
+    GroundSet *s = D_23c820_state.Polys();
+    GroundPt v;
+    const GroundRec *r;
+    v.x = p->m148;
+    v.y = p->m12;
+    v.z = p->m152;
+    v.w = 1.0f;
+    if (p->m116)
+        p->m184 = f_0b0500(s, &v, &p->m144, &r);
     else
-        *(short *)((char *)p + 184) = f_0b0500(s, v, &p->m144, o + 4);
-    if (*(unsigned short *)((char *)p + 184) != 0xffff) {
-        *(int *)((char *)p + 188) = ((o[4] - *(int *)(s + 80)) >> 1) * (int)0xaaaaaaab;
-    } else {
-        *(int *)((char *)p + 188) = 0;
+        p->m184 = f_0afc38(s, &v, &p->m144, &r);
+    if ((unsigned short)p->m184 == 0xffff) {
+        p->m188 = 0;
         p->m144 = p->m12;
     }
+    p->m188 = r - s->recs;
+}
+
+/* @implements 0x0ab370 us f_0ab370
+   WHAT IT DOES: The same ground lookup as f_0ab2a4 (its own copy, with its own 1.0 literal). */
+extern "C" void f_0ab370(CarPhys *p)
+{
+    GroundSet *s = D_23c820_state.Polys();
+    GroundPt v;
+    const GroundRec *r;
+    v.x = p->m148;
+    v.y = p->m12;
+    v.z = p->m152;
+    v.w = 1.0f;
+    if (p->m116)
+        p->m184 = f_0b0500(s, &v, &p->m144, &r);
+    else
+        p->m184 = f_0afc38(s, &v, &p->m144, &r);
+    if ((unsigned short)p->m184 == 0xffff) {
+        p->m188 = 0;
+        p->m144 = p->m12;
+    }
+    p->m188 = r - s->recs;
 }
 
 /* An angle passed by value in an integer register. */
