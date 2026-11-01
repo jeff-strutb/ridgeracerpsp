@@ -9446,6 +9446,8 @@ static inline char *slot6(char *tree, int *kp) {
   return it;
 }
 
+extern char D_1a2e94[]; /* "_mc%p_" */
+
 /* @draft 0x050e04 us f_050e04
    WHAT IT DOES: builds a new 68-byte child object keyed by the argument object and stores it at +332 of that object; hands the object a copy of the player's counted handle (+372/+376) through virtual slot 14; then registers a four-word record {player, id, tree, name} in the map at +348 under the argument object's key (the id comes from f_15c0f0 for the argument's slot at +164, or from a generated "_mc%p_" name looked up through f_15c07c and the string map at +8), and finally, when the argument has a parent at +20, looks that parent up (inserting a default if absent) and calls virtual slot 14 of the parent's registered handle with the record and the object holder; with no parent the holder is stored into the player at +280.
    Remaining difference: not scored; raw transcription of the tree insert helpers with open-coded copies, landing pads and register allocation unmatched. */
@@ -9460,7 +9462,7 @@ void f_050e04(char *self, char *P) {
   int id = Q6(P, 164);
   if (id == -1) {
     char buf[64];
-    sprintf(buf, "_mc%p_", P);
+    sprintf(buf, D_1a2e94, P);
     int r = f_15c07c(Q6(self, 4), 7, buf);
     if (r == -1) {
       Str6 s; char tag[16];
