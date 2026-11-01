@@ -13797,3 +13797,191 @@ int f_04b9c4(char *out, char *data, int *tex, int a3, int a4) {
 }
 }
 }
+
+/* ---- swg9c ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 wave 4, worker swg9c */
+namespace swg9c {
+extern "C" {
+
+#define Q9(o, off) (*(int *)((char *)(o) + (off)))
+void f_04ed28(void *);
+void f_05a61c(void *, void *, void *);
+void f_05f64c(void *, void *, void *);
+void *f_04dfa0(unsigned);
+void f_04e4b4(void *);
+void f_04eee8(void *s, void *tag);
+void f_05e4a8(void *, void *);
+void f_05a3e8(void *, void *, void *);
+int sceKernelCpuSuspendIntr(void);
+void sceKernelCpuResumeIntr(int);
+extern char D_1a43d0[];
+struct Ref {
+    char *p;
+    int *rc;
+    ~Ref() { f_04ed28(this); }
+};
+struct G2 { int w[4]; ~G2() {} };
+struct Str {
+    char *p;
+    ~Str() {
+        G2 g;
+        char *s0 = p;
+        char *s2 = s0 - 12;
+        int intr = sceKernelCpuSuspendIntr();
+        volatile int *c = (volatile int *)(s0 - 4);
+        int s1 = *c;
+        *c += -1;
+        sceKernelCpuResumeIntr(intr);
+        if (s1 <= 0) f_04eee8(s2, &g);
+    }
+};
+struct It { char *n; It() {} It(const It &o) { n = o.n; } };
+struct Em { ~Em() {} };
+struct Pr;
+void f_05e394(void *, void *, void *, const Pr &);
+void f_05e394v(void *, void *, void *, void *) __asm__("f_05e394");
+struct Pr {
+
+    void *p; int *cnt;
+    Pr(void *o) { p = o; cnt = 0; if (o) { cnt = (int *)f_04dfa0(4); *cnt = 1; } }
+    ~Pr() { f_04ed28(this); }
+};
+void f_04e8c0(void *) throw();
+struct ObjBase { void *vt; int z; unsigned char b; int w[4]; ~ObjBase() { f_04e8c0(this); } };
+struct Ob37 : ObjBase {
+    char *s;
+    static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+    static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+    Ob37(void *a) {
+        vt = D_1a43d0; b = 1; w[0] = -1;
+        z = 0; w[1] = 0; w[2] = 0; w[3] = 0;
+        f_05e4a8(&s, a);
+    }
+};
+
+/* @draft 0x0587d8 us f_0587d8
+   Remaining difference: retail builds the 32-byte object (new) before the string and keeps the pointer slots of the pop (arg, r) for the report call; register allocation and the landing pad flag differ (608 vs 620 bytes).
+   WHAT IT DOES: pops the argument stack at +328 as a reference-counted handle, asks its object for a character (virtual slot 23), makes a one-character string of it, wraps the string in a 36-byte named object held by a counted handle and reports it to f_05e394 with the argument stack. */
+void f_0587d8(char *s) {
+    char *t = s + 328;
+    Ref a;
+    It it, r, arg;
+    it.n = *(char **)(t + 4);
+    char *nd = *(char **)(it.n + 4);
+    a.rc = *(int * volatile *)(nd + 12);
+    a.p = *(char * volatile *)(nd + 8);
+    it.n = nd;
+    if (a.rc) *a.rc += 1;
+    it.n = *(char **)(t + 4);
+    arg.n = (it.n = *(char **)(it.n + 4));
+    f_05f64c(&r, t, &arg);
+    char buf[2];
+    buf[0] = ((char (*)(void *))(*(void ***)a.p)[23])(a.p);
+    buf[1] = 0;
+    G2 g;
+    Str str;
+    f_05a3e8(&str, buf, &g);
+    Pr pr(new Ob37(&str));
+    r.n = *(char **)(t + 4);
+    f_05e394v(&arg, t, &r, &pr);
+}
+
+void f_060ac4(void *);
+extern char D_1a4320[];
+struct Vo {
+    virtual void s0(); virtual void s1(); virtual void s2(); virtual void s3(); virtual void s4();
+    virtual void s5(); virtual void s6(); virtual void s7(); virtual void s8(); virtual void s9();
+    virtual void s10(); virtual void s11(); virtual void s12(); virtual void s13(); virtual void s14();
+    virtual void s15(); virtual void s16(); virtual void s17(); virtual void s18(); virtual void s19();
+    virtual void s20(); virtual Str s21();
+};
+struct ObC {
+    static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+    static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+    ObC(const Str &a) {
+        Em e;
+        if (*(int *)(a.p - 4) < 0) f_060ac4((void *)&a);
+        Q9(this, 0) = (int)D_1a4320; Q9(this, 4) = 0;
+        *((char *)this + 8) = a.p[0];
+    }
+};
+
+/* @draft 0x05858c us f_05858c
+   Remaining difference: retail's frame is 16 bytes larger and the returned string sits at +96 with the destructor tag at +80; otherwise the same calls in the same order (560 vs 588 bytes).
+   WHAT IT DOES: pops the argument stack at +328 as a reference-counted handle, asks its object for a string (virtual slot 21), wraps the string's first character in a 12-byte object held by a counted handle and reports it to f_05e394 with the argument stack. */
+void f_05858c(char *s) {
+    char *t = s + 328;
+    Ref a;
+    It it, r, arg;
+    it.n = *(char **)(t + 4);
+    char *nd = *(char **)(it.n + 4);
+    a.rc = *(int * volatile *)(nd + 12);
+    a.p = *(char * volatile *)(nd + 8);
+    it.n = nd;
+    if (a.rc) *a.rc += 1;
+    it.n = *(char **)(t + 4);
+    arg.n = (it.n = *(char **)(it.n + 4));
+    f_05f64c(&r, t, &arg);
+    r.n = *(char **)(t + 4);
+    f_05e394(&arg, t, &r, Pr(new ObC(((Vo *)a.p)->s21())));
+}
+
+struct K16 { int a, b, c, d; };
+void f_15fb94(void *, void *);
+extern char D_1a4d14[];
+struct Vp {
+    virtual void s0(); virtual void s1(); virtual void s2(); virtual void s3(); virtual void s4();
+    virtual void s5(); virtual int s6(); virtual void s7(); virtual void s8(); virtual void *s9();
+    virtual void s10(); virtual void s11(); virtual void s12(); virtual void s13(); virtual void s14();
+    virtual void s15(); virtual void s16(); virtual void s17(); virtual void s18(); virtual void s19();
+    virtual K16 s20(void *); virtual Str s21();
+};
+
+/* @draft 0x058d94 us f_058d94
+   Remaining difference: same size and instruction sequence; only register numbering differs (second pop keeps the chain link in a2, the object temporaries swap s0/s1/s2).
+   WHAT IT DOES: pops two reference-counted handles from the argument stack at +328 and drops one more entry; asks the first object for its type (virtual slot 6) and, unless it is 10, builds a registration record from it (virtual slot 20) and resolves a handle for it through f_05a61c; takes the slot 9 result of that object; when it is nonzero, asks the second object for a string (virtual slot 21), writes the terminator byte after its length and passes the target and the string text to f_15fb94. */
+void f_058d94(char *s) {
+    char *t = s + 328;
+    Ref a;
+    It it, r, arg;
+    it.n = *(char **)(t + 4);
+    char *nd = *(char **)(it.n + 4);
+    a.rc = *(int * volatile *)(nd + 12);
+    a.p = *(char * volatile *)(nd + 8);
+    it.n = nd;
+    if (a.rc) *a.rc += 1;
+    it.n = *(char **)(t + 4);
+    arg.n = (it.n = *(char **)(it.n + 4));
+    f_05f64c(&r, t, &arg);
+    Ref b;
+    arg.n = *(char **)(t + 4);
+    nd = *(char **)(arg.n + 4);
+    b.rc = *(int * volatile *)(nd + 12);
+    b.p = *(char * volatile *)(nd + 8);
+    arg.n = nd;
+    if (b.rc) *b.rc += 1;
+    arg.n = *(char **)(t + 4);
+    it.n = (arg.n = *(char **)(arg.n + 4));
+    f_05f64c(&r, t, &it);
+    void *obj;
+    if (((Vp *)a.p)->s6() == 10) {
+        obj = ((Vp *)a.p)->s9();
+    } else {
+        Ref h;
+        K16 k = ((Vp *)a.p)->s20(s);
+        f_05a61c(&h, s, &k);
+        obj = ((Vp *)h.p)->s9();
+    }
+    if (obj) {
+        Str str = ((Vp *)b.p)->s21();
+        str.p[*(int *)(str.p - 12)] = D_1a4d14[0];
+        f_15fb94(obj, str.p);
+    }
+}
+
+}
+}
