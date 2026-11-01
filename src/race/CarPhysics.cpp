@@ -447,24 +447,20 @@ extern "C" void f_0ab074(CarPhys *p)
     } while (k < 4);
 }
 
-/* @draft 0x0ab220 us f_0ab220
-   WHAT IT DOES: Runs four passes over the car's per-wheel records: each pass copies two values into the car, runs f_0ab2a4 and stores its results back, the short result going into a packed list.
-   Remaining difference: the loop body order differs (12 of 33 words). */
+/* @implements 0x0ab220 us f_0ab220
+   WHAT IT DOES: Runs four passes over the car's per-wheel records: each pass copies two values into the car, runs f_0ab2a4 and stores its results back, the short result going into a packed list. */
 extern "C" void f_0ab220(CarPhys *p)
 {
-    char *q = (char *)p;
-    unsigned short *o = (unsigned short *)((char *)p + 368);
-    int k = 3;
-    do {
-        p->m148 = *(float *)(q + 192);
-        p->m152 = *(float *)(q + 208);
-        k--;
+    for (int i = 0; i < 4; i++) {
+        float a = ((float *)((char *)p + 192))[i];
+        float b = ((float *)((char *)p + 208))[i];
+        p->m148 = a;
+        p->m152 = b;
         f_0ab2a4(p);
-        *(float *)(q + 336) = p->m144;
-        *o++ = p->m184;
-        *(int *)(q + 376) = p->m188;
-        q += 4;
-    } while (k >= 0);
+        ((float *)((char *)p + 336))[i] = p->m144;
+        ((unsigned short *)((char *)p + 368))[i] = p->m184;
+        ((int *)((char *)p + 376))[i] = p->m188;
+    }
 }
 
 /* @draft 0x0ab43c us f_0ab43c
