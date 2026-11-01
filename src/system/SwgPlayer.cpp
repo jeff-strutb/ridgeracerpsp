@@ -15211,3 +15211,403 @@ void f_05e980(char *s, int a1) {
 
 }
 }
+
+/* ---- swg10b ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+namespace swg10b {
+extern "C" {
+void f_05daa4(void *, void *);
+void f_04ed28(void *);
+void f_05f1f4(void *, void *, void *);
+void f_04eee8(void *s, void *tag);
+int sceKernelCpuSuspendIntr(void);
+void sceKernelCpuResumeIntr(int);
+int f_15c07c(void *, int, void *);
+void f_05e540(void *, void *, void *);
+void f_05f64c(void *, void *, void *);
+extern char D_1a4d14[];
+struct G2 { int w[4]; ~G2() {} };
+struct Str {
+    char *p;
+    Str() {}
+    ~Str() {
+        G2 g;
+        char *s0 = p;
+        char *s2 = s0 - 12;
+        int intr = sceKernelCpuSuspendIntr();
+        volatile int *c = (volatile int *)(s0 - 4);
+        int s1 = *c;
+        *c += -1;
+        sceKernelCpuResumeIntr(intr);
+        if (s1 <= 0) f_04eee8(s2, &g);
+    }
+};
+struct Rs { int a; char b; Rs() {} Rs(const Rs &o) { a = o.a; b = o.b; } Rs &operator=(const Rs &o) { a = o.a; b = o.b; return *this; } };
+struct E8 { int a, b; E8() {} E8(const E8 &o) { a = o.a; b = o.b; } };
+struct Vs {
+  virtual void s0(); virtual void s1(); virtual void s2(); virtual void s3(); virtual void s4();
+  virtual void s5(); virtual void s6(); virtual int s7(); virtual void s8(); virtual void s9();
+  virtual void s10(); virtual void s11(); virtual void s12(); virtual void s13(); virtual void s14();
+  virtual void s15(); virtual void s16(); virtual void s17(); virtual void s18(); virtual void s19();
+  virtual void s20();
+  virtual Str s21();
+
+};
+struct It4 { int p; int pad[3]; It4() {} It4(const It4 &o) { p = o.p; } It4 &operator=(const It4 &o) { p = o.p; return *this; } };
+struct RefH { int p, rc; RefH() {} RefH(void *x) { f_05daa4(this, x); } RefH(const RefH &o) { p = o.p; rc = o.rc; if (rc) ++*(int *)rc; } ~RefH() { f_04ed28(this); } };
+void f_05e394(void *, void *, void *, void *);
+struct Val24 { int a, b, c, d; RefH r; };
+struct V32 { int a, b, c, d; RefH r; int pad[2]; V32() : a(0), b(-1), c(0), d(0), r((void *)0) {} };
+struct KV28 { int key; int a, b, c, d; RefH r; int pad; KV28() {} };
+static inline bool lt(unsigned a, unsigned b) { return a < b; }
+void f_05f238(void *, void *, void *, void *);
+struct H2 : It4 { H2(const It4 &o) { p = o.p; } ~H2() {} };
+/* @draft 0x05099c us f_05099c
+   WHAT IT DOES: finds the entry for the key in the map at +348 (f_05f1f4), inserting a default entry (zero fields, -1, an empty counted reference) at that position with f_05f238 when it is absent or its key is larger; then calls f_05e394 on the tree at +340 with that tree's end position and the entry's value reference (+36).
+   Remaining difference: 11 of 87 words: argument setup order at the first call and the order of two scratch stores in the insert arm. */
+void f_05099c(char *self, unsigned key) {
+  char *m = self + 348;
+  char *t = self + 340;
+  It4 pos, end, res, h;
+  f_05f1f4(&pos, m, &key);
+  end.p = *(int *)(m + 4);
+  if (pos.p == end.p || lt(key, *(unsigned *)(pos.p + 16))) {
+    h.p = pos.p;
+    KV28 kv;
+    V32 v;
+    kv.key = key; kv.a = v.a; kv.b = v.b; kv.c = v.c; kv.d = v.d;
+    kv.r.p = v.r.p; kv.r.rc = v.r.rc;
+    if (kv.r.rc) ++*(int *)kv.r.rc;
+    H2 h2(h);
+    f_05f238(&res, m, &h2, &kv);
+    pos = res;
+  }
+  It4 out, e2;
+  e2.p = *(int *)(t + 4);
+  f_05e394(&out, t, &e2, (char *)pos.p + 36);
+}
+
+/* @draft 0x04fddc us f_04fddc
+   WHAT IT DOES: initialises a name handle: asks the object for its name string (virtual slot 21), terminates it, stores the owner and clears the cursor; looks the name up with f_15c07c (id 7) in the owner's backend and stores the id; when the id is -1 it inserts the name into the owner's name tree at +8 (f_05e540) and stores the tree and the new entry address (+16) in the handle. Returns the handle.
+   Remaining difference: 59 of 93 words: the early self+8 pointer and owner copy are scheduled differently and the temporaries sit in other stack slots. */
+struct Hd { int owner, id; E8 cur; };
+Hd *f_04fddc(Hd *self, char *obj, char *owner) {
+    E8 *c = &self->cur;
+    Str s = ((Vs *)obj)->s21();
+    s.p[*(int *)(s.p - 12)] = D_1a4d14[0];
+    self->owner = (int)owner;
+    self->cur.a = 0;
+    c->b = 0;
+    int v = f_15c07c(*(void **)(owner + 4), 7, s.p);
+    self->id = v;
+    if (v == -1) {
+        char *m = (char *)self->owner + 8;
+        E8 e;
+        Rs r2, r, r3;
+        f_05e540(&r, m, &s);
+        e.a = (int)m;
+        e.b = r.a + 16;
+        *c = e;
+        r2 = r;
+        e.a = 0;
+        r3 = r;
+    }
+    return self;
+}
+
+int f_126e54x(const char *, ...) __asm__("iprintf");
+extern char D_1a2fec[];
+struct Hn { Vs *p; int *c; Hn() {} ~Hn() { f_04ed28(this); } };
+
+/* @draft 0x0552c4 us f_0552c4
+   WHAT IT DOES: takes the top node of the registry tree at +328, copies its counted handle (+8/+12), erases the node (f_05f64c), then asks the handle's object for an integer (virtual slot 7) and its name string (virtual slot 21), terminates the name and prints both with iprintf (D_1a2fec); releases the name and the handle.
+   Remaining difference: frame is 16 bytes short of retail (sp 112 vs 128); handle and iterator temporaries sit in other slots. */
+void f_05f64cv(void *, void *, It4) __asm__("f_05f64c");
+void f_0552c4(char *self) {
+    char *t = self + 328;
+    It4 it;
+    it.p = *(int *)(t + 4);
+    char *hdr = (char *)it.p;
+    char *top = *(char **)(hdr + 4);
+    Hn h;
+    it.p = (int)top;
+    h.p = *(Vs **)(top + 8);
+    h.c = *(int **)(top + 12);
+    if (h.c) ++*h.c;
+    it.p = (int)hdr;
+    It4 nx;
+    nx.p = *(int *)(hdr + 4);
+    int out[4];
+    it.p = nx.p;
+    f_05f64cv(out, t, nx);
+    int n = h.p->s7();
+    Str s = h.p->s21();
+    s.p[*(int *)(s.p - 12)] = D_1a4d14[0];
+    f_126e54x(D_1a2fec, n, s.p);
+}
+}}
+
+/* ---- swg11c ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 wave 3, worker swg11c */
+namespace swg11c {
+extern "C" {
+void *f_04dfa0(unsigned);
+void f_04e4b4(void *);
+extern char D_1a4868[];
+extern char D_1a4878[];
+void f_060d18(void *, void *, void *);
+void f_05bfe4(void *, unsigned);
+void f_160834(void *, void *);
+void f_060f8c(void *, void *, void *);
+void f_15fd18(void *, void *, void *, void *, int, void *);
+void f_05c154(void *, unsigned);
+void f_161df8(void *, void *);
+void f_060e40(void *, void *, void *);
+
+struct B44 { void *vt; ~B44() { vt = D_1a4878; } };
+struct Sub44 { int a, b, c; };
+struct E44 : B44 {
+    int w1, w2, w3, w4, b, c, d1, d2, d3, d4;
+    static void *operator new(unsigned, void *p) throw() { return p; }
+    E44() {}
+    E44(const E44 &o) {
+        const Sub44 *ss = (const Sub44 *)&o.w4;
+        Sub44 *ds = (Sub44 *)&w4;
+        d3 = o.d3; ds->c = ss->c; d4 = o.d4;
+        vt = D_1a4868;
+        w1 = o.w1; w2 = o.w2; w3 = o.w3; w4 = o.w4;
+        d1 = o.d1; d2 = o.d2; ds->b = ss->b;
+    }
+    E44 &operator=(const E44 &o) {
+        const Sub44 *ss = (const Sub44 *)&o.w4;
+        Sub44 *ds = (Sub44 *)&w4;
+        ds->c = ss->c; ds->b = ss->b;
+        w1 = o.w1; w2 = o.w2; w3 = o.w3; w4 = o.w4;
+        d1 = o.d1; d2 = o.d2; d3 = o.d3; d4 = o.d4;
+        return *this;
+    }
+    ~E44() { vt = D_1a4868; for (char *p = (char *)w4; p != (char *)b; p += 8) { } }
+};
+struct V44 { int al; unsigned b, e, c; };
+struct In9 { int w; char *b, *e, *c; In9() {} In9(const In9 &o) : w(o.w), b(o.b), e(o.e), c(o.c) {} ~In9() { for (char *p = b; p != e; p += 36) { } } };
+struct Nd9 { int f0, f1; In9 v; int g[8]; static void *operator new(unsigned, void *p) throw() { return p; } };
+struct IL { int *b, *e; };
+struct JI { int a, b, c; };
+struct JL { JI *b, *e; };
+struct V56 { int al; Nd9 *b, *e, *c; };
+
+void *f_061ee0(void *, void *, void *, int);
+void f_04e4b4(void *);
+static inline void kill44(E44 *f, E44 *l) {
+    for (; f != l; ++f) (*(void (**)(void *))*(void **)f)(f);
+}
+/* @draft 0x05c2b0 us f_05c2b0
+   WHAT IT DOES: vector insert helper (_M_insert_aux) for a vector of 44-byte polymorphic elements: with spare capacity it copy-constructs the last element one slot up, shifts [pos, end-1) up by one and assigns a copy of the value to pos; otherwise it allocates twice the size (1 when empty), copies [begin,pos), the value and [pos,end) into it (destroying and freeing the new block and rethrowing on an exception), destroys and frees the old block and stores the new begin, end and capacity. */
+void f_05c2b0(V44 *vv, E44 *pos, const E44 *x) {
+  struct W { int al; E44 *b, *e, *c; };
+  W *v = (W *)vv;
+  if (v->e != v->c) {
+    E44 *e = v->e;
+    new (e) E44(e[-1]);
+    v->e = e + 1;
+    E44 xc(*x);
+    E44 *last = e - 1, *dst = e;
+    int n = last - pos;
+    while (n > 0) { --last; --dst; *dst = *last; --n; }
+    *pos = xc;
+    return;
+  }
+  unsigned old = v->e - v->b;
+  unsigned len = old != 0 ? 2 * old : 1;
+  E44 *ns = (E44 *)f_04dfa0(len * 44);
+  E44 *nf = ns;
+  try {
+    nf = (E44 *)f_061ee0(v->b, pos, nf, 0);
+    new (nf) E44(*x);
+    ++nf;
+    nf = (E44 *)f_061ee0(pos, v->e, nf, 0);
+  } catch (...) {
+    kill44(ns, nf);
+    if (ns) f_04e4b4(ns);
+    throw;
+  }
+  kill44(v->b, v->e);
+  if (v->b) f_04e4b4(v->b);
+  v->c = ns + len;
+  v->e = nf;
+  v->b = ns;
+}
+
+/* @draft 0x059cd4 us f_059cd4
+   WHAT IT DOES: stores the source object and id at +8/+4, clears the 44-byte element vector at +12 and reserves one slot per entry of the source's int list at +80; for each entry builds a 44-byte element (f_160834) from the table at +56 of the source and appends it (f_05c2b0 when full); then does the same for the 12-byte entries at +68 into the 56-byte element vector at +28 (f_15fd18, f_060f8c), and finally calls f_161df8 on the member at +52. */
+void f_059cd4(char *self, int a1, char *src) {
+    *(char **)(self + 8) = src;
+    *(int *)(self + 4) = a1;
+    f_060d18(self + 12, *(void **)(self + 16), *(void **)(self + 20));
+    IL *l = (IL *)(src + 80);
+    f_05bfe4(self + 12, l->e - l->b);
+    int *it = l->b;
+    int *ie = l->e;
+    V44 *v = (V44 *)(self + 12);
+    for (; it != ie; ++it) {
+        E44 t;
+        char *s = *(char **)(self + 8);
+        f_160834(&t, *(char **)s + *(int *)(*(char **)(s + 56) + *it * 8 + 4));
+        if (v->e == v->c) f_05c2b0(v, (E44 *)v->e, &t);
+        else { new ((void *)v->e) E44(t); v->e += 44; }
+    }
+    char *o = *(char **)(self + 8);
+    V56 *w = (V56 *)(self + 28);
+    f_060e40(w, *(void **)(self + 32), *(void **)(self + 36));
+    JL *m = (JL *)(o + 68);
+    f_05c154(w, m->e - m->b);
+    JI *ji = m->b;
+    JI *je = m->e;
+    for (; ji != je; ++ji) {
+        Nd9 t;
+        f_15fd18(&t, *(void **)(self + 4), self, *(void **)(self + 8), w->e - w->b, ji);
+        if (w->e == w->c) f_060f8c(w, w->e, &t);
+        else { new (w->e) Nd9(t); ++w->e; }
+    }
+    f_161df8(self + 52, (void *)a1);
+}
+}
+}
+
+/* ---- swg11d ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 wave 4, worker swg11d */
+namespace swg11d {
+extern "C" {
+
+void f_04ed28(void *);
+void *f_05db08(unsigned);
+void f_05db44(void *);
+void f_05daa4(void *, void *);
+void f_04e8c0(void *) throw();
+void f_05db84(void *);
+void f_05e4a8(void *, void *);
+void f_05f64c(void *, void *, void *);
+void f_05e394(void *, void *, void *, void *);
+extern char D_1a4270[];
+extern char D_1a4320[];
+extern char D_1a43d0[];
+extern int D_1a2f88; /* constant member pointer, second word */
+
+struct Hn { char *p; int *rc; int pad[2]; ~Hn() { f_04ed28(this); } };
+struct Hr { char *p; int *rc; int pad[2]; Hr(void *o) { f_05daa4(this, o); } ~Hr() { f_04ed28(this); } };
+struct It { char *n; It() {} It(const It &o) { n = o.n; } };
+struct P8 { int a, b; };
+struct Em { ~Em() {} };
+struct Sg { char *p; int pad[3]; ~Sg() { f_05db84(this); } };
+struct Vx {
+    virtual void s0(); virtual void s1(); virtual void s2(); virtual void s3(); virtual void s4();
+    virtual void s5(); virtual int s6(); virtual void s7(); virtual void *s8(); virtual void s9();
+    virtual void s10(); virtual void s11(); virtual void s12(); virtual void s13(); virtual void s14();
+    virtual void s15(); virtual void s16(); virtual void s17(); virtual void s18(); virtual void s19();
+    virtual void s20(); virtual Sg s21(); virtual void s22(); virtual void s23(); virtual long long s24();
+};
+struct Pa { };
+typedef void (Pa::*Pm)(void *);
+struct PmW { int a, b; };
+
+struct ObBase {
+    void *vt; int z; unsigned char b; int w[4];
+    ~ObBase() { f_04e8c0(this); }
+};
+struct ObS : ObBase {
+    char *s;
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    ObS(const Sg &a) {
+        vt = D_1a43d0; b = 1; w[0] = -1;
+        z = 0; w[1] = 0; w[2] = 0; w[3] = 0;
+        f_05e4a8(&s, (void *)&a);
+    }
+};
+struct ObP {
+    void *vt; int z; int a, b;
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    ObP(long long v) { vt = D_1a4270; z = 0; a = (int)v; b = (int)(v >> 32); }
+};
+struct ObI {
+    void *vt; int z; int c;
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *) {}
+    ObI() { Em e; vt = D_1a4320; z = 0; c = 0; }
+};
+
+/* @draft 0x05fce4 us f_05fce4
+   WHAT IT DOES: pops two counted handles from the argument stack at +328, asks both objects for their type code (virtual slot 6) and picks a receiver by the type pair: for (non-7, 7) a boxed string object built from the second object's string (slot 21); for (5, 6) and for (5, 5) with the member pointer equal to the constant one, a boxed 8-byte pair object from slot 24; for type 3 a fresh boxed zero; otherwise the handle of slot 8. Calls the passed pointer-to-member function (virtual dispatch when the low bit of its adjustment is set) on that receiver with the first object, then reports the stack position to f_05e394 with the receiver.
+   Remaining difference: unscored first draft. */
+void f_05fce4(char *self, Pm *pmp) {
+    Pm pm = *pmp;
+    Pm *pq = &pm;
+    char *t = self + 328;
+    Hn h1;
+    It a;
+    int o[4];
+    It b;
+    char *nd;
+    a.n = *(char **)(t + 4);
+    nd = *(char **)(a.n + 4);
+    h1.rc = *(int * volatile *)(nd + 12);
+    h1.p = *(char * volatile *)(nd + 8);
+    a.n = nd;
+    if (h1.rc) *h1.rc += 1;
+    a.n = *(char **)(t + 4);
+    b.n = (a.n = *(char **)(a.n + 4));
+    f_05f64c(o, t, &b);
+    Hn h2;
+    b.n = *(char **)(t + 4);
+    nd = *(char **)(b.n + 4);
+    h2.rc = *(int * volatile *)(nd + 12);
+    h2.p = *(char * volatile *)(nd + 8);
+    b.n = nd;
+    if (h2.rc) *h2.rc += 1;
+    b.n = *(char **)(t + 4);
+    a.n = (b.n = *(char **)(b.n + 4));
+    f_05f64c(o, t, &a);
+    int s2 = ((Vx *)h2.p)->s6();
+    int ty = ((Vx *)h1.p)->s6();
+    if (s2 != 7 && ty == 7) {
+        Hr r(new ObS(((Vx *)h2.p)->s21()));
+        (((Pa *)r.p)->**pq)(h1.p);
+        o[0] = *(int *)(t + 4);
+        f_05e394(&b, t, o, &r);
+        return;
+    }
+    if ((s2 == 5 && ty == 6) ||
+        (s2 == 5 && ty == 5 && ((PmW *)&pm)->a == 120 && ((PmW *)&pm)->b == D_1a2f88)) {
+        Hr r(new ObP(((Vx *)h2.p)->s24()));
+        (((Pa *)r.p)->**pq)(h1.p);
+        o[0] = *(int *)(t + 4);
+        f_05e394(&b, t, o, &r);
+        return;
+    }
+    if (s2 == 3) {
+        Hr r(new ObI);
+        (((Pa *)r.p)->**pq)(h1.p);
+        o[0] = *(int *)(t + 4);
+        f_05e394(&b, t, o, &r);
+        return;
+    }
+    Hr r(((Vx *)h2.p)->s8());
+    (((Pa *)r.p)->**pq)(h1.p);
+    o[0] = *(int *)(t + 4);
+    f_05e394(&b, t, o, &r);
+}
+
+}
+}
