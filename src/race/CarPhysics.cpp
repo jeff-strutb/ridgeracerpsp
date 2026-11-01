@@ -1612,3 +1612,110 @@ extern "C" void f_0a74cc(CarPhys *p)
     f_0aea0c(p);
     f_0aea84(p);
 }
+
+/* @draft 0x0a7eac us f_0a7eac
+   WHAT IT DOES: The physics step used when the car is placed on the track: stores the previous height, looks the car up on the track (mode 2 when that fails), probes the wheels with the probe matching the old mode, then either keeps the state (car within 3 of its window) or reruns the wheel steps on a scratch copy and blends it back, for the whole car or wheel by wheel.
+   Remaining difference: as in f_0a74cc, the second loop pass hoists the wheel loop's -1 into a sixth saved register (retail: -fno-rerun-loop-opt-like behaviour for this loop, but that flag breaks three exact functions of the file); retail also keeps the two window margins in $f2/$f3 and copies them into $f20/$f21 at the loop. */
+extern "C" void f_0a7eac(CarPhys *p)
+{
+    int mode = p->m108;
+    p->m24 = p->m16;
+    p->m28 = p->m20;
+    f_0ae9f8(p);
+    f_099b98((char *)p + 8);
+    CarPhysWork w;
+    char *b = (char *)&D_23c820;
+    char *s = b + 12256;
+    GroundPt pt;
+    pt.x = p->m0;
+    pt.y = p->m12;
+    pt.z = p->m4;
+    pt.w = 1.0f;
+    if (p->m116)
+        p->m92 = f_0aff7c(s, &pt.x);
+    else
+        p->m92 = f_0af788(s, &pt.x);
+    p->m104 = f_0af5e8(s, &p->m92);
+    if (p->m104 < 0) {
+        p->m108 = 2;
+        f_0aa608(p);
+        f_0ab220(p);
+        f_0acd80(p);
+        f_0addbc(p);
+    } else {
+        p->m108 = 0;
+        w.m0 = p->m0;
+        w.m4 = p->m4;
+        w.m8 = p->m8;
+        w.m12 = p->m132;
+        w.m16 = p->m128;
+        w.m116 = p->m116;
+        f_0ae9f8(&w);
+        if (mode < 2)
+            f_0a9158(p);
+        else
+            f_0a9248(p);
+        f_0aa374(p);
+        f_0ab074(p);
+        f_0ac630(p);
+        f_0ad82c(p);
+        p->m120 = p->m16;
+    }
+    if (p->m108 == 0) {
+        float lo = -3.0f;
+        float hi = 3.0f;
+        if (p->m20 < p->m40 + lo || p->m36 + hi < p->m20) {
+            p->m108 = 1;
+            w.m100 = p->m100;
+            {
+                unsigned short *d = (unsigned short *)PH(&w, 392);
+                unsigned short *q = (unsigned short *)PH(p, 392);
+                for (int i = 0; i < 4; i++) {
+                    unsigned short h = *q++;
+                    float u = PF(p, 224)[i];
+                    float t = PF(p, 240)[i];
+                    PF(&w, 224)[i] = u;
+                    *d++ = h;
+                    PF(&w, 240)[i] = t;
+                }
+            }
+            *PF(&w, 172) = *PF(p, 172);
+            *PF(&w, 176) = *PF(p, 176);
+            f_0aa608(&w);
+            f_0ab220(&w);
+            f_0acd80(&w);
+            f_0addbc(&w);
+            f_0aeacc(p, &w);
+        } else {
+            p->m100 = -1;
+            for (int i = 0; i < 4; i++) {
+                if (PF(p, 304)[i] < PF(p, 416)[i] + lo || PF(p, 432)[i] + hi < PF(p, 304)[i]) {
+                    w.m100 = p->m100;
+                    {
+                        unsigned short *d = (unsigned short *)PH(&w, 392);
+                        unsigned short *q = (unsigned short *)PH(p, 392);
+                        for (int j = 0; j < 4; j++) {
+                            unsigned short h = *q++;
+                            float u = PF(p, 224)[j];
+                            float t = PF(p, 240)[j];
+                            PF(&w, 224)[j] = u;
+                            *d++ = h;
+                            PF(&w, 240)[j] = t;
+                        }
+                    }
+                    PI(p, 400)[i] = 1;
+                    *PF(&w, 172) = *PF(p, 172);
+                    *PF(&w, 176) = *PF(p, 176);
+                    f_0aaf68(&w, i);
+                    f_0ab43c(&w, i);
+                    f_0ad084(&w, i);
+                    f_0af140(p, &w, i);
+                } else {
+                    PH(p, 392)[i] = -1;
+                }
+            }
+        }
+    }
+    f_0aea0c(p);
+    f_0aea84(p);
+}
