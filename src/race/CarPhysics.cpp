@@ -68,7 +68,7 @@ struct CarPhys {
     float m608;
     float m612;
     unsigned char m616;
-    char p617[23];
+    char p617[7];
 };
 extern "C" {
 void f_0a7118(void *a, void *b, int c, int d, int e, float f, float g, float h);
@@ -1485,4 +1485,130 @@ extern "C" void f_0a98d8(CarPhys *p)
             }
         }
     }
+}
+
+extern "C" {
+void f_0ad084(CarPhys *p, int i);
+void f_0aeacc(CarPhys *p, CarPhys *w);
+}
+
+/* A scratch copy of the physics state, built and torn down by the object's own routines. */
+struct CarPhysWork : CarPhys {
+    CarPhysWork() { f_0a6f88(this); }
+    ~CarPhysWork() { f_0a6fac_p(this); }
+};
+
+#define PF(q, o) ((float *)((char *)(q) + (o)))
+#define PI(q, o) ((int *)((char *)(q) + (o)))
+#define PH(q, o) ((short *)((char *)(q) + (o)))
+
+/* @draft 0x0a74cc us f_0a74cc
+   WHAT IT DOES: The per frame physics step of one car: stores the previous height, looks the car up on the track, probes the four wheels, then either keeps the stored state (car inside its window) or reruns the wheel steps on a scratch copy and blends it back, for the whole car or wheel by wheel.
+   Remaining difference: loop.c hoists the -1 of the wheel loop's else arm into a sixth saved register (retail loads it in the branch slot), and retail holds the probe point's address in s2 from the prologue; the rest follows from those. */
+extern "C" void f_0a74cc(CarPhys *p)
+{
+    p->m24 = p->m16;
+    p->m28 = p->m20;
+    f_0ae9f8(p);
+    f_099b98((char *)p + 8);
+    CarPhysWork w;
+    char *b = (char *)&D_23c820;
+    char *s = b + 12256;
+    char *ar = b + 12240;
+    GroundPt pt;
+    pt.x = p->m0;
+    pt.y = p->m12;
+    pt.z = p->m4;
+    pt.w = 1.0f;
+    if (p->m116)
+        p->m92 = f_0aff7c(s, &pt.x);
+    else
+        p->m92 = f_0af788(s, &pt.x);
+    p->m104 = f_0af5e8(s, &p->m92);
+    f_0aa608(p);
+    float d = p->m40 + -4.0f;
+    if (d <= p->m20 && p->m20 <= p->m36 + 4.0f) {
+        p->m108 = 0;
+        w.m0 = p->m0;
+        w.m4 = p->m4;
+        w.m8 = p->m8;
+        w.m12 = p->m132;
+        w.m16 = p->m128;
+        w.m116 = p->m116;
+        f_0ae9f8(&w);
+        f_0a9158(p);
+        f_0aa374(p);
+        f_0ab074(p);
+        f_0ac630(p);
+        f_0ad82c(p);
+    } else {
+        p->m108 = 2;
+        f_0ab220(p);
+        f_0acd80(p);
+        f_0addbc(p);
+    }
+    p->m120 = p->m16;
+    if (p->m108 == 0) {
+        if (p->m20 < p->m40 + -0.0f || p->m36 + 0.0f < p->m20) {
+            p->m108 = 1;
+            w.m100 = p->m100;
+            {
+                unsigned short *d = (unsigned short *)PH(&w, 392);
+                unsigned short *q = (unsigned short *)PH(p, 392);
+                for (int i = 0; i < 4; i++) {
+                    unsigned short h = *q++;
+                    float u = PF(p, 224)[i];
+                    float t = PF(p, 240)[i];
+                    PF(&w, 224)[i] = u;
+                    *d++ = h;
+                    PF(&w, 240)[i] = t;
+                }
+            }
+            *PF(&w, 172) = *PF(p, 172);
+            *PF(&w, 176) = *PF(p, 176);
+            f_0aa608(&w);
+            f_0ab220(&w);
+            f_0acd80(&w);
+            f_0addbc(&w);
+            f_0aeacc(p, &w);
+        } else {
+            if ((unsigned short)p->m92 == 0xffff) {
+                char *ps = ar + 112;
+                if (p->m116)
+                    p->m92 = f_0aff7c(ps, &pt.x);
+                else
+                    p->m92 = f_0af788(ps, &pt.x);
+                p->m104 = f_0af5e8(ps, &p->m92);
+            }
+            p->m100 = -1;
+            for (int i = 0; i < 4; i++) {
+                if (PF(p, 304)[i] < PF(p, 416)[i] + -0.0f || PF(p, 432)[i] + 0.0f < PF(p, 304)[i]) {
+                    w.m100 = p->m100;
+                    {
+                        unsigned short *d = (unsigned short *)PH(&w, 392);
+                        unsigned short *q = (unsigned short *)PH(p, 392);
+                        for (int j = 0; j < 4; j++) {
+                            unsigned short h = *q++;
+                            float u = PF(p, 224)[j];
+                            float t = PF(p, 240)[j];
+                            PF(&w, 224)[j] = u;
+                            *d++ = h;
+                            PF(&w, 240)[j] = t;
+                        }
+                    }
+                    PI(p, 400)[i] = 1;
+                    *PF(&w, 172) = *PF(p, 172);
+                    *PF(&w, 176) = *PF(p, 176);
+                    f_0aaf68(&w, i);
+                    f_0ab43c(&w, i);
+                    f_0ad084(&w, i);
+                    f_0af140(p, &w, i);
+                } else {
+                    PH(p, 392)[i] = -1;
+                }
+            }
+        }
+    }
+    f_0aea0c(p);
+    f_0aea84(p);
 }
