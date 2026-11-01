@@ -1818,3 +1818,30 @@ extern "C" void f_0a7b60(CarPhys *p)
         }
     }
 }
+
+extern "C" int f_0af4e0(const int *a, const int *b);
+
+/* The ring distance from point b to point a (within half the ring). */
+static inline int CourseDiff(int a, const int &b)
+{
+    return f_0af4e0(&a, &b);
+}
+
+/* @draft 0x0aa204 us f_0aa204
+   WHAT IT DOES: Finds the course segment under the point pos between the course points lo and hi by bisection: tests the side of the middle point's heading line and recurses into the half that holds pos until the two points are neighbours, returning the lower point of the segment.
+   Remaining difference: stack slot numbering only (retail: wrap temporary 16, the copy of lo 20, lo 24, hi 28, then the angle and m); the instructions are otherwise retail's. Not a by-value, by-reference or pointer form of the distance helper, nor a 16-byte probe vector. */
+extern "C" int f_0aa204(const float *pos, int lo, int hi)
+{
+    float v[2];
+    int m = CourseWrap((CourseDiff(lo, hi) >> 1) + hi);
+    v[0] = pos[0];
+    v[1] = pos[1];
+    if (CourseSide(v, D_23f7f0_nodes, m) < 0.0f) {
+        if (CourseDiff(hi, m) < 2)
+            return m;
+        return f_0aa204(pos, m, hi);
+    }
+    if (CourseDiff(m, lo) < 2)
+        return lo;
+    return f_0aa204(pos, lo, m);
+}
