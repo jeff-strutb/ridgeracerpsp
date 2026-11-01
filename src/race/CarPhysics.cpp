@@ -1026,3 +1026,41 @@ extern "C" float *f_0a8fa8(float *out, CarPhys *c, const float *d)
     out[2] = w.c - v.c;
     return out;
 }
+
+/* @draft 0x0af140 us f_0af140
+   WHAT IT DOES: Blends wheel i of the cars p and q toward each other: the weight comes from where p's wheel height lies between its two limits (a quarter of the distance to the nearer one, clamped to 0..1); the surface index is shared (a negative one taken from the other car), and the angle (shortest turn, wrapped), the height and the second height are blended and written to both cars; q's surface id is copied to p.
+   Remaining difference: retail keeps i*4 in s0 from the prologue and stores q's blended heights in the other order. The -0.0 additions are retail's literals. */
+extern "C" void f_0af140(CarPhys *p, CarPhys *q, int i)
+{
+    float a = ((float *)((char *)p + 416))[i];
+    float b = ((float *)((char *)p + 432))[i];
+    float h = ((float *)((char *)p + 304))[i];
+    float t;
+    if (h < (a + b) * 0.5f)
+        t = a + -0.0f - h;
+    else
+        t = -0.0f - b + h;
+    t *= 0.25f;
+    if (t < 0.0f)
+        t = 0.0f;
+    else if (1.0f < t)
+        t = 1.0f;
+    if (((int *)((char *)p + 496))[i] < 0)
+        ((int *)((char *)p + 496))[i] = ((int *)((char *)q + 496))[i];
+    else
+        ((int *)((char *)q + 496))[i] = ((int *)((char *)p + 496))[i];
+    float qa = ((float *)((char *)q + 288))[i];
+    float w = f_0af380(&qa, &((float *)((char *)p + 288))[i]) * t + ((float *)((char *)p + 288))[i];
+    float r = f_0af478(&w);
+    float c = ((float *)((char *)p + 352))[i];
+    float d = ((float *)((char *)p + 336))[i];
+    float e = (((float *)((char *)q + 352))[i] - c) * t + c;
+    float g = (((float *)((char *)q + 336))[i] - d) * t + d;
+    ((float *)((char *)p + 288))[i] = r;
+    ((float *)((char *)q + 288))[i] = r;
+    ((float *)((char *)p + 352))[i] = e;
+    ((float *)((char *)p + 336))[i] = g;
+    ((float *)((char *)q + 352))[i] = e;
+    ((float *)((char *)q + 336))[i] = g;
+    ((unsigned short *)((char *)p + 368))[i] = ((unsigned short *)((char *)q + 368))[i];
+}
