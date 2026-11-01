@@ -2093,14 +2093,14 @@ void f_05cbac(void **p)
     operator delete(p);
 }
 
-/* @draft 0x05dc90 us f_05dc90
+/* @implements 0x05dc90 us f_05dc90
    WHAT IT DOES: Copies the two-word link of a list node and, when the node is not empty,
-   bumps the count word of the node it now points at.    Remaining difference: the two loads and two stores are scheduled in another order (retail loads the high word first and stores p[1] before the loop; GCC stores p[0] first, with v2 in a1 and not v0). */
+   bumps the count word of the node it now points at. */
 void f_05dc90(int *p, int *q)
 {
+    int v2 = q[0];
     int v3 = q[1];
     p[1] = v3;
-    int v2 = q[0];
     p[0] = v2;
     if (v3)
         ((int *)v3)[0]++;
@@ -2337,14 +2337,14 @@ int *f_05c790(int *p, int a1, int **a2)
 
 /* @draft 0x061c38 us f_061c38
    WHAT IT DOES: Copies the nodes of a range into a destination array, bumping the count of
-   each copied node's shared pointer, and returns the end of the destination.    Remaining difference: the copy loop's store order and the null test on the destination are not the retail shape; the first differing word is at +0x10. */
+   each copied node's shared pointer, and returns the end of the destination.    Remaining difference: 2 words, retail loads both words before the first store (lw v1,4 sits before sw v0,0). */
 int *f_061c38(int *f, int *l, int *d)
 {
     if (f != l) {
         do {
             if (d) {
-                int *q = (int *)f[1];
                 d[0] = f[0];
+                int *q = (int *)f[1];
                 d[1] = (int)q;
                 if (q)
                     q[0]++;
@@ -3110,14 +3110,13 @@ int f_0633a0(void *o, void *a)
     return res;
 }
 
-/* @draft 0x0633f0 us f_0633f0
-   WHAT IT DOES: If the flag at +8 is set, asks the argument (slot 22) and returns 1 when it is nonzero; otherwise returns 0.
-   Remaining difference: one word, the branch on the call result; retail uses beqzl (a zero result skips the li), the source gives bnel. */
+/* @implements 0x0633f0 us f_0633f0
+   WHAT IT DOES: If the flag at +8 is set, asks the argument (slot 22) and returns 1 when it returns zero; otherwise returns 0. */
 int f_0633f0(void *o, void *a)
 {
     int res = 0;
     if (B(o, 8) != 0) {
-        if (((vfn_t *)*(void **)a)[22](a))
+        if (!((vfn_t *)*(void **)a)[22](a))
             res = 1;
     }
     return res;
@@ -4557,3 +4556,857 @@ char *f_05dff0(char *self, char *a1, void *a2) {
 }  // extern "C"
 
 }  // namespace swg2c
+
+/* ---- swg3e ---- */
+/* TU 117 fragment swg3e: untagged functions of the SWG Flash/ActionScript player (list_04). */
+
+namespace swg3e {
+
+
+extern "C" {
+void *f_04dfa0(unsigned n);
+void *f_05db08(unsigned n);
+void f_05daa4(void *self, void *a1);
+void f_05db44(void *);
+double f_1259cc(void);
+int f_06b624(void *, void *, void *);
+void f_15f714(void *, void *);
+void f_15f6f8(void *);
+extern char D_1a4320[];
+extern char D_1a4270[];
+extern char D_1a4060[];
+int f_15e0f4(void *);
+void f_15f190(void *, float *, float *);
+void f_15f1bc(void *, float *, float *);
+double f_11c6d8(double, double);
+double f_11cd44(double, double);
+void f_068bc0(void *, void *, int);
+void f_068e6c(void *, void *, int);
+int f_15c278(void *, int);
+}
+
+struct Ref { int a, b; Ref(void *p); ~Ref() {} };
+inline Ref::Ref(void *p) { f_05daa4(this, p); }
+struct NumD {
+    void *vt; int z; double d;
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    NumD(double x) { vt = (void *)D_1a4270; d = x; z = 0; }
+};
+struct NumI {
+    void *vt; int z; int v;
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    NumI(int x) { vt = (void *)D_1a4320; v = x; z = 0; }
+};
+extern "C" {
+double f_11c448(double);
+double f_11c590(double);
+double f_11b514(double);
+double f_11bafc(double);
+double f_11bce8(double);
+double f_11c848(double);
+double f_11be14(double);
+double f_11cba8(double);
+double f_11c018(double);
+double f_11d280(double);
+double f_11c12c(double);
+}
+
+inline double vc(char *obj) {
+    void *a = **(void ***)(obj + 52);
+    return ((double (*)(void *))((void **)*(void **)a)[24])(a);
+}
+
+extern "C" {
+int f_15e128(void *);
+}
+
+inline double vc2(char *obj) {
+    void *a = ((void **)*(void **)(obj + 52))[2];
+    return ((double (*)(void *))((void **)*(void **)a)[24])(a);
+}
+
+inline void *vc9(char *obj) {
+    void *v = *(void **)(obj + 44);
+    return ((void *(*)(void *))((void **)*(void **)v)[9])(v);
+}
+
+struct NumB {
+    void *vt; int z; char b;
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    NumB(char x) { vt = (void *)D_1a4060; b = x; z = 0; }
+};
+struct Ref0 { int a, b; ~Ref0() {} };
+struct H { int a; int *rc; H(const H &o) { a = o.a; rc = o.rc; if (rc) ++*rc; } };
+struct V { int w0, w1, w2, w3, w4, w5; int *rc; V(const V &o) { int *r = o.rc; w0 = o.w0; w1 = o.w1; w2 = o.w2; w3 = o.w3; w4 = o.w4; w5 = o.w5; rc = r; if (rc) ++*rc; } };
+struct N { int l, r, p, q; V v; };
+inline void *operator new(unsigned, void *p) throw() { return p; }
+struct Num {
+    void *vt; int z; double d;
+    static void *operator new(unsigned n) { return f_05db08(n); }
+    static void operator delete(void *p) { f_05db44(p); }
+    Num() { double t = f_1259cc(); vt = (void *)D_1a4270; d = t; z = 0; }
+};
+
+extern "C" {
+
+double f_11c448(double);
+double f_11c590(double);
+double f_11b514(double);
+double f_11bafc(double);
+double f_11bce8(double);
+double f_11c848(double);
+double f_11be14(double);
+double f_11cba8(double);
+double f_11c018(double);
+double f_11d280(double);
+double f_11c12c(double);
+
+/* @implements 0x0671b0 us f_0671b0
+   WHAT IT DOES: builds a 12-byte integer value object (vtable D_1a4320) holding the result of a virtual call on the object at +228 of the one at +56 (0 when absent) and stores it into the returned reference through f_05daa4. */
+Ref0 f_0671b0(char *obj) {
+    void *p = *(void **)(*(char **)(obj + 56) + 228);
+    int v = 0;
+    if (p) v = ((int (*)(void *))((void **)*(void **)p)[5])(p);
+    unsigned *n = (unsigned *)f_05db08(12);
+    n[0] = (unsigned)D_1a4320;
+    n[2] = v;
+    n[1] = 0;
+    Ref0 r;
+    f_05daa4(&r, n);
+    return r;
+}
+
+/* @implements 0x067230 us f_067230
+   WHAT IT DOES: builds a 12-byte integer value object (vtable D_1a4320) holding the result of a virtual call on the object at +228 of the one at +56 (0 when absent) and stores it into the returned reference through f_05daa4. */
+Ref0 f_067230(char *obj) {
+    void *p = *(void **)(*(char **)(obj + 56) + 228);
+    int v = 0;
+    if (p) v = ((int (*)(void *))((void **)*(void **)p)[7])(p);
+    unsigned *n = (unsigned *)f_05db08(12);
+    n[0] = (unsigned)D_1a4320;
+    n[2] = v;
+    n[1] = 0;
+    Ref0 r;
+    f_05daa4(&r, n);
+    return r;
+}
+
+/* @implements 0x0694bc us f_0694bc
+   WHAT IT DOES: builds a 16-byte double value object (vtable D_1a4270) from a float field of the object at +56 and stores it into the returned reference through f_05daa4. */
+Ref0 f_0694bc(char *obj) {
+    float f = *(float *)(*(char **)(obj + 56) + 288);
+    unsigned *n = (unsigned *)f_05db08(16);
+    double d = f;
+    n[0] = (unsigned)D_1a4270;
+    ((double *)n)[1] = d;
+    n[1] = 0;
+    Ref0 r;
+    f_05daa4(&r, n);
+    return r;
+}
+
+/* @implements 0x069738 us f_069738
+   WHAT IT DOES: builds a 16-byte double value object (vtable D_1a4270) from a float field of the object at +56 and stores it into the returned reference through f_05daa4. */
+Ref0 f_069738(char *obj) {
+    float f = *(float *)(*(char **)(obj + 56) + 292);
+    unsigned *n = (unsigned *)f_05db08(16);
+    double d = f;
+    n[0] = (unsigned)D_1a4270;
+    ((double *)n)[1] = d;
+    n[1] = 0;
+    Ref0 r;
+    f_05daa4(&r, n);
+    return r;
+}
+
+/* @implements 0x0681cc us f_0681cc
+   WHAT IT DOES: calls virtual slot 9 on the object at +44, converts through f_06b624 and f_15f714 (and f_15f6f8 in the second form), then clears the returned reference through f_05daa4; returns the result slot. */
+void *f_0681cc(void *self, char *obj) {
+    void *v = *(void **)(obj + 44);
+    void *r = ((void *(*)(void *))((void **)*(void **)v)[9])(v);
+    int t = f_06b624(*(void **)(obj + 40), r, *(void **)(obj + 52));
+    f_15f714(r, &t);
+    f_05daa4(self, 0);
+    return self;
+}
+
+/* @implements 0x06a958 us f_06a958
+   WHAT IT DOES: asks a virtual predicate on the object at +52 and returns a reference-counted handle copy of either its first or its second handle (offset 0 or 8), incrementing the refcount. */
+H f_06a958(char *obj) {
+    char *p = *(char **)(obj + 52);
+    void *a = *(void **)p;
+    int r = ((int (*)(void *, int))((void **)*(void **)a)[40])(a, *(int *)(p + 8));
+    const H &s = r ? *(H *)*(char **)(obj + 52) : *(H *)(*(char **)(obj + 52) + 8);
+    return s;
+}
+
+/* @implements 0x06a9d4 us f_06a9d4
+   WHAT IT DOES: asks a virtual predicate on the object at +52 and returns a reference-counted handle copy of either its first or its second handle (offset 0 or 8), incrementing the refcount. */
+H f_06a9d4(char *obj) {
+    char *p = *(char **)(obj + 52);
+    void *a = *(void **)p;
+    int r = ((int (*)(void *, int))((void **)*(void **)a)[39])(a, *(int *)(p + 8));
+    const H &s = r ? *(H *)*(char **)(obj + 52) : *(H *)(*(char **)(obj + 52) + 8);
+    return s;
+}
+
+/* @implements 0x06aba4 us f_06aba4
+   WHAT IT DOES: allocates a 16-byte double value object whose value comes from f_1259cc and stores it into the returned reference, with a delete cleanup if the constructor throws. */
+Ref f_06aba4(void) {
+    Ref r(new Num);
+    return r;
+}
+
+/* @draft 0x066f5c us f_066f5c
+   WHAT IT DOES: allocates a 44-byte tree node and copy-constructs the 28-byte value (six words plus a refcounted pointer) at node+16 from the source, incrementing the refcount. */
+N *f_066f5c(int unused, V *src) {
+    N *n = (N *)f_04dfa0(44);
+    new (&n->v) V(*src);
+    return n;
+}
+
+/* @implements 0x068148 us f_068148
+   WHAT IT DOES: calls virtual slot 9 on the object at +44, converts through f_06b624 and f_15f714 (and f_15f6f8 in the second form), then clears the returned reference through f_05daa4; returns the result slot. */
+void *f_068148(void *self, char *obj) {
+    void *v = *(void **)(obj + 44);
+    void *r = ((void *(*)(void *))((void **)*(void **)v)[9])(v);
+    int t = f_06b624(*(void **)(obj + 40), r, *(void **)(obj + 52));
+    f_15f714(r, &t);
+    f_15f6f8(r);
+    f_05daa4(self, 0);
+    return self;
+}
+
+/* @implements 0x06a0c4 us f_06a0c4
+   WHAT IT DOES: Math function wrapper: applies a libm routine to the double returned by virtual slot 24 of the object at +52 and returns it as a new double value object in the returned reference. */
+Ref f_06a0c4(char *obj) {
+    Ref r(new NumD(f_11c448(vc(obj))));
+    return r;
+}
+
+/* @implements 0x06a178 us f_06a178
+   WHAT IT DOES: Math function wrapper: applies a libm routine to the double returned by virtual slot 24 of the object at +52 and returns it as a new double value object in the returned reference. */
+Ref f_06a178(char *obj) {
+    Ref r(new NumD(f_11c590(vc(obj))));
+    return r;
+}
+
+/* @implements 0x06a22c us f_06a22c
+   WHAT IT DOES: Math function wrapper: applies a libm routine to the double returned by virtual slot 24 of the object at +52 and returns it as a new double value object in the returned reference. */
+Ref f_06a22c(char *obj) {
+    Ref r(new NumD(f_11b514(vc(obj))));
+    return r;
+}
+
+/* @implements 0x06a3cc us f_06a3cc
+   WHAT IT DOES: Math function wrapper: applies a libm routine to the double returned by virtual slot 24 of the object at +52 and returns it as a new double value object in the returned reference. */
+Ref f_06a3cc(char *obj) {
+    Ref r(new NumD(f_11bafc(vc(obj))));
+    return r;
+}
+
+/* @implements 0x06a480 us f_06a480
+   WHAT IT DOES: Math function wrapper: applies a libm routine to the double returned by virtual slot 24 of the object at +52 and returns it as a new double value object in the returned reference. */
+Ref f_06a480(char *obj) {
+    Ref r(new NumD(f_11bce8(vc(obj))));
+    return r;
+}
+
+/* @implements 0x06a59c us f_06a59c
+   WHAT IT DOES: Math function wrapper: applies a libm routine to the double returned by virtual slot 24 of the object at +52 and returns it as a new double value object in the returned reference. */
+Ref f_06a59c(char *obj) {
+    Ref r(new NumD(f_11c848(vc(obj))));
+    return r;
+}
+
+/* @implements 0x06a650 us f_06a650
+   WHAT IT DOES: Math function wrapper: applies a libm routine to the double returned by virtual slot 24 of the object at +52 and returns it as a new double value object in the returned reference. */
+Ref f_06a650(char *obj) {
+    Ref r(new NumD(f_11be14(vc(obj))));
+    return r;
+}
+
+/* @implements 0x06a704 us f_06a704
+   WHAT IT DOES: Math function wrapper: applies a libm routine to the double returned by virtual slot 24 of the object at +52 and returns it as a new double value object in the returned reference. */
+Ref f_06a704(char *obj) {
+    Ref r(new NumD(f_11cba8(vc(obj))));
+    return r;
+}
+
+/* @implements 0x06ad64 us f_06ad64
+   WHAT IT DOES: Math function wrapper: applies a libm routine to the double returned by virtual slot 24 of the object at +52 and returns it as a new double value object in the returned reference. */
+Ref f_06ad64(char *obj) {
+    Ref r(new NumD(f_11c018(vc(obj))));
+    return r;
+}
+
+/* @implements 0x06ae18 us f_06ae18
+   WHAT IT DOES: Math function wrapper: applies a libm routine to the double returned by virtual slot 24 of the object at +52 and returns it as a new double value object in the returned reference. */
+Ref f_06ae18(char *obj) {
+    Ref r(new NumD(f_11d280(vc(obj))));
+    return r;
+}
+
+/* @implements 0x06af9c us f_06af9c
+   WHAT IT DOES: Math function wrapper: applies a libm routine to the double returned by virtual slot 24 of the object at +52 and returns it as a new double value object in the returned reference. */
+Ref f_06af9c(char *obj) {
+    Ref r(new NumD(f_11c12c(vc(obj))));
+    return r;
+}
+
+/* @implements 0x067d60 us f_067d60
+   WHAT IT DOES: calls virtual slot 9 on the object at +44, passes it to f_15e128 and returns the integer in a new 12-byte value object stored in the returned reference. */
+Ref f_067d60(char *obj) {
+    void *x = vc9(obj);
+    Ref r(new NumI(f_15e128(x)));
+    return r;
+}
+
+/* @implements 0x069248 us f_069248
+   WHAT IT DOES: calls virtual slot 9 on the object at +44, passes it to f_15e128 and returns the integer in a new 12-byte value object stored in the returned reference. */
+Ref f_069248(char *obj) {
+    void *x = vc9(obj);
+    Ref r(new NumI(f_15e128(x)));
+    return r;
+}
+
+/* @implements 0x0676d0 us f_0676d0
+   WHAT IT DOES: calls virtual slot 9 on the object at +44, passes it to f_15e0f4, adds 1 and returns the integer in a new 12-byte value object stored in the returned reference. */
+Ref f_0676d0(char *obj) {
+    void *x = vc9(obj);
+    Ref r(new NumI(f_15e0f4(x) + 1));
+    return r;
+}
+/* @implements 0x069d48 us f_069d48
+   WHAT IT DOES: builds a 12-byte byte-value object (vtable D_1a4060) from f_15c278 applied to the field at +56 and the byte result of virtual slot 22 of the object at +52. */
+Ref f_069d48(char *obj) {
+    Ref r(new NumB(f_15c278(*(void **)(obj + 56), (char)((int (*)(void *))((void **)*(void **)**(void ***)(obj + 52))[23])(**(void ***)(obj + 52)))));
+    return r;
+}
+
+/* @implements 0x068b08 us f_068b08
+   WHAT IT DOES: dispatches on a virtual result of the object at +52: calls f_068bc0 when nonzero, otherwise f_068e6c with another virtual result, then clears the returned reference. */
+void *f_068b08(void *self, char *obj) {
+    void *x = vc9(obj);
+    void *a = **(void ***)(obj + 52);
+    int r = ((int (*)(void *))((void **)*(void **)a)[9])(a);
+    if (r) {
+        f_068bc0(*(void **)(obj + 40), x, r);
+    } else {
+        void *b = **(void ***)(obj + 52);
+        f_068e6c(*(void **)(obj + 40), x, ((int (*)(void *))((void **)*(void **)b)[23])(b));
+    }
+    f_05daa4(self, 0);
+    return self;
+}
+/* @implements 0x06a2e0 us f_06a2e0
+   WHAT IT DOES: binary Math function wrapper (atan2 or pow): applies it to the doubles from virtual slot 24 of the two objects at +52 and returns a new double value object in the returned reference. */
+Ref f_06a2e0(char *obj) {
+    Ref r(new NumD(f_11c6d8(vc(obj), vc2(obj))));
+    return r;
+}
+
+/* @implements 0x06aab8 us f_06aab8
+   WHAT IT DOES: binary Math function wrapper (atan2 or pow): applies it to the doubles from virtual slot 24 of the two objects at +52 and returns a new double value object in the returned reference. */
+Ref f_06aab8(char *obj) {
+    Ref r(new NumD(f_11cd44(vc(obj), vc2(obj))));
+    return r;
+}
+
+/* @draft 0x0692fc us f_0692fc
+   WHAT IT DOES: byte property accessor: when the flag is clear returns the byte at +171 of the object at +44 wrapped in a new value object, otherwise sets that byte from a virtual call and clears the reference. */
+Ref0 f_0692fc(char *obj, int a2) {
+    char *x = (char *)vc9(obj);
+    Ref0 r;
+    if (!a2) {
+        NumB *n = new NumB((unsigned char)x[171]);
+        f_05daa4(&r, n);
+        return r;
+    }
+    void *a = **(void ***)(obj + 52);
+    x[171] = ((int (*)(void *))((void **)*(void **)a)[22])(a);
+    f_05daa4(&r, 0);
+    return r;
+}
+/* @draft 0x0693c0 us f_0693c0
+   WHAT IT DOES: float property accessor: fetches two floats via f_15f190 and returns one as a double value object when the flag is clear, otherwise sets it from a virtual double result via f_15f1bc. */
+Ref0 f_0693c0(char *obj, int a2) {
+    float a, b, c;
+    void *x = vc9(obj);
+    f_15f190(x, &a, &b);
+    Ref0 r;
+    if (!a2) {
+        unsigned *n = (unsigned *)f_05db08(16);
+        double d = a;
+        n[0] = (unsigned)D_1a4270;
+        ((double *)n)[1] = d;
+        n[1] = 0;
+        f_05daa4(&r, n);
+    } else {
+    c = (float)vc(obj);
+    f_15f1bc(x, &c, &b);
+    f_05daa4(&r, 0);
+    }
+    return r;
+}
+/* @draft 0x06963c us f_06963c
+   WHAT IT DOES: float property accessor: fetches two floats via f_15f190 and returns one as a double value object when the flag is clear, otherwise sets it from a virtual double result via f_15f1bc. */
+Ref0 f_06963c(char *obj, int a2) {
+    float a, b, c;
+    void *x = vc9(obj);
+    f_15f190(x, &a, &b);
+    Ref0 r;
+    if (!a2) {
+        unsigned *n = (unsigned *)f_05db08(16);
+        double d = b;
+        n[0] = (unsigned)D_1a4270;
+        ((double *)n)[1] = d;
+        n[1] = 0;
+        f_05daa4(&r, n);
+    } else {
+    c = (float)vc(obj);
+    f_15f1bc(x, &a, &c);
+    f_05daa4(&r, 0);
+    }
+    return r;
+}
+} }
+
+/* ---- swg3c ---- */
+/* TU 117 wave 3, worker swg3c */
+namespace swg3c {
+extern "C" {
+
+struct Str;
+int f_05dcb8(char *, void *);
+void f_04eee8(void *s, void *tag);
+int sceKernelCpuSuspendIntr(void);
+void sceKernelCpuResumeIntr(int);
+void f_05e4a8(Str *, Str *) throw();
+void f_05c8d0(Str *, Str *);
+struct G2 { int w[4]; ~G2() {} };
+/* COW string handle: the data pointer; the inline destructor drops the rep's reference. */
+struct Str {
+    char *p;
+    Str() {}
+    Str(Str &a) { f_05e4a8(this, &a); }
+    Str(const Str &a) { f_05e4a8(this, (Str *)&a); }
+    ~Str() {
+        G2 g;
+        char *s0 = p;
+        char *s2 = s0 - 12;
+        int intr = sceKernelCpuSuspendIntr();
+        volatile int *c = (volatile int *)(s0 - 4);
+        int s1 = *c;
+        *c += -1;
+        sceKernelCpuResumeIntr(intr);
+        if (s1 <= 0) f_04eee8(s2, &g);
+    }
+};
+
+/* @implements 0x05e7bc us f_05e7bc
+   WHAT IT DOES: descends the tree from the root comparing keys with f_05dcb8, going left when the node is not less than the key, and stores the lowest node not less than the key in *out (lower bound). */
+char *f_05e7bc(char **out, char *tree, void *key) {
+    char *r = *(char **)(tree + 4);
+    char *n = *(char **)(r + 4);
+    while (n) {
+        if (!(f_05dcb8(n + 16, key) & 0xff)) { r = n; n = *(char **)(n + 8); }
+        else n = *(char **)(n + 12);
+    }
+    *out = r;
+    return (char *)out;
+}
+
+void *f_05db08(int);
+void f_05daa4(void *, void *);
+void f_05e394(void *, void *, void *, void *);
+void f_04ed28(void *);
+extern char D_1a4480[];
+struct Holder { int a, b; ~Holder() { f_04ed28(this); } };
+
+/* @draft 0x05fbdc us f_05fbdc
+   WHAT IT DOES: allocates an 8-byte object via f_05db08 holding the D_1a4480 vtable and a zero, wraps it in a Holder via f_05daa4, and inserts the keyed entry into the tree with f_05e394.
+   Remaining difference: missing: second empty landing pad, 8 bytes */
+void f_05fbdc(void *unused, char *s) {
+    int *p = (int *)f_05db08(8);
+    p[0] = (int)D_1a4480;
+    p[1] = 0;
+    Holder h;
+    f_05daa4(&h, p);
+    int out[4];
+    int v = *(int *)(s + 4);
+    f_05e394(out, s, &v, &h);
+}
+
+/* @draft 0x05fc60 us f_05fc60
+   WHAT IT DOES: allocates an 8-byte object via f_05db08 holding the D_1a4480 vtable and a zero, wraps it in a Holder via f_05daa4, and inserts the keyed entry into the tree with f_05e394. */
+void f_05fc60(void *unused, char *s) {
+    int *p = (int *)f_05db08(8);
+    p[0] = (int)D_1a4480;
+    p[1] = 0;
+    Holder h;
+    f_05daa4(&h, p);
+    int out[4];
+    int v = *(int *)(s + 4);
+    f_05e394(out, s, &v, &h);
+}
+
+void *memcpy(void *, const void *, unsigned);
+char *f_065060(unsigned);
+char *f_05e404(unsigned *, void *, unsigned);
+
+
+/* @draft 0x05e404 us f_05e404
+   WHAT IT DOES: creates a string rep with room for the current length plus extra (doubling capacity for large reps), copies the old characters and length in and terminates it, returning the data pointer.
+   Remaining difference: string rep create/grow; register allocation and the capacity branch layout differ */
+char *f_05e404(unsigned *s, void *unused, unsigned extra) {
+    extra += s[0];
+    unsigned n = extra;
+    unsigned c = s[1];
+    int big = (n < 4068) ^ 1;
+    if (big & (c < n)) {
+        c <<= 1;
+        if (c < n) c = n;
+    } else c = n;
+    char *r = f_065060(c);
+    char *d = r + 12;
+    if (s[0]) memcpy(d, (char *)s + 12, s[0]);
+    *(unsigned *)r = s[0];
+    d[s[0]] = 0;
+    return d;
+}
+
+/* @implements 0x05a578 us f_05a578
+   WHAT IT DOES: copies the first string into the result and appends the second with f_05c8d0, returning the result (string concatenation). */
+Str f_05a578(Str &a, Str &b) {
+    Str r(a);
+    f_05c8d0(&r, &b);
+    return r;
+}
+
+/* @draft 0x05e4a8 us f_05e4a8
+   WHAT IT DOES: copies a string handle: when the rep is marked unshareable it clones via f_05e404, otherwise it bumps the rep reference count under interrupt suspend and shares it.
+   Remaining difference: string copy: share the rep or clone it via f_05e404; landing-pad order differs, 7/38 words */
+void f_05e4a8(Str *out, Str *a) throw() {
+    char *s0 = a->p;
+    char *rep = s0 - 12;
+    char *r;
+    if (*(int *)(rep + 8) < 0) {
+        G2 g; G2 g0; G2 g1;
+        r = f_05e404((unsigned *)rep, &g, 0);
+    } else {
+        int st = sceKernelCpuSuspendIntr();
+        volatile int *c = (volatile int *)(s0 - 4);
+        int o = *c; (void)o;
+        *c += 1;
+        sceKernelCpuResumeIntr(st);
+        r = s0;
+    }
+    out->p = r;
+}
+
+extern char D_1a3084[];
+void f_131378(const char *);
+char *f_061cc8(char *, char *, void *, int);
+
+/* @draft 0x05bf40 us f_05bf40
+   WHAT IT DOES: constructs a substring from pos and count, calling the out_of_range throw helper when pos exceeds the length, clamping the count to the remainder and building the new rep via f_061cc8.
+   Remaining difference: string substr constructor with the out_of_range check; min select and frame differ */
+void f_05bf40(char **out, char **src, unsigned pos, unsigned n) {
+    G2 g; G2 g0;
+    if (pos > *(unsigned *)(*src - 12)) f_131378(D_1a3084);
+    char *d = *src;
+    unsigned rest = *(unsigned *)(d - 12) - pos;
+    unsigned c = n; if (!(n < rest)) c = rest;
+    char *b = d + pos;
+    *out = f_061cc8(b, b + c, &g, 0);
+}
+
+
+typedef Holder (*VF1e1b4)(char *self, char *obj, int a2, int cnt, int beg);
+/* @implements 0x05e1b4 us f_05e1b4
+   WHAT IT DOES: asks the object's owner (virtual call at +184) to look up a reference-counted pair for the given range; if found, stores it in the output with its count incremented, otherwise initialises the output as empty with f_05daa4. */
+int *f_05e1b4(int *out, char *obj, int k, char *r) {
+    char *t = *(char **)(obj + 4);
+    if (t) {
+        Holder h = (*(VF1e1b4 *)(*(char **)t + 184))(t, obj, k, (*(int *)(r + 8) - *(int *)(r + 4)) >> 3, *(int *)(r + 4));
+        if (h.a) {
+            out[0] = h.a;
+            out[1] = h.b;
+            if (h.b) ++*(int *)h.b;
+            return out;
+        }
+    }
+    f_05daa4(out, 0);
+    return out;
+}
+
+void *memcpy(void *, const void *, unsigned);
+extern char D_1a30b4[];
+void f_1312d4(const char *);
+void f_060920(char **, int, int, unsigned);
+/* @draft 0x05c950 us f_05c950
+   WHAT IT DOES: replaces the character range [b,e) of a string with the source range [sb,se): throws via f_1312d4 when the new length is too large, resizes the gap with f_060920 and copies the source in with memcpy.
+   Remaining difference: string replace(range, range); only the max_size compare constant form differs */
+char **f_05c950(char **s, char *b, char *e, char *sb, char *se) {
+    unsigned n = se - sb;
+    unsigned olen = e - b;
+    if (n >= 0x3ffffffc) f_1312d4(D_1a30b4);
+    int off = b - *s;
+    f_060920(s, off, olen, n);
+    if (n) memcpy(*s + off, sb, n);
+    return s;
+}
+
+/* @draft 0x05dd24 us f_05dd24
+   WHAT IT DOES: tree find: takes the lower bound of the key with f_05dcb8, and returns the header (end) if no node matches or the key is less than the found node, else the found node.
+   Remaining difference: tree find; frame and loop match, prologue register choice and the two tail calls differ */
+char **f_05dd24(char **out, char *tree, void *key) {
+    char *hd = *(char **)(tree + 4);
+    char *y = hd;
+    char *x = *(char **)(hd + 4);
+    while (x) {
+        if (!(f_05dcb8(x + 16, key) & 0xff)) { y = x; x = *(char **)(x + 8); }
+        else x = *(char **)(x + 12);
+    }
+    struct { char *j; int pad[3]; char *e; } L;
+    L.j = y;
+    L.e = *(char **)(tree + 4);
+    char **pj = &L.j;
+    if (*pj == L.e) *out = L.e;
+    else if (f_05dcb8((char *)key, *pj + 16) & 0xff) *out = *(char **)(tree + 4);
+    else *out = L.j;
+    return out;
+}
+
+/* @draft 0x05dddc us f_05dddc
+   WHAT IT DOES: tree find: takes the lower bound of the key with f_05dcb8, and returns the header (end) if no node matches or the key is less than the found node, else the found node. */
+char **f_05dddc(char **out, char *tree, void *key) {
+    char *hd = *(char **)(tree + 4);
+    char *y = hd;
+    char *x = *(char **)(hd + 4);
+    while (x) {
+        if (!(f_05dcb8(x + 16, key) & 0xff)) { y = x; x = *(char **)(x + 8); }
+        else x = *(char **)(x + 12);
+    }
+    struct { char *j; int pad[3]; char *e; } L;
+    L.j = y;
+    L.e = *(char **)(tree + 4);
+    char **pj = &L.j;
+    if (*pj == L.e) *out = L.e;
+    else if (f_05dcb8((char *)key, *pj + 16) & 0xff) *out = *(char **)(tree + 4);
+    else *out = L.j;
+    return out;
+}
+
+extern char D_1a2e9c[];
+extern char D_1a4d14[];
+typedef Str (*VFs)(char *);
+/* @draft 0x05977c us f_05977c
+   WHAT IT DOES: returns D_1a2e9c when the list at +332 is empty; otherwise asks the last element for its name string (virtual call at +84), writes the D_1a4d14 terminator byte after its length and returns the data pointer, releasing the temporary string.
+   Remaining difference: last element's name string via vtable +84, terminator written; the retail frame also keeps the list iterator in memory at sp+16, not reproduced */
+char *f_05977c(char *obj) {
+    char *head = *(char **)(obj + 332);
+    if (*(char **)head == head) return D_1a2e9c;
+    char *it = *(char **)(head + 4);
+    char *v = *(char **)(it + 8);
+    Str s = (*(VFs *)(*(char **)v + 84))(v);
+    s.p[*(int *)(s.p - 12)] = D_1a4d14[0];
+    return s.p;
+}
+}
+}
+
+/* ---- swg3b ---- */
+/* TU 117 fragment by worker swg3b (list_01). */
+namespace swg3b {
+
+extern "C" {
+
+int strcmp(const char*, const char*);
+#define W(o, off) (*(int *)((char *)(o) + (off)))
+static inline void dflt(char *s, int i) {
+    void *o = (void *)W(s, 16);
+    if (o) {
+        void **vt = *(void ***)o;
+        ((void (*)(void *, char *))vt[10])(o, ((char **)W(s, 12))[i]);
+    }
+}
+/* @implements 0x04dd14 us f_04dd14
+   WHAT IT DOES: handles the _SWGKEYREPEATON/_SWGKEYREPEATOFF/_SWGEND command names by setting the matching flag, else forwards the name to the default handler through the vtable. */
+void f_04dd14(char *s, int i) {
+    char **names = (char **)W(s, 12);
+    if (strcmp(names[i], "_SWGKEYREPEATON") == 0) {
+        int p = W(s, 24);
+        if (p) *(char*)p = 1; else dflt(s, i);
+    } else if (strcmp(((char **)W(s, 12))[i], "_SWGKEYREPEATOFF") == 0) {
+        int p = W(s, 24);
+        if (p) *(char*)p = 0; else dflt(s, i);
+    } else if (strcmp(((char **)W(s, 12))[i], "_SWGEND") == 0) {
+        int p = W(s, 20);
+        if (p) *(int*)p = 1; else dflt(s, i);
+    } else dflt(s, i);
+}
+
+
+
+int iprintf(const char *, ...);
+extern unsigned D_291680, D_291420, D_291410, D_291424, D_291744, D_291748, D_29166c, D_29174c;
+extern unsigned *D_291690;
+extern char D_1a2db0[], D_1a2e14[], D_1a2ddc[];
+/* @draft 0x04e4b4 us f_04e4b4
+   WHAT IT DOES: frees a block in the lightweight allocator, validating alignment and range, unlinking it and returning it to a free list or the heap top.
+   lwalloc free. Remaining difference: the block size is held in a0 where retail uses a1 (50 of 97 words differ). */
+void f_04e4b4(void *pp) {
+    unsigned p = (unsigned)pp;
+    if (p == 0) return;
+    unsigned *b = (unsigned *)(p - 16);
+    if ((unsigned)b & 15) { iprintf(D_1a2db0, p); return; }
+    if (b[3]) { iprintf(D_1a2e14, b[3], 0); return; }
+    unsigned lo = D_291680;
+    unsigned hi = lo + D_291420;
+    if (p < lo || !(p < hi)) { iprintf(D_1a2ddc, lo, p, hi); return; }
+    unsigned *pv = (unsigned *)b[1];
+    if (pv) pv[0] = b[0];
+    unsigned *nx = (unsigned *)b[0];
+    if (nx) nx[1] = (unsigned)pv;
+    if (D_291410 == (unsigned)b) D_291410 = (unsigned)nx;
+    unsigned sz = b[2];
+    unsigned tot = (sz < D_291424 ? 1u << (sz + D_291744 + 1) : (sz + 15) & ~15u) + 16;
+    if (D_291748 == (unsigned)b + tot) { D_291748 = (unsigned)b; D_29166c += tot; return; }
+    if (sz < D_291424) { unsigned *t = &D_291690[sz]; b[0] = *t; *t = (unsigned)b; return; }
+    unsigned *h = (unsigned *)D_29174c;
+    if (h) h[1] = (unsigned)b;
+    b[1] = 0;
+    b[0] = D_29174c;
+    D_29174c = (unsigned)b;
+}
+
+/* @draft 0x04eaa0 us f_04eaa0
+   WHAT IT DOES: destructor of a container object: stores its vtable, clears the list member, frees it and runs the base destructor.
+   Remaining difference: the exception landing pad keeps the member pointer in a third saved register (s2) instead of reusing s0. */
+
+extern char D_1a3698[];
+void f_04ee68(void*,void*); void f_04e8d8(void*);
+void f_04e4b4(void *);
+struct Base { int a; ~Base() { f_04e8d8(this);} };
+struct Node { Node*l; Node*p; Node*r; Node*q; };
+struct Lst { int pad; Node *head; int size;
+ void clear(){
+  if (size) {
+    f_04ee68(this, head->p);
+    size=0;
+    head->r = head;
+    head->p = 0;
+    head->q = head;
+  } }
+ ~Lst(){ f_04e4b4(head);} };
+struct Outer : Base { int b[5]; Lst m; ~Outer() { m.clear(); } };
+void f_04eaa0(Outer *o){
+  *(void**)o = D_1a3698;
+  o->~Outer();
+}
+
+/* @draft 0x04eb44 us f_04eb44
+   WHAT IT DOES: deleting twin of the container destructor, also freeing the block header at -4.
+   Deleting twin of f_04eaa0 (frees the block header at -4 afterwards). Same remaining difference. */
+void f_04eb44(Outer *o){
+  *(void**)o = D_1a3698;
+  o->~Outer();
+  f_04e4b4((char*)o - 4);
+}
+
+
+
+extern char D_1a4480[];
+void *f_04dfa0(unsigned); void f_04ed28(void*); void f_05e394(void*,void*,void*,void*);
+struct Em { ~Em(){} };
+struct Ob {
+  void *vt; int x;
+  static void *operator new(unsigned n){ unsigned *p=(unsigned*)f_04dfa0(n+4); *p=n+4; return p+1; }
+  static void operator delete(void*) {}
+  Ob(){ Em e; vt = D_1a4480; x = 0; }
+};
+struct Pair { Ob *p; int *cnt; Pair(Ob *o){ p=o; cnt=0; if(o){ Em e; cnt=(int*)f_04dfa0(4); *cnt=1; } } ~Pair(){ f_04ed28(this);} };
+/* @draft 0x0529a4 us f_0529a4
+   WHAT IT DOES: allocates a ref-counted object, then calls f_05e394 with it and a field of the player, releasing the holder afterwards.
+   Remaining difference: register assignment (retail keeps the object pointer in s1 and the exception pointer in s0) and one missing landing pad (26 of 46 words differ). */
+void f_0529a4(char *s){
+  char *q = s+328;
+  Pair pr(new Ob);
+  int out[8]; int a;
+  a = *(int*)(q+4);
+  f_05e394(out+4, q, &a, &pr);
+}
+
+/* @draft 0x04ec74 us f_04ec74
+   WHAT IT DOES: releases a tree of nodes: recurses on the child, decrements the refcount of each node's payload under interrupt suspend, and frees the node.
+   Tree release. Remaining difference: register assignment only (10 of 45 words): retail keeps the context in s4, the count in s2, the block in s3. */
+unsigned sceKernelCpuSuspendIntr(void); void sceKernelCpuResumeIntr(unsigned);
+void f_04eee8(void*, void*);
+void f_04ec74(void *a, int *n) {
+  Em e;
+  while (n) {
+    f_04ec74(a, (int*)n[3]);
+    int *k = (int*)n[4];
+    int nx = n[2];
+    void *blk = k-3;
+    unsigned i = sceKernelCpuSuspendIntr();
+    int c = ((volatile int*)k)[-1];
+    k[-1] = k[-1] - 1;
+    sceKernelCpuResumeIntr(i);
+    if (c <= 0) { f_04eee8(blk, &e); }
+    f_04e4b4(n);
+    n = (int*)nx;
+  }
+}
+
+extern char D_1a4110[];
+struct Ob2 {
+  void *vt; int x;
+  static void *operator new(unsigned n){ unsigned *p=(unsigned*)f_04dfa0(n+4); *p=n+4; return p+1; }
+  static void operator delete(void*) {}
+  Ob2(){ Em e; vt = D_1a4110; x = 0; }
+};
+struct Pair2 { Ob2 *p; int *cnt; Pair2(Ob2 *o){ p=o; cnt=0; if(o){ Em e; cnt=(int*)f_04dfa0(4); *cnt=1; } } ~Pair2(){ f_04ed28(this);} };
+/* @draft 0x052a5c us f_052a5c
+   WHAT IT DOES: like f_0529a4 with another object class: allocates a ref-counted object and calls f_05e394 with it.
+   Same shape as f_0529a4 with another vtable; same remaining differences (scheduling and the first landing pad). */
+void f_052a5c(char *s){
+  char *q = s+328;
+  Pair2 pr(new Ob2);
+  int out[8]; int a;
+  a = *(int*)(q+4);
+  f_05e394(out+4, q, &a, &pr);
+}
+
+void f_05dd24(void*, void*, int); void f_05e264(void*, int);
+struct R5 { int a, b, c, d; };
+struct It5 { int n, p[3]; };
+/* @draft 0x050650 us f_050650
+   WHAT IT DOES: looks up an entry in the map at +24; if its payload state is 1, stores the three arguments into the player, notifies the payload, makes a virtual call and returns 1, else returns 0.
+   Remaining difference: register allocation and scheduling (31 of 50 words). */
+int f_050650(char *s, int x, int y, int z) {
+  It5 it; char *m = s + 24;
+  f_05dd24(&it, m, y);
+  int r = 0;
+  It5 end; end.n = W(m, 4);
+  if (it.n != end.n) {
+    char *nd = (char *)W(it.n, 32);
+    if (W(nd, 4) == 1) {
+      W(s, 48) = 1; W(s, 44) = x; W(s, 52) = z;
+      f_05e264(nd, 1);
+      void **vt = *(void ***)W(s, 0);
+      R5 t = ((R5 (*)(void *, int, int))vt[43])(s, 1, W(it.n, 32));
+      f_04ed28(&t);
+      return 1;
+    }
+  }
+  return r;
+}
+
+}
+}
