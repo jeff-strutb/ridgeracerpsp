@@ -3,9 +3,62 @@
    names, each after a one-letter type), and Map::CMapEnv, the course's lighting and fog keyed
    by course distance, loaded from the race database and interpolated each frame. */
 
+#include <string.h>
+
 extern "C" {
-int strcmp(const char *a, const char *b);
 void f_02db7c(void *p);
+int f_00d354(char *buf, int n, const char *fmt, ...);
+int f_126f1c(const char *fmt, ...);
+}
+
+/* The size of a cell of each column type (the game database's table). */
+extern const int D_1a211c[];
+
+/* The value of the last cell read from the game database (copied, as cells are not aligned). */
+union Cell {
+    unsigned char b;
+    float f;
+    int i;
+};
+extern Cell D_24063c;
+
+/* The log line buffer. */
+extern char D_245178[];
+extern char D_245177[];
+extern char D_245176[];
+extern char D_245175[];
+extern char D_245174[];
+
+/* A vector of four floats. */
+struct Vec4 {
+    float x, y, z, w;
+};
+Vec4 *f_027f18(Vec4 *d, const Vec4 *a);
+
+namespace DB {
+/* The game database (see src/system/DataBase.cpp); here the stack tables read by the loader. */
+class CDataBase {
+public:
+    CDataBase() { Clear(); }
+    virtual ~CDataBase() {}
+    virtual int f_03680c(void *data);
+    virtual int f_0368d8();
+    virtual int f_0368e0();
+    virtual char *Data() { return (char *)m36; }
+    virtual void Clear();
+    char *f_0368e8(const char *col, const char *row, int colAdd, int rowAdd);
+    int f_036a3c(const char *name, int names, int n);
+
+    int cols;
+    int rows;
+    int type;
+    int offset;
+    int colName;
+    int rowName;
+    int m28;
+    int m32;
+    int m36;
+};
 }
 
 namespace Map {
@@ -197,18 +250,54 @@ public:
     virtual ~CMapEnv();
     void SetModel(void *m);
     void Free();
+    void Load(void *course, void *light, int flip, int total);
     void MakeFog(Fog *f, float *col);
     void Update(float t, float wrap);
     float FogAt(float t, float wrap);
 
-    char m4[172];
+    char m4[12];
+    float mAmb[3];
+    float m28;
+    float cAmb[3];
+    float m44;
+    Vec4 diffDir;
+    Vec4 shadowDir;
+    float mDiff[3];
+    float m92;
+    float cDiff[3];
+    float m108;
+    float mSpec[3];
+    float m124;
+    float cSpec[3];
+    float m140;
+    float mSpecP, cSpecP;
+    float m152[2];
+    float dEnv[3];
+    float m172;
     float light[8];
     Fog fog;
-    char m244[64];
+    Fog bfog;
+    float cull;
+    float m284;
+    float sdw[4];
+    float ambShade;
     unsigned int ambient;
-    char m312[64];
+    int smoke[3];
+    char m324[12];
+    float key[3];
+    float m348;
+    int m352;
+    float m356;
+    float sdwMin, sdwMax, specMin, specMax;
     void *model;
-    char m380[56];
+    int cls;
+    float tireRot;
+    float fovY;
+    char m392[8];
+    Vec4 sun;
+    unsigned char sunType, sunR, sunG, sunB, sunA;
+    int sunW, sunH;
+    unsigned char glareLoop, glareMul, glareThr;
     LightKey *keys;
     int nKeys;
     FogKey *fogKeys;
@@ -255,6 +344,239 @@ void CMapEnv::Free()
     if (fogKeys)
         delete[] fogKeys;
     fogKeys = 0;
+}
+
+/* Reads one cell of a table row: copies it to the read buffer and gives it as a byte, a float
+   or a word. The size argument is a local that caches the cell size (loaded at its first use
+   in a stretch of reads, as "(bs = D_1a211c[1])", then reused). */
+#define RDX(db, sz, name, row, T) \
+    ({ memcpy(&D_24063c, (db).f_0368e8(name, row, 0, 0), sz); D_24063c.T; })
+#define RDB(sz, name) RDX(db1, sz, name, "Course", b)
+#define RDF(sz, name) RDX(db1, sz, name, "Course", f)
+#define RDI(sz, name) RDX(db1, sz, name, "Course", i)
+#define RDX2(db, sz, name, T) \
+    ({ memcpy(&D_24063c, (db).f_0368e8(name, 0, 0, i), sz); D_24063c.T; })
+#define RDX3(db, name, T) \
+    ({ memcpy(&D_24063c, (db).f_0368e8(name, 0, 0, row), D_1a211c[4]); D_24063c.T; })
+#define SB(v) ((v) = D_1a211c[1])
+#define SI(v) ((v) = D_1a211c[3])
+#define SF(v) ((v) = D_1a211c[4])
+
+/* @draft 0x0d8270 us _ZN3Map7CMapEnv4Load
+   DRAFT: complete transcription; the same instructions as retail up to register choice and
+   some spill slots (7,436 of 7,452 bytes).
+   WHAT IT DOES: Loads the course's lighting from two game database tables (the course table,
+   whose "Course" row holds the settings, and the light table, one row per key). In the light
+   table column RZP is the course distance; a negative value ends a section: first the light
+   keys, then the fog keys. Both are counted, allocated and read (reversed along the lap when
+   flip is set: the distance becomes total - distance - 1): per light key the fog distances
+   and levels, the colour, and the road reference (when the table has that column); per fog
+   key the distance and one level. The course row then gives the back mirror's fog (a default
+   and a warning when absent) and its colour, the map and car ambient, diffuse and specular
+   colours (bytes scaled by a strength), the diffuse and shadow directions (normalised), the
+   cull range, shadow and smoke colours, the key light (defaults when absent), dither (passed
+   to SetModel), class, the sun (type, direction, colour, size), glare, ambient shade and the
+   car's tyre rotation and field of view (defaults when absent). It ends by updating the
+   lighting for course distance 0 and logging each step.
+   DIFFERS: register allocation and spill slots. Retail keeps the read buffer's address in a
+   saved register through each stretch of reads and spills the four light key field addresses
+   (frame 192); here the frame is 176 and the key loop gives that register to a field address.
+   Also tried: the cell size is read once per stretch into a local ("(bs = D_1a211c[1])", as
+   array elements are never CSE'd across calls by this compiler, retail's are); the log
+   buffer is named through five aliases (D_245177+1, D_245176+2...) because one address makes
+   the global const-prop share its high half in a saved register for the whole function,
+   which retail does not (retail's later log calls rebuild it); that costs the key loop its
+   register. */
+void CMapEnv::Load(void *course, void *lightDb, int flip, int total)
+{
+    DB::CDataBase db1;
+    DB::CDataBase db2;
+    f_00d354(D_245178, 1024, "MapEnv Init\n");
+    db1.f_03680c(course);
+    db2.f_03680c(lightDb);
+    f_00d354(D_245178, 1024, "MapEnv Init Num DynamicParam : %d\n", db2.rows);
+    int i = 0;
+    nKeys = 0;
+    nFogKeys = 0;
+    for (; i < db2.rows; i++) {
+        memcpy(&D_24063c, db2.f_0368e8("RZP", 0, 0, i), D_1a211c[4]);
+        if (D_24063c.f < 0.0f)
+            break;
+        nKeys++;
+    }
+    i++;
+    for (; i < db2.rows; i++) {
+        memcpy(&D_24063c, db2.f_0368e8("RZP", 0, 0, i), D_1a211c[4]);
+        if (D_24063c.f < 0.0f)
+            break;
+        nFogKeys++;
+    }
+    f_00d354(D_245177+1, 1024, "NumDynamicParam : %d , %d\n", nKeys, nFogKeys);
+    keys = new LightKey[nKeys];
+    fogKeys = new FogKey[nFogKeys];
+    for (i = 0; i < nKeys; i++) {
+        int j;
+        int fs, bs;
+        if (flip) {
+            j = nKeys - i - 1;
+            keys[j].key = ((float)total - RDX(db2, D_1a211c[4], "RZP", 0, f)) - 1.0f;
+        } else {
+            j = i;
+            keys[i].key = RDX(db2, D_1a211c[4], "RZP", 0, f);
+        }
+        keys[j].fog[0] = RDX2(db2, SF(fs), "Near", f) * 1000.0f;
+        keys[j].fog[1] = RDX2(db2, fs, "Far", f) * 1000.0f;
+        keys[j].fog[2] = RDX2(db2, fs, "Max", f);
+        keys[j].fog[3] = RDX2(db2, fs, "Min", f);
+        keys[j].r = RDX2(db2, SB(bs), "FogR", b);
+        keys[j].g = RDX2(db2, bs, "FogG", b);
+        keys[j].b = RDX2(db2, bs, "FogB", b);
+        keys[j].a = RDX2(db2, bs, "FogA", b);
+        if (db2.f_036a3c("RoadRef", db2.colName, db2.cols) != -1)
+            keys[j].ambient = RDX2(db2, bs, "RoadRef", b);
+    }
+    for (i = 0; i < nFogKeys; i++) {
+        int j;
+        int row = nKeys + i + 1;
+        if (flip) {
+            j = nFogKeys - i - 1;
+            fogKeys[j].key = ((float)total - RDX3(db2, "RZP", f)) - 1.0f;
+        } else {
+            j = i;
+            fogKeys[i].key = RDX3(db2, "RZP", f);
+        }
+        fogKeys[j].value = RDX3(db2, "Near", f);
+    }
+    f_00d354(D_245176+2, 1024, "MapEnv Init  pass1\n");
+    int fs, bs, ws;
+    if (db1.f_036a3c("BFogNear", db1.colName, db1.cols) == -1) {
+        bfog.d0 = 200000.0f;
+        light[6] = 0.5f;
+        bfog.d1 = 1000000.0f;
+        bfog.l0 = 0.0f;
+        bfog.l1 = 255.0f;
+        light[4] = 0.5f;
+        light[5] = 0.5f;
+        f_126f1c("Warnning!! BackMirror Fog Prameter undefined");
+    } else {
+        bfog.d0 = RDF(SF(fs), "BFogNear") * 1000.0f;
+        bfog.d1 = RDF(fs, "BFogFar") * 1000.0f;
+        bfog.l1 = RDF(fs, "BFogMax");
+        bfog.l0 = RDF(fs, "BFogMin");
+        float a = (float)RDB(SB(bs), "BFogA") / 255.9f;
+        light[4] = (float)RDB(bs, "BFogR") / 255.9f * a;
+        light[5] = (float)RDB(bs, "BFogG") / 255.9f * a;
+        light[6] = (float)RDB(bs, "BFogB") / 255.9f * a;
+    }
+    MakeFog(&bfog, &light[4]);
+    {
+        float a = (float)RDB(SB(bs), "MAmbA") / 255.9f;
+        mAmb[0] = (float)RDB(bs, "MAmbR") / 255.9f * a;
+        mAmb[1] = (float)RDB(bs, "MAmbG") / 255.9f * a;
+        mAmb[2] = (float)RDB(bs, "MAmbB") / 255.9f * a;
+        a = (float)RDB(bs, "CAmbA") / 255.9f;
+        cAmb[0] = (float)RDB(bs, "CAmbR") / 255.9f * a;
+        cAmb[1] = (float)RDB(bs, "CAmbG") / 255.9f * a;
+        cAmb[2] = (float)RDB(bs, "CAmbB") / 255.9f * a;
+        a = (float)RDB(bs, "MDiffA") / 255.9f;
+        mDiff[0] = (float)RDB(bs, "MDiffR") / 255.9f * a;
+        mDiff[1] = (float)RDB(bs, "MDiffG") / 255.9f * a;
+        mDiff[2] = (float)RDB(bs, "MDiffB") / 255.9f * a;
+        a = (float)RDB(bs, "CDiffA") / 255.9f;
+        cDiff[0] = (float)RDB(bs, "CDiffR") / 255.9f * a;
+        cDiff[1] = (float)RDB(bs, "CDiffG") / 255.9f * a;
+        cDiff[2] = (float)RDB(bs, "CDiffB") / 255.9f * a;
+        a = (float)RDB(bs, "MSpeA") / 255.9f;
+        mSpec[0] = (float)RDB(bs, "MSpeR") / 255.9f * a;
+        mSpec[1] = (float)RDB(bs, "MSpeG") / 255.9f * a;
+        mSpec[2] = (float)RDB(bs, "MSpeB") / 255.9f * a;
+        a = (float)RDB(bs, "CSpeA") / 255.9f;
+        cSpec[0] = (float)RDB(bs, "CSpeR") / 255.9f * a;
+        cSpec[1] = (float)RDB(bs, "CSpeG") / 255.9f * a;
+        cSpec[2] = (float)RDB(bs, "CSpeB") / 255.9f * a;
+    }
+    mSpecP = RDF(SF(fs), "MSpeP");
+    cSpecP = RDF(fs, "CSpeP");
+    {
+        float a = (float)RDB(bs, "DEnvA") / 255.9f;
+        dEnv[0] = (float)RDB(bs, "DEnvR") / 255.9f * a;
+        dEnv[1] = (float)RDB(bs, "DEnvG") / 255.9f * a;
+        dEnv[2] = (float)RDB(bs, "DEnvB") / 255.9f * a;
+    }
+    diffDir.x = RDF(fs, "DiffX");
+    diffDir.y = RDF(fs, "DiffY");
+    diffDir.z = RDF(fs, "DiffZ");
+    f_027f18(&diffDir, &diffDir);
+    cull = RDF(fs, "CullRange") * 1000.0f;
+    shadowDir.x = RDF(fs, "SdwX");
+    shadowDir.y = RDF(fs, "SdwY");
+    shadowDir.z = RDF(fs, "SdwZ");
+    f_027f18(&shadowDir, &shadowDir);
+    sdw[0] = (float)RDB(bs, "SdwR") / 255.9f;
+    sdw[1] = (float)RDB(bs, "SdwG") / 255.9f;
+    sdw[2] = (float)RDB(bs, "SdwB") / 255.9f;
+    sdw[3] = (float)RDB(bs, "SdwA") / 255.9f;
+    {
+        float a = (float)RDB(bs, "SmokeA") / 255.9f;
+        smoke[0] = (int)((float)RDB(bs, "SmokeR") * a);
+        smoke[1] = (int)((float)RDB(bs, "SmokeG") * a);
+        smoke[2] = (int)((float)RDB(bs, "SmokeB") * a);
+    }
+    if (db1.f_036a3c("KeyR", db1.colName, db1.cols) == -1) {
+        key[0] = 0.0f;
+        key[1] = 0.0f;
+        key[2] = 1.0f;
+        m352 = 0;
+        m356 = 1.0f;
+        sdwMin = 0.3f;
+        sdwMax = 0.5f;
+        specMin = -0.2f;
+        specMax = 0.7f;
+    } else {
+        key[0] = RDF(fs, "KeyR");
+        key[1] = RDF(fs, "KeyG");
+        key[2] = RDF(fs, "KeyB");
+        m352 = 0;
+        m356 = 1.0f;
+        sdwMin = RDF(fs, "SdwMin");
+        sdwMax = RDF(fs, "SdwMax");
+        specMin = RDF(fs, "SpecMin");
+        specMax = RDF(fs, "SpecMax");
+    }
+    int dither = 0;
+    if (db1.f_036a3c("Dither", db1.colName, db1.cols) != -1)
+        dither = RDB(D_1a211c[1], "Dither");
+    SetModel((void *)dither);
+    int c = db1.f_036a3c("Class", db1.colName, db1.cols);
+    if (c != -1)
+        c = RDB(D_1a211c[1], "Class");
+    cls = c;
+    sunType = RDB(SB(bs), "SunS_Type");
+    sun.x = RDF(SF(fs), "SunS_X");
+    sun.y = RDF(fs, "SunS_Y");
+    sun.z = RDF(fs, "SunS_Z");
+    f_027f18(&sun, &sun);
+    sunR = RDB(bs, "SunS_R");
+    sunG = RDB(bs, "SunS_G");
+    sunB = RDB(bs, "SunS_B");
+    sunA = RDB(bs, "SunS_A");
+    sunW = RDI(SI(ws), "SunS_W");
+    sunH = RDI(ws, "SunS_H");
+    glareLoop = RDB(bs, "Glare_Loop");
+    glareMul = RDB(bs, "Glare_Baisuu");
+    glareThr = RDB(bs, "Glare_Shikiichi");
+    ambShade = (float)RDB(bs, "AmbShade") / 255.9f;
+    if (db1.f_036a3c("CarGetFovY", db1.colName, db1.cols) == -1) {
+        tireRot = 0.0f;
+        fovY = 30.0f;
+    } else {
+        tireRot = RDF(fs, "CarGetTireRot");
+        fovY = RDF(fs, "CarGetFovY");
+    }
+    f_00d354(D_245175+3, 1024, "MapEnv Init pass2\n");
+    last = -1.0f;
+    Update(0.0f, 10000.0f);
+    f_00d354(D_245174+4, 1024, "MapEnv Init Done\n");
 }
 
 /* @draft 0x0d9f8c us _ZN3Map7CMapEnv7MakeFog
