@@ -4603,3 +4603,606 @@ int f_06e8c8(void *self, const char *name, float fx, float fy, float f2, float f
 }
 }
 }
+
+/* ---- menuF ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 119 fragment by worker menuF. */
+namespace menuF {
+template <typename T>
+inline T &at(void *p, unsigned int off)
+{
+    return *(T *)((char *)p + off);
+}
+struct B4 { signed char c0, c1, c2, c3; };
+struct Sub { char b[28]; void *link; };
+extern "C" {
+extern char D_242e14[];
+void f_04a620(void *);
+void f_04a648(void *, int, void *, int, int, int, int);
+void f_04b8a0(void *, void *, int);
+void f_06b7b4(void);
+void f_0230e0(void *);
+void f_07a3f0(void *);
+void f_078e4c(void *);
+void f_07a634(void *);
+void f_078358(void *);
+void f_078794(void *);
+void f_0784a8(void *);
+void f_079afc(void *);
+void f_079930(void *);
+void f_076f98(void *);
+void f_077ecc(void *);
+void f_0974cc(void *);
+void f_097680(void *, int, int);
+
+/* @draft 0x0731a0 us f_0731a0
+   Remaining difference: o8 chain register (sll v0 vs a1), order of the two address adds in the table loop and the loop test register.
+   WHAT IT DOES: initialises the menu object: sets up the sub-object at self+4 (f_04a620), links self+456 and self, sets the 300 slots at self+2396 to -1, loads the packed table at p into those slots (calling f_0230e0 on each), registers with f_04a648 and f_04b8a0, runs the member initialisers (f_07a3f0, f_078e4c, f_07a634 x2, f_078358, f_078794, f_0784a8, f_079afc, f_079930, f_076f98, f_077ecc), clears many fields and starts the D_242e14 object (f_0974cc, f_097680). */
+void f_0731a0(void *self, int a, char *p)
+{
+    Sub *sub = (Sub *)((char *)self + 4);
+    f_04a620(sub);
+    sub->link = (char *)self + 456;
+    at<void *>(self, 468) = self;
+    struct { B4 h, a, b; } t;
+    t.h = *(B4 *)(p + 4);
+    unsigned off = ((*(volatile int *)&t.h & 1) == 0) * 8;
+    unsigned o8 = off + 8;
+    int i;
+    for (i = 0; i < 300; i++)
+        at<int>(self, 2396 + i * 4) = -1;
+    i = 0;
+    if (*(int *)&t.h > 0) {
+    char *q = (char *)(o8 + (unsigned)p);
+    do {
+        t.a = *(B4 *)q;
+        t.b = *(B4 *)(q + 4);
+        q += 8;
+        char *e = p + *(int *)&t.a;
+        at<char *>(self, 2396 + *(int *)&t.b * 4) = e;
+        f_0230e0(e);
+        i++;
+    } while (i < *(int *)&t.h);
+    }
+    f_04a648((void *)sub, a, (char *)self + 2396, 0, 0, 0, 0);
+    f_04b8a0((void *)sub, (void *)f_06b7b4, 0);
+    at<int>(self, 7516) = 0;
+    at<char>(self, 504) = 0;
+    at<char>(self, 2389) = 0;
+    f_07a3f0((char *)self + 1216);
+    f_078e4c((char *)self + 2168);
+    f_07a634((char *)self + 1508);
+    f_07a634((char *)self + 1832);
+    f_078358((char *)self + 1172);
+    f_078794((char *)self + 2156);
+    f_0784a8((char *)self + 536);
+    at<int>(self, 2364) = 1;
+    at<int>(self, 2368) = 1;
+    at<char>(self, 866) = 0;
+    at<char>(self, 36) = 0;
+    at<char>(self, 453) = 0;
+    at<char>(self, 454) = 0;
+    at<char>(self, 7524) = 0;
+    at<int>(self, 7508) = 0;
+    at<char>(self, 7512) = 0;
+    at<char>(self, 7513) = 0;
+    at<int>(self, 444) = 0;
+    at<int>(self, 448) = 0;
+    at<char>(self, 3636) = 0;
+    at<int>(self, 3640) = 0;
+    at<char>(self, 864) = 0;
+    at<int>(self, 3644) = 0;
+    at<int>(self, 3648) = 0;
+    at<int>(self, 3652) = 0;
+    at<char>(self, 2356) = 0;
+    at<char>(self, 2357) = 0;
+    at<int>(self, 2360) = 0;
+    at<char>(self, 2372) = 0;
+    at<int>(self, 2376) = 0;
+    at<char>(self, 2380) = 0;
+    at<char>(self, 2388) = 0;
+    at<char>(self, 520) = 0;
+    at<int>(self, 2392) = 0;
+    f_079afc((char *)self + 7468);
+    f_079930((char *)self + 7296);
+    at<int>(self, 7236) = -1;
+    at<char>(self, 7533) = 1;
+    at<int>(self, 7232) = 1;
+    at<char>(self, 7532) = 1;
+    at<int>(self, 1204) = 0;
+    at<int>(self, 1208) = 0;
+    at<int>(self, 1200) = 0;
+    at<int>(self, 1212) = 0;
+    at<int>(self, 7216) = 0;
+    at<int>(self, 7220) = 0;
+    at<int>(self, 7224) = 0;
+    at<int>(self, 7228) = 0;
+    at<int>(self, 7520) = 0;
+    f_076f98((char *)self + 3656);
+    f_077ecc((char *)self + 6736);
+    f_0974cc(D_242e14);
+    f_097680(D_242e14, 1, -1);
+}
+
+void f_06c540(void *);
+void f_06c590(void *);
+void f_04a560(void *);
+void f_04a580(void *);
+void _ZdlPv(void *);
+void f_0783cc(void *);  void f_078448(void *);
+void f_07827c(void *);  void f_0782f8(void *);
+void f_07a314(void *);  void f_07a390(void *);
+void f_07a558(void *);  void f_07a5d4(void *);
+void f_0786b8(void *);  void f_078734(void *);
+void f_078d70(void *);  void f_078dec(void *);
+void f_07a744(void *);  void f_07a7c0(void *);
+void f_079854(void *);  void f_0798d0(void *);
+void f_079a20(void *);  void f_079a9c(void *);
+void f_0201d4(void *) throw();
+float f_0cd3cc(float);
+void f_0ca814(void *);
+void f_0caa5c(void *, int, int, int, int);
+extern char D_1a64c8[];
+extern char D_1a6530[];
+extern const float D_1a5268, D_1a526c, D_1a5270, D_1a5274, D_1a5278, D_1a527c, D_1a5280;
+
+struct XBase {
+    char b[456];
+    XBase() { f_06c540(this); *(void **)this = D_1a64c8; }
+    ~XBase() { f_06c590(this); }
+};
+struct XSub {
+    void *vt;
+    char b1[20];
+    int f24, f28, f32;
+    char b2[44];
+    XSub() {
+        f_04a560(this);
+        *(void **)this = D_1a6530;
+        f32 = 0;
+        f28 = 0;
+        f24 = 0;
+    }
+    ~XSub() { *(void **)this = D_1a6530; f_04a580(this); }
+};
+#define XMEM(N, SZ, C, D) struct N { char b[SZ]; N() { C(this); } ~N() { D(this); } };
+XMEM(XM1, 636, f_0783cc, f_078448)
+XMEM(XM2, 44, f_07827c, f_0782f8)
+XMEM(XM3, 292, f_07a314, f_07a390)
+XMEM(XM4, 324, f_07a558, f_07a5d4)
+XMEM(XM5, 324, f_07a558, f_07a5d4)
+XMEM(XM6, 12, f_0786b8, f_078734)
+XMEM(XM7, 172, f_078d70, f_078dec)
+XMEM(XM8, 4956, f_07a744, f_07a7c0)
+XMEM(XM9, 172, f_079854, f_0798d0)
+XMEM(XM10, 8, f_079a20, f_079a9c)
+struct X12 { int a, b, c; X12() { a = 0; b = 0; c = 0; } };
+struct X2736 { char b[2736]; X2736() { f_0201d4(this); } };
+struct X576 {
+    char b[576];
+    X576() __attribute__((always_inline));
+};
+inline X576::X576() {
+        at<int>(this, 500) = 1;
+        at<int>(this, 0) = 0;
+        at<int>(this, 4) = 0;
+        at<int>(this, 8) = 0;
+        float f = D_1a5268 * D_1a526c;
+        at<float>(this, 480) = f;
+        float r = f_0cd3cc(f);
+        int w = 480;
+        int h = 272;
+        at<float>(this, 496) = D_1a5270 / r;
+        at<float>(this, 484) = D_1a5274;
+        at<float>(this, 488) = D_1a5278;
+        at<float>(this, 492) = D_1a527c;
+        at<int>(this, 504) = at<int>(this, 500) * w;
+        at<int>(this, 516) = 2048;
+        at<float>(this, 532) = D_1a5280;
+        at<float>(this, 528) = D_1a5280;
+        at<float>(this, 520) = (float)w * D_1a526c;
+        at<float>(this, 524) = (float)h * D_1a526c;
+        at<int>(this, 512) = 2048;
+        at<int>(this, 508) = h;
+    }
+struct XDer : XBase {
+    XSub sub;
+    XM1 m1;
+    char p1[1172 - 536 - 636];
+    XM2 m2;
+    char p2[1216 - 1172 - 44];
+    XM3 m3;
+    char p3[1508 - 1216 - 292];
+    XM4 m4;
+    char p4[1832 - 1508 - 324];
+    XM5 m5;
+    char p5[2156 - 1832 - 324];
+    XM6 m6;
+    char p6[2168 - 2156 - 12];
+    XM7 m7;
+    char p7[2340 - 2168 - 172];
+    XM8 m8;
+    char p8[7296 - 2340 - 4956];
+    XM9 m9;
+    char p9[7468 - 7296 - 172];
+    XM10 m10;
+    void *operator new(unsigned int, void *p) { return p; }
+    XDer() __attribute__((always_inline));
+};
+inline XDer::XDer() {
+        X12 *o12 = new X12;
+        at<void *>(this, 508) = o12;
+        X2736 *o27 = new X2736;
+        at<void *>(this, 512) = o27;
+        X576 *o57 = new X576;
+        at<void *>(this, 516) = o57;
+        at<char>(this, 520) = 0;
+        f_0ca814(at<void *>(this, 508));
+        f_0caa5c(at<void *>(this, 508), 0, at<int>(this, 512), 0, 0);
+    }
+
+
+extern const float D_1a5284, D_1a5288, D_1a528c, D_1a5290, D_1a5294, D_1a5298, D_1a529c;
+struct Y576 {
+    char b[576];
+    Y576() __attribute__((always_inline));
+};
+inline Y576::Y576() {
+        at<int>(this, 500) = 1;
+        at<int>(this, 0) = 0;
+        at<int>(this, 4) = 0;
+        at<int>(this, 8) = 0;
+        float f = D_1a5284 * D_1a5288;
+        at<float>(this, 480) = f;
+        float r = f_0cd3cc(f);
+        int w = 480;
+        int h = 272;
+        at<float>(this, 496) = D_1a528c / r;
+        at<float>(this, 484) = D_1a5290;
+        at<float>(this, 488) = D_1a5294;
+        at<float>(this, 492) = D_1a5298;
+        at<int>(this, 504) = at<int>(this, 500) * w;
+        at<int>(this, 516) = 2048;
+        at<float>(this, 532) = D_1a529c;
+        at<float>(this, 528) = D_1a529c;
+        at<float>(this, 520) = (float)w * D_1a5288;
+        at<float>(this, 524) = (float)h * D_1a5288;
+        at<int>(this, 512) = 2048;
+        at<int>(this, 508) = h;
+    }
+struct YDer : XBase {
+    XSub sub;
+    XM1 m1;
+    char p1[1172 - 536 - 636];
+    XM2 m2;
+    char p2[1216 - 1172 - 44];
+    XM3 m3;
+    char p3[1508 - 1216 - 292];
+    XM4 m4;
+    char p4[1832 - 1508 - 324];
+    XM5 m5;
+    char p5[2156 - 1832 - 324];
+    XM6 m6;
+    char p6[2168 - 2156 - 12];
+    XM7 m7;
+    char p7[2340 - 2168 - 172];
+    XM8 m8;
+    char p8[7296 - 2340 - 4956];
+    XM9 m9;
+    char p9[7468 - 7296 - 172];
+    XM10 m10;
+    void *operator new(unsigned int, void *p) { return p; }
+    YDer() __attribute__((always_inline));
+};
+inline YDer::YDer() {
+        X12 *o12 = new X12;
+        at<void *>(this, 508) = o12;
+        X2736 *o27 = new X2736;
+        at<void *>(this, 512) = o27;
+        Y576 *o57 = new Y576;
+        at<void *>(this, 516) = o57;
+        at<char>(this, 520) = 0;
+        f_0ca814(at<void *>(this, 508));
+        f_0caa5c(at<void *>(this, 508), 0, at<int>(this, 512), 0, 0);
+    }
+
+
+/* @draft 0x071510 us f_071510
+   Remaining difference: retail keeps a dead 'li a1,1' live across the screen-record init (register numbering of a0/a2/a3 shifts by one after it) and alternates spill temps differently (mine v0/v1).
+   WHAT IT DOES: constructs a menu object in place: base menu constructor, vtable, the sub-object at +456, ten member objects (f_0783cc, f_07827c, f_07a314, f_07a558 x2, f_0786b8, f_078d70, f_07a744, f_079854, f_079a20), then allocates a 12-byte record, a 2736-byte object and a 576-byte screen-size record (480x272 scaled by D_1a526c) into fields 508/512/516 and starts them with f_0ca814 and f_0caa5c. */
+void f_071510(void *self) { new (self) XDer; }
+
+/* @draft 0x07183c us f_07183c
+   Remaining difference: retail keeps a dead 'li a1,1' live across the screen-record init (register numbering of a0/a2/a3 shifts by one after it) and alternates spill temps differently (mine v0/v1).
+   WHAT IT DOES: twin of f_071510 using the float constants at D_1a5284..D_1a529c: constructs the menu object in place (base, sub-object, ten members, 12-byte record, 2736-byte object, 576-byte screen record) and starts it with f_0ca814 and f_0caa5c. */
+void f_07183c(void *self) { new (self) YDer; }
+
+extern unsigned char *D_1d88a0;
+extern float D_1d3140;
+extern const float D_1a51d0;
+extern unsigned D_2413a4;
+extern int D_2413b4;
+extern char D_2413b8;
+extern int D_2413bc;
+extern int D_24518c;
+extern char D_1d3290[];
+extern char D_1d32d0[];
+void f_04b290(void *);
+void f_04ad54(void *);
+void f_04b2b4(void *);
+void f_021720(void);
+void f_021750(void);
+void f_116898(int);
+void f_1166d4(int);
+void f_1187d8(int, int);
+void f_11610c(void *);
+int f_093330(void);
+void f_0933f8(int, int);
+#define VT(self, i) ((*(int (***)(void *, ...))(self))[i])
+
+/* @draft 0x06c61c us f_06c61c
+   Remaining difference: retail reloads the lock byte (+36) into a1 before the D_2413bc store on the join paths (4 bytes larger, delay slots differ); the D_1d3290/D_1d32d0 address hi part is formed in a0 in retail (v1/v0 here).
+   WHAT IT DOES: per-frame update of a menu object: returns 1 if it has no sub-object; if the lock byte at +36 is set it calls virtual slot 9 and returns 0. Otherwise, when the global D_1d88a0 flag is clear it polls the sub-object (f_04b290, f_04ad54), calls virtual slot 10 with 6 and runs a button-sequence detector (state D_2413b4 advanced by masks 0x80, 0x10, 0x100, 0x20, 0x8000, 0x1000 and finally 0x200, which calls f_0933f8(f_093330(), 10) and sets byte +454). Then, unless locked, it either adds D_1a51d0 to the float D_1d3140 or calls virtual slot 14 and, if that returns 0, redraws (f_021720, f_116898, f_1187d8, f_11610c, f_04b2b4, f_021750, f_1166d4), calls slot 15 and returns the sub-object word at +16. */
+int f_06c61c(void *self)
+{
+    char *sub = (char *)self + 4;
+    char *dp;
+    if (at<int>(self, 4) == 0)
+        return 1;
+    if (at<unsigned char>(self, 36) != 0) {
+        VT(self, 9)(self);
+        return 0;
+    }
+    at<char>(self, 452) = 0;
+    if (D_1d88a0[12] == 0)
+        goto slow;
+check:
+    if (at<unsigned char>(self, 36) != 0)
+        return 0;
+    if (D_1d88a0[14] != 0) {
+        D_1d3140 += D_1a51d0;
+        return 0;
+    }
+    if (VT(self, 14)(self) != 0)
+        return 0;
+    f_021720();
+    f_116898(1);
+    f_1187d8(0, 0);
+    dp = (D_2413a4 & 1) ? D_1d3290 : D_1d32d0;
+    f_11610c(dp);
+    D_2413a4 = D_2413a4 + 1;
+    f_04b2b4(sub);
+    D_1d3140 = D_1a51d0;
+    f_021750();
+    f_1166d4(1);
+    f_1187d8(1, 1);
+    VT(self, 15)(self);
+    if (at<unsigned char>(self, 452) == 0) {
+        at<int>(self, 444) = 0;
+        at<int>(self, 448) = 0;
+    }
+    D_2413b8 = 0;
+    return at<int>(sub, 16);
+slow:
+    f_04b290(sub);
+    f_04ad54(sub);
+    if (VT(self, 10)(self, 6) != 1 || at<unsigned char>(self, 454) != 0) {
+        D_2413b4 = 0;
+        goto check;
+    }
+    {
+        int s3 = D_24518c;
+        if ((D_2413bc != s3) & (s3 != 0)) {
+            if (D_2413b4 == 0 && (s3 & 0x80))
+                D_2413b4 = 1;
+            else if (D_2413b4 == 1 && (s3 & 0x10))
+                D_2413b4 = 2;
+            else if (D_2413b4 == 2 && (s3 & 0x100))
+                D_2413b4 = 3;
+            else if (D_2413b4 == 3 && (s3 & 0x20))
+                D_2413b4 = 4;
+            else if (D_2413b4 == 4 && (s3 & 0x8000))
+                D_2413b4 = 5;
+            else if (D_2413b4 == 5 && (s3 & 0x1000))
+                D_2413b4 = 6;
+            else if (D_2413b4 == 6 && (s3 & 0x200)) {
+                D_2413b4 = 0;
+                f_0933f8(f_093330(), 10);
+                at<char>(self, 454) = 1;
+            } else
+                D_2413b4 = 0;
+        }
+        D_2413bc = s3;
+    }
+    goto check;
+}
+
+int f_0780e0(void *);
+void f_04b5c8(void *, void *, void *, int);
+void f_04b664(void *, void *, int);
+void f_097ba8(void *);
+void f_06b6fc(int);
+void f_078f20(void *, void *);
+void f_01dee4(void *);
+void f_02326c(int);
+void f_022de4(int, int, int);
+void f_022d00(int, int);
+void f_01dbc4(void *, int, int, int, int);
+void f_0e55c0(void *);
+void f_0e5760(void *, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int);
+int f_00222c(void *, void *);
+void *f_005a38(void *, void *);
+void *f_002acc(void *, void *);
+void f_113424(int, void *, int);
+float f_01c858(void *, int);
+void f_1135b8(int, float);
+extern char D_1a5eb8[]; /* "_root" */
+extern char D_1a5ec0[]; /* "rrm_300" */
+extern char D_1a5ec8[]; /* "rrm_800" */
+extern char D_1a5ed0[]; /* "rrm_500" */
+extern char D_1a5ed8[]; /* "rrm_600" */
+extern char D_1a5ee0[]; /* "ATRAC" */
+extern char D_1a5ee8[]; /* "SoundCarGetTruck" */
+extern char D_1a5efc[]; /* "SoundCarGet" */
+extern char D_1a5f08[]; /* "SoundCarGetPlane" */
+extern char D_1c0614[];
+extern char D_1dd6b0[];
+extern char D_23bb4c[];
+extern const float D_1a52a0;
+
+struct X1136 { char b[1136]; X1136() { f_0e55c0(this); } };
+
+/* @draft 0x07251c us f_07251c
+   Remaining difference: case 5 store order/constant registers, case 26 holds the sound object in v0/t1 differently and loads the 18 call arguments in another order, 4 bytes shorter overall (copy-loop scheduling).
+   WHAT IT DOES: loads saved menu state from the record p according to the kind f_0780e0(p) reports (4..28): kind 5 copies 292 bytes to self+1216 and, by the mode word at p+280, loads one of the rrm_300/800/500/600 sub-menus and starts the sound state (f_097680); kinds 4/11 copy 12 bytes to +2156, 10 copies 324 bytes to +1508 and calls f_06b6fc, 13 copies 40 bytes to +7468, 16/23/28 copy a byte flag, 19 copies 48 bytes and a float, 20 copies 28 bytes and restarts the menu sound, 25 copies 172 bytes to +7296, 26 copies 328 bytes to +536, creates the 1136-byte sound object if needed, starts it and plays the ATRAC SoundCarGet(Truck/Plane) sound; returns 1 when handled, else 0. */
+int f_07251c(char *self, char *p)
+{
+    switch (f_0780e0(p)) {
+    case 5:
+        __builtin_memcpy(self + 1216, p, 292);
+        switch (at<int>(p, 280)) {
+        case 2:
+            at<int>(self, 7232) = 2;
+            f_04b5c8(self + 4, D_1a5eb8, D_1a5ec0, 0);
+            f_04b664(self + 4, D_1a5eb8, 0);
+            f_097ba8(D_242e14);
+            f_097680(D_242e14, 2, -1);
+            break;
+        case 3:
+            f_04b5c8(self + 4, D_1a5eb8, D_1a5ec8, 0);
+            f_04b664(self + 4, D_1a5eb8, 0);
+            at<int>(self, 7232) = 5;
+            at<int>(self, 1224) = 3;
+            f_097ba8(D_242e14);
+            f_097680(D_242e14, 5, -1);
+            break;
+        case 4:
+            f_04b5c8(self + 4, D_1a5eb8, D_1a5ec8, 0);
+            f_04b664(self + 4, D_1a5eb8, 0);
+            at<int>(self, 7232) = 4;
+            at<int>(self, 1224) = 2;
+            f_097ba8(D_242e14);
+            f_097680(D_242e14, 4, -1);
+            break;
+        case 5:
+            f_04b5c8(self + 4, D_1a5eb8, D_1a5ed0, 0);
+            f_04b664(self + 4, D_1a5eb8, 0);
+            at<int>(self, 1224) = 1;
+            at<char>(self, 866) = 1;
+            at<int>(self, 7232) = 3;
+            f_097ba8(D_242e14);
+            f_097680(D_242e14, 3, -1);
+            break;
+        case 6:
+            f_04b5c8(self + 4, D_1a5eb8, D_1a5ed8, 0);
+            f_04b664(self + 4, D_1a5eb8, 0);
+            at<int>(self, 1224) = 4;
+            at<int>(self, 7232) = 6;
+            f_097680(D_242e14, 6, -1);
+            break;
+        case 0:
+        case 1:
+        case 7:
+            break;
+        }
+        goto one;
+    case 10:
+        __builtin_memcpy(self + 1508, p, 324);
+        f_06b6fc(at<char>(self, 1583));
+        goto one;
+    case 4:
+    case 11:
+        __builtin_memcpy(self + 2156, p, 12);
+        goto one;
+    case 12:
+        goto one;
+    case 13:
+        at<char>(self, 2372) = 1;
+        __builtin_memcpy(self + 7468, p, 40);
+        goto one;
+    case 16:
+        at<char>(self, 2357) = 1;
+        at<char>(self, 2356) = at<unsigned char>(p, 8);
+        goto one;
+    case 19: {
+        int i = 0;
+        char *d = self + 2176;
+        do {
+            unsigned char v = at<unsigned char>(p + i, 8);
+            i++;
+            *d++ = v;
+        } while (i < 48);
+        unsigned char b = at<unsigned char>(p, 56);
+        int w = at<int>(p, 64);
+        float f = at<float>(p, 60);
+        at<char>(self, 2224) = b;
+        at<float>(self, 2228) = f;
+        at<int>(self, 2232) = w;
+        f_078f20(self + 2168, self + 3656);
+        goto one;
+    }
+    case 20: {
+        at<int>(self, 1212) = at<int>(self, 1204);
+        at<char>(self, 7513) = 1;
+        void *h = at<void *>(self, 512);
+        __builtin_memcpy(self + 1172, p, 28);
+        f_01dee4(h);
+        f_02326c(2);
+        f_022de4(2, at<int>(self, 1188), 0);
+        int a = at<int>(self, 1196);
+        if (a != 0 && at<unsigned char>(self, 520) == 0) {
+            f_022d00(a, 1911);
+            at<char>(self, 520) = 1;
+        }
+        f_01dbc4(h, at<int>(self, 1180), 2, at<int>(self, 1184), 0);
+        goto one;
+    }
+    case 23:
+        at<char>(self, 2372) = 1;
+        at<char>(self, 2380) = at<unsigned char>(p, 8);
+        goto one;
+    case 25:
+        __builtin_memcpy(self + 7296, p, 172);
+        goto one;
+    case 26: {
+        void *obj = at<void *>(self, 524);
+        if (obj == 0) {
+            X1136 *n = new X1136;
+            obj = n;
+            at<void *>(self, 524) = n;
+            at<int>(self, 532) = 0;
+        }
+        char *e = self + at<int>(self, 932 + at<int>(self, 532) * 4);
+        unsigned char k1 = e[5781];
+        unsigned char k2 = e[5661];
+        k1 = k1 != 3 ? k1 : 0;
+        __builtin_memcpy(self + 536, p, 328);
+        at<float>(self, 528) = D_1a52a0;
+        f_0e5760(obj, at<int>(self, 544), at<int>(self, 584), at<int>(self, 564), at<int>(self, 604), at<int>(self, 624),
+                 at<int>(self, 644), at<int>(self, 664), at<int>(self, 684), at<int>(self, 704), at<int>(self, 724),
+                 at<int>(self, 744), at<int>(self, 764), at<int>(self, 784), at<int>(self, 804), at<int>(self, 824),
+                 at<int>(self, 844), k1);
+        int r = f_00222c(D_1a5ee0, k2 == 7 ? D_1a5f08 : D_1a5ee8);
+        int x = at<int>(D_1c0614 + r * 24, 12);
+        f_113424(0, f_002acc(f_005a38(D_1dd6b0, D_1a5efc), D_1a5ee0), x);
+        f_1135b8(0, f_01c858(D_23bb4c, 1));
+        at<char>(self, 3636) = 1;
+        f_04b290(self + 4);
+        goto one;
+    }
+    case 28:
+        at<char>(self, 2372) = 1;
+        at<char>(self, 2388) = at<unsigned char>(p, 8);
+        goto one;
+    }
+    return 0;
+one:
+    return 1;
+}
+}
+}
+#undef VT
+#undef XMEM
