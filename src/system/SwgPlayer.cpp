@@ -12563,3 +12563,356 @@ void f_059a8c(Obj9b *o) {
 
 }  // extern "C"
 }  // namespace swg8c
+
+/* ---- swg8bd ---- */
+#undef W
+#undef B
+#undef FLD
+#undef DBL
+/* TU 117 fragment swg8bd: large untagged functions of the SWG player (big_b, second half). */
+namespace swg8bd {
+extern "C" {
+#define Q7(o, off) (*(int *)((char *)(o) + (off)))
+void *f_04dfa0(unsigned); void f_04ed28(void *); void f_04e4b4(void *); void f_04eee8(void *, void *);
+void f_05daa4(void *, void *);
+int f_15c0f0(int, int); int f_15c07c(int, int, void *);
+void f_05a3e8(void *, void *, void *); void f_05e540(void *, void *, void *);
+void f_05f64c(void *, void *, void *); int f_05df80(void *, void *);
+unsigned sceKernelCpuSuspendIntr(void); void sceKernelCpuResumeIntr(unsigned);
+extern int D_1d2d7c[];
+struct Em7 { ~Em7() {} };
+struct Rc7 { int w[4]; };
+/* the virtual interface of the movie-clip / character objects (slot numbers are retail vtable slots) */
+struct Str7 {
+  char *p;
+  ~Str7() {
+    Em7 g; char *s0 = p; char *s2 = s0 - 12;
+    unsigned intr = sceKernelCpuSuspendIntr();
+    volatile int *c = (volatile int *)(s0 - 4);
+    int s1 = *c; *c += -1;
+    sceKernelCpuResumeIntr(intr);
+    if (s1 <= 0) f_04eee8(s2, &g);
+  }
+};
+struct Vo;
+struct Hd7 { Vo *p; int *c; ~Hd7() { f_04ed28(this); } };
+struct Hr {
+  Vo *p; int *c;
+  Hr(Vo *a, int *b) { p = a; c = b; }
+  Hr(const Hr &o) { p = o.p; c = o.c; if (c) ++*c; }
+  ~Hr() { f_04ed28(this); }
+};
+struct Hu { Vo *p; int *c; ~Hu() { f_04ed28(this); } };
+struct Vo {
+  virtual void s0();
+  virtual void s1();
+  virtual void s2();
+  virtual void s3();
+  virtual void s4();
+  virtual void s5();
+  virtual int s6();
+  virtual char *s7();
+  virtual void s8();
+  virtual int s9();
+  virtual Vo *s10();
+  virtual void *s11();
+  virtual void s12(void *);
+  virtual Hr s13(void *);
+  virtual void s14(void *, void *);
+  virtual void s15();
+  virtual void s16(void *);
+  virtual void s17();
+  virtual void s18();
+  virtual void s19();
+  virtual Rc7 s20(void *);
+  virtual Str7 s21();
+  virtual int s22();
+  virtual int s23();
+  virtual double s24();
+  virtual void s25();
+  virtual void s26();
+  virtual void s27();
+  virtual void s28();
+  virtual void s29();
+  virtual void s30();
+  virtual void s31();
+  virtual void s32();
+  virtual void s33();
+  virtual void s34();
+  virtual void s35();
+  virtual void s36();
+  virtual void s37();
+  virtual int s38(void *);
+  virtual void s39();
+  virtual void s40();
+  virtual int *s41();
+  virtual void s42(void *);
+  virtual Hr s43(int);
+  virtual void s44();
+  virtual int s45(void *, void *, void *);
+};
+static inline void grab7(Hd7 &h, char *q, void *out) {
+  int a = Q7(q, 4);
+  int *v = *(int **)(a + 4);
+  h.p = (Vo *)v[2]; h.c = (int *)v[3];
+  if (h.c) ++*h.c;
+  int b = *(int *)(a + 4);
+  f_05f64c(out, q, &b);
+}
+
+void *f_154448(void *, void *, void *, int); void *f_15fb50(void *, int);
+extern char D_1a4900[]; extern char D_1a493c[];
+
+/* @draft 0x051df8 us f_051df8
+   WHAT IT DOES: takes a counted handle two links down the chain at +328, casts its object with f_154448 (tags D_1a4900/D_1a493c) and, if that succeeds, passes virtual slot 9 of the result to f_15fb50 with a flag of 1; then releases the handle.
+   Remaining difference: retail emits the cast-success call out of line (bnezl, jump back); ours inline, and the landing pad ends in _Unwind_Resume (27 of 53 words). */
+void f_051df8(char *self) {
+  Hd7 h; int buf[4]; int out[4]; int b;
+  char *q = self + 328;
+  int a = Q7(q, 4);
+  buf[0] = a;
+  int *v = *(int **)(a + 4);
+  h.p = (Vo *)v[2]; h.c = (int *)v[3];
+  buf[0] = (int)v;
+  if (h.c) ++*h.c;
+  buf[0] = a;
+  int t = Q7(a, 4);
+  buf[0] = t;
+  b = t;
+  f_05f64c(out, q, &b);
+  if (!h.p) return;
+  Vo *r = (Vo *)f_154448(h.p, D_1a4900, D_1a493c, 0);
+  if (!r) return;
+  int x = r->s9();
+  f_15fb50((void *)x, 1);
+}
+void f_05dd24(void *, void *, void *);
+struct Ia { char *n; int pad[3]; };
+struct Ib { char *n; int pad[7]; };
+/* @draft 0x04f248 us f_04f248
+   WHAT IT DOES: asks the object (virtual slot 13) for a counted handle for the key; if it is non-null returns a copy. Otherwise looks the key up in the map at +24; when the entry is missing or its payload state is 2 it returns an empty handle, else stores the third argument at +44, clears +48 and returns the result of virtual slot 43 with 0.
+   Remaining difference: saved-register assignment (22 of 69 words). */
+Hr f_04f248(Vo *self, int unused, int val, void *key) {
+  Hr t = self->s13(key);
+  if (t.p) return Hr(t);
+  Ia it; Ib end;
+  char *m = (char *)self + 24;
+  f_05dd24(&it, m, key);
+  end.n = *(char **)(m + 4);
+  if (it.n != end.n) {
+    char *nd = *(char **)(it.n + 32);
+    if ((*(int *)(nd + 4) ^ 2) != 0) {
+      Q7(self, 44) = val; Q7(self, 48) = 0;
+      return self->s43(0);
+    }
+  }
+  return Hr(0, 0);
+}
+void f_05a61c(void *, void *, void *);
+/* @draft 0x0524dc us f_0524dc
+   WHAT IT DOES: takes the counted handle two links down the chain at +328, asks its object (virtual slot 20) for a record, looks the record up with f_05a61c, and if the found object (virtual slot 9) yields a non-null value passes it to virtual slot 10 of this object; returns that value.
+   Remaining difference: retail places the buffer b at sp+48 before the two temporaries, ours after (34 of 70 words). */
+int f_0524dc(Vo *self) {
+  Hd7 h; int buf[4]; int out[4]; int b[4];
+  char *q = (char *)self + 328;
+  int a = Q7(q, 4);
+  buf[0] = a;
+  int *v = *(int **)(a + 4);
+  h.p = (Vo *)v[2]; h.c = (int *)v[3];
+  buf[0] = (int)v;
+  if (h.c) ++*h.c;
+  buf[0] = a;
+  int t = Q7(a, 4);
+  buf[0] = t;
+  b[0] = t;
+  f_05f64c(out, q, b);
+  Hu r2;
+  Rc7 rec = h.p->s20(self);
+  f_05a61c(&r2, self, &rec);
+  int x = r2.p->s9();
+  if (x) ((Vo *)self)->s10();
+  return x;
+}
+void f_05e394(void *, void *, void *, void *);
+/* @draft 0x052f84 us f_052f84
+   WHAT IT DOES: takes the counted handle two links down the chain at +328, asks its object (virtual slot 20) for a record, looks the record up with f_05a61c, and passes the chain, the +328 output buffer and the found handle to f_05e394.
+   Remaining difference: stack slot order and saved-register allocation (52 of 73 words). */
+void f_052f84(Vo *self) {
+  Hd7 h; int buf[4]; int out[4]; int b;
+  char *q = (char *)self + 328;
+  int a = Q7(q, 4);
+  buf[0] = a;
+  int *v = *(int **)(a + 4);
+  h.p = (Vo *)v[2]; h.c = (int *)v[3];
+  buf[0] = (int)v;
+  if (h.c) ++*h.c;
+  buf[0] = a;
+  int t = Q7(a, 4);
+  buf[0] = t;
+  b = t;
+  f_05f64c(out, q, &b);
+  Hu r2;
+  Rc7 rec = h.p->s20(self);
+  f_05a61c(&r2, self, &rec);
+  out[0] = Q7(q, 4);
+  f_05e394(&b, q, out, &r2);
+}
+extern char D_1a4480[];
+void f_05cbd4(void *);
+struct Ob12 {
+  void *vt; int x;
+  static void *operator new(unsigned n) { unsigned *p = (unsigned *)f_04dfa0(n + 4); *p = n + 4; return p + 1; }
+  static void operator delete(void *p) { f_04e4b4((char *)p - 4); }
+  Ob12() { Em7 e; vt = D_1a4480; x = 0; }
+};
+struct Pq { void *p; int *cnt;
+  Pq(void *o) { p = o; cnt = 0; if (o) { cnt = (int *)f_04dfa0(4); *cnt = 1; } }
+  ~Pq() { f_04ed28(this); } };
+struct Ik { int *n; Ik() {} Ik(const Ik &o) { n = o.n; } };
+/* @draft 0x04fc40 us f_04fc40
+   WHAT IT DOES: creates a new 8-byte object (vtable D_1a4480) in a counted handle, calls f_05e394 with it and the argument, then walks the circular list headed at the node in field +12 of this object and calls f_05e394 again for the value of every node.
+   Remaining difference: retail frame is 144 bytes with the two word buffers at sp+48/64 (32 bytes of unexplained slots below), ours 128 (56 of 74 words). */
+void f_04fc40(char *self, char *arg) {
+  Pq pr(new Ob12);
+  int b[4]; int out[4];
+  out[0] = Q7(arg, 4);
+  f_05e394(b, arg, out, &pr);
+  Ik it, end;
+  int *head = *(int **)(self + 12);
+  it.n = (int *)head[2]; end.n = head;
+  while (it.n != end.n) {
+    b[0] = Q7(arg, 4);
+    f_05e394(out, arg, b, it.n + 8);
+    f_05cbd4(&it);
+  }
+}
+extern char D_1a3b70[];
+/* @draft 0x0525f4 us f_0525f4
+   WHAT IT DOES: takes the counted handle two links down the chain at +328, builds the +328 output buffer with f_05f64c, and casts the handle's object with f_154448 (tags D_1a4900/D_1a3b70); passes the sub-object at +340 to f_05e394 together with the handle when the cast works, or with the address of the node at +8 of the +340 chain otherwise; then returns the result of virtual slot 9 of the handle's object.
+   Remaining difference: block layout (retail puts the cast-succeeded call out of line) and saved-register assignment (71 of 75 words). */
+int f_0525f4(Vo *self) {
+  Hd7 h; int buf[4]; int out[4]; int b;
+  char *q = (char *)self + 328;
+  int a = Q7(q, 4);
+  buf[0] = a;
+  int *v = *(int **)(a + 4);
+  h.p = (Vo *)v[2]; h.c = (int *)v[3];
+  buf[0] = (int)v;
+  if (h.c) ++*h.c;
+  buf[0] = a;
+  int t = Q7(a, 4);
+  buf[0] = t;
+  b = t;
+  f_05f64c(out, q, &b);
+  void *c = 0;
+  if (h.p) c = f_154448(h.p, D_1a4900, D_1a3b70, 0);
+  char *q2 = (char *)self + 340;
+  if (!c) {
+    int w = Q7(q2, 4);
+    b = w;
+    int w1 = Q7(w, 4);
+    out[0] = w;
+    b = w1;
+    f_05e394(&b, q2, out, (char *)w1 + 8);
+  } else {
+    out[0] = Q7(q2, 4);
+    f_05e394(&b, q2, out, &h);
+  }
+  return h.p->s9();
+}
+void f_04eda0(void *);
+struct Rz {
+  int *p; int *c; int pad[6];
+  Rz() { p = 0; c = 0; }
+  ~Rz() { f_04ed28(this); }
+  Rz &operator=(const Rz &o) {
+    if (this != &o) { f_04ed28(this); c = o.c; p = o.p; if (c) ++*c; }
+    return *this;
+  }
+};
+/* @implements 0x050cc4 us f_050cc4
+   WHAT IT DOES: resets the object: replaces the counted handle at +272 with an empty one, clears the container at +328 (f_04eda0), empties the four handles at +296 + 8*i, clears the container at +340 and empties the handle at +288. */
+void f_050cc4(char *self) {
+  { Rz t; *(Rz *)(self + 272) = t; }
+  f_04eda0(self + 328);
+  for (int i = 0; i < 4; i++) { Rz t; *(Rz *)(self + 296 + i * 8) = t; }
+  f_04eda0(self + 340);
+  { Rz t; *(Rz *)(self + 288) = t; }
+}
+void f_04ee68(void *, void *); void f_04e8d8(void *);
+extern char D_1a3698[]; extern char D_1a35d0[];
+struct Node1 { Node1 *l; Node1 *p; Node1 *r; Node1 *q; };
+struct Lst1 { int pad; Node1 *head; int size;
+  void clear() { if (size) { f_04ee68(this, head->p); size = 0; head->r = head; head->p = 0; head->q = head; } }
+  ~Lst1() { Node1 *h = head; f_04e4b4(h); } };
+struct BaseT { void *vt; int w[5]; ~BaseT() { f_04e8d8(this); } };
+struct Tr1 : BaseT { Lst1 m; ~Tr1() { vt = D_1a3698; m.clear(); } };
+struct Tr3 : Tr1 { int pad3[5]; char *buf; static void operator delete(void *p) { f_04e4b4((char *)p - 4); } ~Tr3() { vt = D_1a35d0; if (buf) f_04e4b4(buf - 4); } };
+/* @draft 0x04ef20 us f_04ef20
+   WHAT IT DOES: destructor of a tree container with an owned buffer at +56: sets the derived vtable, frees the buffer (pointer minus its 4-byte header) if present, then runs the tree container destructor (empty the tree at +24, free its header node, base destructor).
+   Remaining difference: landing-pad registers and the trailing cleanup chain (25 of 84 words; 304 vs 336 bytes). */
+struct Tmp16 { int w[4]; ~Tmp16() {} };
+void f_04ef20(Tr3 *o) { Tmp16 g; o->~Tr3(); }
+/* @draft 0x052dfc us f_052dfc
+   WHAT IT DOES: takes the counted handle two links down the chain at +328 twice (the second time in a second counted slot), builds the output buffers with f_05e394/f_05f64c over the +328 sub-object, and calls f_05e394 on it once with each handle.
+   Remaining difference: register allocation and the order of the stack stores (53 of 85 words). */
+void f_052dfc(char *self) {
+  Hd7 h; int x16[4]; int out[4]; int x48[4]; Hd7 h2;
+  char *q = self + 328;
+  int a = Q7(q, 4);
+  x16[0] = a;
+  int *v = *(int **)(a + 4);
+  h.p = (Vo *)v[2]; h.c = (int *)v[3];
+  x16[0] = (int)v;
+  if (h.c) ++*h.c;
+  x16[0] = a;
+  int t = Q7(a, 4);
+  x16[0] = t;
+  x48[0] = t;
+  f_05f64c(out, q, x48);
+  int a2 = Q7(q, 4);
+  x48[0] = a2;
+  int *v2 = *(int **)(a2 + 4);
+  x48[0] = (int)v2;
+  h2.p = (Vo *)v2[2]; h2.c = (int *)v2[3];
+  if (h2.c) ++*h2.c;
+  x48[0] = a2;
+  int t2 = Q7(a2, 4);
+  x16[0] = t2;
+  x48[0] = t2;
+  f_05f64c(out, q, x16);
+  out[0] = Q7(q, 4);
+  f_05e394(x48, q, out, &h);
+  out[0] = Q7(q, 4);
+  f_05e394(x48, q, out, &h2);
+}
+/* @draft 0x04f070 us f_04f070
+   WHAT IT DOES: deleting destructor of the tree container with an owned buffer: runs the destructor of f_04ef20 and then frees the object (pointer minus its 4-byte header).
+   Remaining difference: same landing-pad chain as f_04ef20 (32 of 87 words). */
+void f_04f070(Tr3 *o) { Tmp16 g; o->~Tr3(); Tr3::operator delete(o); }
+int f_05aaf8(void *, void *, void *, void *);
+struct Hq { Vo *p; int *c; Hq(const Hd7 &o) { c = o.c; p = o.p; if (c) ++*c; } ~Hq() { f_04ed28(this); } };
+struct Rq { int *p; int *c; int pad[6]; Rq() { p = 0; c = 0; } ~Rq() { f_04ed28(this); } };
+/* @draft 0x055a98 us f_055a98
+   WHAT IT DOES: takes the counted handle two links down the chain at +328, builds the +328 output buffer with f_05f64c, then calls f_05aaf8 with this object, the argument, a counted copy of the handle and an empty handle, returning its result.
+   Remaining difference: 2 words (the spill of the chain pointer to sp+16 is scheduled after the next load in ours). */
+int f_055a98(char *self, void *arg) {
+  Hd7 h; int buf[4]; int out[4]; int b[4];
+  char *q = self + 328;
+  int a = Q7(q, 4);
+  buf[0] = a;
+  int *v = *(int **)(a + 4);
+  h.c = (int *)v[3]; h.p = (Vo *)v[2];
+  buf[0] = (int)v;
+  if (h.c) ++*h.c;
+  buf[0] = a;
+  int t = Q7(a, 4);
+  buf[0] = t;
+  b[0] = t;
+  f_05f64c(out, q, b);
+  Hq cp(h);
+  Rq e;
+  return f_05aaf8(self, arg, &cp, &e);
+}
+}
+}
