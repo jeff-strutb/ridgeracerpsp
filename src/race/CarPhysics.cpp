@@ -402,25 +402,27 @@ extern "C" void f_0a747c(void *a0, int a1, int a2, float x, float y, float z, fl
     f_0a7118_2(a0, v, a1, a2, -1, z, w);
 }
 
-/* @draft 0x0aa374 us f_0aa374
-   WHAT IT DOES: Runs four passes over the car's per-wheel records: each pass copies a few values from the record into the car, runs the step f_0aa3f8 and stores its results back into the record, moving on to the next record.
-   Remaining difference: the loop body order of the loads and stores differs (14 of 33 words). */
+/* @implements 0x0aa374 us f_0aa374
+   WHAT IT DOES: Runs four passes over the car's per-wheel records: each pass copies a few values from the record into the car, runs the step f_0aa3f8 and stores its results back into the record. */
 extern "C" void f_0aa374(CarPhys *p)
 {
-    char *q = (char *)p;
-    int k = 3;
-    do {
-        p->m148 = *(float *)(q + 192);
-        p->m152 = *(float *)(q + 208);
-        p->m156 = *(int *)(q + 256);
-        p->m160 = *(int *)(q + 272);
-        k--;
+    for (int i = 0; i < 4; i++) {
+        float a = ((float *)((char *)p + 192))[i];
+        float b = ((float *)((char *)p + 208))[i];
+        int c = ((int *)((char *)p + 256))[i];
+        int d = ((int *)((char *)p + 272))[i];
+        p->m148 = a;
+        p->m152 = b;
+        p->m156 = c;
+        p->m160 = d;
         f_0aa3f8(p);
-        *(float *)(q + 304) = p->m140;
-        *(float *)(q + 288) = p->m136;
-        *(float *)(q + 320) = p->m168;
-        q += 4;
-    } while (k >= 0);
+        float e = p->m140;
+        float f = p->m136;
+        float g = p->m168;
+        ((float *)((char *)p + 304))[i] = e;
+        ((float *)((char *)p + 288))[i] = f;
+        ((float *)((char *)p + 320))[i] = g;
+    }
 }
 
 /* @draft 0x0ab074 us f_0ab074
