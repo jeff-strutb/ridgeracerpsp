@@ -1551,11 +1551,14 @@ extern "C" void f_0a74cc(CarPhys *p)
     if (p->m108 == 0) {
         if (p->m20 < p->m40 + -0.0f || p->m36 + 0.0f < p->m20) {
             p->m108 = 1;
-            w.m100 = p->m100;
             {
-                unsigned short *d = (unsigned short *)PH(&w, 392);
-                unsigned short *q = (unsigned short *)PH(p, 392);
-                for (int i = 0; i < 4; i++) {
+                int i;
+                unsigned short *d, *q;
+                i = 0;
+                d = (unsigned short *)PH(&w, 392);
+                w.m100 = p->m100;
+                q = (unsigned short *)PH(p, 392);
+                for (; i < 4; i++) {
                     unsigned short h = *q++;
                     float u = PF(p, 224)[i];
                     float t = PF(p, 240)[i];
@@ -1583,11 +1586,14 @@ extern "C" void f_0a74cc(CarPhys *p)
             p->m100 = -1;
             for (int i = 0; i < 4; i++) {
                 if (PF(p, 304)[i] < PF(p, 416)[i] + -0.0f || PF(p, 432)[i] + 0.0f < PF(p, 304)[i]) {
-                    w.m100 = p->m100;
                     {
-                        unsigned short *d = (unsigned short *)PH(&w, 392);
-                        unsigned short *q = (unsigned short *)PH(p, 392);
-                        for (int j = 0; j < 4; j++) {
+                        int j;
+                        unsigned short *d, *q;
+                        j = 0;
+                        d = (unsigned short *)PH(&w, 392);
+                        w.m100 = p->m100;
+                        q = (unsigned short *)PH(p, 392);
+                        for (; j < 4; j++) {
                             unsigned short h = *q++;
                             float u = PF(p, 224)[j];
                             float t = PF(p, 240)[j];
@@ -1666,11 +1672,14 @@ extern "C" void f_0a7eac(CarPhys *p)
         float hi = 3.0f;
         if (p->m20 < p->m40 + lo || p->m36 + hi < p->m20) {
             p->m108 = 1;
-            w.m100 = p->m100;
             {
-                unsigned short *d = (unsigned short *)PH(&w, 392);
-                unsigned short *q = (unsigned short *)PH(p, 392);
-                for (int i = 0; i < 4; i++) {
+                int i;
+                unsigned short *d, *q;
+                i = 0;
+                d = (unsigned short *)PH(&w, 392);
+                w.m100 = p->m100;
+                q = (unsigned short *)PH(p, 392);
+                for (; i < 4; i++) {
                     unsigned short h = *q++;
                     float u = PF(p, 224)[i];
                     float t = PF(p, 240)[i];
@@ -1690,11 +1699,14 @@ extern "C" void f_0a7eac(CarPhys *p)
             p->m100 = -1;
             for (int i = 0; i < 4; i++) {
                 if (PF(p, 304)[i] < PF(p, 416)[i] + lo || PF(p, 432)[i] + hi < PF(p, 304)[i]) {
-                    w.m100 = p->m100;
                     {
-                        unsigned short *d = (unsigned short *)PH(&w, 392);
-                        unsigned short *q = (unsigned short *)PH(p, 392);
-                        for (int j = 0; j < 4; j++) {
+                        int j;
+                        unsigned short *d, *q;
+                        j = 0;
+                        d = (unsigned short *)PH(&w, 392);
+                        w.m100 = p->m100;
+                        q = (unsigned short *)PH(p, 392);
+                        for (; j < 4; j++) {
                             unsigned short h = *q++;
                             float u = PF(p, 224)[j];
                             float t = PF(p, 240)[j];
@@ -1718,4 +1730,91 @@ extern "C" void f_0a7eac(CarPhys *p)
     }
     f_0aea0c(p);
     f_0aea84(p);
+}
+
+/* @draft 0x0a7b60 us f_0a7b60
+   WHAT IT DOES: When the car is in mode 0, rebuilds a scratch copy from the stored previous state and either reruns the whole-car wheel steps on it (car outside its window) or, after looking the stored position up on the track if the car has no track piece, reruns and blends the wheels outside their own windows one by one.
+   Remaining difference: as in f_0a74cc: the rerun loop pass moves the wheel loop's -1 out of the loop (its first pass finds the move "not desirable", and retail's loop evidently stayed that way), costing a sixth saved register. */
+extern "C" void f_0a7b60(CarPhys *p)
+{
+    if (p->m108 != 0)
+        return;
+    CarPhysWork w;
+    w.m0 = p->m592;
+    w.m4 = p->m596;
+    w.m12 = p->m600;
+    w.m8 = p->m608;
+    w.m16 = p->m612;
+    w.m116 = p->m616;
+    f_0ae9f8(&w);
+    if (p->m20 < p->m40 + -0.0f || p->m36 + 0.0f < p->m20) {
+        p->m108 = 1;
+        {
+            int i;
+            unsigned short *d, *q;
+            i = 0;
+            d = (unsigned short *)PH(&w, 392);
+            w.m100 = p->m100;
+            q = (unsigned short *)PH(p, 392);
+            for (; i < 4; i++) {
+                unsigned short h = *q++;
+                float u = PF(p, 224)[i];
+                float t = PF(p, 240)[i];
+                PF(&w, 224)[i] = u;
+                *d++ = h;
+                PF(&w, 240)[i] = t;
+            }
+        }
+        *PF(&w, 172) = *PF(p, 172);
+        *PF(&w, 176) = *PF(p, 176);
+        f_0aa608(&w);
+        f_0ab220(&w);
+        f_0acd80(&w);
+        f_0addbc(&w);
+        f_0aeacc(p, &w);
+    } else {
+        if ((unsigned short)p->m92 == 0xffff) {
+            char *ps = (char *)&D_23c820 + 12352;
+            GroundPt pt;
+            pt.x = p->m592;
+            pt.y = p->m600;
+            pt.z = p->m596;
+            pt.w = 1.0f;
+            if (p->m116)
+                p->m92 = f_0aff7c(ps, &pt.x);
+            else
+                p->m92 = f_0af788(ps, &pt.x);
+            p->m104 = f_0af5e8(ps, &p->m92);
+        }
+        p->m100 = -1;
+        for (int i = 0; i < 4; i++) {
+            if (PF(p, 304)[i] < PF(p, 416)[i] + -0.0f || PF(p, 432)[i] + 0.0f < PF(p, 304)[i]) {
+                {
+                    int j;
+                    unsigned short *d, *q;
+                    j = 0;
+                    d = (unsigned short *)PH(&w, 392);
+                    w.m100 = p->m100;
+                    q = (unsigned short *)PH(p, 392);
+                    for (; j < 4; j++) {
+                        unsigned short h = *q++;
+                        float u = PF(p, 224)[j];
+                        float t = PF(p, 240)[j];
+                        PF(&w, 224)[j] = u;
+                        *d++ = h;
+                        PF(&w, 240)[j] = t;
+                    }
+                }
+                PI(p, 400)[i] = 1;
+                *PF(&w, 172) = *PF(p, 172);
+                *PF(&w, 176) = *PF(p, 176);
+                f_0aaf68(&w, i);
+                f_0ab43c(&w, i);
+                f_0ad084(&w, i);
+                f_0af140(p, &w, i);
+            } else {
+                PH(p, 392)[i] = -1;
+            }
+        }
+    }
 }
