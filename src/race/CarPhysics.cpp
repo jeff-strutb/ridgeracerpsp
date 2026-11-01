@@ -3,6 +3,8 @@
    simulation values into their stored copies, the four wheel and suspension updates and
    the drive, brake and surface helpers they call. */
 
+#include <math.h>
+
 /* The physics state of one car. Offsets are the retail byte offsets. */
 struct CarPhys {
     float m0;
@@ -1844,4 +1846,107 @@ extern "C" int f_0aa204(const float *pos, int lo, int hi)
     if (CourseDiff(m, lo) < 2)
         return lo;
     return f_0aa204(pos, lo, m);
+}
+
+/* A 2D vector of the course plane (x and z). */
+struct CVec2 {
+    float x, y;
+    CVec2() {}
+    CVec2(float a, float b) : x(a), y(b) {}
+    CVec2 operator-(const CVec2 &o) const { return CVec2(x - o.x, y - o.y); }
+    CVec2 operator+(const CVec2 &o) const { return CVec2(x + o.x, y + o.y); }
+    CVec2 operator*(float k) const { return CVec2(x * k, y * k); }
+    float Dot(const CVec2 &o) const { return x * o.x + y * o.y; }
+    float Len() const { return sqrtf(x * x + y * y); }
+};
+
+/* One course segment (40 bytes) of the list at D_23f7fc, D_2456c0 segments in a ring: its
+   course position, start point, forward direction, a curve flag, the curve's centre or the
+   straight's direction, and the cross line used for the projection. */
+struct CourseSeg {
+    float pos;
+    CVec2 p;
+    CVec2 dir;
+    int curved;
+    CVec2 c;
+    CVec2 e;
+};
+extern CourseSeg *D_23f7fc_segs __asm__("D_23f7fc");
+extern int D_2456c0;
+extern "C" int f_0af59c(const int *a);
+
+/* The segment index i wrapped into the ring. */
+static inline int SegWrap(int i)
+{
+    return f_0af59c(&i);
+}
+
+/* @draft 0x0aa748 us f_0aa748
+   WHAT IT DOES: Tracks the probe point (m148, m152) along the course segments: finds the segment from the stored one (searching the whole ring the first time, by course position), steps forward or back to the segment that holds the point, projects the point onto it (a straight or a curve), and stores the course position (m136), its fraction (m168) and the signed distance from the course line (m140).
+   Remaining difference: retail is 268 bytes longer: its vector type copies values through the stack (the point stored to the stack first, a segment point copied with float stores, each difference stored, block-copied with integer loads to two places, then reloaded). A grid of 136 class shapes (copy constructor, assignment, by-value or reference operands, member or free dot) on the first dot product came closest with a const-reference operator- assigned into a local and a member Dot, which matches the instruction and stack-access counts but not their order. */
+extern "C" void f_0aa748(CarPhys *p)
+{
+    CourseSeg *list = D_23f7fc_segs;
+    if (p->m164 < 0) {
+        if (p->m128 < list[0].pos) {
+            p->m164 = D_2456c0 - 1;
+        } else {
+            int k = D_2456c0 >> 1;
+            if (p->m128 < list[k].pos)
+                k = 1;
+            else
+                k = k + 1;
+            for (; k < D_2456c0; k++)
+                if (p->m128 < list[k].pos)
+                    break;
+            p->m164 = SegWrap(k - 1);
+        }
+    }
+    {
+        int idx = p->m164;
+        CVec2 v(p->m148, p->m152);
+        CourseSeg *s = &list[idx];
+        if (s->dir.Dot(v - s->p) >= 0.0f) {
+            for (int k = 1; k < D_2456c0; k++) {
+                CourseSeg *t = &list[SegWrap(idx + k)];
+                if (t->dir.Dot(v - t->p) < 0.0f) {
+                    p->m164 = SegWrap(idx + k - 1);
+                    break;
+                }
+            }
+        } else {
+            for (int k = 1; k < D_2456c0; k++) {
+                int j = SegWrap(idx - k);
+                CourseSeg *t = &list[j];
+                if (t->dir.Dot(v - t->p) >= 0.0f) {
+                    p->m164 = j;
+                    break;
+                }
+            }
+        }
+    }
+    CourseSeg *s = &list[p->m164];
+    CVec2 v(p->m148, p->m152);
+    CVec2 q;
+    if (s->curved) {
+        CVec2 r = v - s->c;
+        float t = s->e.Dot(s->p - s->c) / s->e.Dot(r);
+        q = s->c + r * t;
+    } else {
+        float t = s->e.Dot(s->p - v) / s->e.Dot(s->c);
+        q = v + s->c * t;
+    }
+    CourseSeg *n = &list[SegWrap(p->m164 + 1)];
+    float len = (n->p - s->p).Len();
+    float ratio = (q - s->p).Len() / len;
+    float a = n->pos;
+    float d = f_0af380(&a, &s->pos) * ratio + s->pos;
+    float pos = f_0af478(&d);
+    p->m136 = pos;
+    p->m168 = pos - (int)pos;
+    float dist = (q - v).Len() * 0.0009765625f;
+    if (s->e.Dot(v - s->p) < 0.0f)
+        p->m140 = dist;
+    else
+        p->m140 = -dist;
 }
