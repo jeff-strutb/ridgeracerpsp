@@ -378,9 +378,8 @@ extern "C" void f_0aea84(CarPhys *p)
     p->m24 = f_0af380(&t, &p->m24);
 }
 
-/* @draft 0x0a742c us f_0a742c
-   WHAT IT DOES: Builds a four-float vector from three float arguments (its last word a plain 1.0) and calls the shared lookup f_0a7118 with it.
-   Remaining difference: the 1.0 constant is loaded at the top of the function; retail loads it after the first argument moves. */
+/* @implements 0x0a742c us f_0a742c
+   WHAT IT DOES: Builds a four-float vector from three float arguments (its last word a plain 1.0) and calls the shared lookup f_0a7118 with it and the two remaining floats. */
 extern "C" void f_0a742c(void *a0, int a1, int a2, float x, float y, float z, float w, float u)
 {
     float v[4];
@@ -388,7 +387,7 @@ extern "C" void f_0a742c(void *a0, int a1, int a2, float x, float y, float z, fl
     v[1] = y;
     v[2] = z;
     v[3] = 1.0f;
-    f_0a7118(a0, v, a1, a2, -1, w, u, z);
+    f_0a7118_2(a0, v, a1, a2, -1, w, u);
 }
 
 /* @implements 0x0a747c us f_0a747c
