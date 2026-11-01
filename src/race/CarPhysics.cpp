@@ -537,9 +537,8 @@ extern "C" void f_0a78f0(CarPhys *p)
     p->m104 = f_0af5e8(s, &p->m92);
 }
 
-/* @draft 0x0a881c us f_0a881c
-   WHAT IT DOES: Copies the height and the first height into their stored copies, resets the car's mode and index fields and the four per-wheel arrays, then runs the two steps f_0aea0c and f_0aea84.
-   Remaining difference: first run. */
+/* @implements 0x0a881c us f_0a881c
+   WHAT IT DOES: Copies the height and the first height into their stored copies, resets the car's mode and index fields and the four per-wheel arrays, then runs the two steps f_0aea0c and f_0aea84. */
 extern "C" void f_0a881c(CarPhys *p)
 {
     p->m24 = p->m16;
@@ -548,17 +547,13 @@ extern "C" void f_0a881c(CarPhys *p)
     p->m108 = 0;
     p->m120 = p->m16;
     p->m100 = -1;
-    char *w = (char *)p;
-    short *sh = (short *)((char *)p + 392);
-    int k = 3;
-    do {
-        k--;
-        *(int *)(w + 400) = 0;
-        *sh++ = -1;
-        *(float *)(w + 336) = p->m12;
-        *(int *)(w + 376) = 0;
-        w += 4;
-    } while (k >= 0);
+    float h = p->m12;
+    for (int i = 0; i < 4; i++) {
+        ((int *)((char *)p + 400))[i] = 0;
+        ((short *)((char *)p + 392))[i] = -1;
+        ((float *)((char *)p + 336))[i] = h;
+        ((int *)((char *)p + 376))[i] = 0;
+    }
     f_0aea0c(p);
     f_0aea84(p);
 }
