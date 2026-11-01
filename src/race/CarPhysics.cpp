@@ -840,3 +840,84 @@ extern "C" void f_0ab0fc(CarPhys *p)
     float h0 = y0 + a;
     p->m144 = (h1 - h0) * p->m168 + h0;
 }
+
+extern "C" void f_0aa748(CarPhys *p);
+
+/* @draft 0x0aa608 us f_0aa608
+   WHAT IT DOES: Stores the truncated height, then for each of the four wheels turns the wheel's offset by the car's heading, adds the car's position and stores it as the wheel's position and the probe point, takes the wheel's surface id (or -1 when the car has no index), runs the surface step f_0aa748 and keeps its results for the wheel; the last wheel's surface id becomes the car's index. */
+extern "C" void f_0aa608(CarPhys *p)
+{
+    p->m180 = (int)p->m16;
+    Vec4 v;
+    Angle a;
+    Angle *pa = &a;
+    float *pz = &v.z;
+    short s;
+    for (int i = 0; i < 4; i++) {
+        v.x = ((float *)((char *)p + 224))[i];
+        v.y = 0.0f;
+        v.z = ((float *)((char *)p + 240))[i];
+        v.w = 1.0f;
+        a.a = p->m8;
+        f_099b98(pa);
+        f_09b394(a, pz, &v.x);
+        float x = p->m0 + v.x;
+        float z = p->m4 + v.z;
+        ((float *)((char *)p + 192))[i] = x;
+        ((float *)((char *)p + 208))[i] = z;
+        p->m148 = x;
+        p->m152 = z;
+        if (p->m100 < 0)
+            p->m164 = -1;
+        else
+            p->m164 = ((short *)((char *)p + 392))[i];
+        f_0aa748(p);
+        float e = p->m140;
+        float f = p->m136;
+        float g = p->m168;
+        s = p->m164;
+        ((float *)((char *)p + 304))[i] = e;
+        ((float *)((char *)p + 288))[i] = f;
+        ((float *)((char *)p + 320))[i] = g;
+        ((short *)((char *)p + 392))[i] = s;
+    }
+    p->m100 = s;
+}
+
+/* @draft 0x0aaf68 us f_0aaf68
+   WHAT IT DOES: The one-wheel form of f_0aa608 for wheel i: stores the truncated height, places the wheel and its probe point, takes its surface id (or -1), runs f_0aa748 and keeps the results for that wheel.
+   Remaining difference: scheduling only: retail loads the height and heading first and stores the heading to the stack after the vector; the four result loads come out in another order. 720 setup orders and 72 result orders tried (the best is kept). */
+extern "C" void f_0aaf68(CarPhys *p, int i)
+{
+    Vec4 v;
+    Angle a;
+    a.a = p->m8;
+    v.z = ((float *)((char *)p + 240))[i];
+    v.y = 0.0f;
+    v.x = ((float *)((char *)p + 224))[i];
+    v.w = 1.0f;
+    p->m180 = (int)p->m16;
+    f_099b98(&a);
+    f_09b394(a, &v.z, &v.x);
+    float vx = v.x;
+    float vz = v.z;
+    float x = p->m0 + vx;
+    float z = p->m4 + vz;
+    ((float *)((char *)p + 192))[i] = x;
+    ((float *)((char *)p + 208))[i] = z;
+    p->m148 = x;
+    p->m152 = z;
+    if (p->m100 < 0)
+        p->m164 = -1;
+    else
+        p->m164 = ((short *)((char *)p + 392))[i];
+    f_0aa748(p);
+    float g = p->m168;
+    float f = p->m136;
+    float e = p->m140;
+    unsigned short h = p->m164;
+    ((float *)((char *)p + 320))[i] = g;
+    ((unsigned short *)((char *)p + 392))[i] = h;
+    ((float *)((char *)p + 304))[i] = e;
+    ((float *)((char *)p + 288))[i] = f;
+}
