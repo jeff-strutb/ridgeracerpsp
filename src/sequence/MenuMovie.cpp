@@ -5033,7 +5033,7 @@ void f_078f20(void *, void *);
 void f_01dee4(void *);
 void f_02326c(int);
 void f_022de4(int, int, int);
-void f_022d00(int, int);
+void *f_022d00(int, int);
 void f_01dbc4(void *, int, int, int, int);
 void f_0e55c0(void *);
 void f_0e5760(void *, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int);
@@ -5042,7 +5042,7 @@ void *f_005a38(void *, void *);
 void *f_002acc(void *, void *);
 void f_113424(int, void *, int);
 float f_01c858(void *, int);
-void f_1135b8(int, float);
+int f_1135b8(int, float);
 extern char D_1a5eb8[]; /* "_root" */
 extern char D_1a5ec0[]; /* "rrm_300" */
 extern char D_1a5ec8[]; /* "rrm_800" */
@@ -5060,7 +5060,7 @@ extern const float D_1a52a0;
 struct X1136 { char b[1136]; X1136() { f_0e55c0(this); } };
 
 /* @draft 0x07251c us f_07251c
-   Remaining difference: case 5 store order/constant registers, case 26 holds the sound object in v0/t1 differently and loads the 18 call arguments in another order, 4 bytes shorter overall (copy-loop scheduling).
+   Remaining difference (8 of 576 words): in case 6 retail sets up f_097680's a0/a1 before the two stores and fills the jump's delay slot with the 7232 store, as if the block still ended in that call when sched2 ran (here the call is already cross-jumped into the shared tail, the block falls through, and the stores go first); and in case 26 retail adds the self pointer second (addu v1,v1,s3) where this adds it first, with either operand order in the source.
    WHAT IT DOES: loads saved menu state from the record p according to the kind f_0780e0(p) reports (4..28): kind 5 copies 292 bytes to self+1216 and, by the mode word at p+280, loads one of the rrm_300/800/500/600 sub-menus and starts the sound state (f_097680); kinds 4/11 copy 12 bytes to +2156, 10 copies 324 bytes to +1508 and calls f_06b6fc, 13 copies 40 bytes to +7468, 16/23/28 copy a byte flag, 19 copies 48 bytes and a float, 20 copies 28 bytes and restarts the menu sound, 25 copies 172 bytes to +7296, 26 copies 328 bytes to +536, creates the 1136-byte sound object if needed, starts it and plays the ATRAC SoundCarGet(Truck/Plane) sound; returns 1 when handled, else 0. */
 int f_07251c(char *self, char *p)
 {
@@ -5094,17 +5094,17 @@ int f_07251c(char *self, char *p)
         case 5:
             f_04b5c8(self + 4, D_1a5eb8, D_1a5ed0, 0);
             f_04b664(self + 4, D_1a5eb8, 0);
-            at<int>(self, 1224) = 1;
             at<char>(self, 866) = 1;
             at<int>(self, 7232) = 3;
+            at<int>(self, 1224) = 1;
             f_097ba8(D_242e14);
             f_097680(D_242e14, 3, -1);
             break;
         case 6:
             f_04b5c8(self + 4, D_1a5eb8, D_1a5ed8, 0);
             f_04b664(self + 4, D_1a5eb8, 0);
-            at<int>(self, 1224) = 4;
             at<int>(self, 7232) = 6;
+            at<int>(self, 1224) = 4;
             f_097680(D_242e14, 6, -1);
             break;
         case 0:
@@ -5172,24 +5172,31 @@ int f_07251c(char *self, char *p)
         __builtin_memcpy(self + 7296, p, 172);
         goto one;
     case 26: {
-        void *obj = at<void *>(self, 524);
-        if (obj == 0) {
+        void *obj;
+        void *cur = at<void *>(self, 524);
+        if (cur == 0) {
             X1136 *n = new X1136;
             obj = n;
             at<void *>(self, 524) = n;
             at<int>(self, 532) = 0;
-        }
-        char *e = self + at<int>(self, 932 + at<int>(self, 532) * 4);
-        unsigned char k1 = e[5781];
-        unsigned char k2 = e[5661];
-        k1 = k1 != 3 ? k1 : 0;
+        } else
+            obj = cur;
+        char *e = at<int>(self, 932 + at<int>(self, 532) * 4) + self;
+        int k1 = (unsigned char)e[5781];
+        int k2 = (unsigned char)e[5661];
+        if (k1 == 3)
+            k1 = 0;
         __builtin_memcpy(self + 536, p, 328);
         at<float>(self, 528) = D_1a52a0;
         f_0e5760(obj, at<int>(self, 544), at<int>(self, 584), at<int>(self, 564), at<int>(self, 604), at<int>(self, 624),
                  at<int>(self, 644), at<int>(self, 664), at<int>(self, 684), at<int>(self, 704), at<int>(self, 724),
                  at<int>(self, 744), at<int>(self, 764), at<int>(self, 784), at<int>(self, 804), at<int>(self, 824),
                  at<int>(self, 844), k1);
-        int r = f_00222c(D_1a5ee0, k2 == 7 ? D_1a5f08 : D_1a5ee8);
+        int r;
+        if (k2 != 7)
+            r = f_00222c(D_1a5ee0, D_1a5ee8);
+        else
+            r = f_00222c(D_1a5ee0, D_1a5f08);
         int x = at<int>(D_1c0614 + r * 24, 12);
         f_113424(0, f_002acc(f_005a38(D_1dd6b0, D_1a5efc), D_1a5ee0), x);
         f_1135b8(0, f_01c858(D_23bb4c, 1));
