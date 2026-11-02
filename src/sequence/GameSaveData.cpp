@@ -199,10 +199,10 @@ public:
     }
     void Get32(int &v)
     {
-        v = Get8();
-        v |= Get8() << 8;
-        v |= Get8() << 16;
-        v |= Get8() << 24;
+        v = *cur++;
+        v |= *cur++ << 8;
+        v |= *cur++ << 16;
+        v |= *cur++ << 24;
     }
     int size;
     unsigned char *buf;
@@ -690,23 +690,19 @@ int Sequence::CGameSaveData::Save(CSaveStream *s)
     return 0;
 }
 
-/* @draft 0x019e7c us _ZN8Sequence13CGameSaveData4Load
+/* @implements 0x019e7c us _ZN8Sequence13CGameSaveData4Load
    WHAT IT DOES: Reads the saved game back from the stream. Returns -1 if the version byte is
    not this version's; otherwise skips the padding, clears the one value that must not
-   survive a load and sets miles for an English console.
-   Remaining difference (38 words): scheduling ties only; at four places (the third word of
-   each course record, m14852, m15696, m15748) retail stores the stream position after the
-   field, and in the block of single bytes after the records the two address registers a0/a1
-   are swapped. */
+   survive a load and sets miles for an English console. */
 int Sequence::CGameSaveData::Load(CSaveStream *s)
 {
     start = s->cur;
-    version = s->Get8();
+    version = *s->cur++;
     if (version != 105)
         return -1;
     s->Get32(m12);
     s->Get32(m16);
-    m20 = s->Get8();
+    m20 = *s->cur++;
     for (int i = 0; i < 336; i++) {
         s->Get32(m24[i]);
         s->Get32(m1368[i]);
@@ -718,56 +714,56 @@ int Sequence::CGameSaveData::Load(CSaveStream *s)
             s->Get32(m2712[i][j].v[2]);
         }
     }
-    m14808 = s->Get8();
-    m14812 = s->Get8();
-    m14816 = s->Get8();
-    m14820 = s->Get8();
-    m14824 = s->Get8();
-    m14828 = s->Get8();
-    m14832 = s->Get8();
-    m14836 = s->Get8();
-    m14840 = s->Get8();
-    m14844 = s->Get8();
-    m14848 = s->Get8();
-    m14852 = s->Get8();
-    m14856 = s->Get8();
-    m14860 = s->Get8();
-    m14864 = s->Get8();
+    m14808 = *s->cur++;
+    m14812 = *s->cur++;
+    m14816 = *s->cur++;
+    m14820 = *s->cur++;
+    m14824 = *s->cur++;
+    m14828 = *s->cur++;
+    m14832 = *s->cur++;
+    m14836 = *s->cur++;
+    m14840 = *s->cur++;
+    m14844 = *s->cur++;
+    m14848 = *s->cur++;
+    m14852 = *s->cur++;
+    m14856 = *s->cur++;
+    m14860 = *s->cur++;
+    m14864 = *s->cur++;
     s->Get32(m14868);
     for (int i = 0; i < 48; i++)
-        m14872[i] = s->Get8();
+        m14872[i] = *s->cur++;
     for (int i = 0; i < 60; i++)
-        m15064[i] = s->Get8();
+        m15064[i] = *s->cur++;
     for (int i = 0; i < 28; i++)
-        m15304[i] = s->Get8();
+        m15304[i] = *s->cur++;
     for (int i = 0; i < 10; i++)
-        m15416[i] = s->Get8();
-    m15456 = s->Get8();
-    m15460 = s->Get8();
-    m15464 = s->Get8();
-    m15468 = s->Get8();
-    m15472 = s->Get8();
-    m15476 = s->Get8();
-    m15480 = s->Get8();
+        m15416[i] = *s->cur++;
+    m15456 = *s->cur++;
+    m15460 = *s->cur++;
+    m15464 = *s->cur++;
+    m15468 = *s->cur++;
+    m15472 = *s->cur++;
+    m15476 = *s->cur++;
+    m15480 = *s->cur++;
     for (int i = 0; i < 48; i++)
-        m15484[i] = s->Get8();
-    m15676 = s->Get8();
+        m15484[i] = *s->cur++;
+    m15676 = *s->cur++;
     s->Get32((int &)m15680);
     s->Get32(m15684);
-    m15688 = s->Get8();
-    m15692 = s->Get8();
-    m15696 = s->Get8();
+    m15688 = *s->cur++;
+    m15692 = *s->cur++;
+    m15696 = *s->cur++;
     s->Get32(m15700);
-    m15704 = s->Get8();
-    m15708 = s->Get8();
-    m15712 = s->Get8();
+    m15704 = *s->cur++;
+    m15708 = *s->cur++;
+    m15712 = *s->cur++;
     for (int i = 0; i < 8; i++)
         name[i] = *s->cur++;
-    m15728 = s->Get8();
-    m15724 = s->Get8();
-    m15732 = s->Get8();
-    m15736 = s->Get8();
-    m15740 = s->Get8();
+    m15728 = *s->cur++;
+    m15724 = *s->cur++;
+    m15732 = *s->cur++;
+    m15736 = *s->cur++;
+    m15740 = *s->cur++;
     s->Get32(m15744);
     s->Get32(m15748);
     s->Get32(m15752);
