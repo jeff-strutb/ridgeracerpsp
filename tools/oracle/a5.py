@@ -47,7 +47,7 @@ sys.path.insert(0, os.path.join(ROOT, 'tools', 'oracle'))
 import a7  # noqa: E402
 
 CACHE = os.path.join(ROOT, 'build/oracle/retail-cache')
-MIN_FREE_GB = 80  # a full run's peak: seven candidate logs of up to ~8 GB at once, plus uncached retail
+MIN_FREE_GB = 80  # a full run's peak: every candidate log at its cap (twice retail's), plus uncached retail
 
 TAG = re.compile(r'@(implements|draft)\s+0x([0-9a-fA-F]+)\s+us\s+([A-Za-z_][\w:~]*)(?:.*?\*/)\s*\n([^\n{;]*?)\b\3\s*\(', re.S)
 
@@ -67,7 +67,9 @@ def watched():
     return out
 
 
-def run(exe, script, trace, watch, calls, cycles_ref=None):
+def run(exe, script, trace, watch, calls, cycles_ref=None, cap=None):
+    """Run rrbox; with `cap` (bytes), stop it once the call log passes that size. Returns True
+    if it was stopped."""
     # Each script has its own stage directory, so scripts run in parallel; retail and candidate
     # of one script still use the same staged path (it is written into emulated RAM).
     stage = os.path.join(a7.OUT, 'stage', os.path.splitext(os.path.basename(script))[0])
@@ -83,7 +85,16 @@ def run(exe, script, trace, watch, calls, cycles_ref=None):
            f'--rr-hash-skip={a7.TEXT_RAM[0]:x}:{a7.TEXT_RAM[1]:x}']
     if cycles_ref:
         cmd.append(f'--rr-cycles-ref={cycles_ref}')
-    subprocess.run(cmd, env=env, capture_output=True)
+    p = subprocess.Popen(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    while p.poll() is None:
+        try:
+            p.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            if cap and os.path.exists(calls) and os.path.getsize(calls) > cap:
+                p.kill()
+                p.wait()
+                return True
+    return False
 
 
 def records(path):
@@ -120,6 +131,8 @@ def summarise(path):
                 open_calls[(k, call)] = entry.rstrip(b'\n')
                 continue
             t = line.split()  # R func call v0= v1= f0= writes= hash= clobbered= cyc=
+            if len(t) < 9:
+                continue  # the last line of a log whose run was stopped at the cap
             entry = open_calls.pop((t[1], t[2]), b'')
             d = out.get(t[1]) or out.setdefault(t[1], new())
             d[0] += 1
@@ -158,15 +171,22 @@ def script_pair(s, m1, watch, watch_retail):
                 os.remove(junk)
         evict(name, key)
     # the candidate run reads retail's call log for the time lockstep; the cached copy serves
-    run(m1, s, files['candidate'][0], watch, files['candidate'][1], cached + '.calls')
+    # A candidate that diverges can log far more calls than retail (35 GB against 0.7 GB on
+    # boot_attract) and fill the disk; past twice retail's log it has long since differed, so the
+    # run is stopped there and the script reported as capped.
+    cap = max(2 * os.path.getsize(cached + '.calls'), 2**30)
+    capped = run(m1, s, files['candidate'][0], watch, files['candidate'][1], cached + '.calls', cap)
     tr = open(cached + '.trace').read().split('\n')
     tc = open(files['candidate'][0]).read().split('\n')
     first = next((k for k, (x, y) in enumerate(zip(tr, tc)) if x != y), None)
     if first is None and len(tr) != len(tc):
         first = min(len(tr), len(tc))
-    cov = [line.split() for line in open(files['candidate'][1] + '.cov')]
+    covf = files['candidate'][1] + '.cov'
+    cov = [line.split() for line in open(covf)] if os.path.exists(covf) and not capped else []
     files['retail'] = (cached + '.trace', cached + '.calls')
-    return name, first, len(tr) - 1, eval(open(cached + '.sum').read()), summarise(files['candidate'][1]), cov, files
+    if capped and first is None:
+        first = len(tc) - 1
+    return name, first, len(tr) - 1, eval(open(cached + '.sum').read()), summarise(files['candidate'][1]), cov, files, capped
 
 
 def evict(name, key):
@@ -231,10 +251,11 @@ def main():
     with ProcessPoolExecutor(len(scripts) or 1) as ex:
         results = list(ex.map(script_pair, scripts, [m1] * len(scripts), [watch] * len(scripts),
                               [watch_retail] * len(scripts)))
-    for name, first, nframes, sr, sc, cov, files in results:
+    for name, first, nframes, sr, sc, cov, files, capped in results:
         if first is not None:
             a7_bad += 1
-            print(f'A7 DIFFERS  {name}: first at frame {first}')
+            print(f'A7 DIFFERS  {name}: first at frame {first}'
+                  + (' (candidate stopped: its call log passed twice retail\'s)' if capped else ''))
         else:
             print(f'A7 IDENTICAL {name}: {nframes} frames')
         for t in cov:
@@ -289,7 +310,7 @@ def main():
         for r in rows:
             f.write(','.join(str(x) for x in r) + '\n')
     n = {k: sum(1 for v in verdict.values() if v[0] == k) for k in ('PASS', 'DIFFERS', 'UNCOVERED')}
-    for name, *_, files in results:
+    for name, *_, files, capped in results:
         cand = files['candidate']
         link = os.path.join(a7.OUT, f'{name}.retail.calls')
         if os.path.lexists(link):
