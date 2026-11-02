@@ -519,6 +519,12 @@ void f_018abc(ScreenMgr *, int);
 int f_036a3c(CTable *t, char *rec, int *index, int count);
 }
 
+/* The course's index in the course table. */
+inline int CourseIndex(Rec c)
+{
+    return f_036a3c(&D_2407a8, c.rec, D_2407a8.index, D_2407a8.count);
+}
+
 /* The race mode the main menu selected, and this job's script. */
 extern int D_1d110c;
 extern short D_1d1114[];
@@ -1128,15 +1134,8 @@ void Sequence::CSingleRaceModeJob::f_009c30()
     FIND_SELECT(&carRow, D_240740, m15364);
     memcpy(D_24063c, D_240740.Field("Class", carRow.rec), D_1a211c[1]);
     int cls = D_24063c[0] - 1;
-    Param seq = D_1dd7c4;
-    char *r = D_2407d0.Field("CourseNumber", (char *)seq.a);
-    Row crs;
-    if (r)
-        crs.rec = f_036984(&D_2407a8, r, 0, D_2407a8.index, D_2407a8.count);
-    else
-        crs.rec = 0;
-    Row c = crs;
-    int k = cls * 24 + f_036a3c(&D_2407a8, c.rec, D_2407a8.index, D_2407a8.count);
+    Rec crs = ChosenCourse(D_1dd7c4);
+    int k = cls * 24 + CourseIndex(crs);
     if (m15788)
         k += 168;
     D_1ee1a8 = m1924[k];
