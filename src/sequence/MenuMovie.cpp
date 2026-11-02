@@ -3191,33 +3191,35 @@ void f_06dcb0(void *self, unsigned cmd, int v)
             f_097ba8(D_242e14);
             f_113488(0);
             if ((unsigned)v < 9) {
-                int k;
                 switch (v) {
                 case 1:
-                    k = 0;
-                    goto tail;
+                    at<unsigned char>(PTR, 36) = 1;
+                    f_08a71c(0, 1);
+                    break;
                 case 2:
                     at<unsigned char>(PTR, 36) = 1;
                     f_08a71c(1, 1);
                     D_242b50 = PTR;
                     break;
                 case 3:
-                    k = 13;
-                    goto tail;
-                case 4:
-                    k = 9;
-                    goto tail;
-                case 5:
-                    k = 8;
-                    goto tail;
-                case 6:
-                    k = 7;
-                    goto tail;
-                case 7:
-                    k = 10;
-                tail:
                     at<unsigned char>(PTR, 36) = 1;
-                    f_08a71c(k, 1);
+                    f_08a71c(13, 1);
+                    break;
+                case 4:
+                    at<unsigned char>(PTR, 36) = 1;
+                    f_08a71c(9, 1);
+                    break;
+                case 5:
+                    at<unsigned char>(PTR, 36) = 1;
+                    f_08a71c(8, 1);
+                    break;
+                case 6:
+                    at<unsigned char>(PTR, 36) = 1;
+                    f_08a71c(7, 1);
+                    break;
+                case 7:
+                    at<unsigned char>(PTR, 36) = 1;
+                    f_08a71c(10, 1);
                     break;
                 case 8:
                     at<unsigned char>(PTR, 36) = 1;
