@@ -5060,7 +5060,7 @@ extern const float D_1a52a0;
 struct X1136 { char b[1136]; X1136() { f_0e55c0(this); } };
 
 /* @draft 0x07251c us f_07251c
-   Remaining difference (8 of 576 words): in case 6 retail sets up f_097680's a0/a1 before the two stores and fills the jump's delay slot with the 7232 store, as if the block still ended in that call when sched2 ran (here the call is already cross-jumped into the shared tail, the block falls through, and the stores go first); and in case 26 retail adds the self pointer second (addu v1,v1,s3) where this adds it first, with either operand order in the source.
+   Remaining difference (7 of 576 words): in case 6 retail sets up f_097680's a0/a1 before the two stores and fills the jump's delay slot with the 7232 store. That is sched2's order with the call still at the end of the block (stores then rank 1, the address high part 3); here flow2 has already cross-jumped the call into the shared tail, the block falls through, and the stores rank 3 and go first.
    WHAT IT DOES: loads saved menu state from the record p according to the kind f_0780e0(p) reports (4..28): kind 5 copies 292 bytes to self+1216 and, by the mode word at p+280, loads one of the rrm_300/800/500/600 sub-menus and starts the sound state (f_097680); kinds 4/11 copy 12 bytes to +2156, 10 copies 324 bytes to +1508 and calls f_06b6fc, 13 copies 40 bytes to +7468, 16/23/28 copy a byte flag, 19 copies 48 bytes and a float, 20 copies 28 bytes and restarts the menu sound, 25 copies 172 bytes to +7296, 26 copies 328 bytes to +536, creates the 1136-byte sound object if needed, starts it and plays the ATRAC SoundCarGet(Truck/Plane) sound; returns 1 when handled, else 0. */
 int f_07251c(char *self, char *p)
 {
@@ -5181,7 +5181,7 @@ int f_07251c(char *self, char *p)
             at<int>(self, 532) = 0;
         } else
             obj = cur;
-        char *e = at<int>(self, 932 + at<int>(self, 532) * 4) + self;
+        char *e = (char *)(at<int>(self, 932 + at<int>(self, 532) * 4) + (int)self);
         int k1 = (unsigned char)e[5781];
         int k2 = (unsigned char)e[5661];
         if (k1 == 3)
