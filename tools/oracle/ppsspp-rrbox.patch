@@ -154,16 +154,18 @@ index 6f39b1b..ff23447 100644
  
 diff --git a/Core/RRBox.cpp b/Core/RRBox.cpp
 new file mode 100644
-index 0000000..233d07f
+index 0000000..1cb76c3
 --- /dev/null
 +++ b/Core/RRBox.cpp
-@@ -0,0 +1,157 @@
+@@ -0,0 +1,244 @@
 +#include "Core/RRBox.h"
 +#include <map>
 +#include <string>
 +#include "Core/MIPS/MIPS.h"
 +#include "Core/HLE/sceKernelThread.h"
 +#include "Core/CoreTiming.h"
++#include "Core/MemMap.h"
++#include "Core/System.h"
 +
 +namespace RRBox {
 +bool g_tracing = false;
@@ -181,8 +183,19 @@ index 0000000..233d07f
 +static std::map<u32, u64> g_calls;      // calls seen per function
 +static FILE *g_log = nullptr;
 +static std::map<std::pair<u32, u64>, s64> g_refCycles;  // (func offset, call) -> retail cycles
++static std::map<std::pair<u32, u64>, s64> g_refEntry;   // (func offset, call) -> retail time at entry
 +
 +static inline u64 Mix(u64 h, u64 v) { h ^= v + 0x9E3779B97F4A7C15ULL + (h << 6) + (h >> 2); return h * 0xFF51AFD7ED558CCDULL; }
++static inline u64 Byte(u32 addr, u8 v) { return Mix(Mix(0x51ED270B27D2A3C1ULL, addr), v); }
++// A value pointing into the running thread's stack is logged as "stk": where a local sits depends on
++// its function's frame layout, which a draft is free to differ in, so only that it is a stack
++// address is behaviour.
++static const char *Val(char *buf, u32 v) {
++	if (v >= __KernelGetCurThreadStackStart() && v < __KernelGetCurThreadStack())
++		return "stk";
++	snprintf(buf, 9, "%08x", v);
++	return buf;
++}
 +
 +void Load(const char *watchFile, const char *logFile, u32 moduleBase) {
 +	g_base = moduleBase;
@@ -219,6 +232,9 @@ index 0000000..233d07f
 +		const char *c = strstr(line, " cyc=");
 +		if (line[0] == 'R' && c && sscanf(line + 2, "%x %llu", &func, &call) == 2 && sscanf(c + 5, "%lld", &cyc) == 1)
 +			g_refCycles[{func, call}] = cyc;
++		const char *k = strstr(line, " tk=");
++		if (line[0] == 'E' && k && sscanf(line + 2, "%x %llu", &func, &call) == 2 && sscanf(k + 4, "%lld", &cyc) == 1)
++			g_refEntry[{func, call}] = cyc;
 +	}
 +	if (f) fclose(f);
 +}
@@ -270,8 +286,9 @@ index 0000000..233d07f
 +				currentMIPS->downcount += (int)(cyc - ref->second);
 +				cyc = ref->second;
 +			}
-+			fprintf(g_log, "R %06x %llu v0=%08x v1=%08x f0=%08x writes=%llu hash=%016llx clobbered=%03x cyc=%lld\n",
-+				fr.func - g_base, (unsigned long long)fr.call, currentMIPS->r[MIPS_REG_V0], currentMIPS->r[MIPS_REG_V1],
++			char b0[9], b1[9];
++			fprintf(g_log, "R %06x %llu v0=%s v1=%s f0=%08x writes=%llu hash=%016llx clobbered=%03x cyc=%lld\n",
++				fr.func - g_base, (unsigned long long)fr.call, Val(b0, currentMIPS->r[MIPS_REG_V0]), Val(b1, currentMIPS->r[MIPS_REG_V1]),
 +				currentMIPS->fi[0], (unsigned long long)fr.writes, (unsigned long long)fr.hash, clobbered, (long long)cyc);
 +			g_frames.erase(g_frames.begin() + k);
 +		}
@@ -279,10 +296,43 @@ index 0000000..233d07f
 +	}
 +	if (pc >= g_lo && pc <= g_hi && g_watch[(pc - g_lo) / 4] && !currentMIPS->inDelaySlot) {
 +		u64 call = g_calls[pc]++;
++		// time-equalised lockstep at entry too: code that ran since the last watched boundary (a
++		// draft caller's own instructions) may have taken a different number of cycles, and the
++		// call would then read a different clock
++		auto ref = g_refEntry.find({pc - g_base, call});
++		if (ref != g_refEntry.end()) {
++			s64 now = (s64)CoreTiming::GetTicks();
++			if (now != ref->second)
++				currentMIPS->downcount += (int)(now - ref->second);
++		}
++		// RRBOX_DUMPAT=FUNC:CALL:FILE writes all of user RAM at that call's entry, to diff two runs
++		// and find the memory a byte-exact function read differently
++		static int dumpAt = -1;
++		static u32 dFunc = 0;
++		static unsigned long long dCall = 0;
++		static char dPath[400];
++		if (dumpAt < 0) {
++			const char *e = getenv("RRBOX_DUMPAT");
++			dumpAt = e && sscanf(e, "%x:%llu:%399s", &dFunc, &dCall, dPath) == 3;
++		}
++		if (dumpAt && pc - g_base == dFunc && call == dCall) {
++			if (FILE *d = fopen(dPath, "wb")) {
++				fwrite(Memory::GetPointerUnchecked(PSP_GetUserMemoryBase()), 1, PSP_GetUserMemoryEnd() - PSP_GetUserMemoryBase(), d);
++				fclose(d);
++			}
++			// beside it, every thread's stack (start size): dead stack contents are not state
++			if (FILE *d = fopen((std::string(dPath) + ".stacks").c_str(), "w")) {
++				for (const DebugThreadInfo &t : GetThreadsInfo())
++					fprintf(d, "%08x %x\n", t.initialStack, t.stackSize);
++				fclose(d);
++			}
++		}
 +		const u32 *r = currentMIPS->r;
 +		const u32 *fi = currentMIPS->fi;
-+		fprintf(g_log, "E %06x %llu t=%d a0=%08x a1=%08x a2=%08x a3=%08x t0=%08x t1=%08x f12=%08x f13=%08x f14=%08x f15=%08x\n",
-+			pc - g_base, (unsigned long long)call, thread, r[4], r[5], r[6], r[7], r[8], r[9], fi[12], fi[13], fi[14], fi[15]);
++		char b[6][9];
++		fprintf(g_log, "E %06x %llu t=%d a0=%s a1=%s a2=%s a3=%s t0=%s t1=%s f12=%08x f13=%08x f14=%08x f15=%08x tk=%lld\n",
++			pc - g_base, (unsigned long long)call, thread, Val(b[0], r[4]), Val(b[1], r[5]), Val(b[2], r[6]), Val(b[3], r[7]),
++			Val(b[4], r[8]), Val(b[5], r[9]), fi[12], fi[13], fi[14], fi[15], (long long)CoreTiming::GetTicks());
 +		Frame fr{pc, r[MIPS_REG_RA], r[MIPS_REG_SP], thread, call, 0, 0, {}, (s64)CoreTiming::GetTicks()};
 +		for (int i = 0; i < 9; i++) fr.saved[i] = r[i < 8 ? 16 + i : 30];
 +		g_frames.push_back(fr);
@@ -291,6 +341,22 @@ index 0000000..233d07f
 +}
 +
 +void OnWrite(u32 addr, u64 value, int size) {
++	// RRBOX_WADDR=ADDR (hex, absolute) logs every write that touches that byte as
++	// "A addr value size pc thread innermost-watched-func call", to find who changed it
++	static int waddr = -1;
++	static u32 wa = 0;
++	if (waddr < 0) {
++		const char *e = getenv("RRBOX_WADDR");
++		waddr = e && sscanf(e, "%x", &wa) == 1;
++	}
++	if (waddr && g_log && wa >= addr && wa < addr + (u32)size) {
++		int t = __KernelGetCurThread();
++		const Frame *in = nullptr;
++		for (const Frame &fr : g_frames)
++			if (fr.thread == t) in = &fr;
++		fprintf(g_log, "A %08x %08llx %d pc=%06x t=%d in=%06x %llu\n", addr, (unsigned long long)value, size,
++			currentMIPS->pc - g_base, t, in ? in->func - g_base : 0, in ? (unsigned long long)in->call : 0ULL);
++	}
 +	// RRBOX_WDETAIL=FUNC:CALL (hex offset, decimal call number) logs each hashed write of that one
 +	// call as "W addr value size pc", to find which write makes a call's hash differ
 +	static int detail = -1;
@@ -302,12 +368,33 @@ index 0000000..233d07f
 +		detail = e && sscanf(e, "%x:%llu", &dFunc, &c) == 2;
 +		dCall = c;
 +	}
++	// The hash is of the call's net effect on memory, not of its write sequence: each byte written
++	// adds H(addr, new) - H(addr, old), which telescopes to the sum over the bytes the call changed
++	// of H(addr, final) - H(addr, before the call). Two calls that leave memory the same agree
++	// whatever order they stored in (independent stores scheduled differently, a field written
++	// twice), and a byte stored and then restored counts for nothing.
++	//
++	// A write into the running thread's own stack is a local of some frame on it. Below a call's
++	// entry sp it is the call's own frame or a callee's, whose layout is the compiler's business: not
++	// counted. At or above it, it is a caller's local reached through a pointer, an output parameter:
++	// counted, but by value and position within the word only, since where the caller keeps it
++	// depends on the caller's frame layout, which a draft is free to differ in; and by the value
++	// written alone, since what the slot held before is usually an uninitialised local.
++	bool stack = addr >= __KernelGetCurThreadStackStart() && addr < __KernelGetCurThreadStack();
++	u64 delta = 0;
++	for (int i = 0; i < size; i++) {
++		u32 b = addr + i;
++		u8 nv = (u8)(value >> (8 * i));
++		u8 ov = Memory::IsValidAddress(b) ? Memory::Read_U8(b) : 0;
++		if (stack)
++			delta += Byte(0x5A000000 | (b & 3), nv);
++		else if (nv != ov)
++			delta += Byte(b, nv) - Byte(b, ov);
++	}
 +	int thread = __KernelGetCurThread();
 +	for (Frame &fr : g_frames) {
-+		// a call's own stack frame (and its callees') lies just below the caller's sp: its layout
-+		// is the compiler's business, so those writes are not behaviour
-+		if (fr.thread == thread && !(addr < fr.sp && addr >= fr.sp - 0x40000)) {
-+			fr.hash = Mix(Mix(Mix(fr.hash, addr), value), size);
++		if (fr.thread == thread && !(stack && addr < fr.sp)) {
++			fr.hash += delta;
 +			fr.writes++;
 +			if (detail && g_log && fr.func - g_base == dFunc && fr.call == dCall)
 +				fprintf(g_log, "W %08x %08llx %d pc=%06x\n", addr, (unsigned long long)value, size, currentMIPS->pc - g_base);
@@ -317,13 +404,14 @@ index 0000000..233d07f
 +}
 diff --git a/Core/RRBox.h b/Core/RRBox.h
 new file mode 100644
-index 0000000..f217fee
+index 0000000..ed298e4
 --- /dev/null
 +++ b/Core/RRBox.h
-@@ -0,0 +1,21 @@
+@@ -0,0 +1,22 @@
 +// rrbox: per-function call tracing for the Ridge Racer decomp's A5 oracle.
 +// Watched functions log their arguments at entry and, at return, their return registers plus a
-+// hash of every memory write made during the call (callees included), on the calling thread only.
++// hash of the call's net effect on memory (callees included, calling thread only, own stack frames
++// excluded): what each written byte ends as, whatever order it was stored in.
 +#pragma once
 +#include <cstdio>
 +#include <vector>
@@ -343,7 +431,7 @@ index 0000000..f217fee
 +void OnWrite(u32 addr, u64 value, int size);
 +}
 diff --git a/headless/Headless.cpp b/headless/Headless.cpp
-index 293878d..7e8106a 100644
+index 293878d..6579553 100644
 --- a/headless/Headless.cpp
 +++ b/headless/Headless.cpp
 @@ -42,6 +42,7 @@
@@ -354,7 +442,7 @@ index 293878d..7e8106a 100644
  #include "Core/HLE/sceUtility.h"
  #include "Core/SaveState.h"
  #include "GPU/GPUCommon.h"
-@@ -51,6 +52,17 @@
+@@ -51,6 +52,18 @@
  
  #include "Compare.h"
  #include "HeadlessHost.h"
@@ -367,12 +455,13 @@ index 293878d..7e8106a 100644
 +#include "Core/MemMap.h"
 +#include "Core/Screenshot.h"
 +#include "Core/RRBox.h"
++#include "Core/HLE/sceKernelThread.h"
 +#include "Core/SaveState.h"
 +#include "GPU/Common/GPUDebugInterface.h"
  #if defined(_WIN32)
  #include "WindowsHeadlessHost.h"
  #elif defined(SDL)
-@@ -171,6 +183,111 @@ static HeadlessHost *getHost(GPUCore gpuCore) {
+@@ -171,6 +184,111 @@ static HeadlessHost *getHost(GPUCore gpuCore) {
  	}
  }
  
@@ -484,7 +573,7 @@ index 293878d..7e8106a 100644
  struct AutoTestOptions {
  	double timeout;
  	double maxScreenshotError;
-@@ -226,6 +343,40 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -226,6 +344,40 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		draw->BeginFrame(Draw::DebugFlags::NONE);
  	}
  
@@ -525,7 +614,7 @@ index 293878d..7e8106a 100644
  	bool passed = true;
  	double deadline = time_now_d() + opt.timeout;
  	coreState = coreParameter.startBreak ? CORE_STEPPING_CPU : CORE_RUNNING_CPU;
-@@ -238,6 +389,136 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -238,6 +390,154 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		if (coreState == CORE_NEXTFRAME) {
  			coreState = CORE_RUNNING_CPU;
  			headlessHost->SwapBuffers();
@@ -537,10 +626,28 @@ index 293878d..7e8106a 100644
 +				const u8 *ram = Memory::GetPointerUnchecked(PSP_GetUserMemoryBase());
 +				u64 h;
 +				if (g_rr.skipEnd > g_rr.skipStart) {
++					// M1 images: leave out the code range and every thread's stack. A T3 body differs
++					// in bytes, and its frame layout differs too, so dead stack contents differ while
++					// all state agrees; the stacks' live values are compared by A5 as behaviour.
 +					const u32 b = PSP_GetUserMemoryBase(), e = PSP_GetUserMemoryEnd();
-+					u64 h1 = XXH3_64bits(ram, g_rr.skipStart - b);
-+					u64 h2 = XXH3_64bits(ram + (g_rr.skipEnd - b), e - g_rr.skipEnd);
-+					h = h1 ^ (h2 * 0x9E3779B97F4A7C15ULL);
++					std::vector<std::pair<u32, u32>> skip{{g_rr.skipStart, g_rr.skipEnd}};
++					for (const DebugThreadInfo &t : GetThreadsInfo())
++						if (t.stackSize > 0)
++							skip.push_back({t.initialStack, t.initialStack + (u32)t.stackSize});
++					std::sort(skip.begin(), skip.end());
++					XXH3_state_t *st = XXH3_createState();
++					XXH3_64bits_reset(st);
++					u32 at = b;
++					for (auto &r : skip) {
++						u32 lo = std::max(r.first, b), hi = std::min(r.second, e);
++						if (lo > at)
++							XXH3_64bits_update(st, ram + (at - b), lo - at);
++						at = std::max(at, hi);
++					}
++					if (e > at)
++						XXH3_64bits_update(st, ram + (at - b), e - at);
++					h = XXH3_64bits_digest(st);
++					XXH3_freeState(st);
 +				} else {
 +					h = XXH3_64bits(ram, PSP_GetUserMemoryEnd() - PSP_GetUserMemoryBase());
 +				}
@@ -662,7 +769,7 @@ index 293878d..7e8106a 100644
  		}
  		if (coreState == CORE_STEPPING_CPU && !coreParameter.startBreak) {
  			break;
-@@ -261,6 +542,7 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -261,6 +561,7 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  			Core_Stop();
  		}
  	}
@@ -670,7 +777,7 @@ index 293878d..7e8106a 100644
  	if (gpu) {
  		gpu->EndHostFrame();
  	}
-@@ -445,6 +727,59 @@ int main(int argc, const char* argv[])
+@@ -445,6 +746,59 @@ int main(int argc, const char* argv[])
  			teamCityMode = true;
  		else if (!strncmp(argv[i], "--state=", strlen("--state=")) && strlen(argv[i]) > strlen("--state="))
  			stateToLoad = argv[i] + strlen("--state=");
@@ -730,7 +837,7 @@ index 293878d..7e8106a 100644
  		else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
  			return printUsage(argv[0], NULL);
  		else if (!strcmp(argv[i], "--ignore")) {
-@@ -558,6 +893,13 @@ int main(int argc, const char* argv[])
+@@ -558,6 +912,13 @@ int main(int argc, const char* argv[])
  	g_Config.internalDataDirectory.clear();
  	g_Config.bUseOldAtrac = oldAtrac;
  	g_Config.iForceEnableHLE = 0xFFFFFFFF;  // Run all modules as HLE. We don't have anything to load in this context.
@@ -744,7 +851,7 @@ index 293878d..7e8106a 100644
  
  	// g_Config.bUseOldAtrac = true;
  
-@@ -572,6 +914,11 @@ int main(int argc, const char* argv[])
+@@ -572,6 +933,11 @@ int main(int argc, const char* argv[])
  #elif !PPSSPP_PLATFORM(ANDROID)
  	g_Config.memStickDirectory = Path(std::string(getenv("HOME"))) / ".ppsspp";
  #endif

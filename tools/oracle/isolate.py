@@ -16,7 +16,7 @@ loop makes the A5 verdicts trustworthy:
      (a byte-exact function blamed, a call outside any watched function) stops the loop: that
      needs reading by hand.
 
-    python3 tools/oracle/isolate.py SCRIPT [--max N]
+    python3 tools/oracle/isolate.py SCRIPT [--max N] [--frames N]
 """
 import os
 import subprocess
@@ -36,41 +36,88 @@ def fields(line):
 
 
 def same_return(rk, r, c):
-    keys = ['writes', 'hash', 'clobbered'] + {'void': [], 'int': ['v0'], 'wide': ['v0', 'v1'], 'float': ['f0']}[rk]
+    keys = ['hash', 'clobbered'] + {'void': [], 'int': ['v0'], 'wide': ['v0', 'v1'], 'float': ['f0']}[rk]
     return next((k for k in keys if r.get(k) != c.get(k)), None)
 
 
-def first_divergence(retail, candidate, w):
-    """(blamed address or None, description) at the first differing record, or None if none."""
-    stack = {}   # thread -> [func, ...] open in retail
+def records_by_thread(path):
+    """Yield (thread, line number, kind, func, values, raw line) for every record of a call log. A
+    return record carries no thread; it belongs to the thread its call was entered on."""
     thread = {}  # (func, call) -> thread
-    with open(retail) as fr, open(candidate) as fc:
-        for n, (lr, lc) in enumerate(zip(fr, fc), 1):
-            kr, ar, cr, vr = fields(lr)
-            kc, ac, cc, vc = fields(lc)
-            if kr == 'E':
-                t = vr['t']
-                if (kc, ac, cc) != (kr, ar, cr) or vr != vc:
-                    st = stack.get(t, [])
-                    return (st[-1] if st else None,
-                            f'line {n}: retail {lr.strip()[:90]} / candidate {lc.strip()[:90]}')
-                thread[(ar, cr)] = t
-                stack.setdefault(t, []).append(ar)
+    with open(path) as f:
+        for n, line in enumerate(f, 1):
+            if len(line.split()) < 4:
+                continue  # a log torn by the size cap
+            k, a, c, v = fields(line)
+            if k == 'E':
+                t = v.pop('t')
+                thread[(a, c)] = t
+            else:
+                t = thread.pop((a, c), None)
+            yield t, n, k, a, v, line
+
+
+def first_divergence(retail, candidate, w):
+    """(blamed address or None, description) at the first differing record, or None if none.
+
+    The logs are compared thread by thread. Which thread runs when is timing: a draft that takes a
+    different number of cycles moves the next thread switch or interrupt, and then the two logs
+    interleave differently without any thread behaving differently. Call numbers are left out for
+    the same reason (they count a function's calls over all threads)."""
+    import collections
+    queues = ({}, {})       # per side: thread -> deque of records not yet matched
+    stack = {}              # thread -> [func, ...] open in retail
+    sides = (records_by_thread(retail), records_by_thread(candidate))
+    live = [True, True]
+    while any(live):
+        for side in (0, 1):
+            if not live[side]:
                 continue
-            t = thread.pop((ar, cr), None)
-            if (kc, ac, cc) != (kr, ar, cr):
-                st = stack.get(t, [])
-                return (st[-2] if len(st) > 1 else None, f'line {n}: retail returns from f_{ar:06x}, candidate has {lc.strip()[:90]}')
-            why = same_return(w[ar][2] if ar in w else 'int', vr, vc)
-            if why:
-                return ar, f'line {n}: f_{ar:06x} call {cr} return differs in {why}: {vr.get(why)} vs {vc.get(why)}'
-            if t is not None and stack.get(t) and stack[t][-1] == ar:
-                stack[t].pop()
+            rec = next(sides[side], None)
+            if rec is None:
+                live[side] = False
+                continue
+            t = rec[0]
+            queues[side].setdefault(t, collections.deque()).append(rec)
+            qr, qc = queues[0].get(t), queues[1].get(t)
+            while qr and qc:
+                _, n, kr, ar, vr, lr = qr.popleft()
+                _, m, kc, ac, vc, lc = qc.popleft()
+                st = stack.setdefault(t, [])
+                where = f'thread {t}, retail line {n}, candidate line {m}'
+                if kr == 'E':
+                    ks = w[ar][3] if ar in w else None
+                    # only the registers its parameters occupy (a5.arg_keys); never tk, the time at
+                    # entry, which rrbox sets to retail's
+                    vr = {k: x for k, x in vr.items() if k != 'tk' and (ks is None or k in ks)}
+                    vc = {k: x for k, x in vc.items() if k != 'tk' and (ks is None or k in ks)}
+                    if (kc, ac) != (kr, ar) or vr != vc:
+                        return (st[-1] if st else None,
+                                f'{where}: retail {lr.strip()[:90]} / candidate {lc.strip()[:90]}', list(st))
+                    st.append(ar)
+                    continue
+                if (kc, ac) != (kr, ar):
+                    return (st[-2] if len(st) > 1 else None,
+                            f'{where}: retail returns from f_{ar:06x}, candidate has {lc.strip()[:90]}', list(st))
+                why = same_return(w[ar][2] if ar in w else 'int', vr, vc)
+                if why:
+                    return ar, f'{where}: f_{ar:06x} return differs in {why}: {vr.get(why)} vs {vc.get(why)}', list(st)
+                if st and st[-1] == ar:
+                    st.pop()
     return None
 
 
 def main():
     script = os.path.abspath(sys.argv[1])
+    if '--frames' in sys.argv:
+        # A long script whose first divergence comes early: run only its first N frames. The copy
+        # keeps the script's name (stage directories and logs are named by it) under build/oracle.
+        n = int(sys.argv[sys.argv.index('--frames') + 1])
+        short = os.path.join(ROOT, 'build/oracle/short', os.path.basename(script))
+        os.makedirs(os.path.dirname(short), exist_ok=True)
+        body = [l for l in open(script) if not l.startswith('# frames')]
+        open(short, 'w').write(f'# frames {n}\n' + ''.join(body))
+        script = short
     cap = int(sys.argv[sys.argv.index('--max') + 1]) if '--max' in sys.argv else 50
     name = os.path.splitext(os.path.basename(script))[0]
     w = a5.watched()
@@ -86,8 +133,19 @@ def main():
         if d is None:
             print(f'{name}: call logs agree to the end of the shorter one')
             return 0
-        blamed, why = d
-        if blamed is not None and blamed in placed and w.get(blamed, ('',))[0] == 'draft':
+        blamed, why, open_ = d
+        is_draft = lambda a: a is not None and a in placed and w.get(a, ('',))[0] == 'draft'  # noqa: E731
+        if not is_draft(blamed):
+            # Retail code (byte-exact, or a draft left out) behaved differently on equal arguments, so
+            # something it read differs. When globals agree (tools/oracle/statediff.py) that is memory
+            # it reached through a pointer into an enclosing frame, such as a draft caller's local
+            # passed by address (an iterator, an output struct): blame the innermost placed draft still
+            # open on that thread.
+            outer = next((a for a in reversed(open_) if is_draft(a)), None)
+            if outer is not None:
+                why = f'(enclosing f_{blamed:06x}) ' + why if blamed is not None else why
+                blamed = outer
+        if is_draft(blamed):
             print(f'    exclude f_{blamed:06x}: {why}', flush=True)
             with open(EXCLUDE, 'a') as f:
                 f.write(f'{blamed:06x} {name}: {why}\n')

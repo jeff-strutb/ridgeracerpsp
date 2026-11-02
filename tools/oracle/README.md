@@ -78,7 +78,7 @@ A5 then runs retail and the M1 image on every script, watching every tagged func
 **At return,** it logs:
 
 - `v0`, `v1` and `f0`;
-- the count and hash of every memory write the call made outside its own stack frame (callees included, on its own thread only);
+- the count of memory writes the call made outside its own stack frames (callees included, on its own thread only), and a hash of their net effect: each written byte adds H(addr, new) − H(addr, old), so the sum is over the bytes the call changed and does not depend on store order. The count is logged but not compared;
 - which of `s0` to `s8` came back changed;
 - the cycles the call took.
 
@@ -96,6 +96,20 @@ Otherwise the function DIFFERS. A function no script reaches is UNCOVERED.
 **The ledger.** Verdicts go to `config/us/t3_live.csv` with each source file's hash.
 
 **Time-equalised lockstep.** A T3 body takes a different number of cycles, and game code that reads the clock then stores different values (A7 drifted from frame 6 without this). So the candidate run reads retail's call log, and rrbox sets emulated time to retail's at every watched return. An interrupt that lands inside a T3 body at a different point still shows up as a difference.
+
+**What counts as behaviour** (2026-11-02; each rule removed a false difference that stopped isolation):
+
+- Writes are hashed by their net effect (H(addr, new) − H(addr, old) per byte), so store order and repeated stores do not count; the write count is logged, not compared.
+- Writes into the running thread's stack below a call's entry sp (its own frames) are left out; writes above it (a caller's locals reached through a pointer) count by the value written and its position in the word, not by address or old contents, since frame layouts differ.
+- Arguments that point into the running thread's stack are logged as `stk`; only the registers a function's declared parameters occupy are compared (`a5.arg_keys`; every field when the signature cannot be read).
+- Emulated time is set to retail's at every watched entry as well as every return (`tk=` in entry records, never compared).
+- `isolate.py` compares the logs thread by thread and ignores call numbers, so a moved thread switch is not a difference. When retail code (exact, or a draft left out) differs on equal arguments, it blames the innermost placed draft still open around it.
+- A7 on an M1 image leaves out every thread's stack as well as `.text`.
+- Every tag is watched (`a5.watched`): a regex that paired tags with definitions had let 1,826 of 5,419 tags, 158 of them placed drafts, run unwatched.
+
+`tools/oracle/statediff.py SCRIPT FUNC CALL` dumps RAM at a call's entry in both runs (`RRBOX_DUMPAT`), diffs it outside code and stacks, and logs every write to the first differing byte (`RRBOX_WADDR`).
+
+**State, 2026-11-02:** with 11 drafts excluded (`build/oracle/m1_exclude.txt`), A7 is identical on six of seven scripts and `fault_loader_open`'s call logs agree to the end. `race_seaside_start` diverges at frame 407: f_017e40 (a draft not placed) copies a `ResultMenuData` whose source holds different code and heap addresses, not yet traced.
 
 **Teeth.** Two bugs were planted in the module loader's draft, and both were caught at its first call, by A5 and by A7:
 

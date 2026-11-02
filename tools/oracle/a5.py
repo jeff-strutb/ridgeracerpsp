@@ -9,7 +9,8 @@ call rrbox logs (Core/RRBox.cpp):
      stack frame (callees included, its own thread only), and which of s0-s8 came back changed.
 A function PASSES when it was called at least once and every call agrees with retail on: the
 entry record; v0 (unless it returns void), v1 (64-bit returns) and f0 (float returns), from its
-declared return type; the writes; and no callee-saved register clobbered. UNCOVERED = never
+declared return type; the call's net effect on memory (rrbox hashes what each written byte ends
+as, so store order and repeated stores do not count); and no callee-saved register clobbered. UNCOVERED = never
 called by any script: not passed. Instruction coverage is measured on the candidate body (union
 over scripts). The verdicts go to config/us/t3_live.csv with the source file's hash: a @draft is
 T3 only while its row says PASS with full coverage and the hash still matches its source. A7 (--m1: code left out of the RAM hash) runs in the same
@@ -52,19 +53,158 @@ MIN_FREE_GB = 80  # a full run's peak: every candidate log at its cap (twice ret
 TAG = re.compile(r'@(implements|draft)\s+0x([0-9a-fA-F]+)\s+us\s+([A-Za-z_][\w:~]*)(?:.*?\*/)\s*\n([^\n{;]*?)\b\3\s*\(', re.S)
 
 
+INT_ARGS = ('a0', 'a1', 'a2', 'a3', 't0', 't1')  # the argument registers rrbox logs, in order
+FLOAT_ARGS = ('f12', 'f13', 'f14', 'f15')
+
+
+def arg_keys(text, start, name):
+    """The entry fields a function's declared parameters occupy (the parameter list opens at
+    text[start]), or None when it cannot tell (a variadic function, a list it cannot split). A
+    register the function takes no parameter in holds whatever earlier code left there, which is
+    not behaviour. A member function's `this` takes a0."""
+    depth, i = 0, start
+    while i < len(text):
+        depth += {'(': 1, ')': -1}.get(text[i], 0)
+        if depth == 0:
+            break
+        i += 1
+    params = text[start + 1:i].strip()
+    if '...' in params or i >= len(text):
+        return None
+    ints, floats = int('::' in name and not name.startswith('_Z')), 0
+    parts, depth, cur = [], 0, ''
+    for ch in params:
+        depth += {'(': 1, '<': 1, ')': -1, '>': -1}.get(ch, 0)
+        if ch == ',' and depth == 0:
+            parts.append(cur); cur = ''
+        else:
+            cur += ch
+    parts.append(cur)
+    for p in (x.strip() for x in parts):
+        if not p or p == 'void':
+            continue
+        if re.search(r'\b(float|double)\b', p) and '*' not in p and '&' not in p:
+            floats += 1
+        elif re.search(r'long long|u64|s64', p) and '*' not in p:
+            ints += (ints & 1) + 2  # a 64-bit value takes an aligned register pair
+        else:
+            ints += 1
+    # parameters beyond the logged registers go on the stack or in registers rrbox does not log
+    return frozenset(('t',) + INT_ARGS[:ints] + FLOAT_ARGS[:floats])
+
+
+def source_name(tag):
+    """The identifier a tag's definition is written with: the tag itself, or for a mangled C++ name
+    the last component (`_ZN3Map10CExcelData4Find` -> Find; a constructor or destructor, C1/C2/D0..D2,
+    -> its class name)."""
+    if not tag.startswith('_Z'):
+        tail = re.search(r'(\d+)([A-Za-z_]\w*)$', tag)  # a half-mangled tag: CLoadJob5Begin -> Begin
+        if tail and len(tail.group(2)) == int(tail.group(1)) and tail.start() > 0:
+            return tail.group(2)
+        return tag
+    names, k = [], 2 + (tag[2] == 'N')
+    while k < len(tag):
+        if tag[k].isdigit():
+            n = re.match(r'\d+', tag[k:]).group()
+            k += len(n)
+            names.append(tag[k:k + int(n)])
+            k += int(n)
+        elif tag[k] == 'I':  # template arguments: skip to the matching E
+            depth = 0
+            while k < len(tag):
+                if tag[k] == 'I':
+                    depth += 1
+                elif tag[k] == 'E':
+                    depth -= 1
+                    if depth == 0:
+                        break
+                elif tag[k].isdigit():  # a name inside the arguments: skip it whole
+                    n = re.match(r'\d+', tag[k:]).group()
+                    k += len(n) + int(n) - 1
+                k += 1
+            k += 1
+        else:
+            break
+    return names[-1] if names else tag
+
+
+def definition(text, start, name):
+    """(return-type text, name as written, index of its '(') of the first definition of `name`
+    after `start`, up to the end of the next function body, or None. A declaration (ending in ';')
+    is skipped; tags stacked on one definition (a C1 and C2 constructor) all reach it."""
+    stop = re.compile(r'\n\}(?!;)').search(text, start)  # a function's closing brace, not a struct's
+    end = stop.end() if stop else len(text)
+    for m in re.finditer(r'(~?(?:\w+::)*~?' + re.escape(name) + r')\s*\(', text[start:end]):
+        paren = start + m.end() - 1
+        depth, i = 0, paren
+        while i < len(text):
+            depth += {'(': 1, ')': -1}.get(text[i], 0)
+            if depth == 0:
+                break
+            i += 1
+        after = re.match(r'[^;{]*', text[i + 1:]).group()
+        if i + 1 + len(after) >= len(text) or text[i + 1 + len(after)] != '{':
+            continue
+        line = text.rfind('\n', 0, start + m.start()) + 1
+        ret = text[line:start + m.start()].strip()
+        if re.search(r'[;{}]', ret):
+            ret = ''
+        return ret, m.group(1), paren
+    return None
+
+
 def watched():
-    """{addr: (kind, name, return-kind)} for every tagged function outside src/control/."""
+    """{addr: (kind, name, return-kind, entry fields compared)} for every tagged function outside
+    src/control/; the entry fields are None (compare them all) when the parameters are unknown.
+
+    Every tag is watched. Its signature is the first definition of the tagged name after the tag's
+    comment (other declarations may sit in between); when none is found the function is still
+    watched, its return taken as int and every entry field compared. (A single regex over comment
+    and definition once let a tag it could not pair swallow the next one: 1,826 of 5,419 tags, and
+    158 of 537 placed drafts, went unwatched.)"""
     out = {}
     for path in glob.glob(os.path.join(ROOT, 'src/**/*.c*'), recursive=True):
         if '/src/control/' in path:
             continue
         text = open(path).read()
-        for kind, a, name, decl in TAG.findall(text):
-            d = decl.strip()
-            rk = 'void' if re.match(r'(static\s+)?void\b', d) else ('float' if re.search(r'\b(float|double)\b', d)
-                 else ('wide' if re.search(r'long long|u64|s64', d) else 'int'))
-            out[int(a, 16)] = (kind, name, rk)
+        for m in re.finditer(r'@(implements|draft)\s+0x([0-9a-fA-F]+)\s+us\s+([A-Za-z_][\w:~]*)', text):
+            kind, a, name = m.groups()
+            rk, keys = 'int', None
+            # compiler-generated functions with no definition in the source, and their fixed signatures
+            if name.startswith('_GLOBAL__'):
+                out[int(a, 16)] = (kind, name, 'void', frozenset({'t'}))
+                continue
+            if name.startswith('__static_initialization_and_destruction'):
+                out[int(a, 16)] = (kind, name, 'void', frozenset({'t', 'a0', 'a1'}))
+                continue
+            end = text.find('*/', m.end())
+            d = definition(text, end + 2, source_name(name)) if end >= 0 else None
+            if d:
+                ret, fn, paren = d
+                bare = re.sub(r'\b(static|inline|extern|virtual|const|__attribute__\(\(.*?\)\))\s*', '', ret).strip()
+                if not bare or '~' in fn:  # a constructor or destructor
+                    rk = 'void'
+                elif '*' in bare or '&' in bare:
+                    rk = 'int'
+                elif re.fullmatch(r'void', bare):
+                    rk = 'void'
+                elif re.search(r'\b(float|double)\b', bare):
+                    rk = 'float'
+                elif re.search(r'long long|u64|s64', bare):
+                    rk = 'wide'
+                keys = arg_keys(text, paren, fn)
+            elif re.search(r'[CD][0-2]Ev$', name):  # an implicit constructor or destructor: this only
+                rk, keys = 'void', frozenset({'t', 'a0'})
+            out[int(a, 16)] = (kind, name, rk, keys)
     return out
+
+
+def entry_fields(entry, keys):
+    """An entry record (bytes, 't=... a0=... f15=... tk=...') reduced to the fields in `keys`, or
+    with keys None to every field but tk (the emulated time at entry, which rrbox equalises)."""
+    if keys is None:
+        return b' '.join(f for f in entry.split() if not f.startswith(b'tk='))
+    return b' '.join(f for f in entry.split() if f.split(b'=', 1)[0].decode() in keys)
 
 
 def run(exe, script, trace, watch, calls, cycles_ref=None, cap=None):
@@ -113,11 +253,11 @@ def records(path):
     return out
 
 
-def summarise(path):
+def summarise(path, keys):
     """One streaming pass over a call log: {func: [calls, base, v0, v1, f0, clobbered]}.
 
     base digests, call by call in return order (calls never returned last, in entry order), the
-    entry record and the call's writes and write hash; v0, v1 and f0 digest those return
+    entry record and the call's write hash; v0, v1 and f0 digest those return
     registers separately, so the comparison can pick them by the function's return type. Two
     logs agree on a function exactly when records()/compare() would find every call equal."""
     out, open_calls = {}, {}
@@ -133,10 +273,10 @@ def summarise(path):
             t = line.split()  # R func call v0= v1= f0= writes= hash= clobbered= cyc=
             if len(t) < 9:
                 continue  # the last line of a log whose run was stopped at the cap
-            entry = open_calls.pop((t[1], t[2]), b'')
+            entry = entry_fields(open_calls.pop((t[1], t[2]), b''), keys.get(t[1]))
             d = out.get(t[1]) or out.setdefault(t[1], new())
             d[0] += 1
-            d[1].update(entry + b'|' + t[6] + b'|' + t[7] + b';')
+            d[1].update(entry + b'|' + t[7] + b';')  # the write hash, not the count (t[6])
             d[2].update(t[3] + b';')
             d[3].update(t[4] + b';')
             d[4].update(t[5] + b';')
@@ -145,7 +285,7 @@ def summarise(path):
     for (k, call), entry in open_calls.items():
         d = out.get(k) or out.setdefault(k, new())
         d[0] += 1
-        d[1].update(entry + b'|NORET;')
+        d[1].update(entry_fields(entry, keys.get(k)) + b'|NORET;')
     return {int(k, 16): [d[0]] + [h.hexdigest() for h in d[1:5]] + [d[5]] for k, d in out.items()}
 
 
@@ -153,23 +293,32 @@ def script_pair(s, m1, watch, watch_retail):
     """Run one script on retail (or reuse the cached retail run) and on the candidate, and
     summarise both call logs. Runs in its own process, one per script."""
     name = os.path.splitext(os.path.basename(s))[0]
+    # the entry fields each function's parameters occupy (a5.watched); a retail summary is cached
+    # per set of them, since a changed prototype changes what is compared
+    keys = {b'%06x' % a: v[3] for a, v in watched().items()}
+    spec = hashlib.sha256(repr(sorted((k, sorted(v) if v else None) for k, v in keys.items())).encode()).hexdigest()[:12]
     files = {side: (os.path.join(a7.OUT, f'{name}.{side}.trace'), os.path.join(a7.OUT, f'{name}.{side}.calls'))
              for side in ('retail', 'candidate')}
     # A retail run depends only on the executable, the script, the watched addresses and rrbox.
     key = hashlib.sha256(b''.join(open(f, 'rb').read() for f in (a7.RETAIL, s, watch_retail, a7.BOX))).hexdigest()[:24]
     cached = os.path.join(CACHE, f'{name}-{key}')
-    if not (os.path.exists(cached + '.trace') and os.path.exists(cached + '.calls') and os.path.exists(cached + '.sum')):
+    if not (os.path.exists(cached + '.trace') and os.path.exists(cached + '.calls')):
         # written in place (no second copy in a7/), renamed only once complete
         os.makedirs(CACHE, exist_ok=True)
         tr_, ca_ = cached + '.trace.tmp', cached + '.calls.tmp'
         run(a7.RETAIL, s, tr_, watch_retail, ca_)
-        open(cached + '.sum.tmp', 'w').write(repr(summarise(ca_)))
-        for ext in ('.trace', '.calls', '.sum'):
+        for ext in ('.trace', '.calls'):
             os.replace(cached + ext + '.tmp', cached + ext)
         for junk in (ca_ + '.cov',):
             if os.path.exists(junk):
                 os.remove(junk)
         evict(name, key)
+    summ = f'{cached}.{spec}.sum'
+    if not os.path.exists(summ):
+        for old in glob.glob(cached + '.*.sum') + glob.glob(cached + '.sum'):
+            os.remove(old)
+        open(summ + '.tmp', 'w').write(repr(summarise(cached + '.calls', keys)))
+        os.replace(summ + '.tmp', summ)
     # the candidate run reads retail's call log for the time lockstep; the cached copy serves
     # A candidate that diverges can log far more calls than retail (35 GB against 0.7 GB on
     # boot_attract) and fill the disk; past twice retail's log it has long since differed, so the
@@ -186,7 +335,7 @@ def script_pair(s, m1, watch, watch_retail):
     files['retail'] = (cached + '.trace', cached + '.calls')
     if capped and first is None:
         first = len(tc) - 1
-    return name, first, len(tr) - 1, eval(open(cached + '.sum').read()), summarise(files['candidate'][1]), cov, files, capped
+    return name, first, len(tr) - 1, eval(open(summ).read()), summarise(files['candidate'][1], keys), cov, files, capped
 
 
 def evict(name, key):
@@ -206,7 +355,7 @@ def evict(name, key):
 def compare(rk, ret_r, ret_c):
     if ret_r is None or ret_c is None:
         return None if ret_r == ret_c else 'one side never returned'
-    keys = ['writes', 'hash'] + {'void': [], 'int': ['v0'], 'wide': ['v0', 'v1'], 'float': ['f0']}[rk]
+    keys = ['hash'] + {'void': [], 'int': ['v0'], 'wide': ['v0', 'v1'], 'float': ['f0']}[rk]
     for k in keys:
         if ret_r.get(k) != ret_c.get(k):
             return f'{k} {ret_r.get(k)} vs {ret_c.get(k)}'
@@ -285,14 +434,16 @@ def main():
             if v[0] == 'DIFFERS' and DETAIL:
                 cr, cc = records(files['retail'][1]).get(a, []), records(files['candidate'][1]).get(a, [])
                 for n, ((er, xr), (ec, xc)) in enumerate(zip(cr, cc)):
-                    why = 'entry differs' if er != ec else compare(rk, xr, xc)
+                    ks = w[a][3]
+                    same = all(er.get(k) == ec.get(k) for k in (ks or set(er) | set(ec)) if k != 'tk')
+                    why = 'entry differs' if not same else compare(rk, xr, xc)
                     if why:
                         v[2] = f'{name} call {n}: {why}'
                         break
     ledger = os.path.join(ROOT, 'config/us/t3_live.csv')
     rows = []
     for a in sorted(w):
-        kind, name, rk = w[a]
+        kind, name, rk = w[a][:3]
         v = verdict[a]
         words = sizes[a] // 4
         miss = sorted(missed[a] or [])
