@@ -3142,8 +3142,9 @@ void f_06dcb0(void *self, unsigned cmd, int v)
             D_24139c = D_24139c * 0x19660d + 0x3c6ef35f;
             sprintf((char *)p + 1863, D_1a57f8, str + (D_24139c % 10) * 8);
         } else {
-            at<int>(PTR, 3648) = 2;
-            at<int>(PTR, 3652) = 0;
+            void *q = PTR;
+            at<int>(q, 3648) = 2;
+            at<int>(q, 3652) = 0;
         }
         break;
     case 3:
@@ -3155,9 +3156,10 @@ void f_06dcb0(void *self, unsigned cmd, int v)
             if (at<int>(p, 3652)) {
                 f_078e4c((char *)p + 2168);
                 *(B324 *)((char *)PTR + 1508) = *(B324 *)((char *)PTR + 1832);
-                at<int>(PTR, 3648) = 1;
-                at<int>(PTR, 3652) = 0;
-                at<int>(PTR, 3644) = 1;
+                void *q = PTR;
+                at<int>(q, 3644) = 1;
+                at<int>(q, 3648) = 1;
+                at<int>(q, 3652) = 0;
             }
         }
         break;
@@ -3251,7 +3253,7 @@ void f_06dcb0(void *self, unsigned cmd, int v)
         at<int>(p, 1212) = v;
         if (v == 0)
             f_01dee4(at<int>(p, 512));
-        at<unsigned char>(p, 7513) = 0;
+        at<unsigned char>(PTR, 7513) = 0;
         break;
     }
     case 99: {
