@@ -1388,7 +1388,7 @@ static inline float CourseSide(const float *v, CourseNode *list, int k)
 
 /* @draft 0x0a98d8 us f_0a98d8
    WHAT IT DOES: Finds the course segment under the probe point (m148, m152): a binary search over the 16 course points around the car's last point m180, each step testing which side of a point's heading line the probe lies on; the segment's two point indices go into m156 and m160.
-   Remaining difference (46 of 587 words): one register swap: retail keeps the point list in s1 and m180 in s2, here the reverse; the code is otherwise retail's. Not the declaration order. */
+   Remaining difference (46 of 587 words): one register swap: retail keeps the point list in s1 and m180 in s2, here the reverse; the code is otherwise retail's. Global-alloc ranks n (pseudo, 21 refs, freq 6250, live 391 insns: priority 63.94) just ahead of the list (16 refs, freq 5000, live 313: 63.90); retail must have n's live length at least 392 against 313, or two fewer insns where both are live. Not the declaration order, not loading the list after v, not the helper as a statement expression (the post-sched1 live lengths do not move), and not a const view of the global (that drops the list below p). */
 extern "C" void f_0a98d8(CarPhys *p)
 {
     CourseNode *list = D_23f7f0_nodes;
