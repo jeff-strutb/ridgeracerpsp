@@ -684,7 +684,7 @@ void f_0929b4(void *, int);
 int f_0780e0(void *);
 void f_0231c8(int);
 void f_04b724(void *);
-void f_0230e0(void *);
+int f_0230e0(void *);
 void *f_04b280(void *);
 void f_1166d4(int);
 void f_116898(int);
@@ -1035,7 +1035,7 @@ int f_075910(void *self, void *p)
 }
 
 
-/* @draft 0x07354c us f_07354c
+/* @implements 0x07354c us f_07354c
    WHAT IT DOES: reads a packed table header at p+4 and, for each entry, stores the pointer p+offset into the slot at self+2396+index*4 and calls f_0230e0 on it. */
 void f_07354c(void *self, char *p)
 {
@@ -1107,7 +1107,7 @@ int f_074150(void *self, unsigned int k)
 
 void f_04b25c(void *);
 void f_04b23c(void *, void *);
-/* @draft 0x06c954 us f_06c954
+/* @implements 0x06c954 us f_06c954
    WHAT IT DOES: initialises the sub-object at self+4, reads a packed table header at p+4 and for each entry stores the pointer p+offset into the slot at self+44+index*4 and calls f_0230e0 on it, then calls f_04b23c(self+4, self+44). */
 void f_06c954(void *self, int a, char *p)
 {
@@ -4628,7 +4628,7 @@ void f_04a620(void *);
 void f_04a648(void *, int, void *, int, int, int, int);
 void f_04b8a0(void *, void *, int);
 void f_06b7b4(void);
-void f_0230e0(void *);
+int f_0230e0(void *);
 void f_07a3f0(void *);
 void f_078e4c(void *);
 void f_07a634(void *);
