@@ -3376,12 +3376,10 @@ void f_06dcb0(void *self, unsigned cmd, int v)
         int sel = at<int>(p, 1240);
         at<int>(p, 1244) = v;
         at<int>(p, 7516) = at<unsigned char>(p, 3752 + sel);
-        int r;
         if (sel == 21)
-            r = 27;
+            at<int>(p, 1500) = 27;
         else
-            r = f_077d38((char *)p + 6736, at<unsigned char>(p, 3800 + sel * 10 + v));
-        at<int>(p, 1500) = r;
+            at<int>(p, 1500) = f_077d38((char *)p + 6736, at<unsigned char>(p, 3800 + sel * 10 + v));
         break;
     }
     case 102: {
@@ -3401,10 +3399,12 @@ void f_06dcb0(void *self, unsigned cmd, int v)
     case 103:
         at<int>(self, 16) = v;
         break;
-    case 104:
-        at<int>(PTR, 1244) = 1;
-        at<int>(PTR, 1240) = 255;
+    case 104: {
+        void *p = PTR;
+        at<int>(p, 1244) = 1;
+        at<int>(p, 1240) = 255;
         break;
+    }
     case 105: {
         void *p = PTR;
         at<int>(p, 1232) = v;
@@ -3421,7 +3421,10 @@ void f_06dcb0(void *self, unsigned cmd, int v)
         at<int>(PTR, 1236) = v;
         break;
     case 109:
-        at<unsigned char>(PTR, 1506) = v == 0;
+        if (v == 0)
+            at<unsigned char>(PTR, 1506) = 1;
+        else
+            at<unsigned char>(PTR, 1506) = 0;
         break;
     case 117:
         at<int>(PTR, 1584) = v;
@@ -3436,7 +3439,9 @@ void f_06dcb0(void *self, unsigned cmd, int v)
         at<unsigned char>(PTR, 1537) = v != 0;
         break;
     case 121:
-        if (v == 1 || v == 2)
+        if (v == 1)
+            at<int>(PTR, 3644) = 5;
+        else if (v == 2)
             at<int>(PTR, 3644) = 5;
         else if (v == 3)
             at<int>(PTR, 3644) = 6;
@@ -3464,19 +3469,25 @@ void f_06dcb0(void *self, unsigned cmd, int v)
     case 127:
         at<int>(PTR, 7248) = v;
         break;
-    case 201:
-        at<int>(PTR, 7516) = v;
-        at<int>(PTR, 2364) = v;
+    case 201: {
+        void *p = PTR;
+        at<int>(p, 7516) = v;
+        at<int>(p, 2364) = v;
         break;
-    case 202:
-        at<int>(PTR, 2360) = v;
-        at<int>(PTR, 2392) = 1;
-        at<int>(PTR, 2384) = 0;
+    }
+    case 202: {
+        void *p = PTR;
+        at<int>(p, 2360) = v;
+        at<int>(p, 2392) = 1;
+        at<int>(p, 2384) = 0;
         break;
-    case 203:
-        at<int>(PTR, 2392) = 2;
-        at<int>(PTR, 2384) = 1;
+    }
+    case 203: {
+        void *p = PTR;
+        at<int>(p, 2392) = 2;
+        at<int>(p, 2384) = 1;
         break;
+    }
     case 204:
         at<int>(PTR, 2376) = v;
         break;
@@ -3492,10 +3503,16 @@ void f_06dcb0(void *self, unsigned cmd, int v)
         at<int>(p, 1500) = f_077d38((char *)p + 6736, a1);
         break;
     }
-    case 207:
-        at<unsigned char>(PTR, 2372) = 0;
-        at<int>(PTR, 2392) = v ? 6 : 7;
+    case 207: {
+        void *p = PTR;
+        int k = 6;
+
+        at<unsigned char>(p, 2372) = 0;
+        if (!v)
+            k = 7;
+        at<int>(p, 2392) = k;
         break;
+    }
     case 208: {
         void *p = PTR;
         at<int>(p, 2368) = v;
