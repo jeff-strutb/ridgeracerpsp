@@ -386,7 +386,12 @@ void CMapEnv::Free()
    buffer is named through five aliases (D_245177+1, D_245176+2...) because one address makes
    the global const-prop share its high half in a saved register for the whole function,
    which retail does not (retail's later log calls rebuild it); that costs the key loop its
-   register. */
+   register.
+   Diagnosed 2026-11-02 (-da dumps): in the two counting loops retail loads D_24063c's high
+   half once per loop (lui s0 / lui s2 in each pre-header, loop.c's movable), while here
+   GCSE's PRE turns every D_24063c high half into one reaching register (set in five
+   pre-headers, live across 176 calls) that global-alloc spills, so each use gets its own lui.
+   -fno-gcse is ruled out: it breaks Update and FogAt. */
 void CMapEnv::Load(void *course, void *lightDb, int flip, int total)
 {
     DB::CDataBase db1;
