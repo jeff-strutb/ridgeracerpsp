@@ -454,20 +454,19 @@ struct ResultMsg {
 
 /* What the race needs to start: the chosen event, random seeds, the course's records, the
    car and the options. */
-struct RaceStart {
-    int event;
-    unsigned int seed1;
-    unsigned int seed2;
-    int m12;
-    int m16;
-    Tri m20[3];
-    int m56;
-    int car[2];
-    int color[2];
-    int m76[2];
-    int m84;
-};
-extern RaceStart D_1ee198;
+/* What the race needs to start: the chosen event, random seeds, the course's records, the
+   cars and the options. Separate globals (each field is addressed on its own in retail). */
+extern int D_1ee198; /* the chosen event */
+extern unsigned int D_1ee19c; /* the first random seed */
+extern unsigned int D_1ee1a0; /* the second random seed */
+extern int D_1ee1a4; /* the course record */
+extern int D_1ee1a8; /* the course lap record */
+extern Tri D_1ee1ac[3]; /* three more course values */
+extern int D_1ee1d0; /* set to 1 when a race is set up */
+extern int D_1ee1d4[2]; /* the two cars */
+extern int D_1ee1dc[2]; /* their colours */
+extern int D_1ee1e4[2]; /* their options */
+extern int D_1ee1ec; /* the race settings value */
 extern int D_1d1638[5];
 
 /* A pair of values; only the first is used here. */
@@ -1101,10 +1100,10 @@ void Sequence::CSingleRaceModeJob::f_009c30()
         D_2301b0.layer->v3(&op, 0);
         D_1d1638[0] = op.m84[m15364] - 1;
     }
-    D_1ee198.m84 = m15992;
-    D_1ee198.event = m15780;
-    D_1ee198.seed1 = D_1e8ec4.Rand();
-    D_1ee198.seed2 = D_1e8ec4.Rand();
+    D_1ee1ec = m15992;
+    D_1ee198 = m15780;
+    D_1ee19c = D_1e8ec4.Rand();
+    D_1ee1a0 = D_1e8ec4.Rand();
     m16004 = 0;
     switch (D_1d110c) {
     case 1:
@@ -1139,18 +1138,18 @@ void Sequence::CSingleRaceModeJob::f_009c30()
     int k = cls * 24 + f_036a3c(&D_2407a8, c.rec, D_2407a8.index, D_2407a8.count);
     if (m15788)
         k += 168;
-    D_1ee198.m16 = m1924[k];
-    D_1ee198.m12 = m580[k];
+    D_1ee1a8 = m1924[k];
+    D_1ee1a4 = m580[k];
     for (int i = 0; i < 3; i++)
-        D_1ee198.m20[i] = m3268[i][k];
-    D_1ee198.car[0] = m15364;
-    D_1ee198.color[0] = m15368 - 1;
-    D_1ee198.car[1] = 0;
-    D_1ee198.m76[0] = m15788;
+        D_1ee1ac[i] = m3268[i][k];
+    D_1ee1d4[0] = m15364;
+    D_1ee1dc[0] = m15368 - 1;
+    D_1ee1d4[1] = 0;
+    D_1ee1e4[0] = m15788;
     D_1d1638[1] = -1;
-    D_1ee198.color[1] = 0;
-    D_1ee198.m76[1] = 0;
-    D_1ee198.m56 = 1;
+    D_1ee1dc[1] = 0;
+    D_1ee1e4[1] = 0;
+    D_1ee1d0 = 1;
     f_014950();
     D_1d1638[2] = m15786;
     if (m16004) {
@@ -1538,9 +1537,9 @@ void Sequence::CSingleRaceModeJob::f_00b100()
     m.m120 = m15480;
     f_018380(&D_2301b0, &m);
     for (int i = 0; i < 3; i++)
-        D_1ee198.m20[i] = m3268[i][k];
-    D_1ee198.m12 = m580[k];
-    D_1ee198.m16 = m1924[k];
+        D_1ee1ac[i] = m3268[i][k];
+    D_1ee1a4 = m580[k];
+    D_1ee1a8 = m1924[k];
     if (tourDone) {
         m15785 = 1;
         f_018abc(&D_2301b0, 14);
@@ -1621,7 +1620,7 @@ void Sequence::CSingleRaceModeJob::f_00bbc0()
         } else {
             f_014cf8(m15376, m15380);
         }
-        D_1ee198.event = -1;
+        D_1ee198 = -1;
         Row carRow;
         FIND_SELECT(&carRow, D_240740, m15364);
         memcpy(D_24063c, D_240740.Field("Class", carRow.rec), D_1a211c[1]);
@@ -1637,8 +1636,8 @@ void Sequence::CSingleRaceModeJob::f_00bbc0()
         k = k * 24 + f_036a3c(&D_2407a8, c.rec, D_2407a8.index, D_2407a8.count);
         if (m15788)
             k += 168;
-        D_1ee198.m16 = m1924[k];
-        D_1ee198.m12 = m580[k];
+        D_1ee1a8 = m1924[k];
+        D_1ee1a4 = m580[k];
         queue.push(14);
         break;
     }

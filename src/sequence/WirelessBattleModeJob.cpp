@@ -529,25 +529,22 @@ NetEntry D_1ee140;
 int D_1ee168;
 int D_1ee16c;
 int D_1ee170;
-/* What the race needs to start: the chosen event, random seeds, the course's records, the
-   cars and the options. */
 struct Tri {
     int v[3];
 };
-struct RaceStart {
-    int event;
-    unsigned int seed1;
-    unsigned int seed2;
-    int record;
-    int lapRecord;
-    Tri m20[3];
-    int m56;
-    int car[2];
-    int color[2];
-    int m76[2];
-    int m84;
-};
-RaceStart D_1ee198;
+/* What the race needs to start: the chosen event, random seeds, the course's records, the
+   cars and the options. Separate globals (each field is addressed on its own in retail). */
+int D_1ee198; /* the chosen event */
+unsigned int D_1ee19c; /* the first random seed */
+unsigned int D_1ee1a0; /* the second random seed */
+int D_1ee1a4; /* the course record */
+int D_1ee1a8; /* the course lap record */
+Tri D_1ee1ac[3]; /* three more course values */
+int D_1ee1d0; /* set to 1 when a race is set up */
+int D_1ee1d4[2]; /* the two cars */
+int D_1ee1dc[2]; /* their colours */
+int D_1ee1e4[2]; /* their options */
+int D_1ee1ec; /* the race settings value */
 
 /* The pad: buttons held (with repeat) and buttons newly pressed. */
 namespace Controller {
@@ -584,8 +581,8 @@ int f_096918(char *);
         int n_ = cls_ * 24 + idx_;                                                       \
         int lap_ = m1820[n_];                                                            \
         int rec_ = m476[n_];                                                             \
-        D_1ee198.record = rec_;                                                          \
-        D_1ee198.lapRecord = lap_;                                                       \
+        D_1ee1a4 = rec_;                                                          \
+        D_1ee1a8 = lap_;                                                       \
         f_018af8(&D_2301b0);                                                             \
         queue.Push(12);                                                                  \
     } while (0)
@@ -1345,10 +1342,10 @@ void Sequence::CWirelessBattleModeJob::f_00e334()
         D_2301b0.screen->v3(&q, 0);
         D_1d1638 = q.emblem[m3164] - 1;
     }
-    D_1ee198.m84 = m3188;
-    D_1ee198.event = m3176;
-    D_1ee198.seed1 = D_1e8ec4.Rand();
-    D_1ee198.seed2 = D_1e8ec4.Rand();
+    D_1ee1ec = m3188;
+    D_1ee198 = m3176;
+    D_1ee19c = D_1e8ec4.Rand();
+    D_1ee1a0 = D_1e8ec4.Rand();
     f_014fb0(m3168, m3164);
     Rec c;
     FIND_CAR(&c, m3164);
@@ -1358,12 +1355,12 @@ void Sequence::CWirelessBattleModeJob::f_00e334()
     Rec crs = ChosenCourse(D_1dd7c4);
     int idx = CourseIndex(crs);
     int k = cls * 24 + idx;
-    D_1ee198.car[0] = m3164;
-    D_1ee198.m76[0] = 0;
-    D_1ee198.color[0] = m3172 - 1;
-    D_1ee198.lapRecord = m1820[k];
-    D_1ee198.record = m476[k];
-    D_1ee198.m56 = 1;
+    D_1ee1d4[0] = m3164;
+    D_1ee1e4[0] = 0;
+    D_1ee1dc[0] = m3172 - 1;
+    D_1ee1a8 = m1820[k];
+    D_1ee1a4 = m476[k];
+    D_1ee1d0 = 1;
     queue.Push(4);
 }
 
