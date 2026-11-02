@@ -1456,21 +1456,21 @@ unsigned int f_01fb4c(void)
     return f_01fad0(25);
 }
 
-/* The outlines of the two flare shapes: thirteen points round a circle (the last closing
-   it), a small one and a larger one. */
+/* The outlines of the two flare shapes, thirteen points each (the last closing the shape): a
+   six-pointed star (the even points pulled in to 0.15 of the radius) and a circle. */
 FlarePoint D_23c0c8[13] = {
     { cosf(0.0f) * 0.5f * 0.15f, sinf(0.0f) * 0.5f * 0.15f },
-    { cosf(0.5235988f) * 0.5f * 0.15f, sinf(0.5235988f) * 0.5f * 0.15f },
+    { cosf(0.5235988f) * 0.5f, sinf(0.5235988f) * 0.5f },
     { cosf(1.0471976f) * 0.5f * 0.15f, sinf(1.0471976f) * 0.5f * 0.15f },
-    { cosf(1.5707964f) * 0.5f * 0.15f, sinf(1.5707964f) * 0.5f * 0.15f },
+    { cosf(1.5707964f) * 0.5f, sinf(1.5707964f) * 0.5f },
     { cosf(2.0943952f) * 0.5f * 0.15f, sinf(2.0943952f) * 0.5f * 0.15f },
-    { cosf(2.617994f) * 0.5f * 0.15f, sinf(2.617994f) * 0.5f * 0.15f },
+    { cosf(2.617994f) * 0.5f, sinf(2.617994f) * 0.5f },
     { cosf(3.1415927f) * 0.5f * 0.15f, sinf(3.1415927f) * 0.5f * 0.15f },
-    { cosf(3.6651917f) * 0.5f * 0.15f, sinf(3.6651917f) * 0.5f * 0.15f },
+    { cosf(3.6651917f) * 0.5f, sinf(3.6651917f) * 0.5f },
     { cosf(4.1887903f) * 0.5f * 0.15f, sinf(4.1887903f) * 0.5f * 0.15f },
-    { cosf(4.712389f) * 0.5f * 0.15f, sinf(4.712389f) * 0.5f * 0.15f },
+    { cosf(4.712389f) * 0.5f, sinf(4.712389f) * 0.5f },
     { cosf(5.235988f) * 0.5f * 0.15f, sinf(5.235988f) * 0.5f * 0.15f },
-    { cosf(5.759587f) * 0.5f * 0.15f, sinf(5.759587f) * 0.5f * 0.15f },
+    { cosf(5.759587f) * 0.5f, sinf(5.759587f) * 0.5f },
     { cosf(6.2831855f) * 0.5f * 0.15f, sinf(6.2831855f) * 0.5f * 0.15f },
 };
 FlarePoint D_23c130[13] = {
@@ -1500,10 +1500,8 @@ FlarePoint D_23c130[13] = {
    levels, full colour and the default light settings.
    Remaining difference: two stores of 0xffffff (to +1632 and +1608) swapped by sched2. */
 
-/* @draft 0x01fb68 us __static_initialization_and_destruction_0
-   WHAT IT DOES: At startup, computes the two flare outlines.
-   Remaining difference: in the second outline the saved float registers for 0.15 and the
-   angle are swapped ($f21/$f22), shifting the schedule. */
+/* @implements 0x01fb68 us __static_initialization_and_destruction_0
+   WHAT IT DOES: At startup, computes the two flare outlines (the star and the circle). */
 
 /* @implements 0x0201b4 us _GLOBAL__I_
    WHAT IT DOES: The startup entry for this file's static data. */
