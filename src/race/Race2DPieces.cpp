@@ -1333,7 +1333,13 @@ int C2DInfoWin::Draw()
    records; 5 slides the panels back until one is above 128 (state 6); 6 shrinks the frame
    away and returns to state 0. Every call ends by scrolling the background strip
    (f_105fa8). Returns 0.
-   Remaining difference: far (about 80 percent of the words); the two clamps use two registers more than here, the sprite lookup calls set their arguments in another order, and the layout of the state 0 branches differs. */
+   Remaining difference: 30 of 863 words, same size. (1) At the five sprite lookups that feed
+   f_106090 sched1 puts li a1,N before move a0,this; retail has the reverse. Both moves have
+   equal priority, and the tie goes to the one with more dependants (a1, which the outer
+   call's a1 copy output-depends on), so it is an RTL difference not yet found. (2) Small
+   register choices (the copy of h in state 6 is t0 here, v0 in retail; the second record
+   line's y in f1/f0). (3) The jump table must be followed in .rodata by the piece names
+   ("course", "label_timelimit", ...), which this file does not define yet. */
 int C2DInfoWin::f_101b54()
 {
     float p[2];
@@ -1365,8 +1371,8 @@ int C2DInfoWin::f_101b54()
             m220 = 272.0f;
             f_106090(m208, m212, f_101f54(2), 5);
             f_106090(m216, m220, f_101f54(3), 4);
-            m180 = 1;
             m164 = D_2407fc->rec->m2376;
+            m180 = 1;
             if (m164 == 0)
                 m160++;
             m192[m164] = D_2407fc->rec->c[m160 * 3 + m164];
@@ -1386,8 +1392,8 @@ int C2DInfoWin::f_101b54()
                 m220 = 272.0f;
                 f_106090(m208, m212, f_101f54(2), 5);
                 f_106090(m216, m220, f_101f54(3), 4);
-                m180 = 1;
                 m164 = D_2407fc->rec->m2376;
+                m180 = 1;
             } else {
                 m168 = D_2407fc->rec->a[m160 * 3 + m164];
                 m172 = D_2407fc->rec->b[m160 * 3 + m164];
@@ -1397,8 +1403,8 @@ int C2DInfoWin::f_101b54()
                 m220 = 302.0f;
                 f_106090(m208, m212, f_101f54(2), 5);
                 f_106090(m216, m220, f_101f54(3), 4);
-                m180 = 0;
                 m164 = D_2407fc->rec->m2380;
+                m180 = 0;
             }
             if (m164 == 0)
                 m160++;
@@ -1441,9 +1447,12 @@ int C2DInfoWin::f_101b54()
         m148 = 2;
         /* fall through */
     case 2:
-        t = D_2407fc->m48 / 50;
-        m156 += t - m152;
-        m152 = t;
+        {
+            int now = D_2407fc->m48 / 50;
+
+            m156 += now - m152;
+            m152 = now;
+        }
         t = m156 * 2;
         w = t;
         if (t > 60)
@@ -1465,11 +1474,11 @@ int C2DInfoWin::f_101b54()
         f_0e71e4((float)h / 60.0f);
         break;
     case 3:
-        t = D_2407fc->m48 / 50;
         {
-            float d = (float)(t - m152) * 2;
+            int now = D_2407fc->m48 / 50;
+            float d = (float)(now - m152) * 2;
 
-            m152 = t;
+            m152 = now;
             m212 -= d;
             m220 -= d;
         }
@@ -1488,9 +1497,12 @@ int C2DInfoWin::f_101b54()
         f_106090(m216, m220, f_101f54(3), 4);
         break;
     case 4:
-        t = D_2407fc->m48 / 50;
-        m156 += t - m152;
-        m152 = t;
+        {
+            int now = D_2407fc->m48 / 50;
+
+            m156 += now - m152;
+            m152 = now;
+        }
         if (m156 > 180) {
             if (m180 == 2) {
                 Show(29, 0);
@@ -1536,13 +1548,13 @@ int C2DInfoWin::f_101b54()
         }
         break;
     case 5:
-        t = D_2407fc->m48 / 50;
         {
-            float d = (float)(t - m152) * 2;
+            int now = D_2407fc->m48 / 50;
+            float d = (float)(now - m152) * 2;
 
-            m152 = t;
-            m220 -= d;
+            m152 = now;
             m212 -= d;
+            m220 -= d;
         }
         {
             float v = m220;
@@ -1561,9 +1573,12 @@ int C2DInfoWin::f_101b54()
         f_106090(m216, m220, f_101f54(3), 4);
         break;
     case 6:
-        t = D_2407fc->m48 / 50;
-        m156 += t - m152;
-        m152 = t;
+        {
+            int now = D_2407fc->m48 / 50;
+
+            m156 += now - m152;
+            m152 = now;
+        }
         t = m156 * 2;
         w = t;
         if (t > 60)
