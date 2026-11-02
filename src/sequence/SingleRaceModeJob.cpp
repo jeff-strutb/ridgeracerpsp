@@ -453,8 +453,6 @@ struct ResultMsg {
 };
 
 /* What the race needs to start: the chosen event, random seeds, the course's records, the
-   car and the options. */
-/* What the race needs to start: the chosen event, random seeds, the course's records, the
    cars and the options. Separate globals (each field is addressed on its own in retail). */
 extern int D_1ee198; /* the chosen event */
 extern unsigned int D_1ee19c; /* the first random seed */
@@ -467,7 +465,10 @@ extern int D_1ee1d4[2]; /* the two cars */
 extern int D_1ee1dc[2]; /* their colours */
 extern int D_1ee1e4[2]; /* their options */
 extern int D_1ee1ec; /* the race settings value */
-extern int D_1d1638[5];
+extern int D_1d1638[2];
+extern int D_1d1640;
+extern int D_1d1644;
+extern int D_1d1648;
 
 /* A pair of values; only the first is used here. */
 struct Param {
@@ -1151,15 +1152,15 @@ void Sequence::CSingleRaceModeJob::f_009c30()
     D_1ee1e4[1] = 0;
     D_1ee1d0 = 1;
     f_014950();
-    D_1d1638[2] = m15786;
+    D_1d1640 = m15786;
     if (m16004) {
-        D_1d1638[3] = m15484;
+        D_1d1644 = m15484;
         if (m15380 < m15480)
-            D_1d1638[4] = m15380;
+            D_1d1648 = m15380;
         else
-            D_1d1638[4] = 0;
+            D_1d1648 = 0;
     } else {
-        D_1d1638[4] = -1;
+        D_1d1648 = -1;
     }
     D_1d3d3c = m15780;
     Param sq = D_1dd7c4;
@@ -1614,9 +1615,9 @@ void Sequence::CSingleRaceModeJob::f_00bbc0()
             m15372 = (&m15380)[m15380];
             f_014dd0(m15372, m15364);
             if (m15380 < m15480)
-                D_1d1638[4] = m15380;
+                D_1d1648 = m15380;
             else
-                D_1d1638[4] = 0;
+                D_1d1648 = 0;
         } else {
             f_014cf8(m15376, m15380);
         }
