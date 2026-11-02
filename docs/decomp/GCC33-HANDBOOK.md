@@ -56,6 +56,7 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | Byte stores through one strength-reduced pointer (`sb …,0..11(a3)`; one `addiu a3,a3,12`) | an inline helper taking `(base, const offset)`: `put32(d, 4, v)`. `put32(d+4, v)` makes a separate pointer giv. | f_022848 |
 | `addu vX, base, off` (base first), then a field load | the element address in a pointer variable: `q = &e[mid]; q->key` | f_10aff0 |
 | `jal` with a `nop` slot right after a branch whose slot holds `move a0,sN` | the callee takes that argument; a `void` prototype changes local-alloc | f_08e0c8 |
+| A branch to a call's block keeps a `nop` slot where retail has the fall-through's next instruction (C++, inside a cleanup region) | the callee is declared `throw()`. dbr's liveness scan at the target stops at a call that can throw into a landing pad and leaves the register live; a non-throwing call lets it see the register set before use | f_10e198 |
 | A saved register loaded with the object in a `jalr` slot, before a virtual call that supplies an argument | the object read into a temporary first: `o = p->x8; f(o, p->vt->fn(p,0), 1)` | f_102cf0 |
 | `lui` after a call uses `v1` although `v0` is free; `v0` untouched until `jr ra` | the callee's result is returned: `int r = f(…); …; return r;` | f_0b20d8 |
 | Two independent stores at a block's end in the **reverse** of the listing order | write them in the opposite order (seen twice) | f_10dd2c, f_0f1aa0 |

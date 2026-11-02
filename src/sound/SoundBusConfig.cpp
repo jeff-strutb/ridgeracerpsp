@@ -9,7 +9,9 @@ int sprintf(char *s, const char *fmt, ...);
 int strcmp(const char *a, const char *b);
 int strncmp(const char *a, const char *b, unsigned int n);
 int atoi(const char *s);
-double f_125954(const char *s); /* atof */
+/* atof. Declared non-throwing: the call ends no EH region, so dbr sees the counter dead at
+   the float path and fills the scan's branch slot with its increment, as in retail. */
+double f_125954(const char *s) throw();
 
 void f_114d6c(void *r, const char *text, const char *end);
 void f_114dac(void *r);
@@ -97,18 +99,15 @@ static inline int IsFloat(const char *s)
 
 extern "C" {
 
-/* @draft 0x10e198 us f_10e198
+/* @implements 0x10e198 us f_10e198
    WHAT IT DOES: Parses the mixer configuration text. BusN rows give the parent bus ("None"
    or BusK; bus 0 must be the root), the volume out of 127, the pan and the FX send ("None"
    or FXK); FXN rows give a list of int or float parameters; GROUPN rows one number; the 3D_
    rows the distance, Doppler, priority and attenuation settings, with defaults when absent.
    Returns 0, or 0x80000004/5/6 for a bad parent or FX entry.
-   DRAFT: every instruction and register as retail except one delay slot. The FX value loop
-   keeps a float pointer and an int pointer to the values (two locals), so loop gives each its
-   own strength-reduced pointer, both copied from one base computed in the blez slot, as in
-   retail. Left: the float test's bnez (+0x418) gets a nop slot where retail has the counter
-   increment (addiu a0,a0,1) from the fall-through; dbr finds a0 live at the target here, whose
-   first insn is the atof call (it can throw, which ends dbr's liveness scan). */
+   The FX value loop keeps a float pointer and an int pointer to the values (two locals), so
+   loop gives each its own strength-reduced pointer, both copied from one base, as retail
+   does. */
 int f_10e198(const char *text)
 {
     char name[16];
