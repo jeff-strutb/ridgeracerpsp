@@ -2,7 +2,7 @@
 
 **Started October 12, 2026.** The retail executable is mapped and its compiler is identified. A per-function grader compiles C++ and C with that compiler and compares them to the original bytes, and a rebuilt `BOOT.BIN` holding every matched function is byte-identical to retail.
 
-4,438 game functions are now filed and byte-exact, 36.8% of the game's code (see [Current Status](#current-status)): startup and the main loop, loading and saving, every menu and mode job, race setup, the screen manager, graphics, textures, sound, the radio and its DJ, models, vectors and transforms, the controller, wireless play, race events, the race HUD, much of the race effects and part of the Flash-style movie player.
+4,513 game functions are now filed and byte-exact, 40.4% of the game's code (see [Current Status](#current-status)): startup and the main loop, loading and saving, every menu and mode job, race setup, the screen manager, graphics, textures, sound, the radio and its DJ, models, vectors and transforms, the controller, wireless play, race events, the race HUD, much of the race effects and part of the Flash-style movie player.
 
 **Maintainer:** Jeffrey Wilbur, Strut B, LLC\
 **Contact:** [retro@strutb.com](mailto:retro@strutb.com)
