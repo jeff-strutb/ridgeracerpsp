@@ -207,9 +207,10 @@ def entry_fields(entry, keys):
     return b' '.join(f for f in entry.split() if f.split(b'=', 1)[0].decode() in keys)
 
 
-def run(exe, script, trace, watch, calls, cycles_ref=None, cap=None):
-    """Run rrbox; with `cap` (bytes), stop it once the call log passes that size. Returns True
-    if it was stopped."""
+def run(exe, script, trace, watch, calls, cycles_ref=None, cap=None, ref_trace=None):
+    """Run rrbox; with `cap` (bytes), stop it once the call log passes that size, and with
+    `ref_trace` (retail's per-frame trace lines), stop it at the first frame whose RAM hash
+    differs from retail's. Returns True if it was stopped."""
     # Each script has its own stage directory, so scripts run in parallel; retail and candidate
     # of one script still use the same staged path (it is written into emulated RAM).
     stage = os.path.join(a7.OUT, 'stage', os.path.splitext(os.path.basename(script))[0])
@@ -234,6 +235,12 @@ def run(exe, script, trace, watch, calls, cycles_ref=None, cap=None):
                 p.kill()
                 p.wait()
                 return True
+            if ref_trace and os.path.exists(trace):
+                done = open(trace).read().split('\n')[:-1]  # complete lines only
+                if any(x != y for x, y in zip(done, ref_trace)):
+                    p.kill()
+                    p.wait()
+                    return True
     return False
 
 
@@ -324,8 +331,11 @@ def script_pair(s, m1, watch, watch_retail):
     # boot_attract) and fill the disk; past twice retail's log it has long since differed, so the
     # run is stopped there and the script reported as capped.
     cap = max(2 * os.path.getsize(cached + '.calls'), 2**30)
-    capped = run(m1, s, files['candidate'][0], watch, files['candidate'][1], cached + '.calls', cap)
+    # Once a frame's RAM differs from retail's, every later call runs on different state and its
+    # verdict means nothing, so the candidate is stopped there (a diverging race run otherwise logs
+    # to the cap, 21 GB, and takes most of the gate's time).
     tr = open(cached + '.trace').read().split('\n')
+    capped = run(m1, s, files['candidate'][0], watch, files['candidate'][1], cached + '.calls', cap, tr)
     tc = open(files['candidate'][0]).read().split('\n')
     first = next((k for k, (x, y) in enumerate(zip(tr, tc)) if x != y), None)
     if first is None and len(tr) != len(tc):
@@ -404,7 +414,7 @@ def main():
         if first is not None:
             a7_bad += 1
             print(f'A7 DIFFERS  {name}: first at frame {first}'
-                  + (' (candidate stopped: its call log passed twice retail\'s)' if capped else ''))
+                  + (' (candidate stopped there)' if capped else ''))
         else:
             print(f'A7 IDENTICAL {name}: {nframes} frames')
         for t in cov:

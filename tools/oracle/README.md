@@ -111,6 +111,8 @@ Otherwise the function DIFFERS. A function no script reaches is UNCOVERED.
 
 **State, 2026-11-02:** with 11 drafts excluded (`build/oracle/m1_exclude.txt`), A7 is identical on six of seven scripts and `fault_loader_open`'s call logs agree to the end. `race_seaside_start` diverges at frame 407: f_017e40 (a draft not placed) copies a `ResultMenuData` whose source holds different code and heap addresses, not yet traced.
 
+**Stopped at divergence (2026-11-02).** A5 stops the candidate at the first frame whose RAM hash differs from retail's; every call after it runs on different state. The diverging race script had been logging to its 21 GB cap and took most of the gate's time (gate 689 s, now 248 s). The race divergence comes from f_007d80 (exact) handing partly filled stack locals to the screen manager, which copies them into the menu data that retail code reads back: any placed draft that changes stack contents beneath it diverges the run. f_064f10 and f_04ed28 are excluded for that; the Options copy (f_01808c) still differs.
+
 **Teeth.** Two bugs were planted in the module loader's draft, and both were caught at its first call, by A5 and by A7:
 
 - returning the module id + 1;
