@@ -3272,7 +3272,7 @@
 <rect x="888.60" y="71.83" width="1.94" height="2.12" fill="#2f9e55"><title>f_090368 8 B T4</title></rect>
 <rect x="810.52" y="0.00" width="80.01" height="73.95" fill="none" stroke="#ffffff" stroke-width="1.2"/></g>
 <g><title>object 98 (game) 0x03a2fc-0x03cf94, 19 fns</title>
-<rect x="890.53" y="0.00" width="35.42" height="47.93" fill="#e2a52b"><title>f_03a70c 3316 B T2</title></rect>
+<rect x="890.53" y="0.00" width="35.42" height="47.93" fill="#2f9e55"><title>f_03a70c 3316 B T4</title></rect>
 <rect x="890.53" y="47.93" width="35.42" height="26.02" fill="#cfd3d8"><title>f_03bc38 1800 B T1</title></rect>
 <rect x="925.96" y="0.00" width="24.05" height="37.04" fill="#cfd3d8"><title>f_03c8c8 1740 B T1</title></rect>
 <rect x="950.00" y="0.00" width="19.57" height="37.04" fill="#cfd3d8"><title>f_03c340 1416 B T1</title></rect>
@@ -3293,7 +3293,7 @@
 <rect x="963.72" y="72.20" width="5.86" height="1.75" fill="#2f9e55"><title>f_03b548 20 B T4</title></rect>
 <rect x="890.53" y="0.00" width="79.04" height="73.95" fill="none" stroke="#ffffff" stroke-width="1.2"/></g>
 <g><title>object 29 (game) 0x0191c4-0x01bdc4, 41 fns</title>
-<rect x="969.58" y="0.00" width="24.09" height="48.19" fill="#e2a52b"><title>f_019e7c 2268 B T2</title></rect>
+<rect x="969.58" y="0.00" width="24.09" height="48.19" fill="#2f9e55"><title>f_019e7c 2268 B T4</title></rect>
 <rect x="969.58" y="48.19" width="24.09" height="25.75" fill="#2f9e55"><title>f_0199c0 1212 B T4</title></rect>
 <rect x="993.67" y="0.00" width="19.90" height="18.73" fill="#e2a52b"><title>f_01a91c 728 B T2</title></rect>
 <rect x="1013.57" y="0.00" width="19.46" height="18.73" fill="#2f9e55"><title>f_0196cc 712 B T4</title></rect>
@@ -3558,7 +3558,7 @@
 <g><title>object 36 (game) 0x01dbc4-0x0201b4, 37 fns</title>
 <rect x="560.13" y="306.82" width="35.25" height="26.44" fill="#e2a52b"><title>f_01e648 1820 B T2</title></rect>
 <rect x="595.38" y="306.82" width="33.16" height="26.44" fill="#e2a52b"><title>f_01f2f0 1712 B T2</title></rect>
-<rect x="560.13" y="333.26" width="28.33" height="29.13" fill="#e2a52b"><title>f_01fb68 1612 B T2</title></rect>
+<rect x="560.13" y="333.26" width="28.33" height="29.13" fill="#2f9e55"><title>f_01fb68 1612 B T4</title></rect>
 <rect x="560.13" y="362.39" width="28.33" height="17.13" fill="#e2a52b"><title>f_01e14c 948 B T2</title></rect>
 <rect x="588.46" y="333.26" width="20.62" height="21.06" fill="#e2a52b"><title>f_01eee4 848 B T2</title></rect>
 <rect x="609.08" y="333.26" width="19.45" height="21.06" fill="#2f9e55"><title>f_01dbc4 800 B T4</title></rect>
