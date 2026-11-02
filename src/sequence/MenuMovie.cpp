@@ -1720,11 +1720,13 @@ int f_06dac0(void *self, int a, int b)
 }
 
 
-/* @draft 0x072e1c us f_072e1c
+/* @implements 0x072e1c us f_072e1c
    WHAT IT DOES: fills the buffer out according to the kind f_0780e0(out) reports: kind 5 copies the 292 bytes at self+1216, kind 10 the 324 bytes at self+1508, kind 18 two words (+7244, +2352), kind 21 three words (+2360..+2368), kind 24 one word (+2376), kind 27 the count at +928 followed by that many words from +932; returns 1 when handled, else 0.
-   Remaining difference: the kind-18 arm loads and stores its two words in a different order (4 words). */
+   v is one variable shared by the kind-18 and kind-21 arms: spanning two blocks, it is left to
+   global allocation and takes v1 in both, after local allocation has given the other words v0. */
 int f_072e1c(void *self, void *out)
 {
+    int v;
     switch (f_0780e0(out)) {
     case 5:
         __builtin_memcpy((char *)out, (char *)self + 1216, 292);
@@ -1734,15 +1736,16 @@ int f_072e1c(void *self, void *out)
         break;
     case 18:
     {
-        int p = at<int>(self, 7244);
         int q = at<int>(self, 2352);
-        at<int>(out, 8) = p;
+        v = at<int>(self, 7244);
+        at<int>(out, 8) = v;
         at<int>(out, 12) = q;
         break;
     }
     case 21:
         at<int>(out, 8) = at<int>(self, 2360);
-        at<int>(out, 12) = at<int>(self, 2364);
+        v = at<int>(self, 2364);
+        at<int>(out, 12) = v;
         at<int>(out, 16) = at<int>(self, 2368);
         break;
     case 24:
@@ -1935,7 +1938,9 @@ int f_073c88(void *self)
 }
 
 
-void f_0e7858_v(void) __asm__("f_0e7858");
+/* f_0e7858 called with no argument (a0 left as it is): declared int, as a void prototype frees v0
+   at the call and changes f_073a44's register choice. */
+int f_0e7858_noarg(void) __asm__("f_0e7858");
 void f_0e798c(void);
 void f_04b4d8(void *, const char *, int);
 void f_04b5c8(void *, const char *, const char *, int);
@@ -1963,15 +1968,14 @@ extern char D_1a58bc[]; /* "MINI_LOGO1" */
 extern char D_1a58c8[]; /* "Navi7" */
 extern char D_1a58d0[]; /* "Navi0" */
 extern char D_1a6058[]; /* "MiniGameEnd" */
-/* @draft 0x073a44 us f_073a44
-   WHAT IT DOES: when the screen's load flag (+7524) is set and the pad word D_245194 has bit 0 but not bit 3, clears the flag and registers twenty named movie parts (option icons, rrm_307, the course and navigation frames, the mini logo) on the sub-object at self+4 with f_04b4d8, then names the mini-game end clip and starts it, and refreshes the pad object D_242e14 with the stored state (+7236, +7532).
-   Remaining difference: the pad word is loaded into v0 instead of v1 (5 words). */
+/* @implements 0x073a44 us f_073a44
+   WHAT IT DOES: when the screen's load flag (+7524) is set and the pad word D_245194 has bit 0 but not bit 3, clears the flag and registers twenty named movie parts (option icons, rrm_307, the course and navigation frames, the mini logo) on the sub-object at self+4 with f_04b4d8, then names the mini-game end clip and starts it, and refreshes the pad object D_242e14 with the stored state (+7236, +7532). */
 void f_073a44(void *self)
 {
     char *s = (char *)self;
     if (at<unsigned char>(s, 7524) == 0)
         return;
-    f_0e7858_v();
+    f_0e7858_noarg();
     unsigned int pad = D_245194;
     if ((pad & 1) == 0)
         return;
@@ -4642,8 +4646,9 @@ void f_077ecc(void *);
 void f_0974cc(void *);
 void f_097680(void *, int, int);
 
-/* @draft 0x0731a0 us f_0731a0
-   Remaining difference: o8 chain register (sll v0 vs a1), order of the two address adds in the table loop and the loop test register.
+/* @implements 0x0731a0 us f_0731a0
+   The table's first entry is 8 or 16 bytes in: a select of two constants, which if-conversion
+   turns into sltiu, sll and addiu with the flag in its own register.
    WHAT IT DOES: initialises the menu object: sets up the sub-object at self+4 (f_04a620), links self+456 and self, sets the 300 slots at self+2396 to -1, loads the packed table at p into those slots (calling f_0230e0 on each), registers with f_04a648 and f_04b8a0, runs the member initialisers (f_07a3f0, f_078e4c, f_07a634 x2, f_078358, f_078794, f_0784a8, f_079afc, f_079930, f_076f98, f_077ecc), clears many fields and starts the D_242e14 object (f_0974cc, f_097680). */
 void f_0731a0(void *self, int a, char *p)
 {
@@ -4653,8 +4658,7 @@ void f_0731a0(void *self, int a, char *p)
     at<void *>(self, 468) = self;
     struct { B4 h, a, b; } t;
     t.h = *(B4 *)(p + 4);
-    unsigned off = ((*(volatile int *)&t.h & 1) == 0) * 8;
-    unsigned o8 = off + 8;
+    unsigned o8 = (*(volatile int *)&t.h & 1) ? 8 : 16;
     int i;
     for (i = 0; i < 300; i++)
         at<int>(self, 2396 + i * 4) = -1;
@@ -4713,9 +4717,9 @@ void f_0731a0(void *self, int a, char *p)
     f_079afc((char *)self + 7468);
     f_079930((char *)self + 7296);
     at<int>(self, 7236) = -1;
-    at<char>(self, 7533) = 1;
     at<int>(self, 7232) = 1;
     at<char>(self, 7532) = 1;
+    at<char>(self, 7533) = 1;
     at<int>(self, 1204) = 0;
     at<int>(self, 1208) = 0;
     at<int>(self, 1200) = 0;
