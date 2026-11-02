@@ -519,6 +519,14 @@ void f_018abc(ScreenMgr *, int);
 int f_036a3c(CTable *t, char *rec, int *index, int count);
 }
 
+/* The chosen sequence is of kind 2 (it waits for something to load before the race). */
+inline int LoadingSequence(Param sel)
+{
+    char *f = D_2407d0.Field("SequenceNumber", (char *)sel.a);
+    memcpy(D_24063c, f, D_1a211c[1]);
+    return D_24063c[0] == 2;
+}
+
 /* The course's index in the course table. */
 inline int CourseIndex(Rec c)
 {
@@ -1132,7 +1140,8 @@ void Sequence::CSingleRaceModeJob::f_009c30()
 
     Row carRow;
     FIND_SELECT(&carRow, D_240740, m15364);
-    memcpy(D_24063c, D_240740.Field("Class", carRow.rec), D_1a211c[1]);
+    char *f = D_240740.Field("Class", carRow.rec);
+    memcpy(D_24063c, f, D_1a211c[1]);
     int cls = D_24063c[0] - 1;
     Rec crs = ChosenCourse(D_1dd7c4);
     int k = cls * 24 + CourseIndex(crs);
@@ -1162,9 +1171,7 @@ void Sequence::CSingleRaceModeJob::f_009c30()
         D_1d1648 = -1;
     }
     D_1d3d3c = m15780;
-    Param sq = D_1dd7c4;
-    memcpy(D_24063c, D_2407d0.Field("SequenceNumber", (char *)sq.a), D_1a211c[1]);
-    if (D_24063c[0] != 2 || f_0151f4())
+    if (!LoadingSequence(D_1dd7c4) || f_0151f4())
         queue.push(4);
     else
         queue.push(5);
