@@ -132,14 +132,17 @@ T1 = a draft only; T2 = in the tree, not done; T3 = certified behaviour exact, n
 
 The oracle is `rrbox` ([tools/oracle/README.md](tools/oracle/README.md)): PPSSPP v1.20.4 headless with a small patch, running the original program deterministically. Ten one-minute runs give identical traces.
 
-- **A7, whole image (built).** `tools/oracle/a7.py` runs retail and the candidate image on every input script. Each frame's emulated time and the hash of all 24 MB of user RAM must agree. `--m1` leaves the code out of the hash, for images whose T3 bodies differ in bytes.
+- **A7, whole image (built).** `tools/oracle/a7.py` runs retail and the candidate image on every input script. Each frame's emulated time and the hash of all 24 MB of user RAM must agree. `--m1` leaves the code and every thread's stack out of the hash, for images whose T3 bodies differ in bytes and in frame layout.
   - The scripts so far: boot to attract mode (1,800 frames), the full new-game path into a live race (9,000 frames), and five fault scripts that force the module loader's error paths.
   - A planted wrong store is caught at frame 0.
-- **A5, per function (built).** `tools/oracle/a5.py` watches every tagged function in retail and in the M1 image. Every call must agree on arguments, return value, every memory write outside its own stack frame, and the callee-saved registers.
-  - CPU time is held equal at every function boundary, because rewritten code legitimately runs a different number of cycles.
+- **A5, per function (built).** `tools/oracle/a5.py` watches every tagged function in retail and in the M1 image. Every call must agree on the arguments its declared parameters take, its return value, its net effect on memory outside its own stack frames, and the callee-saved registers.
+  - What a draft may legitimately do differently is not compared: the order of its stores, its stack frame layout (stack addresses are compared only as "a stack address"), and values left in registers it takes no parameter in.
+  - CPU time is held equal at every function boundary, entry and return, because rewritten code legitimately runs a different number of cycles.
   - Unreached functions are UNCOVERED. Instruction coverage is reported per function.
   - Verdicts are recorded in `config/us/t3_live.csv`.
-  - Two bugs planted in a draft were each caught at its first call.
+  - Two bugs planted in a draft were each caught at its first call, before and after the comparison was loosened.
+  - A diverging draft changes everything after it, so `tools/oracle/isolate.py` finds the first one, leaves it out of the image (`build/oracle/m1_exclude.txt`) and repeats; `tools/oracle/statediff.py` finds the memory behind a difference and who wrote it.
+  - **Status (2026-11-02): no draft is certified yet beyond the module loader.** With 11 faulty drafts left out, six of the seven scripts run with RAM identical to retail on every frame. The race script diverges at frame 407 (traced to the result-menu settings copy, f_017e40, not yet resolved), and until it is clean the ledger is not trusted and no draft is promoted.
 
 A7 only sees what the scripts exercise: a changed main-thread priority went unnoticed in attract mode. To cover races, rrbox has a search driver (`--rr-drive`): every 20 frames it snapshots the machine, plays out five steering choices, keeps the one that makes the most progress along the car's direction of travel, and records the result as an ordinary input script that replays exactly. Full-race scripts for every mode and course come next.
 
