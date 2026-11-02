@@ -47,6 +47,12 @@ struct CarSub {
     int m472;
 };
 
+struct Pad;
+/* A vector of four floats. */
+struct Vec4 {
+    float x, y, z, w;
+} __attribute__((aligned(16)));
+
 /* A car (made elsewhere); its constructors are those of the player's car and the two kinds of
    other cars. */
 struct CCar {
@@ -111,12 +117,8 @@ struct CCar {
     char m9928[160];
     int m10088;
     char m10092[24];
-    int m10116;
-    char m10120[8];
-    int m10128;
-    int m10132;
-    int m10136;
-    int m10140;
+    Pad *m10116;           /* the input record */
+    Vec4 m10128;
 } __attribute__((aligned(16)));
 
 /* The player's cars and the other cars. */
@@ -281,9 +283,6 @@ extern char D_24186d;
 extern char D_241760[];
 
 /* A car's state as exchanged between consoles. */
-struct Vec4 {
-    float x, y, z, w;
-} __attribute__((aligned(16)));
 struct CarState {
     float m0;
     float m4;
@@ -337,19 +336,19 @@ void f_0bfba4(void *);
 }
 extern char D_1acd08[];
 
-/* A copy of a car on the stack. The player's car class copies its base class (made elsewhere)
-   and then its own words. */
+/* A copy of a car on the stack. The player's car class copies its base class (made elsewhere),
+   sets its own vtable, then copies its two members (the copy constructor the compiler writes:
+   the input record pointer, and the vector as one 16-byte block). */
 struct CCarCopy {
-    char m[10144];
+    char m[10116];
+    Pad *m10116;
+    Vec4 m10128;
     CCarCopy(CCar *c)
     {
         f_03cf94(this, c);
         *(void **)this = D_1acd08;
-        *(int *)(m + 10128) = c->m10128;
-        *(int *)(m + 10116) = c->m10116;
-        *(int *)(m + 10132) = c->m10132;
-        *(int *)(m + 10136) = c->m10136;
-        *(int *)(m + 10140) = c->m10140;
+        m10116 = c->m10116;
+        m10128 = c->m10128;
     }
     ~CCarCopy() { f_0bfba4(this); }
 } __attribute__((aligned(16)));
@@ -469,7 +468,7 @@ void CCarJobCtrlPSP::f_03a51c(CarSetup *s, int seed, CarList *l)
     f_03bab8();
 }
 
-/* @draft 0x03a70c us f_03a70c
+/* @implements 0x03a70c us f_03a70c
    WHAT IT DOES: Runs the cars for one frame, timing it. The cars in use are started (the
    player's cars also run the rubber band against the other cars and, when the car is in the
    state 0x1001, every third frame a copy of it is stepped to send its state over the wireless
@@ -477,10 +476,7 @@ void CCarJobCtrlPSP::f_03a51c(CarSetup *s, int seed, CarList *l)
    sorted, the neighbours of each car in the race order are recorded, the other cars' speed
    factors are worked out from their distance to the player through the rubber band table, and
    every car is stepped through the virtual steps (the collision steps first when the mode
-   has bit 2).
-   DRAFT: complete transcription, same size (3316 B), 10 of 829 words differ: the copy of the
-   car on the stack (CCarCopy) is scheduled differently (retail stores the one-element car list
-   last and sets up the call arguments later), plus relocation-only noise. */
+   has bit 2). */
 void CCarJobCtrlPSP::f_03a70c()
 {
     if (m8 == 0)
