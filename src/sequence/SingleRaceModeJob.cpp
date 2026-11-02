@@ -989,7 +989,12 @@ void Sequence::CSingleRaceModeJob::f_009bf4()
    When the player confirms, it takes the chosen setup, prepares the event of the selected
    race kind (normal race, time attack or the others), fills in what the race needs (seeds,
    the course's records, car, colour and options) and starts the race (event 4, or 5 for a
-   sequence that waits for something to load). */
+   sequence that waits for something to load).
+   Remaining difference: one word longer than retail and about 90 lines of register choice:
+   the high halves of D_1dd7c4 and D_2407d0 take s6 and s2 here, s2 and s6 in retail; the
+   race start stores load m15992 and m15780 into a2/a3 the other way round; retail loads
+   D_1d110c before the second seed's store; and the course and race start block of
+   D_1ee1d4/dc/e4 and D_1d1638[1] is scheduled differently. */
 void Sequence::CSingleRaceModeJob::f_009c30()
 {
     m16008 = D_1e8ec4.Rand();
@@ -997,13 +1002,13 @@ void Sequence::CSingleRaceModeJob::f_009c30()
 
     int car = D_2301b0.layer->v10(7);
     if (car < 0) {
+        car = 0;
         if (D_1edf5c) {
             D_1edf5c = 0;
             D_1edf54 = 0;
             D_1edf50 = 0;
             f_00578c(D_1dd6b0);
         }
-        car = 0;
     }
     if (car == 0 && !D_1edf50 && D_1edf54)
         car = D_1edf54;
