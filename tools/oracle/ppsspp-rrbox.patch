@@ -154,10 +154,10 @@ index 6f39b1b..ff23447 100644
  
 diff --git a/Core/RRBox.cpp b/Core/RRBox.cpp
 new file mode 100644
-index 0000000..7572634
+index 0000000..233d07f
 --- /dev/null
 +++ b/Core/RRBox.cpp
-@@ -0,0 +1,144 @@
+@@ -0,0 +1,157 @@
 +#include "Core/RRBox.h"
 +#include <map>
 +#include <string>
@@ -291,6 +291,17 @@ index 0000000..7572634
 +}
 +
 +void OnWrite(u32 addr, u64 value, int size) {
++	// RRBOX_WDETAIL=FUNC:CALL (hex offset, decimal call number) logs each hashed write of that one
++	// call as "W addr value size pc", to find which write makes a call's hash differ
++	static int detail = -1;
++	static u32 dFunc = 0;
++	static u64 dCall = 0;
++	if (detail < 0) {
++		const char *e = getenv("RRBOX_WDETAIL");
++		unsigned long long c = 0;
++		detail = e && sscanf(e, "%x:%llu", &dFunc, &c) == 2;
++		dCall = c;
++	}
 +	int thread = __KernelGetCurThread();
 +	for (Frame &fr : g_frames) {
 +		// a call's own stack frame (and its callees') lies just below the caller's sp: its layout
@@ -298,6 +309,8 @@ index 0000000..7572634
 +		if (fr.thread == thread && !(addr < fr.sp && addr >= fr.sp - 0x40000)) {
 +			fr.hash = Mix(Mix(Mix(fr.hash, addr), value), size);
 +			fr.writes++;
++			if (detail && g_log && fr.func - g_base == dFunc && fr.call == dCall)
++				fprintf(g_log, "W %08x %08llx %d pc=%06x\n", addr, (unsigned long long)value, size, currentMIPS->pc - g_base);
 +		}
 +	}
 +}

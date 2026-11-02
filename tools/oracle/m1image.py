@@ -9,6 +9,7 @@ Only for the oracle (rrbox), which always loads the module at 0x08804000:
     R_MIPS_NONE (the loader skips them; the table keeps its length, so nothing else moves);
   * a body larger than its slot, or one with its own jump table, is refused (not placeable
     without moving code), as is any reference the resolver cannot prove.
+Drafts listed in build/oracle/m1_exclude.txt are left out (tools/oracle/isolate.py).
 Output: build/image/BOOT.M1.BIN, and build/image/m1_placed.txt (address and compiled size of
 each placed draft: the size A5 measures instruction coverage over).
 
@@ -43,6 +44,15 @@ def main():
     rts = e.sh[rti]
     assert rts[1] == SHT_PRXREL
     placed, refused = [], []
+    # Drafts tools/oracle/isolate.py found to diverge from retail first: left out, so they do not
+    # change game state under every later watched call. Lines: ADDR REASON.
+    excluded = {}
+    xf = os.path.join(ROOT, 'build/oracle/m1_exclude.txt')
+    if os.path.exists(xf):
+        for line in open(xf):
+            if line.strip():
+                a, _, why = line.strip().partition(' ')
+                excluded[int(a, 16)] = why
     srcs = sorted(glob.glob(os.path.join(ROOT, 'src/**/*.c'), recursive=True) +
                   glob.glob(os.path.join(ROOT, 'src/**/*.cpp'), recursive=True))
     srcs = [p for p in srcs if '/src/control/' not in p]
@@ -55,6 +65,8 @@ def main():
         plc, n2a, found = score.locate(obj, syms, score.tags(src))
         res = score.Resolver(obj, syms, n2a, plc, c['rel'], e)
         for addr, name in drafts:
+            if addr in excluded:
+                refused.append(f'0x{addr:06x} {name}: excluded (build/oracle/m1_exclude.txt: {excluded[addr]})'); continue
             p = next((x for x in plc if x[3] == addr), None)
             start, osize = rrdis.func_at(addr)
             if p is None or start != addr:
@@ -101,12 +113,59 @@ def main():
                 if addr <= at < addr + osize:
                     struct.pack_into('<I', img, o + 4, info & ~0xff)  # R_MIPS_NONE
             placed.append((addr, size))
+    fixed = repair_hi16(e, seg, rts, bytes(open(os.path.join(ROOT, 'build/image/BOOT.BIN'), 'rb').read()), img)
     out = os.path.join(ROOT, 'build/image/BOOT.M1.BIN')
     open(out, 'wb').write(img)
     open(os.path.join(ROOT, 'build/image/m1_placed.txt'), 'w').write(''.join(f'{a:x} {z}\n' for a, z in placed))
     for r in refused:
         print('  refused ' + r)
-    print(f'm1image: {len(placed)} draft bodies placed in their slots, {len(refused)} refused -> {os.path.relpath(out, ROOT)}')
+    print(f'm1image: {len(placed)} draft bodies placed in their slots, {len(refused)} refused, '
+          f'{fixed} HI16 entries outside them pre-resolved -> {os.path.relpath(out, ROOT)}')
+
+
+def repair_hi16(e, seg, rts, old, img):
+    """The loader (PPSSPP ElfReader, like the PSP's) completes each HI16 with the low half of the
+    NEXT LO16 or R_MIPS_16 entry in the table, skipping every other type, and retail's table often
+    pairs a HI16 with a LO16 in another function. Setting a placed slot's entries to R_MIPS_NONE
+    can therefore re-pair a HI16 outside the slot with a LO16 of the other sign, and its upper half
+    comes out 0x10000 off (first seen as f_04d68c passing 0x08a5500c for 0x08a4500c). Every HI16
+    whose loaded value changes is written as retail's absolute value for BASE and set to NONE."""
+    def table(buf):
+        ents = []
+        for o in range(rts[4], rts[4] + rts[5], 8):
+            off, info = struct.unpack_from('<II', buf, o)
+            ents.append((o, seg[(info >> 8) & 0xff] + off, info))
+        return ents
+
+    def word(buf, at):
+        fo = next(s[4] + at - s[3] for s in e.sh if s[1] == 1 and s[3] <= at < s[3] + s[5])
+        return struct.unpack_from('<I', buf, fo)[0], fo
+
+    def loaded_hi(buf, ents, r):
+        o, at, info = ents[r]
+        op = word(buf, at)[0]
+        rel = (info >> 16) & 0xff
+        cur = ((op & 0xffff) << 16) + BASE + (seg[rel] if rel < len(seg) else 0)
+        for t in range(r + 1, len(ents)):
+            tt = ents[t][2] & 0xf
+            if tt in (R_LO16, 1):  # R_MIPS_16 is taken as the partner too
+                lo = word(buf, ents[t][1])[0] & 0xffff
+                cur += lo - 0x10000 if lo & 0x8000 else lo
+                break
+        return ((cur + 0x8000) >> 16) & 0xffff
+
+    before, after = table(old), table(img)
+    n = 0
+    for r, (o, at, info) in enumerate(after):
+        if info & 0xf != R_HI16:
+            continue
+        want = loaded_hi(old, before, r)
+        if loaded_hi(img, after, r) != want:
+            w, fo = word(img, at)
+            struct.pack_into('<I', img, fo, (w & 0xffff0000) | want)
+            struct.pack_into('<I', img, o + 4, info & ~0xff)  # R_MIPS_NONE: already absolute
+            n += 1
+    return n
 
 
 if __name__ == '__main__':
