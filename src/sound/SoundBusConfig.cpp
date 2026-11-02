@@ -103,12 +103,12 @@ extern "C" {
    or FXK); FXN rows give a list of int or float parameters; GROUPN rows one number; the 3D_
    rows the distance, Doppler, priority and attenuation settings, with defaults when absent.
    Returns 0, or 0x80000004/5/6 for a bad parent or FX entry.
-   DRAFT: 23 of 380 words differ, all in the FX value loop's entry. Retail computes the
-   value array's address before the n <= 0 test (in the blez slot) and copies it into the two
-   store pointers after it, with j = 0 before the branch; here both pointers are set after the
-   test and j = 0 goes in the slot, which shifts the inner scan by one word. The float stores
-   through a pointer local and the int stores through the member keep the two pointers apart
-   (one address form for both lets loop combine them). */
+   DRAFT: every instruction and register as retail except one delay slot. The FX value loop
+   keeps a float pointer and an int pointer to the values (two locals), so loop gives each its
+   own strength-reduced pointer, both copied from one base computed in the blez slot, as in
+   retail. Left: the float test's bnez (+0x418) gets a nop slot where retail has the counter
+   increment (addiu a0,a0,1) from the fall-through; dbr finds a0 live at the target here, whose
+   first insn is the atof call (it can throw, which ends dbr's liveness scan). */
 int f_10e198(const char *text)
 {
     char name[16];
@@ -165,12 +165,13 @@ int f_10e198(const char *text)
             int j;
             f->size = n * 4;
             float *fv = f->v.f;
+            int *iv = f->v.i;
             for (j = 0; j < n; j++) {
                 s = r.Get(name, j);
                 if (IsFloat(s))
                     fv[j] = f_125954(s);
                 else
-                    f->v.i[j] = atoi(s);
+                    iv[j] = atoi(s);
             }
             f->used = 1;
         } else {
