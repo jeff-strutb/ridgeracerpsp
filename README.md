@@ -71,14 +71,14 @@ _Snapshot 2026-11-01._
 
 ```
 M1  Behaviour exact (T3 + T4)
-    ███████████████░░░░░░░░░░░░░░░░░░░░░░░░░   36.9%   419,096 / 1,136,792 B   4,439 / 5,654 fns
+    ████████████████░░░░░░░░░░░░░░░░░░░░░░░░   39.5%   449,032 / 1,136,792 B   4,507 / 5,654 fns
 M2  Byte exact (T4)
-    ███████████████░░░░░░░░░░░░░░░░░░░░░░░░░   36.8%   418,804 / 1,136,792 B   4,438 / 5,654 fns
+    ████████████████░░░░░░░░░░░░░░░░░░░░░░░░   39.5%   448,740 / 1,136,792 B   4,506 / 5,654 fns
 ```
 
 | Code | Functions | Bytes | Counted |
 |---|---:|---:|---|
-| **Game** (the denominator) | 5,654 | 1,136,792 | yes: T4 4438, T3 1, T2 706, T1 509 |
+| **Game** (the denominator) | 5,654 | 1,136,792 | yes: T4 4506, T3 1, T2 906, T1 241 |
 | Libraries: libstdc++, newlib, libgcc (fenced) | 1,513 | 317,544 | no; matched from their own source or linked |
 | Unidentified, in the library region | 390 | 45,676 | not until classified |
 
