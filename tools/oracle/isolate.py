@@ -78,7 +78,7 @@ def main():
         out = subprocess.run([sys.executable, '-I', os.path.join(ROOT, 'tools/oracle/m1image.py')],
                              capture_output=True, text=True).stdout.splitlines()
         placed = {int(l.split()[0], 16) for l in open(os.path.join(ROOT, 'build/image/m1_placed.txt'))}
-        res = subprocess.run([sys.executable, '-I', os.path.join(ROOT, 'tools/oracle/a5.py'), script],
+        res = subprocess.run([sys.executable, '-I', os.path.join(ROOT, 'tools/oracle/a5.py'), '--keep', script],
                              capture_output=True, text=True).stdout.splitlines()
         print(f'[{it}] {out[-1] if out else "m1image: no output"} | {res[-1] if res else "a5: no output"}', flush=True)
         d = first_divergence(os.path.join(a7.OUT, f'{name}.retail.calls'),

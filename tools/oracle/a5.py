@@ -21,7 +21,16 @@ log (--rr-cycles-ref), and at each watched return rrbox sets emulated time to ex
 was. Behaviour is compared with CPU time held equal at every function boundary; an interrupt
 landing inside a T3 body at a different point still shows up as a difference.
 
-    python3 tools/oracle/a5.py [SCRIPT...]
+    python3 tools/oracle/a5.py [--keep] [--detail] [SCRIPT...]
+
+Disk use: one script's call log runs to several GB (the race script's retail log is 8 GB), so
+nothing is kept that a later run cannot rebuild. Retail runs are written straight into
+build/oracle/retail-cache as <script>-<key>, and caching a new key for a script evicts that
+script's older keys. The candidate's logs in build/oracle/a7 are deleted once the verdicts are
+written, unless --keep is given (tools/oracle/isolate.py needs both logs: --keep also links the
+cached retail log there as <script>.retail.calls). A diverging candidate's log can be far longer
+than retail's (7.6 GB against 256 MB on fault_loader_open), so a run refuses to start with less
+than MIN_FREE_GB free.
 """
 import csv
 import datetime
@@ -36,6 +45,9 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'oracle'))
 import a7  # noqa: E402
+
+CACHE = os.path.join(ROOT, 'build/oracle/retail-cache')
+MIN_FREE_GB = 80  # a full run's peak: seven candidate logs of up to ~8 GB at once, plus uncached retail
 
 TAG = re.compile(r'@(implements|draft)\s+0x([0-9a-fA-F]+)\s+us\s+([A-Za-z_][\w:~]*)(?:.*?\*/)\s*\n([^\n{;]*?)\b\3\s*\(', re.S)
 
@@ -132,17 +144,19 @@ def script_pair(s, m1, watch, watch_retail):
              for side in ('retail', 'candidate')}
     # A retail run depends only on the executable, the script, the watched addresses and rrbox.
     key = hashlib.sha256(b''.join(open(f, 'rb').read() for f in (a7.RETAIL, s, watch_retail, a7.BOX))).hexdigest()[:24]
-    cached = os.path.join(ROOT, 'build/oracle/retail-cache', key)
-    tr_, ca_ = files['retail']
+    cached = os.path.join(CACHE, f'{name}-{key}')
     if not (os.path.exists(cached + '.trace') and os.path.exists(cached + '.calls') and os.path.exists(cached + '.sum')):
+        # written in place (no second copy in a7/), renamed only once complete
+        os.makedirs(CACHE, exist_ok=True)
+        tr_, ca_ = cached + '.trace.tmp', cached + '.calls.tmp'
         run(a7.RETAIL, s, tr_, watch_retail, ca_)
-        os.makedirs(os.path.dirname(cached), exist_ok=True)
         open(cached + '.sum.tmp', 'w').write(repr(summarise(ca_)))
-        for src, dst in ((tr_, cached + '.trace'), (ca_, cached + '.calls'), (cached + '.sum.tmp', cached + '.sum')):
-            if src != cached + '.sum.tmp':
-                shutil.copyfile(src, dst + '.tmp')
-                src = dst + '.tmp'
-            os.replace(src, dst)
+        for ext in ('.trace', '.calls', '.sum'):
+            os.replace(cached + ext + '.tmp', cached + ext)
+        for junk in (ca_ + '.cov',):
+            if os.path.exists(junk):
+                os.remove(junk)
+        evict(name, key)
     # the candidate run reads retail's call log for the time lockstep; the cached copy serves
     run(m1, s, files['candidate'][0], watch, files['candidate'][1], cached + '.calls')
     tr = open(cached + '.trace').read().split('\n')
@@ -153,6 +167,20 @@ def script_pair(s, m1, watch, watch_retail):
     cov = [line.split() for line in open(files['candidate'][1] + '.cov')]
     files['retail'] = (cached + '.trace', cached + '.calls')
     return name, first, len(tr) - 1, eval(open(cached + '.sum').read()), summarise(files['candidate'][1]), cov, files
+
+
+def evict(name, key):
+    """Remove the retail cache entries of script `name` other than `key`, and any entry in the old
+    unprefixed layout (no run can hit those again)."""
+    for p in glob.glob(os.path.join(CACHE, '*')):
+        base = os.path.basename(p).split('.', 1)[0]
+        old_layout = re.fullmatch(r'[0-9a-f]{24}', base)
+        if old_layout or (base.startswith(name + '-') and base != f'{name}-{key}'
+                          and re.fullmatch(r'[0-9a-f]{24}', base[len(name) + 1:])):
+            try:
+                os.remove(p)
+            except FileNotFoundError:
+                pass  # scripts run in parallel; another one removed it first
 
 
 def compare(rk, ret_r, ret_c):
@@ -174,7 +202,12 @@ def main():
     w = watched()
     global DETAIL
     DETAIL = '--detail' in sys.argv
+    keep = '--keep' in sys.argv
     scripts = [os.path.abspath(s) for s in sys.argv[1:] if not s.startswith('--')] or sorted(glob.glob(os.path.join(ROOT, 'tools/oracle/scripts/*.txt')))
+    os.makedirs(a7.OUT, exist_ok=True)
+    free = shutil.disk_usage(a7.OUT).free / 2**30
+    if free < MIN_FREE_GB:
+        raise SystemExit(f'a5: only {free:.0f} GB free on the build volume, {MIN_FREE_GB} GB needed; not running')
     m1 = os.path.join(ROOT, 'build/image/BOOT.M1.BIN')
     if not os.path.exists(m1):
         raise SystemExit('build the M1 image first: python3 tools/oracle/m1image.py')
@@ -256,6 +289,17 @@ def main():
         for r in rows:
             f.write(','.join(str(x) for x in r) + '\n')
     n = {k: sum(1 for v in verdict.values() if v[0] == k) for k in ('PASS', 'DIFFERS', 'UNCOVERED')}
+    for name, *_, files in results:
+        cand = files['candidate']
+        link = os.path.join(a7.OUT, f'{name}.retail.calls')
+        if os.path.lexists(link):
+            os.remove(link)
+        if keep:
+            os.symlink(files['retail'][1], link)
+        else:
+            for p in (cand[0], cand[1], cand[1] + '.cov'):
+                if os.path.exists(p):
+                    os.remove(p)
     print(f"a5: {n['PASS']} pass, {n['DIFFERS']} differ, {n['UNCOVERED']} uncovered; A7 {len(scripts) - a7_bad}/{len(scripts)} identical")
     return 1 if (n['DIFFERS'] or a7_bad) else 0
 
