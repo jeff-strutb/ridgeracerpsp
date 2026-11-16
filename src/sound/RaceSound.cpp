@@ -315,7 +315,12 @@ void CRaceSound::f_01cdf4()
 /* @draft 0x01cec4 us f_01cec4
    WHAT IT DOES: Loads the race's sound banks (the common race bank and one bank per engine
    sample) into the sound processor, then starts an engine sound emitter for the player's car
-   and each rival, using the car's engine data, and the course's map sound emitter. */
+   and each rival, using the car's engine data, and the course's map sound emitter.
+   Remaining difference (6 words): the %hi of D_240740 and of "CarName", kept across the rival
+   loop, land in s6 and s5 here and s5 and s6 in retail. Both pseudos cost the same in greg;
+   the D_240740 one is set first in the first f_0368e8 call (insn order this, then the
+   string), so it lives longer and is allocated second. Retail needs the string's %hi set
+   first. */
 void CRaceSound::f_01cec4()
 {
     char name[48];
