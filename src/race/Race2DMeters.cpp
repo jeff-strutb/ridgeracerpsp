@@ -42,20 +42,37 @@ struct RaceInfo {
     char m64[44];
     int lap;
     int position;
-    char m116[76];
+    char m116[24];
+    float speed;
+    char m144[8];
+    float rpm;
+    float redline;
+    float maxRpm;
+    int gear;
+    char m168[8];
+    float boost;
+    char m180[12];
     int m192;
     struct Player *player;
 };
 
-/* The player's settings: whether the meter is lit (0 lights it). */
+/* The player's settings: the meter's lamp cell (nonzero picks cell 34) and whether the
+   meter is lit (0 lights it). */
 struct Player {
-    char m0[7820];
+    char m0[2112];
+    int lamp;
+    char m2116[5704];
     int dark;
 };
 extern RaceInfo *D_2407fc;
 
-struct Race;
+/* The race the piece belongs to: its clock in frames at +136. */
+struct Race {
+    char m0[136];
+    int clock;
+};
 int f_0f63c0(Race *r);
+int f_0937f0();
 
 /* The sprite group the pieces draw with. */
 struct Group;
@@ -70,7 +87,13 @@ struct Corner {
     float x, y, u, v;
 };
 
+/* A rectangle given by its corner and size. */
+struct Rect {
+    float x, y, w, h;
+};
+
 void f_04bf6c(Group *g, int sprite, Corner *c);
+void f_04c104(Group *g, int sprite, int cell);
 void f_04c1c8(Group *g, int sprite, Rgba c);
 void f_04c248(Group *g, int sprite, unsigned char on);
 void f_04c3c8(Group *g, int sprite, float x, float y);
@@ -101,7 +124,7 @@ public:
     virtual void f_101f74(float t) {}
     void f_101c70(unsigned char on);
     void f_101cf4(int t, int *min, int *sec, int *ms);
-    void f_101da4(Corner *c, const Corner *r);
+    void f_101da4(Corner *c, const Rect *r);
     int f_101e38();
 
     /* Shows or hides one sprite. */
@@ -117,6 +140,20 @@ public:
         Group *g = group;
 
         f_04c668(g, f_101f54(i), 1.0f, 1.0f, 1.0f, t);
+    }
+    /* Sets one sprite's colour. */
+    void Tint(int i, float r, float gr, float b, float a)
+    {
+        Group *g = group;
+
+        f_04c668(g, f_101f54(i), r, gr, b, a);
+    }
+    /* Picks one sprite's cell. */
+    void Cell(int i, int cell)
+    {
+        Group *g = group;
+
+        f_04c104(g, f_101f54(i), cell);
     }
     /* The start animation has not finished. */
     bool Starting() { return state < 3; }
@@ -141,7 +178,7 @@ public:
    meter has no shift lamp) and its sprite rectangles. */
 struct MeterLayout {
     int flag;
-    Corner r[15];
+    Rect r[15];
 };
 extern MeterLayout D_1d5fe8[];
 
@@ -153,7 +190,7 @@ public:
     void f_1080d8(int s, int on, float x);
 
     int type;
-    int m28;
+    unsigned char m28;
 };
 
 class C2DAnalogMeter : public C2DMeterBase {
@@ -163,6 +200,7 @@ public:
     virtual int Draw();
     virtual int f_101b54();
     virtual void f_101f74(float t);
+    void f_1088ec(Corner *c, const Rect *r, float a);
 
     int sprite[10];
 };
@@ -204,12 +242,9 @@ public:
 
 using namespace Fj;
 
-/* @draft 0x107fb0 us C2DMeterBase8f_107fb0
+/* @implements 0x107fb0 us C2DMeterBase8f_107fb0
    WHAT IT DOES: Shows a digit (the last decimal digit of n) in a meter sprite: places the
-   sprite at the digit's rectangle and picks the digit's cell from the strip of ten.
-   Remaining difference (17 words, scheduling): retail loads the group pointer before the
-   sprite lookup's argument moves and stores the corners around them; the store order (found
-   by compiling every chain order in one scratch file) and the address arithmetic agree. */
+   sprite at the digit's rectangle and picks the digit's cell from the strip of ten. */
 void C2DMeterBase::f_107fb0(int s, int n)
 {
     Corner c[4];
@@ -218,11 +253,11 @@ void C2DMeterBase::f_107fb0(int s, int n)
     n %= 10;
     f_101da4(c, &D_1d5fe8[type].r[3 + n]);
     u0 = 0;
-    v0 = D_1d5fe8[type].r[3 + n].v * n;
+    v0 = D_1d5fe8[type].r[3 + n].h * n;
     c[0].u = c[2].u = u0;
     c[0].v = c[1].v = v0;
-    c[1].u = c[3].u = D_1d5fe8[type].r[3 + n].u + u0;
-    c[2].v = c[3].v = v0 + D_1d5fe8[type].r[3 + n].v;
+    c[1].u = c[3].u = D_1d5fe8[type].r[3 + n].w + u0;
+    c[2].v = c[3].v = v0 + D_1d5fe8[type].r[3 + n].h;
     {
         Group *g = group;
 
