@@ -241,30 +241,29 @@ int f_112aa8(int a0, int a1, int a2)
    WHAT IT DOES: Frees channel 0's buffer and ends and deletes its two reader threads. DRAFT. */
 int f_113328(void)
 {
-    struct StreamChan *c = &D_291a54[0];
-
-    if (c->count > 0)
-        free(c->buf);
-    sceKernelWaitThreadEnd(c->thread, 0);
-    sceKernelDeleteThread(c->thread);
-    sceKernelWaitThreadEnd(c->thread2, 0);
-    sceKernelDeleteThread(c->thread2);
+    if (D_291a54[0].count > 0)
+        free(D_291a54[0].buf);
+    sceKernelWaitThreadEnd(D_291a54[0].thread, 0);
+    sceKernelDeleteThread(D_291a54[0].thread);
+    sceKernelWaitThreadEnd(D_291a54[0].thread2, 0);
+    sceKernelDeleteThread(D_291a54[0].thread2);
     return 0;
 }
 
-/* @draft 0x11338c us f_11338c
+/* @implements 0x11338c us f_11338c
    WHAT IT DOES: Copies the name into channel ch and starts its reader thread (0x80000000 if
    the channel is busy). DRAFT. */
 int f_11338c(int ch, const char *name)
 {
-    struct StreamChan *c = &D_291a54[ch];
+    int n;
 
-    if (c->state != 0)
+    if (D_291a54[ch].state != 0)
         return 0x80000000;
-    memcpy(c->name, name, strlen(name));
-    c->state = 1;
-    c->m48 = 0;
-    return sceKernelStartThread(c->thread, 4, &ch);
+    n = strlen(name);
+    memcpy(D_291a54[ch].name, name, n);
+    D_291a54[ch].state = 1;
+    D_291a54[ch].m48 = 0;
+    return sceKernelStartThread(D_291a54[ch].thread, 4, &ch);
 }
 
 /* @implements 0x113424 us f_113424
@@ -308,19 +307,19 @@ int f_1134bc(int ch, unsigned int v)
     return 0;
 }
 
-/* @draft 0x1134e8 us f_1134e8
+/* @implements 0x1134e8 us f_1134e8
    WHAT IT DOES: Copies the name into channel ch and starts its first reader thread with m48 = 1
    (0x80000000 if busy). DRAFT. */
 int f_1134e8(int ch, const char *name)
 {
-    struct StreamChan *c = &D_291a54[ch];
+    int n;
 
-    if (c->state != 0)
+    if (D_291a54[ch].state != 0)
         return 0x80000000;
-    memcpy(c->name, name, strlen(name));
-    c->state = 1;
-    c->m48 = 1;
-    return sceKernelStartThread(c->thread, 4, &ch);
+    n = strlen(name);
+    memcpy(D_291a54[ch].name, name, n);
+    D_291a54[ch].state = D_291a54[ch].m48 = 1;
+    return sceKernelStartThread(D_291a54[ch].thread, 4, &ch);
 }
 
 /* @implements 0x113580 us f_113580
