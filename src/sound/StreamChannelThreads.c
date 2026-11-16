@@ -111,14 +111,14 @@ int f_11198c(int a0, int n, float vol)
     return 0;
 }
 
-/* @draft 0x111a1c us f_111a1c
+/* @implements 0x111a1c us f_111a1c
    WHAT IT DOES: Resets the volume state to zero when the argument is zero. DRAFT. */
 int f_111a1c(int a0)
 {
     if (a0 == 0) {
         D_291a48.m0 = 0;
-        D_291a48.m8 = 0;
         D_291a48.m4 = 0;
+        D_291a48.m8 = 0;
         return 0;
     }
     return 0x8000000a;
@@ -201,7 +201,7 @@ int f_111b18(int unused, const char *name, int a2, int a3)
     return r;
 }
 
-/* @draft 0x111f18 us f_111f18
+/* @implements 0x111f18 us f_111f18
    WHAT IT DOES: Sets the flag word of the two stream voices 29 and 30 (4096 when flag is zero,
    else 1) and updates each. DRAFT. */
 void f_111f18(int unused, int flag)
@@ -210,10 +210,10 @@ void f_111f18(int unused, int flag)
 
     for (i = 0; i < 2; i++) {
         struct SasSlot *v = f_10d160(0, i + 29);
-        if (flag == 0)
-            v->m72 = 4096;
-        else
+        if (flag)
             v->m72 = 1;
+        else
+            v->m72 = 4096;
         f_10d228(i + 29);
     }
 }
