@@ -221,19 +221,21 @@ void f_111f18(int unused, int flag)
    and advancing the position. DRAFT. */
 int f_112aa8(int a0, int a1, int a2)
 {
-    int pos = D_291980.m84 + a1;
-    int wrap = pos - 0x20000;
+    struct StreamFile *f = &D_291980;
+    int size = 0x20000;
+    int pos = f->m84 + a1;
+    int wrap = pos - size;
     int first = a1 - wrap;
     int res;
 
-    if (0x20000 < pos) {
+    if (size < pos) {
         res = 0;
-        f_112b70(D_291980.m44, a0, first, a2, D_291980.m48);
-        f_112b70(D_291980.m44, 0, wrap, a2 + first, D_291980.m48);
+        f_112b70(f->m44, a0, first, a2, f->m48);
+        f_112b70(f->m44, 0, wrap, a2 + first, f->m48);
     } else {
-        res = f_112b70(D_291980.m44, a0, a1, a2, D_291980.m48);
+        res = f_112b70(f->m44, a0, a1, a2, f->m48);
     }
-    D_291980.m84 = wrap;
+    f->m84 = wrap;
     return res;
 }
 
