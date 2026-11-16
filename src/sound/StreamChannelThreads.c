@@ -71,7 +71,7 @@ struct SasSlot {
 struct StreamQuery {
     char m0[20];
     short m20;
-    char m22[6];
+    char m22[26];
 };
 
 extern struct VolState D_291a48;
@@ -94,7 +94,7 @@ int sceKernelDeleteThread(int thid);
 int sceIoOpenAsync(const char *file, int flags, int mode);
 void free(void *p);
 
-/* @draft 0x11198c us f_11198c
+/* @implements 0x11198c us f_11198c
    WHAT IT DOES: Starts a stream fade step: reads the stream's length and sets the volume
    state from it. DRAFT: not yet compared. */
 int f_11198c(int a0, int n, float vol)
@@ -166,39 +166,37 @@ int f_111b0c(void)
     return D_291a0c;
 }
 
-/* @draft 0x111b18 us f_111b18
+/* @implements 0x111b18 us f_111b18
    WHAT IT DOES: Opens the disc stream file name and resets its state; returns 0x80000000 if
    it is already open or fails to open. DRAFT. */
 int f_111b18(int unused, const char *name, int a2, int a3)
 {
-    int r = 0x80000000;
     int fd;
 
-    if (D_291980.m100 == 0) {
-        fd = sceIoOpenAsync(name, 1, 0);
-        D_291980.m104 = fd;
-        if (fd >= 0) {
-            D_291980.m16 = 1;
-            D_291980.m100 = 1;
-            D_291980.m108 = a2;
-            D_291980.m112 = a3;
-            D_291980.m152 = -1;
-            D_291980.m176 = 1.0f;
-            D_291980.m140 = 0;
-            D_291980.m84 = 0;
-            D_291980.m96 = 0;
-            D_291980.m88 = 0;
-            D_291980.m92 = 0;
-            D_291980.m116 = 0;
-            D_291980.m124 = 0;
-            D_291980.m128 = 0;
-            D_291980.m32 = 0;
-            D_291980.m132 = 0;
-            D_291980.m136 = 0;
-            r = 0;
-        }
-    }
-    return r;
+    if (D_291980.m100 != 0)
+        return 0x80000000;
+    fd = sceIoOpenAsync(name, 1, 0);
+    D_291980.m104 = fd;
+    if (fd < 0)
+        return 0x80000000;
+    D_291980.m16 = 1;
+    D_291980.m100 = 1;
+    D_291980.m108 = a2;
+    D_291980.m112 = a3;
+    D_291980.m152 = -1;
+    D_291980.m176 = 1.0f;
+    D_291980.m84 = 0;
+    D_291980.m96 = 0;
+    D_291980.m88 = 0;
+    D_291980.m92 = 0;
+    D_291980.m116 = 0;
+    D_291980.m124 = 0;
+    D_291980.m128 = 0;
+    D_291980.m32 = 0;
+    D_291980.m132 = 0;
+    D_291980.m136 = 0;
+    D_291980.m140 = 0;
+    return 0;
 }
 
 /* @implements 0x111f18 us f_111f18
