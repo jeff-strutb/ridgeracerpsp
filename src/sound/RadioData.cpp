@@ -498,10 +498,8 @@ int CData::f_10b6f0(Ent *a, Ent *b)
     return 1;
 }
 
-/* @draft 0x10b788 us _ZN5Radio5CData8f_10b788Ei
-   WHAT IT DOES: Returns the id of table i, or -1.
-   DRAFT: one word: retail adds the scaled index to the header pointer (addu v1,a3,v1), here
-   the operands are the other way round. */
+/* @implements 0x10b788 us _ZN5Radio5CData8f_10b788Ei
+   WHAT IT DOES: Returns the id of table i, or -1. */
 int CData::f_10b788(int i)
 {
     Header *h = m424;
@@ -513,7 +511,8 @@ int CData::f_10b788(int i)
         f_093f90("RadioData: GetTableNo Failed! Invalid Table Index:%d\n", i);
         return -1;
     }
-    return *(unsigned short *)((char *)h + i * 8 + 32);
+    Sub *s = &h->sub[i];
+    return s->id;
 }
 
 /* @draft 0x10b7f0 us _ZN5Radio5CData8f_10b7f0Ev
