@@ -5,13 +5,15 @@
 
 #include <string.h>
 
-/* A glyph record: its place in the font texture and its size; the advance width at +6. */
+/* A glyph record: the texture page it is drawn from, its texture coordinates (u, v), its
+   advance width (which is also its width in the texture) and its height. */
 struct Glyph {
-    short m0;
-    short m2;
-    short m4;
+    unsigned char page;
+    unsigned char m1;
+    unsigned short u;
+    unsigned short v;
     unsigned short width;
-    short m8;
+    unsigned short height;
 };
 
 /* The glyph table: digits, capitals and lower case letters first, then the symbols. Two runs
@@ -24,7 +26,8 @@ extern Glyph D_1d3a1c[];
 extern Glyph D_1d3a26[];
 extern Glyph D_1d3a30[];
 
-/* A text style: a word at +0, the glyph set offset at +4 and the two scales. */
+/* A text style: the texture table (one texture per glyph page, held as a word), the glyph
+   set offset and the two scales. */
 struct TextStyle {
     int m0;
     int set;
@@ -187,4 +190,245 @@ extern "C" int f_07bf78(TextStyle *t, unsigned int n, const char *s)
         }
     }
     return w;
+}
+
+/* The texture bank and the textured rectangle drawer. */
+extern "C" void *f_023198(int tex, int i);
+
+/* A screen position and a texture coordinate pair, as the rectangle drawer reads them. */
+struct Pos16 { unsigned short x, y, z; };
+struct UV16 { unsigned short u, v; };
+extern "C" void f_022400(const Pos16 *v, const UV16 *uv, unsigned int color);
+
+extern "C" int f_07d574(TextStyle *t, int x0, int y0, int z0, int u0, int v0, int x1, int y1,
+                        int z1, int u1, int v1, int tex, float r, float g, float b, float a);
+
+/* @draft 0x07c03c us f_07c03c
+   WHAT IT DOES: Draws an ASCII string in a text style at (x, y), one character cell of the
+   given pitch per glyph, tinted by a colour given as four 0 to 1 floats: digits, letters, a
+   two byte code introduced by 0x83 and the 0x81 code each draw their glyph scaled by the style
+   and centred in its cell; other characters are skipped. Alignment 2 ends the text at x and
+   3 centres it on x. Returns 0 when the style has no texture table or the string is empty,
+   otherwise 1.
+   Remaining difference: as in f_07d060, the alignment 3 block builds the 0.5 constant's
+   address half in v1 instead of v0 (local-alloc choice); every other word matches. */
+extern "C" int f_07c03c(TextStyle *t, int x, int y, int pitch, int align, const char *s,
+                        float r, float g, float b, float a)
+{
+    int ret = 0;
+    Glyph *gl;
+    unsigned int len;
+    unsigned int i;
+
+    if (t->m0 == 0)
+        return ret;
+    len = strlen(s);
+    gl = 0;
+    if (len == 0)
+        return ret;
+    if (align == 2)
+        x -= pitch * len;
+    else if (align == 3)
+        x -= (int)((float)(int)(pitch * len) * 0.5f);
+    for (i = 0; i < len; i++) {
+        unsigned char c = s[i];
+        if ((unsigned char)(c - '0') < 10)
+            gl = &D_1d33a0[c - '0' + t->set];
+        else if ((unsigned char)(c - 'A') < 26)
+            gl = &D_1d33a0[c - 'A' + 10 + t->set];
+        else if ((unsigned char)(c - 'a') < 26)
+            gl = &D_1d33a0[c - 'a' + 36 + t->set];
+        else if (c == 0x83) {
+            i++;
+            c = s[i];
+            gl = &D_1d33a0[c - 2 + t->set];
+        } else if (c == 0x81) {
+            i++;
+            gl = &D_1d33a0[149 + t->set];
+        }
+        if (gl) {
+            float w = gl->width * t->sx;
+            int x0 = x + (int)(((float)pitch - w) * 0.5f);
+            f_07d574(t, x0, y, -1, gl->u, gl->v, x0 + (int)w, y + (int)(gl->height * t->sy), -1,
+                     gl->u + gl->width, gl->v + gl->height, ((int *)t->m0)[gl->page], r, g, b, a);
+            x += pitch;
+            gl = 0;
+        }
+    }
+    ret = 1;
+    return ret;
+}
+
+/* @draft 0x07c344 us f_07c344
+   WHAT IT DOES: Draws an ASCII string in a text style at (x, y) with proportional spacing,
+   tinted by a colour given as four 0 to 1 floats: digits and letters are drawn scaled by the
+   style and the pen advances by each one's scaled width; other characters are skipped.
+   Alignment 2 ends the text at x and 3 centres it on x (using the measured width). Returns 0
+   when the style has no texture table or the string is empty, otherwise 1.
+   Remaining difference: global-alloc gives x s2 and the alignment/index s3 (retail the
+   reverse), and in both alignment blocks local-alloc picks the FP registers in the other
+   order (retail keeps the measured width in f0 and truncates in place). */
+extern "C" int f_07c344(TextStyle *t, int x, int y, int align, const char *s, float r, float g,
+                        float b, float a)
+{
+    int ret = 0;
+    Glyph *gl;
+    unsigned int len;
+    unsigned int i;
+
+    if (t->m0 == 0)
+        return ret;
+    len = strlen(s);
+    gl = 0;
+    if (len == 0)
+        return ret;
+    if (align == 2) {
+        x -= (int)(f_07ba68(t, s) * t->sx);
+    } else if (align == 3) {
+        x -= (int)((int)(f_07ba68(t, s) * t->sx) * 0.5f);
+    }
+    for (i = 0; i < len; i++) {
+        unsigned char c = s[i];
+        if ((unsigned char)(c - '0') < 10)
+            gl = &D_1d33a0[c - '0' + t->set];
+        else if ((unsigned char)(c - 'A') < 26)
+            gl = &D_1d33a0[c - 'A' + 10 + t->set];
+        else if ((unsigned char)(c - 'a') < 26)
+            gl = &D_1d33a0[c - 'a' + 36 + t->set];
+        if (gl) {
+            f_07d574(t, x, y, -1, gl->u, gl->v, x + (int)(gl->width * t->sx),
+                     y + (int)(gl->height * t->sy), -1, gl->u + gl->width, gl->v + gl->height,
+                     ((int *)t->m0)[gl->page], r, g, b, a);
+            x += (int)(gl->width * t->sx);
+            gl = 0;
+        }
+    }
+    ret = 1;
+    return ret;
+}
+
+/* @draft 0x07d060 us f_07d060
+   WHAT IT DOES: Draws a string of glyph codes (at most n, ending at 0) in a text style at
+   (x, y), one character cell of the given pitch per code, tinted by a colour given as four 0
+   to 1 floats. Alignment 2 ends the text at x and 3 centres it on x. Each glyph is scaled by
+   the style and centred in its cell; code 255 is an empty cell. Returns 0 when the style has
+   no texture table or the string is empty, otherwise 1.
+   Remaining difference: in the alignment 3 block the 0.5 constant's address half is built in
+   v1 instead of v0 (local-alloc gives it v1 after update_equiv_regs moves the load next to its
+   use); every other word matches. */
+extern "C" int f_07d060(TextStyle *t, int x, int y, int pitch, int align, unsigned int n,
+                        const char *s, float r, float g, float b, float a)
+{
+    int ret = 0;
+    Glyph *gl;
+    unsigned int len;
+    unsigned int i;
+
+    if (t->m0 == 0)
+        return ret;
+    gl = 0;
+    for (len = 0; len < n; len++) {
+        if (s[len] == 0)
+            break;
+    }
+    if (len == 0)
+        return ret;
+    if (align == 2)
+        x -= pitch * len;
+    else if (align == 3)
+        x -= (int)((float)(int)(pitch * len) * 0.5f);
+    for (i = 0; i < len; i++) {
+        unsigned char c = s[i];
+        if (c != 0 && c != 0xff)
+            gl = &D_1d33a0[c + t->set];
+        else if (c == 0xff)
+            x += pitch;
+        if (gl) {
+            float w = gl->width * t->sx;
+            int x0 = x + (int)(((float)pitch - w) * 0.5f);
+            f_07d574(t, x0, y, -1, gl->u, gl->v, x0 + (int)w, y + (int)(gl->height * t->sy), -1,
+                     gl->u + gl->width, gl->v + gl->height, ((int *)t->m0)[gl->page], r, g, b, a);
+            x += pitch;
+            gl = 0;
+        }
+    }
+    ret = 1;
+    return ret;
+}
+
+/* @draft 0x07d2d8 us f_07d2d8
+   WHAT IT DOES: Draws a string of glyph codes (at most n, ending at 0) in a text style at
+   (x, y) with proportional spacing, tinted by a colour given as four 0 to 1 floats: each
+   glyph is scaled by the style and the pen advances by its scaled width; code 255 advances
+   16. Alignment 2 ends the text at x and 3 centres it on x (using the measured width).
+   Returns 0 when the style has no texture table or the string is empty, otherwise 1.
+   Remaining difference: in both alignment blocks local-alloc picks the FP registers in the
+   other order (retail keeps the measured width in f0 and truncates in place); the loop and
+   every other word match. */
+extern "C" int f_07d2d8(TextStyle *t, int x, int y, int align, unsigned int n, const char *s,
+                        float r, float g, float b, float a)
+{
+    int ret = 0;
+    Glyph *gl;
+    unsigned int len;
+    unsigned int i;
+
+    if (t->m0 == 0)
+        return ret;
+    gl = 0;
+    for (len = 0; len < n; len++) {
+        if (s[len] == 0)
+            break;
+    }
+    if (len == 0)
+        return ret;
+    if (align == 2) {
+        x -= (int)(f_07bf78(t, n, s) * t->sx);
+    } else if (align == 3) {
+        x -= (int)((int)(f_07bf78(t, n, s) * t->sx) * 0.5f);
+    }
+    for (i = 0; i < len; i++) {
+        unsigned char c = s[i];
+        if (c != 0 && c != 0xff)
+            gl = &D_1d33a0[c + t->set];
+        else if (c == 0xff)
+            x += 16;
+        if (gl) {
+            f_07d574(t, x, y, -1, gl->u, gl->v, x + (int)(gl->width * t->sx),
+                     y + (int)(gl->height * t->sy), -1, gl->u + gl->width, gl->v + gl->height,
+                     ((int *)t->m0)[gl->page], r, g, b, a);
+            x += (int)(gl->width * t->sx);
+            gl = 0;
+        }
+    }
+    ret = 1;
+    return ret;
+}
+
+/* @implements 0x07d574 us f_07d574
+   WHAT IT DOES: Draws one textured rectangle from its two corners (position and texture
+   coordinates) with the given texture, tinted by a colour given as four 0 to 1 floats that
+   are packed into one 32-bit colour. Returns 1. */
+extern "C" int f_07d574(TextStyle *t, int x0, int y0, int z0, int u0, int v0, int x1, int y1,
+                        int z1, int u1, int v1, int tex, float r, float g, float b, float a)
+{
+    Pos16 p[2];
+    UV16 uv[2];
+    unsigned int c;
+
+    c = ((unsigned int)(r * 255.0f) & 0xff) | (((unsigned int)(g * 255.0f) & 0xff) << 8) |
+        (((unsigned int)(b * 255.0f) & 0xff) << 16) | ((unsigned int)(a * 255.0f) << 24);
+    f_023198(tex, 0);
+    p[0].z = z0;
+    p[1].z = z1;
+    p[0].x = x0;
+    p[0].y = y0;
+    p[1].x = x1;
+    p[1].y = y1;
+    uv[0].u = u0;
+    uv[0].v = v0;
+    uv[1].u = u1;
+    uv[1].v = v1;
+    f_022400(p, uv, c);
+    return 1;
 }
