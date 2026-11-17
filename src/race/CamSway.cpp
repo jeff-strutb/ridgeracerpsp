@@ -124,12 +124,10 @@ void CamSway::f_0f411c(float t)
     m200 = sum.y;
 }
 
-/* @draft 0x0f4290 us f_0f4290
+/* @implements 0x0f4290 us f_0f4290
    WHAT IT DOES: The eased ramp of x over [0, 1]: half a sine wave from 0 to 1, x clamped to
-   the ramp.
-   Remaining difference: retail keeps the clamped value in the argument register (f12, the
-   subtraction made in place) and loads pi into f0; here the value goes to f0 and pi to f12.
-   Writing the subtraction in place on the parameter gives the same code. */
+   the ramp. The scaling by pi is made in place on the clamped value, which keeps it in the
+   argument register (f12). */
 extern "C" float f_0f4290(float x)
 {
     float d = x - 0.5f;
@@ -137,5 +135,6 @@ extern "C" float f_0f4290(float x)
         d = 0.5f;
     if (d < -0.5f)
         d = -0.5f;
-    return f_099fc4(d * 3.1415927f) * 0.5f + 0.5f;
+    d *= 3.1415927f;
+    return f_099fc4(d) * 0.5f + 0.5f;
 }
