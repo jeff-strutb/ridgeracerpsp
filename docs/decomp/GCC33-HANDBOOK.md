@@ -289,6 +289,9 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | A small struct returned in `v0`/`v1` from a leaf with an unused 32-byte frame | a second local copied before the return: `Mark m, r; ...; r = m; return r;` (C) | f_0996b0 |
 | `li vX,300` then `slt vX,vX,vY` for a greater-than test against a constant (not `slti 301`) | hold the constant in a local before the test: `int wait = 300; m364++; if (m364 > wait)` | f_091634 |
 | A result returned through a saved register (`move v0,s0`) with `move s0,zero` in a branch slot | separate `return 0;` / `return h + 1;` statements; a single `int r = 0; ... return r;` drops the redundant zero and moves the result to v1 | f_091634 |
+| An implicit `operator=` that loads one field only after another field's store (but not a third) | the two adjacent fields as **one array member** (`int m12[2]`). Its block copy loads one element only after storing the other, while separate fields stay apart (nonoverlapping component refs). | 0x01be44 (GameSaveData) |
+| A pointer formed in a saved register before a call and used after it | compute the pointer in the source **before the call** (`Vec4 *dt = (Vec4 *)d->m[3]; f(...);`) | 0x0a22cc, 0x0a318c (RotationMath) |
+| A constructor call whose register arguments are loaded before its stacked one | read the elements through an **inline accessor** (`At(i, j)`) | 0x09e4b8, 0x0a0944 (Matrix33/34) |
 
 **Callee prototypes are behaviour.** This includes the v0 versus v1 choice for later temporaries (f_01c2cc, f_01c648). Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
 
