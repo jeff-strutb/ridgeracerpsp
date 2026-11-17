@@ -1805,12 +1805,12 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                 q = -q;
             v2064.a[1] = v2064.a[1] * q;
         }
-        float vlen = __builtin_sqrtf(SQ3(v2064.a[0], v2064.a[1], v2064.a[2]));
         v2096.a[0] = P->x - Q->x;
         v2096.a[1] = P->y - Q->y;
         v2096.a[2] = P->z - Q->z;
         v2096.a[3] = 1.0f;
         D = v2096;
+        float vlen = __builtin_sqrtf(SQ3(v2064.a[0], v2064.a[1], v2064.a[2]));
         if (__builtin_sqrtf(SQ3(D.a[0], D.a[1], D.a[2])) < vlen) {
             float dl = __builtin_sqrtf(SQ3(D.a[0], D.a[1], D.a[2]));
             float vl = __builtin_sqrtf(SQ3(v2064.a[0], v2064.a[1], v2064.a[2]));
