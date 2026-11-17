@@ -1008,7 +1008,9 @@ void f_0160bc()
 /* @draft 0x0160fc us f_0160fc
    WHAT IT DOES: Asks the rules object for its result; none (0) when it has none.
    Remaining difference: retail tests with bnez and fills the slot with the result copy,
-   then zeroes on the fall through; this build tests with beqz (the two moves swap). */
+   then zeroes on the fall through; this build tests with beqz (the two moves swap). Retail's
+   shape is x = r; if (r == 0) x = 0; the positive 'if (r) return r; return 0;' is worse
+   (7 words, 4 bytes longer). */
 RaceResult *f_0160fc()
 {
     return D_1ee47c->Result();

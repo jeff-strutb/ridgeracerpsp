@@ -165,7 +165,9 @@ void f_03702c(void)
    valid.
    Remaining difference (4 words): in the second loop retail stores the settings pair to its
    two stack copies in the first loop's order (high words, then the low word of the copy, the
-   variable's low word in the branch slot); here the two copies come out the other way. */
+   variable's low word in the branch slot); here the two copies come out the other way
+   (retail sw 4, 20, 16, slot 0; here 20, 4, 0, slot 16). Unexamined lead: stack slot reuse
+   between the two loops' Pair temporaries may have swapped which copy lives at 0 and 16. */
 void f_037108(void)
 {
     int i;

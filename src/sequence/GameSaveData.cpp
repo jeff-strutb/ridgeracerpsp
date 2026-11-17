@@ -1121,7 +1121,8 @@ int MemoryStick::f_01b3b8()
    the one block, so it is local, with ld in s4 ahead of it) and global-alloc then gives p
    (set twice, so global) s6. Splitting p into one variable per icon makes them local and
    fixes the slot (s6) but then p takes s4 ahead of ld; retail's mix (ld s4, p s5, slot s6)
-   needs the slot to be a global-alloc pseudo, and what makes it one is not found. */
+   needs the slot to be a global-alloc pseudo, and what makes it one is not found ('slot += 200;'
+   at the top compiles identically: the add is folded into one set). */
 void MemoryStick::f_01b4e8(int slot)
 {
     char *ld = D_1dd6b0;
@@ -1360,7 +1361,11 @@ int MemoryStick::f_01bc5c()
    member grouping that gives that order is not found. Retail's order means the load of +16
    depends on the store to +12 while +20 does not; with three int fields all are provably
    disjoint. Making +12/+16 a SavedPair member is wrong: it makes f_01959c's loads disjoint
-   from its D_1d1a94 stores (retail keeps them dependent) and blocks the +20 load too. */
+   from its D_1d1a94 stores (retail keeps them dependent) and blocks the +20 load too.
+   Retail's full order (lw 12, lw 20, sw 8, sw 12, lw 16, sw 20, sw 16) also needs the +20 store
+   free of the +16 store, so +16 conflicts with the +12 store (true dependence) but not with
+   +20 (output): an asymmetric alias, not a plain type change. An intermediate base holding m12
+   is ruled out: the typeinfo at 0x1a1480 is single inheritance with CSaveDataBase. */
 
 /* @implements 0x01c1dc us _ZN8Sequence13CGameSaveData4SizeEv
    (the compiler emits it outside .text, in a link once section)

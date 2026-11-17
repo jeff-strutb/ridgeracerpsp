@@ -106,7 +106,7 @@ struct CSun {
     int m48;
 };
 extern "C" {
-void f_0350cc(Flare *f, void *sub, int a, int b);
+int f_0350cc(Flare *f, void *sub, const void *pos, const void *ofs, float mark, float alpha);
 void f_035660(Flare *f, void *sub);
 void f_0356b0(CSun *s, void *view, int w, int h, int n);
 void f_0357cc(CSun *s);
@@ -128,7 +128,7 @@ public:
     void f_031cbc(View *view);
     void f_031d4c();
     void f_031d90(int type, const Vec4 *pos, const Vec4 *vel);
-    void f_031dac(int i, int j, int a, int b);
+    int f_031dac(int i, int j, const void *pos, const void *ofs, float mark, float alpha);
     void f_031dfc(int i, int j);
     void f_031e44();
     void f_031e4c(int a, const Vec4 *pos, int b);
@@ -163,7 +163,11 @@ void CRaceEffects::f_031c04()
 }
 
 /* @draft 0x031c40 us f_031c40
-   WHAT IT DOES: Draws the sunshine flares within 200 units above or below the camera height. */
+   WHAT IT DOES: Draws the sunshine flares within 200 units above or below the camera height.
+   Remaining difference: argument moves after f_0216d8: retail f14, f13, f12, a1, a0 (a2 in the
+   slot), the reverse of expand order; here f14, a1, f12, f13, a0. Verbose sched2: the moves of
+   a1, f12, f13 tie on priority (9) and dependents (5) and go by luid; prototypes of all three
+   callees checked against their retail bodies. Retail's order needs a different RTL order. */
 void CRaceEffects::f_031c40(View *view)
 {
     float lo = view->m704 - 200.0f;
@@ -205,12 +209,13 @@ void CRaceEffects::f_031d90(int type, const Vec4 *pos, const Vec4 *vel)
     f_032138(&particles, type, pos, vel);
 }
 
-/* @draft 0x031dac us f_031dac
-   WHAT IT DOES: Sets up sunshine flare j of group i. */
-void CRaceEffects::f_031dac(int i, int j, int a, int b)
+/* @implements 0x031dac us f_031dac
+   WHAT IT DOES: Lays a skid mark segment on track j of car i's group: passes the position,
+   direction and the two floats through to f_0350cc and returns its result. */
+int CRaceEffects::f_031dac(int i, int j, const void *pos, const void *ofs, float mark, float alpha)
 {
     Group *g = sun.m44 + i;
-    f_0350cc(&g->f[j], sun.m24, a, b);
+    return f_0350cc(&g->f[j], sun.m24, pos, ofs, mark, alpha);
 }
 
 /* @implements 0x031dfc us f_031dfc

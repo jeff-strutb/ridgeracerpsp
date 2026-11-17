@@ -1192,7 +1192,10 @@ void CCarModel::f_01f234(int a)
    Remaining difference: the two lui of the half size globals are issued in the other order
    (retail HI(D_23c0c4) first). sched2 tie on luid: local-alloc's update_equiv_regs moves each
    single-use HIGH next to its store, so the chain is hi0 st0 hi4 st4 and hi0 wins; a source
-   order giving hi4 first and still st0 before the call is not found. */
+   order giving hi4 first and still st0 before the call is not found. Retail's sched2 input must
+   have luid hi4 < hi0 with st0 < st4 (equal priorities, no store dependence), so HI(D_23c0c4)
+   was emitted ahead of the w store and not moved by update_equiv_regs (both are separate
+   .bss symbols in retail's relocations, so not one struct). */
 void CCarModel::f_01f264(int a)
 {
     f_028e9c((char *)&model + 64);

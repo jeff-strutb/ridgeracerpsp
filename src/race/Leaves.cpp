@@ -217,7 +217,10 @@ void CLeaves::f_035ff8()
    leaf above the ground loads a transform (spun, stretched to 190 by 532, placed at the leaf)
    and draws the leaf quad in the leaf's colour.
    Remaining difference: the hoisted high halves of the 190 and 532 constants swap s7 and s8
-   (2 words); everything else matches. */
+   (2 words); everything else matches. global-alloc gives s7 to the higher-priority HIGH; equal
+   refs, so the shorter live range wins, i.e. the one whose f12/f14 load comes first in sched1's
+   output. Retail's needs the f14 (532) load first: the reversed-argument order also seen in
+   RaceEffects f_031c40 and DjEvent f_08d484. */
 unsigned int *CLeaves::f_0362a8(unsigned int *p)
 {
     p = f_0249a0(D_240620, p);

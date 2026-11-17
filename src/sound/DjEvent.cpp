@@ -134,7 +134,11 @@ CDjEvent::~CDjEvent()
    checks, shows the time taken as a percentage of the frame ("IW_CPU"), and updates the log.
    Returns 0.
    Draft: three words differ; retail sets up the print call's colour and format registers
-   before the buffer address (an argument order tie). */
+   before the buffer address (an argument order tie). The three lui (t0 colour, t1 format, a0
+   buffer) tie in sched2 and go by luid; update_equiv_regs puts each single-use HIGH just before
+   its argument register set, which expand emits a0 first, so retail's sched2 input had the
+   t0/t1 HIGHs ahead of a0's. The same reversed-argument order shows in RaceEffects f_031c40;
+   both calls take a call result (here the varargs double from f_16401c). */
 int CDjEvent::f_08d484()
 {
     unsigned int t0 = sceKernelGetSystemTimeLow();

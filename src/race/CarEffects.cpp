@@ -480,13 +480,12 @@ extern "C" unsigned int *f_033be0(CarFxMgr *m, CarFx *e, Spark *s, unsigned int 
     return dl;
 }
 
-/* @draft 0x033e18 us f_033e18
+/* @implements 0x033e18 us f_033e18
    WHAT IT DOES: Fires a backfire flash on a car (restarts its animation) unless its nitro is
-   burning. 
-   Remaining: retail adds the element offset to the base (addu v0,v0,a2); this source adds base plus offset. */
+   burning. */
 extern "C" void f_033e18(CarFxMgr *m, int i)
 {
-    CarFx *e = &m->cars[i];
+    CarFx *e = (CarFx *)(i * (int)sizeof(CarFx) + (int)m->cars);
     if (!e->nitroOn)
         e->backfire = 0;
 }
@@ -577,13 +576,13 @@ extern "C" unsigned int *f_033e40(CarFxMgr *m, CarFx *e, View *view, unsigned in
     return dl;
 }
 
-/* @draft 0x034380 us f_034380
+/* @implements 0x034380 us f_034380
    WHAT IT DOES: Turns a car's nitro flames on at full size; when they were off, clears its
-   flame particles and stops any backfire. 
-   Remaining: retail loads the record base before the index shift and adds offset plus base; two words of order. */
+   flame particles and stops any backfire. */
 extern "C" void f_034380(CarFxMgr *m, int i)
 {
-    CarFx *e = &m->cars[i];
+    CarFx *cars = m->cars;
+    CarFx *e = (CarFx *)(i * (int)sizeof(CarFx) + (int)cars);
     int j;
 
     e->nitro = 1.0f;

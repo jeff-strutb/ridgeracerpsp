@@ -885,7 +885,7 @@ extern "C" void f_0a9248(CarPhys *p)
 
 /* @draft 0x0af064 us f_0af064
    WHAT IT DOES: Blends the four wheel records of the car p toward those of q by the factor t: a negative surface index is taken from q, the wheel angle moves along the shortest turn (f_0af380) and is wrapped (f_0af478), the surface id is copied and the wheel height is interpolated linearly.
-   Remaining difference: retail loads p's height before q's for the final blend; here q's comes first. */
+   Remaining difference: retail loads p's height before q's for the final blend; here q's comes first. Verbose sched1: both loads tie on priority (16) and dependents (4); q's wins on INSN_REG_WEIGHT because it is the last use of q+4i (REG_DEAD), while p+4i lives on for the stores. Retail's order needs p's load to kill its base, or q+4i to live past it. */
 extern "C" void f_0af064(CarPhys *p, CarPhys *q, float t)
 {
     for (int i = 0; i < 4; i++) {
@@ -1461,7 +1461,7 @@ int f_0af550(const int *a);
 
 /* @draft 0x0a8a60 us f_0a8a60
    WHAT IT DOES: Places the car on the course line at its course position: interpolates the two course points either side of it (the next one wrapping to the first) for the ground position and height, sets the heading to the interpolated point heading (shortest turn, wrapped), and moves the position sideways by the car's lateral offset turned by that heading.
-   Remaining difference: two words: sched1 moves the fraction (s -= n) up from the join block ahead of the point address add, so dbr fills the branch slot with the add; retail has the add first and the subtraction in the slot. A separate fraction variable or the subtraction before the if is worse. */
+   Remaining difference: two words: sched1 moves the fraction (s -= n) up from the join block ahead of the point address add, so dbr fills the branch slot with the add; retail has the add first and the subtraction in the slot. A separate fraction variable or the subtraction before the if is worse (s -= n between a and the if: 23 words). Verbose sched1: the cvt and sub are interblock (useful) motions from the join block with priority 101/97, so the sub is picked at t=15 ahead of the sll/addu (priority 1/0) and sched2 then breaks the tie by luid; retail needs the address add ahead of the sub in sched1's output. */
 extern "C" void f_0a8a60(CarPhys *p)
 {
     float pos[4];
