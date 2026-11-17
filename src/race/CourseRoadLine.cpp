@@ -851,37 +851,32 @@ extern "C" void f_0fc138(MapOwner *o)
 /* @draft 0x0fc1fc us f_0fc1fc
    WHAT IT DOES: When the car block is in state 1 and idle, sets its value to plus or minus 0.9
    from the sign of its two bounds' sum and a latch, then calls the owner's virtual step with 1.
-   Not yet byte-exact. */
+   Remaining difference: after setting the latch, retail tests it again (li a2,1; beqz a2) where
+   jump threading here goes straight to the 0.9 store; s also takes f2 here, f1 in retail. */
 extern "C" void f_0fc1fc(MapOwner *o)
 {
     CarBlock *c = &o->car;
-    float s, v;
+    float s;
+    int latch;
 
     if (c->m556 != 1)
         return;
     if (c->m40 || c->m44)
         return;
     s = c->m92 + c->m96;
-    if (!(s < 0.0f)) {
-        if (c->m560 == 1) {
-            if (0.2f < s) {
-                c->m560 = 0;
-                v = -0.9f;
-            } else {
-                v = 0.9f;
-            }
-        } else {
-            v = c->m560 ? 0.9f : -0.9f;
+    latch = c->m560;
+    if (s < 0.0f) {
+        if (latch == 0 && s < -0.2f) {
+            c->m560 = 1;
+            latch = 1;
         }
     } else {
-        int a2 = c->m560;
-        if (a2 == 0 && s < -0.2f) {
-            a2 = 1;
-            c->m560 = 1;
+        if (latch == 1 && 0.2f < s) {
+            c->m560 = 0;
+            latch = 0;
         }
-        v = a2 ? 0.9f : -0.9f;
     }
-    c->m16 = v;
+    c->m16 = latch ? 0.9f : -0.9f;
     ((void (**)(void *, int))o->vt)[30](o, 1);
 }
 
