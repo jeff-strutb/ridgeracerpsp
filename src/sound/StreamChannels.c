@@ -167,18 +167,24 @@ int f_111160(int ch, int a1, int a2)
 }
 
 /* @draft 0x111228 us f_111228
-   WHAT IT DOES: Marks a channel state 2 as 3 (all channels when ch is -1, which sets every channel to 3). */
+   WHAT IT DOES: Marks a channel state 2 as 3 (all channels when ch is -1, which sets every channel to 3). 
+   Remaining difference: block order only. Retail keeps the state 3 store on the fall-through
+   of a bne and puts the all-channels loop last; here the store block (state == 2) is placed
+   out of line, as the equality-compare prediction makes it unlikely. */
 int f_111228(int ch)
 {
     int i;
-    int r = 0x8000000c;
-    if (ch == -1) {
+    int r;
+
+    if (ch != -1) {
+        r = 0x8000000c;
+        if (D_291980[ch].state != 2)
+            return r;
+        D_291980[ch].state = 3;
+        r = 0;
+    } else {
         for (i = 0; i < D_291a44; i++)
             D_291980[i].state = 3;
-        return 0;
-    }
-    if (D_291980[ch].state == 2) {
-        D_291980[ch].state = 3;
         r = 0;
     }
     return r;
