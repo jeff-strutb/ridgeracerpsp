@@ -271,7 +271,8 @@ void CRidgeMycar::f_0bfc40()
    WHAT IT DOES: Builds the car's direction vector from its position (y relative to the
    ground height), scales it to length 1000, normalizes its angle and stores both.
    DIFFERS: the three reloads before the final stores: retail loads z, the angle, then x;
-   this build loads z, x, then the angle. Every store order was tried. */
+   this build loads z, x, then the angle. Every store order was tried (handbook row 159's
+   "retail's first store last" order, x, z, a, gives loads x, z, a with the x store first). */
 void CRidgeMycar::f_0bfc48()
 {
     Vec4 v;
@@ -383,7 +384,11 @@ void CRidgeMycar::f_0bff90()
    the resulting speed factor, capped at 2.
    DIFFERS: two spots: retail multiplies the falling factor straight into the result register
    (f4) and stores the hold time's zero floor from f4; this build multiplies through f0 and
-   stores sw zero. If-chains, declaration orders and split multiplies do not fix it. */
+   stores sw zero. If-chains, declaration orders and split multiplies do not fix it.
+   Deciding pass for the store: gcse's GLOBAL CONST-PROP replaces add with 0.0 in the case 2
+   store (the -dG dump says so); retail's store keeps the register, so in retail add's zero
+   set was not an available constant set at case 2 (cprop only records a reg = const set whose
+   reg is not set again later in the same block). */
 void CRidgeMycar::f_0bff98()
 {
     Phys *p = &phys;
