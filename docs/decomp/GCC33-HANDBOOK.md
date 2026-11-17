@@ -316,6 +316,9 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 - **A loop guard recomputed instead of a spilled comparison result**: an `int` loop start assigned to a `short` counter (`int istart; i = istart;`) is a sign extension, which gcse's copy propagation cannot see through, so the two guards are not redundant. f_0b2f18.
 - **A strength-reduced, spilled `&o->arr[i]` pointer that retail does not have**: read the element into a local before adding an offset to it (`e = o->m8[i]; v = (char *)e + 8 * s;`); with the offset arithmetic between the address and the load, loop.c sees a longer lifetime and hoists `i*4`/`o+i*4` out of the inner loop. f_0b2f18.
 
+- **`const` globals are not readonly memory to g++ 3.3.** Loads from an `extern const` array come out `mem/s`, never `/u` (`lang_hooks.honor_readonly` is off for C/C++), so cse drops them at every call and gcse treats them as clobbered by calls. A value retail reuses across calls must therefore be in a local (or a pointer) in the source. Seen on CMapEnv::Load (0x0d8270).
+- **Which pseudo gets a saved register** is global.c's ranking `floor_log2(uses) * freq / live length` (highest first; `;; N regs to allocate:` in the `.greg` dump lists the order, `Register N used U times across L insns` in `.lreg` gives the inputs). Compare those numbers for the two competing pseudos before changing source.
+
 ## Open residue (not understood; do not guess)
 
 - **f_0922a0.** Solved 2026-11-16: see the symptom table (ternary into a result variable).
