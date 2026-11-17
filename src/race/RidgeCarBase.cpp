@@ -324,19 +324,19 @@ extern "C" void f_0b9098(float *dst, float *src)
     FLT(dst, 12) = 0.0f;
 }
 
-/* @draft 0x0b9c78 us f_0b9c78
+/* @implements 0x0b9c78 us f_0b9c78
    WHAT IT DOES: Takes a vector from the car's field at +1856 scaled by 0.06 and its length
-   along the car's heading, and stores the sign-corrected value at +10112 when it is larger.
-   Remaining difference: not yet compared; the operand order is a guess. */
+   along the car's heading, and stores the sign-corrected value at +10112 when it is larger. */
 extern "C" void f_0b9c78(void *cp)
 {
     char *c = (char *)cp;
     struct V4 {
         float x, y, z, w;
     };
+    V4 v;
     V4 out;
     f_0a5ea4(&out, c + 1856, 0.06f);
-    V4 v = out;
+    v = out;
     float f1 = f_0a65c4(&v);
     if (FLT(c, 1896) < 0.0f)
         f1 = -f1;
@@ -403,11 +403,10 @@ extern "C" void f_0bb350(void *cp)
     INT(c, 176) = 0;
 }
 
-/* @draft 0x0bb40c us f_0bb40c
+/* @implements 0x0bb40c us f_0bb40c
    WHAT IT DOES: Stores the pointer to a 20 float table in the car, keeps the largest of its
-   values at +152, and stores that value (at least 2.0) at +160.
-   Remaining difference: not yet compared. Guesses in the loop's operand order and the
-   dead store to +160. */
+   values at +152, stores that value over 15 at +160 and then overwrites it with the value
+   capped at 2.0, which it returns. */
 extern "C" float f_0bb40c(void *cp, float *v)
 {
     char *c = (char *)cp;
@@ -423,7 +422,7 @@ extern "C" float f_0bb40c(void *cp, float *v)
     }
     float m = FLT(c, 152);
     FLT(c, 160) = m / 15.0f;
-    float r = m < 2.0f ? 2.0f : m;
+    float r = m < 2.0f ? m : 2.0f;
     FLT(c, 160) = r;
     return r;
 }
