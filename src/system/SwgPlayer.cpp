@@ -5062,7 +5062,8 @@ void f_05fbdc(void *unused, char *s) {
 }
 
 /* @draft 0x05fc60 us f_05fc60
-   WHAT IT DOES: allocates an 8-byte object via f_05db08 holding the D_1a4480 vtable and a zero, wraps it in a Holder via f_05daa4, and inserts the keyed entry into the tree with f_05e394. */
+   WHAT IT DOES: allocates an 8-byte object via f_05db08 holding the D_1a4480 vtable and a zero, wraps it in a Holder via f_05daa4, and inserts the keyed entry into the tree with f_05e394.
+   Remaining difference: retail has a second landing pad (move s0,a0; j to the _Unwind_Resume) for an empty cleanup region over the calls made before h is live (f_05db08/f_05daa4). An empty-destructor member in Holder adds a region around the inlined ~Holder body too (extra pad), and a guard local in an inline Holder ctor costs a 16-byte stack slot; the right construct is not yet known. f_05fbdc has the same difference. */
 void f_05fc60(void *unused, char *s) {
     int *p = (int *)f_05db08(8);
     p[0] = (int)D_1a4480;
@@ -5767,7 +5768,8 @@ void f_0454d4(int *p) {
 }
 
 /* @draft 0x04d224 us f_04d224
-   WHAT IT DOES: counts entries whose id at +128 equals the clip id for a1, stores the count through out if given, and returns the index of the first match or -1. */
+   WHAT IT DOES: counts entries whose id at +128 equals the clip id for a1, stores the count through out if given, and returns the index of the first match or -1.
+   Remaining difference: retail initialises the index from the count's register (move v1,a2, with cnt = 0 scheduled before a1 = v0); ours sets both to $0 independently. cse folds a source copy (i = cnt) back to the constant, so the copy must come from a later pass; not found. */
 int f_04d224(char *s, int a1, int *out) {
     int cnt = 0, found = -1, i;
     void *o = *(void **)s;

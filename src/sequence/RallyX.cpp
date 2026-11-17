@@ -483,7 +483,8 @@ void f_02e704(void)
    WHAT IT DOES: Counts the fuel left into the score at the end of a round, 160 fuel units (8
    points) a frame. When asked to start, first remembers the gauge and the final score so the
    count can be skipped. Returns whether there was fuel left to count; with none, restores the
-   remembered gauge and the final score. */
+   remembered gauge and the final score.
+   Remaining difference: entry block order. Retail sched1 puts counting = 0 ahead of the two %hi loads that ce2 (if-case-2) moves up from the start == 0 edge block, so dbr fills the beqz slot with lui t1; ours has the zero last (all three are priority-0 ties in sched1, picked last-LUID first), so the zero lands in the slot. Needs the zero after the hoisted %hi loads in the block, or a priority above 0; the source shape for that is not found. */
 int f_02e8e8(int start)
 {
     int counting = 0;
