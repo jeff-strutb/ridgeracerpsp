@@ -254,7 +254,8 @@ int CourseAreas::f_0e23d0(float x, float z)
    WHAT IT DOES: Returns the road point nearest a position among those from a to b (going
    round the ring), or -1.
    Remaining difference: 4/68 words, the same load order residue as f_0e2558 (z read before
-   x gives retail's FPRs; sched2 keeps x's load first where retail issues z's). */
+   x gives retail's FPRs; sched2 keeps x's load first where retail issues z's). The cause
+   found from the dumps is recorded at f_0e2558 and applies here unchanged (2026-11-16). */
 int CourseAreas::f_0e2448(int a, int b, float x, float z)
 {
     float min = -1.0f;
@@ -283,7 +284,16 @@ int CourseAreas::f_0e2448(int a, int b, float x, float z)
    The skip tests are separate continues (a single || is or-ed into one branch). z is read
    before x so that the x load is the base register's last use: sched1's register-weight
    tie-break then issues it first and local-alloc gives x $f0, as in retail. Retail's final
-   order is z load, x load, z sub, x sub; here sched2 keeps sched1's x-first order. */
+   order is z load, x load, z sub, x sub; here sched2 keeps sched1's x-first order.
+   Diagnosis (sched1/sched2 -fsched-verbose dumps, 2026-11-16): sched1 emits x load, z load,
+   x sub, z sub; sched2 has no rank difference between the loads (same priority, both
+   independent of the c.lt.s) and keeps that order. Local-alloc's qty_compare gives both load
+   temporaries the same priority (2 refs, life 2), so the first-born (x) takes $f0. Retail's
+   result is only reachable from a sched1 order z load, x load, x sub, z sub: x's temporary
+   then lives 1 insn against z's 3 and wins $f0 on priority, and sched2 issues z's sub first
+   because z's load is ready first. Reading x first in the source makes z the base register's
+   last use and sched1 issues z first, but its sub then also comes first (lives tie, z born
+   first takes $f0); no source shape found that delays z's sub in sched1. No change made. */
 int CourseAreas::f_0e2558(int a, int b, float x, float z)
 {
     float min = -1.0f;
@@ -691,7 +701,12 @@ float CourseAreas::f_0e3b30()
    DIFFERS: 6/29 words: retail puts half in $f2 and -half in $f0; here half takes $f0. Both are
    allocated by global-alloc, which takes half first on priority (4 refs over 9 insns against
    -half's 3 over 6, refs weighted by block frequency). A separate -half variable declared first
-   changes nothing. Open: what in retail gives -half the higher priority. */
+   changes nothing. Open: what in retail gives -half the higher priority.
+   Diagnosis (2026-11-16): global.c's priority is floor_log2(refs) * freq / live length, so
+   half's 4 refs weigh 2 against -half's 3 refs weighing 1; -half would need a fourth ref (or
+   half one fewer) to be allocated first. Both arms already have one test outside and one inside
+   their loop; no source shape found that changes the counts without changing the code. No
+   change made. */
 float CourseAreas::f_0e3b3c(float a, float b)
 {
     float len = (float)n;

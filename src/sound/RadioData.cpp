@@ -476,7 +476,11 @@ int CData::f_10b6c4(Ent *e)
 /* @draft 0x10b6f0 us _ZN5Radio5CData8f_10b6f0EPNS_3EntES2_
    WHAT IT DOES: Tells whether two entries are the same script or play the same files.
    DRAFT: retail sets up the two file pointers after the loop's guard and keeps the count in
-   t2 and the index in t1; here they are set up before it with the index in a3. */
+   t2 and the index in t1; here they are set up before it with the index in a3.
+   Tried (2026-11-16): indexing a->file[i] / b->file[i] instead of the two pointers gives
+   retail's guard, index and count order (beqz; i = 0; count in t2) but loop.c does not
+   strength-reduce the addresses (sll/addu per iteration, 34/39 words): retail's pointers are
+   reduced or written after the guard. Reverted. */
 int CData::f_10b6f0(Ent *a, Ent *b)
 {
     if (a == 0 || b == 0) {
@@ -559,7 +563,12 @@ int CData::f_10b8b0()
 /* @draft 0x10b8f4 us _ZN5Radio5CData8f_10b8f4Et
    WHAT IT DOES: Returns the sub header of the table with the given id, or 0.
    DRAFT: retail holds the found pointer in a3 and the table count in t0; here those two
-   registers are swapped. */
+   registers are swapped.
+   Diagnosis (greg/lreg dumps, 2026-11-16): both are global-alloc pseudos; allocation order is
+   189 193 192 185 190 181 183, and n (190: 3 refs over 11 insns, one ref in the loop) is
+   allocated before the return value (181: 4 refs over 14 insns, set 3 times), so n takes a3.
+   Retail needs the return value allocated first; no source shape found that changes those
+   ref counts or lives. No change made. */
 Sub *CData::f_10b8f4(unsigned short table)
 {
     Header *h = m424;

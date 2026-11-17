@@ -168,7 +168,15 @@ void f_0cd688(const Vec4 *eye, const Vec4 *dir, const Vec4 *up)
 /* @draft 0x0cd7c0 us f_0cd7c0
    WHAT IT DOES: Builds the view matrix for an eye position looking at a target point, with the
    given up vector.
-   DIFFERS: the same 4 scheduling words as f_0cd688. */
+   DIFFERS: the same 4 scheduling words as f_0cd688.
+   Diagnosis (sched2 -fsched-verbose=4 dump, 2026-11-16): sched1 already emits `move s0,v0`
+   (insn 79) right after the f_028e78 call and before the matrix stores, so the order is made
+   in sched2. At t=38 it leads the v0-based stores only because those are anti-dependent on the
+   just-issued side.x load (last-insn class 2); after `mtc1 zero` (t=39) all are class 3 and
+   sched2 ranks the stores (m[1], then m[2]) above it, and likewise above `move a0,s1`. Every v0
+   reader shares the anti dependence on the reload-rematerialised `lui v0` of the 1.0f constant,
+   so the priorities look equal and the deciding key past the class is not visible (this
+   cc1plus prints no priority table). No source lever identified; no change made. */
 void f_0cd7c0(const Vec4 *eye, const Vec4 *at, const Vec4 *up)
 {
     Vec4 d;

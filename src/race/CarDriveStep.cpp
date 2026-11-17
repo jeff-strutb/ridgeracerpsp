@@ -388,7 +388,10 @@ extern "C" float f_0fe064(void *car, int k)
    physics block and copies its result into +192..+204, and records a state at +1804 (0, 1 or
    2) from the ratio. Then, for any mode, the decay at +104 is applied: while it is above zero
    it is reduced by 0.0166667 and the level at +24 is set from its ratio to +100, clamped to 0
-   and 1.0 by the speed at +108. */
+   and 1.0 by the speed at +108.
+   The clamp of the ratio to 1.0 is an if over a 1.0 default (from an earlier helper's draft):
+   the conditional expression costs 4 bytes (564 vs 560). That draft also swapped the +1804
+   state's 1 and 2, which retail does not (it stores 2 when 1.0 <= ratio). */
 extern "C" void f_0fe674(void *car)
 {
     char *ph = (char *)car + 5792;
@@ -413,7 +416,9 @@ extern "C" void f_0fe674(void *car)
             float f1 = f3 - f0;
             if (0.0f <= f1 && f1 <= 2000.0f) {
                 f20 = f1 / 1000.0f;
-                float f2 = f20 < 1.0f ? f20 : 1.0f;
+                float f2 = 1.0f;
+                if (f20 < 1.0f)
+                    f2 = f20;
                 f2 = f2 * 0.5f;
                 f20 = f2 + 0.5f;
                 f1 = FR(s, 80) * 0.3199999928f * f20;
