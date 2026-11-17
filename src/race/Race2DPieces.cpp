@@ -940,6 +940,18 @@ void C2DNitro::f_103138(int i, float scale, float alpha, float dy)
     }
 }
 
+/* @implements 0x103438 us C2DNitro8f_101f74
+   WHAT IT DOES: Fades the nitro gauge's frame and bar sprites (3 to 8) to alpha t. */
+void C2DNitro::f_101f74(float t)
+{
+    Fade(3, t);
+    Fade(4, t);
+    Fade(5, t);
+    Fade(7, t);
+    Fade(8, t);
+    Fade(6, t);
+}
+
 /* @implements 0x1035b0 us C2DTotalTime8f_101b1c
    WHAT IT DOES: Sets the total time label up. */
 int C2DTotalTime::f_101b1c(Group *g, Race *r)
