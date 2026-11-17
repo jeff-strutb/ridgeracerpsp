@@ -217,7 +217,9 @@ short f_10bf58(void)
 /* @draft 0x10bf78 us f_10bf78
    WHAT IT DOES: Sets the master volume (not negative).
    DRAFT: one swapped pair; retail sets $f12 before a1 for the f_10ddac call. Float
-   temporaries and a short local for the pan tried. */
+   temporaries and a short local for the pan tried. The callee's real prototype
+   (short f_10e0e8(unsigned char)) drops the caller's seh (84 B vs 88): retail's caller saw an
+   int-returning declaration, so keep `int f_10e0e8(int)` here. */
 int f_10bf78(float vol)
 {
     if (vol < 0.0f)

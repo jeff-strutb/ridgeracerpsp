@@ -821,18 +821,22 @@ int f_11041c(unsigned short bank, unsigned short idx, SoundVoice *v)
     return 0;
 }
 
-/* @draft 0x1104ec us f_1104ec
+/* @implements 0x1104ec us f_1104ec
    WHAT IT DOES: Starts request r's sound now (0x10fd4c) at its volume and settings;
    0x80000010/11 for a bad bank or index.
-   DRAFT: 3 words differ: retail moves bank and idx into a0/a1 before r into t0 (the moves
-   are hoisted above the index test); here t0 goes first. */
+   The arguments read from r are locals: with r->vol written in the call, its $f12 load
+   addresses through t0 (the copy of r), which raises the t0 move's sched1 priority above the
+   a0/a1 moves. The three loads then issue in source order (lh, lh, lwc1). */
 int f_1104ec(unsigned short bank, unsigned short idx, SoundReq *r)
 {
     if (f_10da30(bank) == 0x80000010)
         return 0x80000010;
     if (!(idx < f_10da58(bank)))
         return 0x80000011;
-    f_10fd4c(bank, idx, r->m20, r->m28, r, 1, r->vol, -1, 1.0f);
+    short a = r->m20;
+    short b = r->m28;
+    float vol = r->vol;
+    f_10fd4c(bank, idx, a, b, r, 1, vol, -1, 1.0f);
     return 0;
 }
 
@@ -874,7 +878,10 @@ int f_110630(int t, int level)
    WHAT IT DOES: The left and right gains for a pan from the pan table, wrapping the pan into
    range first.
    DRAFT: 3 words differ: retail forms the table address before li 127 and reuses v0 for
-   the constant; here 127 goes in v1 first. */
+   the constant; here 127 goes in v1 first. -da (2026-11-16): sched1 orders the block j=pan
+   copy, lui (t's high), li 127, lo_sum, subu: the li fills the lui->lo_sum latency slot, so
+   the 127 pseudo is live across t's high part and cannot share its register. Retail needs the
+   lo_sum to issue before the li; the source shape is not yet known. */
 void f_110664(int pan, int *l, int *r)
 {
     unsigned char *t;

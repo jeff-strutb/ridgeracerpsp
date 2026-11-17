@@ -33,6 +33,12 @@ float f_0e40b8(const float *p, float t)
    $f12 in its delay slot, done on both paths); here the found path is predicted taken and
    gets a bc1tl with the pointer move. goto, break, continue, inverted tests, a do loop and
    __builtin_expect were tried.
+   -da (2026-11-16): f_0e40b8 is detected pure (defined earlier in the TU), so each call is a
+   libcall block (call_insn/u) whose arg moves are emitted a0 first. In the loop block (c and t
+   both live after) sched1 issues the $f12 move first (retail's order, both calls); in the found
+   block the moves kill their sources (c->y's hoisted pseudo and t) and sched1 keeps a0 first,
+   so dbr has a0's move as the target's first insn and annuls it. Retail needs the found
+   block's two moves to schedule like the loop block's; the source shape is not yet known.
    WHAT IT DOES: The curve's y where its x first reaches the input (its last y if never),
    kept to its end values when it leaves 0..1. */
 float f_0e4128(struct Curve *c, float x)
