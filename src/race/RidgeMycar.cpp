@@ -390,7 +390,16 @@ void CRidgeMycar::f_0bff90()
    Deciding pass for the store: gcse's GLOBAL CONST-PROP replaces add with 0.0 in the case 2
    store (the -dG dump says so); retail's store keeps the register, so in retail add's zero
    set was not an available constant set at case 2 (cprop only records a reg = const set whose
-   reg is not set again later in the same block). */
+   reg is not set again later in the same block).
+   Cycle 2026-11-16 (-dGt dumps, Mycar): gcse makes exactly one const prop, insn 149 (the case
+   2 store). cse2 cannot undo it in any switch form: label 123 (case 2) has 2 uses (dispatch
+   jump 242, case 1's skip 106) and cse_basic_block only runs past a label whose remaining
+   uses are 0, while follow-jumps needs a 1-use label after a barrier. Retail's c.le.s/swc1
+   both read f4, the register add holds live across the switch, so retail's store read add's
+   pseudo after gcse: either no gcse cprop in this TU (flags) or a non-const set of add on a
+   path into case 2, which retail's code has no room for. Volatile m10056 is ruled out
+   (retail compares the subtracted value without a reload). No source change made; the
+   -fno-gcse hypothesis needs a whole-TU check and an owner decision. */
 void CRidgeMycar::f_0bff98()
 {
     Phys *p = &phys;

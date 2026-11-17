@@ -580,7 +580,16 @@ void CRidgeNetcar::f_0c21b0()
    case 1's fall-through, so CSE cannot follow into it. Retail keeps f4 there, so in retail
    either cprop did not reach 134 (add killed on some path into case 2) or cse2 knew 183 = 0
    in case 2's block. No source shape found that does either without changing other code;
-   no change made. */
+   no change made.
+   Cycle 2026-11-16 (-dGt dumps, Mycar): gcse makes exactly one const prop, insn 149 (the case
+   2 store). cse2 cannot undo it in any switch form: label 123 (case 2) has 2 uses (dispatch
+   jump 242, case 1's skip 106) and cse_basic_block only runs past a label whose remaining
+   uses are 0, while follow-jumps needs a 1-use label after a barrier. Retail's c.le.s/swc1
+   both read f4, the register add holds live across the switch, so retail's store read add's
+   pseudo after gcse: either no gcse cprop in this TU (flags) or a non-const set of add on a
+   path into case 2, which retail's code has no room for. Volatile m10056 is ruled out
+   (retail compares the subtracted value without a reload). No source change made; the
+   -fno-gcse hypothesis needs a whole-TU check and an owner decision. */
 void CRidgeNetcar::f_0c21b8()
 {
     Phys *p = &phys;
