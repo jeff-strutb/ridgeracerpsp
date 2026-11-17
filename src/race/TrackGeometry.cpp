@@ -1630,10 +1630,12 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                     {
                         short jj1 = i * 2;
                         float *ep = &pts[jj1].x;
-                        seg.x = ep[0];
-                        seg.y = ep[1];
-                        seg.z = ep[2];
-                        seg.w = ep[3];
+                        float sy = ep[1], sx = ep[0];
+                        seg.y = sy;
+                        seg.x = sx;
+                        float sw = ep[3], sz = ep[2];
+                        seg.z = sz;
+                        seg.w = sw;
                         V1840.x = seg.z - seg.x;
                         V1840.y = seg.w - seg.y;
                         V1936 = V1840;
