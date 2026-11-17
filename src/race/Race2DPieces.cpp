@@ -45,7 +45,8 @@ struct RaceInfo {
     char m52[4];
     int mode;
     int cars;
-    char m64[20];
+    int m64;
+    char m68[16];
     int m84;
     char m88[20];
     int lap;
@@ -1152,6 +1153,42 @@ int C2DRaceInfo::f_101b1c(Group *g, Race *r)
 int C2DRaceInfo::Draw()
 {
     return 1;
+}
+
+/* @implements 0x1044fc us C2DRaceInfo8f_101b54
+   WHAT IT DOES: The race info comment's step: picks the comment for the race state (the goal
+   comments by result in mode 2, the mode 4 comment, or comment 1 while the +192 flag is set,
+   blinking every 8 fiftieths of the clock) and shows or hides its sprite. Returns 0. */
+int C2DRaceInfo::f_101b54()
+{
+    if (!C2DDecorationBase::f_101b54())
+        return 0;
+    RaceInfo *ri = D_2407fc;
+    if (ri->mode == 2) {
+        if (ri->m64 == 0) {
+            f_104620(0);
+        } else if (ri->m64 == 1) {
+            if (ri->position == 0)
+                f_104620(3);
+            else
+                f_104620(4);
+        }
+        shown = 1;
+    } else if (ri->mode == 4) {
+        f_104620(2);
+        shown = 1;
+    } else if (ri->m192 != 0) {
+        f_104620(1);
+        shown = (((unsigned)(race->clk.t / 50) >> 3) ^ 1) & 1;
+    } else {
+        shown = 0;
+    }
+    {
+        Group *g = group;
+
+        f_04c248(g, f_101f54(0), shown);
+    }
+    return 0;
 }
 
 /* @draft 0x104620 us C2DRaceInfo8f_104620
