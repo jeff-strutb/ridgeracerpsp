@@ -2394,6 +2394,18 @@ int C2DPosition::f_101b1c(Group *g, Race *r)
     return 1;
 }
 
+/* @implements 0x103c6c us C2DPosition8f_101f74
+   WHAT IT DOES: Fades the position display's six sprites to alpha t. */
+void C2DPosition::f_101f74(float t)
+{
+    Fade(0, t);
+    Fade(1, t);
+    Fade(2, t);
+    Fade(3, t);
+    Fade(4, t);
+    Fade(5, t);
+}
+
 /* @implements 0x103de4 us C2DPositionTour8f_101b1c
    WHAT IT DOES: Sets the tour position display up in a race: the label's colour, then the
    player's position out of the number of cars. */
