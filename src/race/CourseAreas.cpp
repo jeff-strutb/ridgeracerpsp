@@ -43,6 +43,22 @@ void f_0af5e8(PolySet *p, unsigned short *id);
 float atan2f(float y, float x);
 float sqrtf(float x);
 }
+
+/* An angle passed by address to the wrap helpers. */
+union Angle {
+    float a;
+};
+
+extern "C" {
+Angle *f_099b98(Angle *a);
+float f_099efc(float x);
+float f_09a07c(float x);
+float f_09a86c(float y, float x);
+float f_099fc4(float a);
+float f_09a154(float a);
+float f_09a218(float a);
+int f_0af550(const int *a);
+}
 Vec4 f_0b0d98(PolySet *p, const Vec4 *v, unsigned short *id);
 
 extern float D_2456b0;
@@ -75,6 +91,7 @@ public:
     int f_0e29b8(float *h, float x, float y, float z);
     float f_0e2a54(Vec4 *n, float x, float y, float z);
     float f_0e2b2c();
+    void f_0e2f9c(int n, float *side, float *pos, float x, float z);
     void f_0e3a74(int i, unsigned short *a, unsigned short *b);
     void f_0e3a9c(float x, float y, float z);
     float f_0e3b30();
@@ -425,6 +442,168 @@ float CourseAreas::f_0e2a54(Vec4 *n, float x, float y, float z)
 float CourseAreas::f_0e2b2c()
 {
     return 0.0f;
+}
+
+/* The point index i wrapped into the ring. */
+static inline int RoadWrap(int i)
+{
+    return f_0af550(&i);
+}
+
+/* Which side of road point k's heading line the position v lies on (negative: ahead). */
+static inline float RoadSide(const float *v, RoadPoint *list, int k)
+{
+    RoadPoint *e = &list[k];
+    Angle a;
+    a.a = e->angle * 9.5873802e-05f;
+    float t = f_099b98(&a)->a;
+    return (v[1] - e->z) * f_09a07c(t) + (v[0] - e->x) * f_099efc(t);
+}
+
+/* @draft 0x0e2f9c us CourseAreas8f_0e2f9c
+   WHAT IT DOES: Finds the road segment under a position near road point n (a binary search
+   over the 16 points around it, testing which side of each point's heading line the position
+   lies on), then projects the position onto that segment: stores the distance along the road
+   (the segment's first point plus the clamped fraction 0..1, corrected for both end points'
+   headings) in *pos and the sideways offset (scaled by 1/1024) in *side.
+   DIFFERS: not yet scored. */
+void CourseAreas::f_0e2f9c(int n, float *side, float *pos, float x, float z)
+{
+    RoadPoint *list = road;
+    float v[2];
+    int a, b;
+
+    v[0] = x;
+    v[1] = z;
+    if (RoadSide(v, list, n) < 0.0f) {
+        int kp4 = RoadWrap(n + 4);
+        if (RoadSide(v, list, kp4) < 0.0f) {
+            int kp6 = RoadWrap(n + 6);
+            if (RoadSide(v, list, kp6) < 0.0f) {
+                int kp7 = RoadWrap(n + 7);
+                if (RoadSide(v, list, kp7) < 0.0f) {
+                    a = kp7;
+                    b = RoadWrap(n + 8);
+                } else {
+                    a = RoadWrap(n + 6);
+                    b = kp7;
+                }
+            } else {
+                int kp5 = RoadWrap(n + 5);
+                if (RoadSide(v, list, kp5) < 0.0f) {
+                    a = kp5;
+                    b = RoadWrap(n + 6);
+                } else {
+                    a = RoadWrap(n + 4);
+                    b = kp5;
+                }
+            }
+        } else {
+            int kp2 = RoadWrap(n + 2);
+            if (RoadSide(v, list, kp2) < 0.0f) {
+                int kp3 = RoadWrap(n + 3);
+                if (RoadSide(v, list, kp3) < 0.0f) {
+                    a = kp3;
+                    b = RoadWrap(n + 4);
+                } else {
+                    a = RoadWrap(n + 2);
+                    b = kp3;
+                }
+            } else {
+                int kp1 = RoadWrap(n + 1);
+                if (RoadSide(v, list, kp1) < 0.0f) {
+                    a = kp1;
+                    b = RoadWrap(n + 2);
+                } else {
+                    a = RoadWrap(n);
+                    b = kp1;
+                }
+            }
+        }
+    } else {
+        int km4 = RoadWrap(n - 4);
+        if (RoadSide(v, list, km4) < 0.0f) {
+            int km2 = RoadWrap(n - 2);
+            if (RoadSide(v, list, km2) < 0.0f) {
+                int km1 = RoadWrap(n - 1);
+                if (RoadSide(v, list, km1) < 0.0f) {
+                    a = km1;
+                    b = RoadWrap(n);
+                } else {
+                    a = RoadWrap(n - 2);
+                    b = km1;
+                }
+            } else {
+                int km3 = RoadWrap(n - 3);
+                if (RoadSide(v, list, km3) < 0.0f) {
+                    a = km3;
+                    b = RoadWrap(n - 2);
+                } else {
+                    a = RoadWrap(n - 4);
+                    b = km3;
+                }
+            }
+        } else {
+            int km6 = RoadWrap(n - 6);
+            if (RoadSide(v, list, km6) < 0.0f) {
+                int km5 = RoadWrap(n - 5);
+                if (RoadSide(v, list, km5) < 0.0f) {
+                    a = km5;
+                    b = RoadWrap(n - 4);
+                } else {
+                    a = RoadWrap(n - 6);
+                    b = km5;
+                }
+            } else {
+                int km7 = RoadWrap(n - 7);
+                if (RoadSide(v, list, km7) < 0.0f) {
+                    a = km7;
+                    b = RoadWrap(n - 6);
+                } else {
+                    a = RoadWrap(n - 8);
+                    b = km7;
+                }
+            }
+        }
+    }
+
+    Angle h;
+    Angle ra;
+    Angle rb;
+    Angle da;
+    Angle db;
+    RoadPoint *e = &road[a];
+    RoadPoint *f = &road[b];
+    float ez = e->z;
+    float ex = e->x;
+    float dz = ez - f->z;
+    float dx = ex - f->x;
+    h.a = f_09a86c(dx, dz);
+    f_099b98(&h);
+    float c = f_099fc4(h.a);
+    float sn = f_09a154(h.a);
+    float den = dx * c + dz * sn;
+    float u = (x - ex) * sn - (z - ez) * c;
+    float num = (ex - x) * c + (ez - z) * sn;
+    ra.a = e->angle * 3.14159274f * 3.05175781e-05f;
+    f_099b98(&ra);
+    rb.a = f->angle * 3.14159274f * 3.05175781e-05f;
+    f_099b98(&rb);
+    da.a = h.a - ra.a;
+    f_099b98(&da);
+    float t = u * f_09a218(da.a);
+    num += t;
+    den += t;
+    db.a = h.a - rb.a;
+    f_099b98(&db);
+    den -= u * f_09a218(db.a);
+    num /= den;
+    if (num > 1.0f)
+        num = 1.0f;
+    else if (num < 0.0f)
+        num = 0.0f;
+    *pos = a + num;
+    *side = u * 0.0009765625f;
 }
 
 /* @implements 0x0e3a74 us CourseAreas8f_0e3a74
