@@ -53,6 +53,26 @@ static inline Vec4 operator*(float t, const Vec4 &v)
     return r;
 }
 
+/* The sum and difference of two vectors, as points (w = 1). */
+static inline Vec4 operator+(const Vec4 &a, const Vec4 &b)
+{
+    Vec4 r;
+    r.x = a.x + b.x;
+    r.y = a.y + b.y;
+    r.z = a.z + b.z;
+    r.w = 1.0f;
+    return r;
+}
+static inline Vec4 operator-(const Vec4 &a, const Vec4 &b)
+{
+    Vec4 r;
+    r.x = a.x - b.x;
+    r.y = a.y - b.y;
+    r.z = a.z - b.z;
+    r.w = 1.0f;
+    return r;
+}
+
 /* A car's replay camera data. */
 struct TVCar {
     char p0[12];
@@ -95,6 +115,28 @@ struct TVMove {
     int keep;
 };
 
+/* A shot's zoom: frames to ease in, frames to blend the aim back, its value and start. */
+struct TVZoom {
+    int frames;
+    int blend;
+    float value;
+    float start;
+};
+
+/* A shot's eased turn of the aim: frames at speed, to speed up and to slow down, its start
+   time, the aim's distance, the start and end of its two angles, and which way the second
+   angle turns (on: up, off: down). */
+struct TVTurn {
+    int cruise;
+    int accel;
+    int decel;
+    float start;
+    float dist;
+    float a0, a1;
+    float b0, b1;
+    int up;
+};
+
 /* A camera shot. */
 struct TVPoint {
     char p0[12];
@@ -102,6 +144,18 @@ struct TVPoint {
 };
 struct Vec3 {
     float x, y, z;
+};
+/* A shot's eased glide: frames at speed, to speed up and to slow down, its start time,
+   whether the target is still to be put on the course, the target, and whether it keeps
+   the current position as its start. */
+struct TVGlide {
+    int cruise;
+    int accel;
+    int decel;
+    float start;
+    int retarget;
+    Vec3 tgt;
+    int keep;
 };
 struct TVShot {
     char p0[8];
@@ -111,16 +165,15 @@ struct TVShot {
     char ramp[16];
     /* The shot's look: on, a mode, and its two turn angles. */
     TVLook look;
-    char p84[16];
+    /* The shot's zoom: frames to ease to its value (negative: none), frames to blend the
+       aim back, the value and its start time. */
+    TVZoom zoom;
     TVMove move;
-    int m124;
-    int m128;
-    int m132;
-    float m136;
-    int retarget;
-    Vec3 tgt;
-    int m156;
-    char p160[80];
+    /* The shot's glide to its target. */
+    TVGlide glide;
+    /* The shot's turn of the aim. */
+    TVTurn turn;
+    char p200[40];
     float m240;
     char p244[32];
     int m276;
@@ -214,6 +267,7 @@ public:
     void f_080f90();
     void f_0817e0();
     void f_080660();
+    void f_0808d0();
     void f_08140c(struct Mat34 *out, float t, float ry, float rx, float lim);
     void f_081944();
     float f_081610();
@@ -238,6 +292,7 @@ public:
     void f_0817d8();
     void f_080f04();
     Vec4 f_0803e4();
+    Vec4 &ShotPos() { return *(Vec4 *)&shotX; }
 
     int m28;
     TVShot *shot;
@@ -273,7 +328,9 @@ public:
     Vec4 m576;
     float m592;
     float m596;
-    char p600[12];
+    float m600;
+    int m604;
+    int m608;
     int m612;
     int m616;
     char p620[4];
@@ -283,7 +340,8 @@ public:
     Vec4 m624, m640;
     float m656;
     float m660;
-    char p664[24];
+    char p664[8];
+    Vec4 m672;
     int m688;
     Angle m692;
     Angle m696;
@@ -352,10 +410,10 @@ void CCamTV::Set(const CamParam *cp)
         shotZ = s->pos.z;
     }
     s = shot;
-    if (s->retarget != 0) {
+    if (s->glide.retarget != 0) {
         float tmp;
-        areas->f_0e2d10(&s->tgt.x, &tmp, &s->tgt.z, s->tgt.x, s->tgt.z);
-        s->retarget = 0;
+        areas->f_0e2d10(&s->glide.tgt.x, &tmp, &s->glide.tgt.z, s->glide.tgt.x, s->glide.tgt.z);
+        s->glide.retarget = 0;
     }
     f_080b48();
     f_080b50();
@@ -780,6 +838,233 @@ void CCamTV::f_080660()
     }
 }
 
+/* @draft 0x0808d0 us _ZN7CamCtrl6CCamTV8f_0808d0Ev
+   Remaining difference: only the aim blend's addressing (one word longer): retail reads
+   624.y/z through a pointer to 624 but 640 straight from this; here the operators' two
+   references to 640 are merged by cse into a second pointer register.
+   WHAT IT DOES: Runs the shot's zoom once its start time comes round (time wrapped by twice
+   the period at 736, or at once in the timed mode at 740); otherwise clears the zoom state.
+   On its first frame keeps the lens value at 600; a negative frame count restores it.
+   Otherwise counts the zoom frame at 604 up by 5 to its end and eases the lens value at 512
+   toward half the zoom's value by the eased share (kept at 596). Then counts the blend frame
+   at 608 up by 5 to its end and moves the aim at 624 back toward the one at 640 by the eased
+   share; once the blend is over the aim is the one at 640. */
+void CCamTV::f_0808d0()
+{
+    TVZoom *z = &shot->zoom;
+    if (z->frames != 0) {
+        float d = D_241450 - z->start;
+        while (d < 0.0f)
+            d += m736 * 2.0f;
+        if ((m740 != 0 && D_241450 < z->start) || m736 < d) {
+            m604 = 0;
+            m608 = 0;
+            m596 = 0;
+        } else {
+            if (m604 == 0)
+                m600 = m512;
+            if (z->frames < 0) {
+                m604 = -1;
+                m512 = m600;
+            } else {
+                if (m604 < z->frames) {
+                    m604 += 5;
+                    if (z->frames < m604)
+                        m604 = z->frames;
+                }
+                m596 = f_0f4290((float)m604 / (float)z->frames);
+                m512 = z->value * 0.5f * m596 + m512 * (1.0f - m596);
+            }
+            if (m608 < z->blend) {
+                m608 += 5;
+                if (z->blend < m608)
+                    m608 = z->blend;
+                m596 = f_0f4290((float)m608 / (float)z->blend);
+                Vec4 v = m624 - m640;
+                m624 = (1.0f - m596) * v + m640;
+            } else {
+                m624 = m640;
+            }
+        }
+    } else {
+        m596 = 0;
+    }
+}
+
+}
+
+/* The followed car's matrix, and a point carried by a matrix. */
+namespace Car {
+struct Mat43p {
+    float m[4][4];
+};
+class CCarBufferPSP {
+public:
+    Mat43p f_0ec724() const;
+};
+}
+extern "C" void f_0a6d4c(CamCtrl::Vec4 *out, Car::Mat43p *m, CamCtrl::Vec4 *v);
+
+namespace CamCtrl {
+
+/* @draft 0x080b50 us _ZN7CamCtrl6CCamTV8f_080b50Ev
+   Remaining difference: retail computes the address of the 80(sp) vector once, into s3,
+   before the start-position test, and uses it for both matrix calls (gcse/PRE shares it);
+   here each call rematerialises sp+80, so one fewer register is saved and the code after
+   the prologue is shifted. Stack layout, control flow and arithmetic match.
+   WHAT IT DOES: Runs the shot's glide once its start time comes round (time wrapped by
+   twice the period at 736, or at once in the timed mode at 740): on its first frame (unless
+   the glide keeps the current position) starts the glide position at 672 from the shot
+   position, carried by the car's matrix for a car-relative shot; counts the glide frame at
+   688 up by 5 to its end; takes the speed toward the target (the distance over the glide's
+   frames counting the ease frames as half), carried into the car's frame for a
+   car-relative shot; and moves the glide position by the speed, eased up over the speed-up
+   frames and down over the slow-down frames. The shot position follows it. */
+void CCamTV::f_080b50()
+{
+    TVGlide *g = &shot->glide;
+    if (g->cruise != 0) {
+        float d = D_241450 - g->start;
+        while (d < 0.0f)
+            d += m736 * 2.0f;
+        if ((m740 != 0 && g->start <= D_241450) || d <= m736) {
+            if (m688 == 0 && g->keep == 0) {
+                if (shot->fixed == 2) {
+                    Vec4 p;
+                    p.x = shot->pos.x;
+                    p.y = shot->pos.y;
+                    p.z = shot->pos.z;
+                    p.w = 1.0f;
+                    Car::Mat43p m = ((Car::CCarBufferPSP *)param.v[2])->f_0ec724();
+                    Vec4 q;
+                    f_0a6d4c(&q, &m, &p);
+                    m672 = q;
+                } else {
+                    m672.x = shot->pos.x;
+                    m672.y = shot->pos.y;
+                    m672.z = shot->pos.z;
+                }
+            }
+            int total = g->cruise + g->accel + g->decel;
+            if (m688 < total) {
+                m688 += 5;
+                if (total < m688)
+                    m688 = total;
+            }
+            float n = ((float)(g->accel + g->decel) * 0.5f + (float)g->cruise) / D_1d5da0;
+            Vec4 v;
+            v.x = (g->tgt.x - shot->pos.x) / n;
+            v.y = (g->tgt.y - shot->pos.y) / n;
+            v.z = (g->tgt.z - shot->pos.z) / n;
+            if (shot->fixed == 2) {
+                Car::Mat43p m = ((Car::CCarBufferPSP *)param.v[2])->f_0ec724();
+                Vec4 r;
+                f_0a6d4c(&r, &m, &v);
+                v = r;
+                TVOwner *o = (TVOwner *)param.v[2];
+                v.x -= o->m144.x;
+                v.y -= o->m144.y;
+                v.z -= o->m144.z;
+            }
+            int t = m688;
+            if (t < g->accel) {
+                float f = (float)t / (float)g->accel;
+                m672.x += v.x * f;
+                m672.y += v.y * f;
+                m672.z += v.z * f;
+            } else if (t < g->accel + g->cruise) {
+                m672 += v;
+            } else {
+                float f = 1.0f - (float)(t - g->accel - g->cruise) / (float)g->decel;
+                m672.x += v.x * f;
+                m672.y += v.y * f;
+                m672.z += v.z * f;
+            }
+            ShotPos() = m672;
+        }
+    }
+}
+
+/* @draft 0x080f90 us _ZN7CamCtrl6CCamTV8f_080f90Ev
+   Remaining difference (21 words, same size): the turn frames value is in f4 in retail
+   (f2 here, FP register choice only), and the final add into the shot position loads the
+   aim's y and z before storing x in retail, while here the position's y and z are loaded
+   first. The position is reached through ShotPos(), a cast of shotX to a Vec4; a real
+   Vec4 member at 464 is the likely difference (not yet changed: other functions use
+   shotX/Y/Z).
+   WHAT IT DOES: Runs the shot's aim turn: while its start time has come round (time wrapped
+   by twice the period at 736, or at once in the timed mode at 740) counts the turn frame
+   at 700 up by 5 to its end. Takes the two angles' speeds (each angle's distance over the
+   turn's frames, counting the ease frames as half; the second angle's distance wrapped
+   into a half turn either side and then made to turn the shot's way), and turns the
+   angles at 692 and 696 by them, eased up over the speed-up frames and down over the
+   slow-down frames (kept wrapped). Then moves the shot position by the aim: the shot's
+   distance straight back turned by the two angles, carried into the car's frame (or the
+   frame at 768) for a car-relative shot. */
+void CCamTV::f_080f90()
+{
+    TVTurn *t = &shot->turn;
+    if (t->cruise == 0)
+        return;
+    int total = t->accel + t->cruise + t->decel;
+    float d = D_241450 - t->start;
+    while (d < 0.0f)
+        d += m736 * 2.0f;
+    if ((m740 != 0 && t->start <= D_241450) || d <= m736) {
+        if (m700 < total) {
+            m700 += 5;
+            if (total < m700)
+                m700 = total;
+        }
+    }
+    float n = ((float)(t->accel + t->decel) * 0.5f + (float)t->cruise) / D_1d5da0;
+    float db = t->b1 - t->b0;
+    while (D_1d5d90 < db)
+        db -= D_1d5d90 * 2.0f;
+    while (db < -D_1d5d90)
+        db += D_1d5d90 * 2.0f;
+    if (t->up != 0) {
+        while (db < 0.0f)
+            db += D_1d5d90 * 2.0f;
+    } else {
+        while (0.0f < db)
+            db -= D_1d5d90 * 2.0f;
+    }
+    float sb = db / n;
+    float sa = (t->a1 - t->a0) / n;
+    if (m700 < t->accel) {
+        float f = (float)m700 / (float)t->accel;
+        m692.f += sa * f;
+        f_099b98(&m692);
+        m696.f += sb * f;
+        f_099b98(&m696);
+    } else if (m700 <= t->accel + t->cruise) {
+        m692.f += sa;
+        f_099b98(&m692);
+        m696.f += sb;
+        f_099b98(&m696);
+    } else if (m700 < total) {
+        float f = 1.0f - (float)(m700 - t->accel - t->cruise) / (float)t->decel;
+        m692.f += sa * f;
+        f_099b98(&m692);
+        m696.f += sb * f;
+        f_099b98(&m696);
+    }
+    Vec4 dir;
+    dir.z = -t->dist;
+    dir.w = 1.0f;
+    dir.x = 0;
+    dir.y = 0;
+    f_09b394(m692, &dir.y, &dir.z);
+    f_09b394(m696, &dir.z, &dir.x);
+    int fx = shot->fixed;
+    if (fx == 2)
+        dir = f_09c720(((TVOwner *)param.v[2])->State(), &dir);
+    else if (fx == 3)
+        dir = f_09c720(&m768, &dir);
+    ShotPos() += dir;
+}
+
 /* @implements 0x0817d0 us _ZN7CamCtrl6CCamTV8f_0817d0Ev
    WHAT IT DOES: Debug display (compiled out). */
 void CCamTV::f_0817d0()
@@ -936,14 +1221,15 @@ void CCamTV::f_081b10()
             pos = 0.0f;
         areas->f_0e2d10(&D_1d3aac[1].pos.x, &D_1d3aac[1].pos.y, &D_1d3aac[1].pos.z, 5.0f, pos);
         D_1d3aac[1].pos.y = D_1d3aac[1].pos.y + 4000.0f;
-        D_1d3aac[1].m136 = D_2407fc->m44 - 10.0f;
-        D_1d3aac[1].m128 = D_1d3aac[1].m132 = 450;
-        D_1d3aac[1].tgt = D_1d3aac[1].pos;
-        D_1d3aac[1].m124 = 0;
-        D_1d3aac[1].retarget = 0;
-        D_1d3aac[1].m156 = 0;
-        areas->f_0e2d10(&D_1d3aac[1].tgt.x, &D_1d3aac[1].tgt.y, &D_1d3aac[1].tgt.z, -1.5f, pos);
-        D_1d3aac[1].tgt.y = D_1d3aac[1].tgt.y + 2200.0f;
+        D_1d3aac[1].glide.start = D_2407fc->m44 - 10.0f;
+        D_1d3aac[1].glide.accel = D_1d3aac[1].glide.decel = 450;
+        D_1d3aac[1].glide.tgt = D_1d3aac[1].pos;
+        D_1d3aac[1].glide.cruise = 0;
+        D_1d3aac[1].glide.retarget = 0;
+        D_1d3aac[1].glide.keep = 0;
+        areas->f_0e2d10(&D_1d3aac[1].glide.tgt.x, &D_1d3aac[1].glide.tgt.y, &D_1d3aac[1].glide.tgt.z,
+                        -1.5f, pos);
+        D_1d3aac[1].glide.tgt.y = D_1d3aac[1].glide.tgt.y + 2200.0f;
     }
 }
 
