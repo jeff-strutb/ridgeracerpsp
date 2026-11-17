@@ -72,6 +72,11 @@ struct CarPhys {
     unsigned char m616;
     char p617[7];
 };
+
+/* Fields of the per wheel arrays between +196 and +592, addressed by offset. */
+#define PF(q, o) ((float *)((char *)(q) + (o)))
+#define PI(q, o) ((int *)((char *)(q) + (o)))
+#define PH(q, o) ((short *)((char *)(q) + (o)))
 extern "C" {
 void f_0a7118(void *a, void *b, int c, int d, int e, float f, float g, float h);
 void f_0a7118_2(void *a, void *b, int c, int d, int e, float f, float g) __asm__("f_0a7118");
@@ -135,6 +140,90 @@ extern "C" void f_0a6fa4(void)
    WHAT IT DOES: An empty function. */
 extern "C" void f_0a6fac(void)
 {
+}
+
+/* A rotation (quaternion) held in the physics state at +64 and +576. */
+struct Rot {
+    float x, y, z, w;
+    void Ident() { x = 0.0f; y = 0.0f; z = 0.0f; w = 1.0f; }
+};
+
+/* @draft 0x0a6fb4 us f_0a6fb4
+   WHAT IT DOES: Clears the car physics state: zeroes the position, motion and mode fields, sets the two rotations to the identity, and for each of the four wheels zeroes its per wheel values and sets its scale pair to one.
+   Remaining difference: store order only. sched1 ranks the w store (its 1.0 register dies there) ahead of x, and int stores pass the float ones; retail keeps x, w, y, z and interleaves 84/88/80 and the wheel loop's short stores differently. */
+extern "C" void f_0a6fb4(CarPhys *p)
+{
+    int i;
+    p->m0 = 0.0f;
+    p->m4 = 0.0f;
+    p->m8 = 0.0f;
+    p->m12 = 0.0f;
+    p->m16 = 0.0f;
+    p->m20 = 0.0f;
+    p->m24 = 0.0f;
+    p->m28 = 0.0f;
+    p->m32 = 0.0f;
+    p->m36 = 0.0f;
+    p->m40 = 0.0f;
+    p->m44 = 0;
+    p->m48 = 0;
+    ((Rot *)&p->m64)->Ident();
+    p->m80 = 0;
+    p->m84 = 0;
+    p->m88 = 0;
+    p->m92 = 0;
+    p->m96 = 0;
+    p->m100 = 0;
+    p->m104 = 0;
+    p->m108 = 0;
+    p->m112 = 0;
+    p->m116 = 0;
+    p->m117 = 0;
+    p->m120 = 0.0f;
+    p->m128 = 0.0f;
+    p->m132 = 0.0f;
+    p->m136 = 0.0f;
+    p->m140 = 0.0f;
+    p->m144 = 0.0f;
+    p->m148 = 0.0f;
+    p->m152 = 0.0f;
+    p->m156 = 0;
+    p->m160 = 0;
+    p->m164 = 0;
+    p->m168 = 0.0f;
+    p->m172 = 0;
+    p->m176 = 0;
+    p->m180 = 0;
+    p->m184 = 0;
+    p->m188 = 0;
+    for (i = 0; i < 4; i++) {
+        PI(p, 192)[i] = 0;
+        PI(p, 208)[i] = 0;
+        PI(p, 224)[i] = 0;
+        PI(p, 240)[i] = 0;
+        PI(p, 288)[i] = 0;
+        PI(p, 304)[i] = 0;
+        PI(p, 320)[i] = 0;
+        PI(p, 336)[i] = 0;
+        PI(p, 352)[i] = 0;
+        PI(p, 432)[i] = 0;
+        PI(p, 416)[i] = 0;
+        PI(p, 464)[i] = 0;
+        PI(p, 448)[i] = 0;
+        PI(p, 256)[i] = 0;
+        PI(p, 272)[i] = 0;
+        PH(p, 368)[i] = 0;
+        PI(p, 376)[i] = 0;
+        PH(p, 392)[i] = 0;
+        PI(p, 400)[i] = 0;
+        PI(p, 480)[i] = 0;
+        PI(p, 496)[i] = 0;
+        PI(p, 512)[i * 4] = 0;
+        PF(p, 516)[i * 4] = 1.0f;
+        PI(p, 520)[i * 4] = 0;
+        PF(p, 524)[i * 4] = 1.0f;
+    }
+    ((Rot *)PF(p, 576))->Ident();
 }
 
 /* @implements 0x0a7e9c us f_0a7e9c
@@ -1370,6 +1459,147 @@ float f_09a07c(float x);
 int f_0af550(const int *a);
 }
 
+/* @draft 0x0a8a60 us f_0a8a60
+   WHAT IT DOES: Places the car on the course line at its course position: interpolates the two course points either side of it (the next one wrapping to the first) for the ground position and height, sets the heading to the interpolated point heading (shortest turn, wrapped), and moves the position sideways by the car's lateral offset turned by that heading.
+   Remaining difference: two words: sched1 moves the fraction (s -= n) up from the join block ahead of the point address add, so dbr fills the branch slot with the add; retail has the add first and the subtraction in the slot. A separate fraction variable or the subtraction before the if is worse. */
+extern "C" void f_0a8a60(CarPhys *p)
+{
+    float pos[4];
+    float off[4];
+    Angle d;
+    Angle e;
+    float *h = &p->m32;
+    CourseNode *b = D_23f7f0_nodes;
+    float s = p->m16;
+    int n = (int)s;
+    CourseNode *a = &b[n];
+    if (n + 1 < D_2456b8)
+        b = a + 1;
+    s -= n;
+    pos[1] = a->x;
+    pos[1] += (b->x - pos[1]) * s;
+    pos[0] = a->y;
+    pos[0] += (b->y - pos[0]) * s;
+    p->m32 = a->ang * 9.58738019107841e-05f;
+    d.a = b->ang * 9.58738019107841e-05f - p->m32;
+    p->m32 += f_099b98_a(&d)->a * s;
+    f_099b98(h);
+    e.a = p->m32;
+    off[1] = p->m20 * 1024.0f;
+    off[0] = 0.0f;
+    f_099b98(&e);
+    f_09b394(e, &off[0], &off[1]);
+    pos[0] += off[0];
+    pos[1] += off[1];
+    p->m4 = pos[0];
+    p->m0 = pos[1];
+    p->m12 = a->z;
+    p->m12 += (b->z - p->m12) * s;
+}
+
+extern "C" {
+float f_09a86c(float x, float z);
+float f_099fc4(float a);
+float f_09a154(float a);
+float f_09a218(float a);
+}
+
+/* @draft 0x0aa3f8 us f_0aa3f8
+   WHAT IT DOES: Projects the probe point (m148, m152) onto the course segment between the points m156 and m160: takes the segment's direction, measures the probe's sideways distance from it (scaled by 1/1024 into m140), corrects the along-segment distance for the two end points' headings, and stores the clamped fraction 0..1 in m168 and the wrapped course position (point m156 plus the fraction) in m136.
+   Remaining difference: sched1 order around the first heading call: retail keeps all four products before the call and both sums (den, num) after it, with u's subtraction in the call slot, which costs a sixth saved FPR (f25 holds the angle scale); here num's sum goes before the call and dy*sn into the slot, so the FPRs differ throughout. Sums written after the call are worse (sched1 does not hoist the products back). */
+extern "C" void f_0aa3f8(CarPhys *p)
+{
+    Angle a;
+    Angle ra;
+    Angle rb;
+    Angle da;
+    Angle db;
+    float w;
+    CourseNode *list = D_23f7f0_nodes;
+    CourseNode *e = &list[p->m156];
+    CourseNode *f = &list[p->m160];
+    float ey = e->y;
+    float ex = e->x;
+    float dy = ey - f->y;
+    float dx = ex - f->x;
+    a.a = f_09a86c(dx, dy);
+    f_099b98(&a);
+    float c = f_099fc4(a.a);
+    float sn = f_09a154(a.a);
+    float den = dx * c + dy * sn;
+    float px = p->m148;
+    float pz = p->m152;
+    float u = (px - ex) * sn - (pz - ey) * c;
+    float num = (ex - px) * c + (ey - pz) * sn;
+    ra.a = e->ang * 9.58738019107841e-05f;
+    f_099b98(&ra);
+    rb.a = f->ang * 9.58738019107841e-05f;
+    f_099b98(&rb);
+    da.a = a.a - ra.a;
+    f_099b98(&da);
+    float t = u * f_09a218(da.a);
+    num += t;
+    den += t;
+    db.a = a.a - rb.a;
+    f_099b98(&db);
+    den -= u * f_09a218(db.a);
+    num /= den;
+    if (num > 1.0f)
+        num = 1.0f;
+    else if (num < 0.0f)
+        num = 0.0f;
+    w = p->m156 + num;
+    p->m136 = f_0af478(&w);
+    p->m168 = num;
+    p->m140 = u * 0.0009765625f;
+}
+
+/* @implements 0x0ac400 us f_0ac400
+   WHAT IT DOES: The surface factor table: for the surface kind *k returns a fixed factor or a linear function of the value *v (cases 7 to 20 and 45 to 48); unknown kinds give 0. */
+extern "C" float f_0ac400(CarPhys *p, const float *v, int *k)
+{
+    float r = 0.0f;
+    switch (*k) {
+    case 1: r = 0.2f; break;
+    case 3: r = 2.6f; break;
+    case 4: r = 3.0f; break;
+    case 5: r = 0.55f; break;
+    case 6: r = 1.2f; break;
+    case 7: r = *v; break;
+    case 8: r = 1.0f - *v; break;
+    case 10: r = *v * 0.26666668f + 0.8f; break;
+    case 11: r = *v * 0.26666668f + 1.0666667f; break;
+    case 12: r = *v * 0.26666668f + 1.3333334f; break;
+    case 9:
+    case 13: r = 0.8f; break;
+    case 14: r = 1.6f; break;
+    case 15: r = 0.26666668f * *v; break;
+    case 16: r = (*v + 1.0f) * 0.26666668f; break;
+    case 17: r = (*v + 2.0f) * 0.26666668f; break;
+    case 18: r = 0.26666668f * (3.0f - *v); break;
+    case 19: r = 0.26666668f * (2.0f - *v); break;
+    case 20: r = 0.26666668f * (1.0f - *v); break;
+    case 2:
+    case 21: r = 1.0f; break;
+    case 22: r = 0.4f; break;
+    case 23: r = 0.3f; break;
+    case 24: r = 0.6f; break;
+    case 25: r = 1.05f; break;
+    case 26: r = 0.44f; break;
+    case 45: r = *v * 0.9765625f * 0.5f; break;
+    case 46: r = (*v + 1.0f) * 0.9765625f * 0.5f; break;
+    case 47: r = (2.0f - *v) * 0.9765625f * 0.5f; break;
+    case 48: r = (1.0f - *v) * 0.9765625f * 0.5f; break;
+    case 44:
+    case 49: r = 0.9765625f; break;
+    case 53:
+    case 54: r = 1.0765625f; break;
+    default: break;
+    case 61: r = 0.9765625f; break;
+    }
+    return r;
+}
+
 /* The point index i wrapped into the ring. */
 static inline int CourseWrap(int i)
 {
@@ -1500,9 +1730,6 @@ struct CarPhysWork : CarPhys {
     ~CarPhysWork() { f_0a6fac_p(this); }
 };
 
-#define PF(q, o) ((float *)((char *)(q) + (o)))
-#define PI(q, o) ((int *)((char *)(q) + (o)))
-#define PH(q, o) ((short *)((char *)(q) + (o)))
 
 /* @draft 0x0a74cc us f_0a74cc
    WHAT IT DOES: The per frame physics step of one car: stores the previous height, looks the car up on the track, probes the four wheels, then either keeps the stored state (car inside its window) or reruns the wheel steps on a scratch copy and blends it back, for the whole car or wheel by wheel.
