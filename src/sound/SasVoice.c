@@ -266,7 +266,9 @@ void f_10ee58(int dt)
    WHAT IT DOES: Fades sound r's volume from where it is to a target over n ticks.
    DRAFT: control flow and stores match; retail tests and passes the incoming a1 (beqz a1,
    lw 0(a1), move a0,a1) before r is in s0, keeps the result in a2, and has n in s2 and the
-   fade table base in s1 (here the other way round). */
+   fade table base in s1 (here the other way round).
+   2026-11-16: same allocation cause as f_10f1c4 (see there): retail's tests use a short-lived
+   copy of r in a1, so ret cannot take a1. Not resolved; no change made. */
 int f_10ee74(int n, SoundReq *r, float target)
 {
     int ret = 0x8000001a;
@@ -352,7 +354,13 @@ int f_10f138(unsigned short bank, unsigned short idx, short a, short b, float vo
    WHAT IT DOES: Fades sound r out to silence over n ticks and stops it at the end; a sound
    that is already silent is stopped (0x10c5a4) at once.
    DRAFT: 15 words in the head differ: as in 0x10ee74, retail uses the incoming a1 for the
-   first tests and the call and keeps the result in a2 (here a1). */
+   first tests and the call and keeps the result in a2 (here a1).
+   2026-11-16 greg dump: ret (pseudo 184) is allocated second and takes a1 because a1 is dead
+   after `s0 = a1`; the tests and the call argument then use s0. In retail ret conflicts with
+   a1, so a1 must still be live over the tests: retail has a separate short-lived value for r
+   (tests + call argument, given a1) apart from the saved-register r used after the call; with
+   a1 taken, ret gets a2 and the table base (allocated later) a1. No source shape that keeps
+   such a second pseudo found in this cycle; no change made. */
 int f_10f1c4(int n, SoundReq *r)
 {
     int ret = 0x8000001a;

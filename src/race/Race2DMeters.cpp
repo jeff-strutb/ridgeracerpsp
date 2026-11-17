@@ -263,7 +263,12 @@ using namespace Fj;
 
 /* @draft 0x107edc us C2DMeterBase8f_107edc
    WHAT IT DOES: Shows a meter lamp lit or dark: places the sprite at the lamp's rectangle
-   for that state and picks the matching cell from the strip of two. */
+   for that state and picks the matching cell from the strip of two.
+   Remaining difference (2026-11-16 cycle): retail loads w, x, h, y (x f6, y f5, w f0, h f1)
+   and stores x and y into c[2]/c[0], c[1]/c[0] straight after the loads; its mtc1 zero for
+   v0 comes late and reuses y's dead f5. Here sched1 hoists mtc1 zero to the top (0.0 takes
+   f5 for the whole body), which shifts every FP register and the store order. No source
+   lever for the late zero named yet; no change made. */
 void C2DMeterBase::f_107edc(int s, int on)
 {
     Corner c[4];
@@ -313,10 +318,11 @@ void C2DMeterBase::f_107fb0(int s, int n)
     }
 }
 
-/* @draft 0x1080d8 us C2DMeterBase8f_1080d8
+/* @implements 0x1080d8 us C2DMeterBase8f_1080d8
    WHAT IT DOES: Shows a three-digit number (n below 1000) in three meter sprites from s on,
    the digits step apart from the readout's corner, each taking its 16-pixel cell from the
-   strip of ten. */
+   strip of ten. The corners are written as the file's chained pairs (c[0].x = c[2].x = x, ...);
+   sixteen separate stores gave another store order and swapped y/v registers. */
 void C2DMeterBase::f_1080d8(int s, int n, float step)
 {
     int d[3];
@@ -332,22 +338,14 @@ void C2DMeterBase::f_1080d8(int s, int n, float step)
         float y = D_1d5fe8[type].r[1].y;
         float v = d[i] * 16.0f;
 
-        c[0].x = x;
-        c[0].y = y;
-        c[0].u = 0;
-        c[0].v = v;
-        c[1].x = x + 16.0f;
-        c[1].y = y;
-        c[1].u = 16.0f;
-        c[1].v = v;
-        c[2].x = x;
-        c[2].y = y + 16.0f;
-        c[2].u = 0;
-        c[2].v = v + 16.0f;
-        c[3].x = x + 16.0f;
-        c[3].y = y + 16.0f;
-        c[3].u = 16.0f;
-        c[3].v = v + 16.0f;
+        c[0].x = c[2].x = x;
+        c[0].y = c[1].y = y;
+        c[1].x = c[3].x = x + 16.0f;
+        c[2].y = c[3].y = y + 16.0f;
+        c[0].u = c[2].u = 0;
+        c[0].v = c[1].v = v;
+        c[1].u = c[3].u = 16.0f;
+        c[2].v = c[3].v = v + 16.0f;
         {
             Group *g = group;
 
@@ -785,7 +783,12 @@ int C2DRallyXMeter::Draw()
 /* @draft 0x1094f8 us C2DRallyXMeter8f_101b54
    WHAT IT DOES: Updates the Rally-X meter each frame once the start animation runs: fills
    its gauge by the engine speed over its top speed (clamped to 0..1) and shows the road
-   speed (km/h, or mph when the game says so). */
+   speed (km/h, or mph when the game says so).
+   Remaining difference (2026-11-16 cycle): retail keeps v and t in $f14 and m in $f2 (m and
+   t not tied): MIN is `bc1t` over `mov.s $f14,$f0` (t = 1.0) with `mov.s $f14,$f2` in the
+   slot, one word longer. Here m and t share $f14 (v in $f2) and MIN becomes a bc1fl with
+   t = 1.0 in the likely slot. The copy t = m is coalesced here and not in retail; the source
+   shape that blocks that tie is not identified yet; no change made. */
 int C2DRallyXMeter::f_101b54()
 {
     if (!C2DDecorationBase::f_101b54())

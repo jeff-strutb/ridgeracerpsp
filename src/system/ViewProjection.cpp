@@ -246,7 +246,12 @@ void f_0cda74(const Vec4 *a, const Vec4 *b, float angle)
    WHAT IT DOES: Writes the transpose of the view matrix's rotation part (its inverse rotation)
    as a full matrix with no translation. Returns the output.
    DIFFERS: the nine loads are scheduled in another order (retail loads entry 5 last and gives it
-   $f2); the stores agree. */
+   $f2); the stores agree.
+   2026-11-16 (lreg dump of f_0cdbc4, same body): local-alloc gives m[5] retail's $f2, i.e.
+   the highest priority = shortest live range, so retail's sched1 put m[5]'s load last. Here
+   sched1 issues m[10]'s load (the last non-constant SetMatrix argument) first and the rest
+   in argument order, and m[5] lands 5th ($f5). The source order that makes m[5] the late
+   load is not identified; no change made. */
 Matrix *f_0cdb2c(Matrix *out)
 {
     Matrix *m = f_028e78();
@@ -260,7 +265,8 @@ Matrix *f_0cdb2c(Matrix *out)
 /* @draft 0x0cdbc4 us f_0cdbc4
    WHAT IT DOES: Writes the transpose of a matrix's rotation part as a full matrix with no
    translation. Returns the output.
-   DIFFERS: as f_0cdb2c, only the load order and FP registers. */
+   DIFFERS: as f_0cdb2c, only the load order and FP registers (see the 2026-11-16 note
+   there). */
 Matrix *f_0cdbc4(const Matrix *m, Matrix *out)
 {
     SetMatrix(out, m->m[0], m->m[4], m->m[8], 0.0f,
