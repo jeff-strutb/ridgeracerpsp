@@ -289,7 +289,7 @@ cached (0.6 s compile, 1.8 s grading).
 `tools/hooks/install.py` sets `core.hooksPath` in the worktree's own config
 (`git config --worktree`), so other worktrees and the main checkout are untouched; it refuses
 if `extensions.worktreeConfig` is off, and `--uninstall` restores the previous value. It is
-installed in the `claude/grader-c43391` worktree only.
+installed in the `grader` worktree only.
 
 - **pre-commit** grades what is staged, not the working tree: it writes the index's copy of
   `src/`, `include/` and any other staged source under `build/hook/stage/` and grades that.
