@@ -222,7 +222,7 @@ int f_111554(void)
     return 0;
 }
 
-/* @draft 0x1115ac us f_1115ac
+/* @implements 0x1115ac us f_1115ac
    WHAT IT DOES: Sets channel ch's m32 and m132 to size/28 in 4096-byte steps, unless it is playing. */
 int f_1115ac(int ch, unsigned int size)
 {
@@ -230,11 +230,11 @@ int f_1115ac(int ch, unsigned int size)
     if (badch(ch))
         return 0x8000000a;
     if (D_291980[ch].state == 2 || D_291980[ch].state == 3)
-        return 0x8000000a;
-    v = (int)(((size >> 2) / 7) << 4);
+        return 0x80000000;
+    v = (int)((size / 28) << 4);
     v = v / 4096 * 4096;
-    D_291980[ch].m32 = v;
     D_291980[ch].m132 = v;
+    D_291980[ch].m32 = v;
     return 0;
 }
 
