@@ -415,20 +415,19 @@ CCarJobCtrlPSP::~CCarJobCtrlPSP()
 /* Reads the sequence number of a race mode from the game database. */
 static inline int Sequence(int mode)
 {
-    void *rec = D_2407d0.f_0368e8("SequenceNumber", (char *)mode, 0, 0);
+    /* The key in a local: its address is formed before the database's, which ends the high
+       half's life one insn sooner and gives it s6 ahead of the list argument in f_03a51c. */
+    const char *name = "SequenceNumber";
+    void *rec = D_2407d0.f_0368e8(name, (char *)mode, 0, 0);
     memcpy(D_24063c, rec, D_1a211c[1]);
     return D_24063c[0];
 }
 
-/* @draft 0x03a51c us f_03a51c
+/* @implements 0x03a51c us f_03a51c
    WHAT IT DOES: Sets the controller up for a race: clears it, keeps the race mode and course
    and the random seed, reads the mode's car flags and sequence number from the game database
    and builds the cars the sequence needs (logging an error for an unknown sequence), then
-   sorts the cars.
-   Draft: only the allocation of two saved registers differs: retail keeps the list argument in
-   s7 and the high half of "SequenceNumber" in s6, this source the reverse (the list has 4
-   references to the string's 3; case orders, store orders and the error path's spelling do not
-   change it). */
+   sorts the cars. */
 void CCarJobCtrlPSP::f_03a51c(CarSetup *s, int seed, CarList *l)
 {
     f_03b614();
