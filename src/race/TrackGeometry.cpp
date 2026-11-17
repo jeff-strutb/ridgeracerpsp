@@ -1684,7 +1684,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
         /* The other group of edges, against the outline in world coordinates. */
         cnt = o->m0;
         if (o->m2 < cnt) {
-            short istart = (bestEdge < o->m2) ? o->m2 : 0;
+            int istart = (bestEdge < o->m2) ? o->m2 : 0;
             V2000.x = P->x + out3[0];
             V2000.y = P->z + out3[2];
             V1984.x = V2000.x + acc.a[0];
