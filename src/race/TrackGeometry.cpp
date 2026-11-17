@@ -780,20 +780,20 @@ struct PVec {
     {                                                                                       \
         float ex = (ep)[0] - (ep)[2];                                                       \
         float ey = (ep)[1] - (ep)[3];                                                       \
-        short k = 0;                                                                        \
-        if (o->m4->n > 0) {                                                                 \
-            do {                                                                            \
+        short k;                                                                            \
+        for (k = 0; k < o->m4->n; k++) {                                                    \
+            {                                                                               \
                 float ax = Ax[k], ay = Ay[k], bx = Bx[k], by = By[k];                       \
                 dA = ex * (ay - (ep)[1]) + ey * ((ep)[0] - ax);                          \
                 dB = ex * (by - (ep)[1]) + ey * ((ep)[0] - bx);                          \
                 pA = dA * dB;                                                      \
                 if (pA > 0.0f)                                                           \
-                    goto LBL;                                                  \
+                    continue;                                                  \
                 sA = (ax - bx) * ((ep)[1] - ay) + (ay - by) * (ax - (ep)[0]);            \
                 sB = (ax - bx) * ((ep)[3] - ay) + (ay - by) * (ax - (ep)[2]);            \
                 pB = sA * sB;                                                      \
                 if (pB > 0.0f)                                                           \
-                    goto LBL;                                                  \
+                    continue;                                                  \
                 aA = dA < 0.0f ? -dA : dA;                                      \
                 aB = dB < 0.0f ? -dB : dB;                                      \
                 if (aA == 0.0f && aB == 0.0f) {                                       \
@@ -842,9 +842,7 @@ struct PVec {
                         w.a[2] = V1808.y;                                                   \
                     }                                                                       \
                 }                                                                           \
-            LBL:                                                             \
-                k = k + 1;                                                                  \
-            } while (k < o->m4->n);                                                         \
+            }                                                                               \
         }                                                                                   \
     }
 
@@ -865,7 +863,7 @@ struct Flag {
    gets the final slide along the contact edge (height from the course areas), and the
    remaining outputs get the contact vertex angle, a speed, the edge direction and the edge's
    two end points. Returns 0 (no contact) to 3.
-   DRAFT: complete transcription of every path; size 14,052 vs 14,328 bytes. Proven so far
+   DRAFT: complete transcription of every path; size 14,060 vs 14,328 bytes. Proven so far
    (each matches retail's code at that point): flags is an array of a class with an empty
    constructor (Flag), declared after result = 0 and before Qp, which gives retail's empty
    127-step-32 loop and keeps the frame offsets; every loop indexes the edge points as Vec2
