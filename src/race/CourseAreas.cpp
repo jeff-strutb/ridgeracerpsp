@@ -108,7 +108,9 @@ public:
 /* @draft 0x0e1eec us CourseAreas8f_0e1eec
    WHAT IT DOES: Takes the road line, its cross sections, the run-off data and both polygon
    sets, and publishes the ring lengths as the angle wrapping periods.
-   DIFFERS: 43/57 words differ, first at +0x10 (not yet worked). */
+   Remaining difference: 21/55 words, scheduling only: the run-off half period is a plain
+   signed shift (sra with no sign fix-up), so it is m >> 1. Retail stores n before runOff and
+   computes n / 2 (in t4) before moving this to s0; not yet diagnosed in the dumps. */
 void CourseAreas::f_0e1eec(RoadPoint *road, unsigned int roadSize, Danmen *danmen, void *runOff,
                            unsigned int runOffSize, void *roadPoly, void *runOffPoly)
 {
@@ -121,7 +123,7 @@ void CourseAreas::f_0e1eec(RoadPoint *road, unsigned int roadSize, Danmen *danme
     this->road = road;
     this->danmen = danmen;
     D_2456bc = n / 2;
-    D_2456c4 = m / 2;
+    D_2456c4 = m >> 1;
     D_2456b0 = (float)n;
     D_2456b8 = n;
     D_2456c0 = m;
@@ -147,7 +149,10 @@ void CourseAreas::f_0e1ff0()
 /* @draft 0x0e1ff8 us CourseAreas8f_0e1ff8
    WHAT IT DOES: Returns the point on the road centre line at a distance, interpolating
    between the two road points around it (the height includes the cross section's centre).
-   DIFFERS: 65/84 words differ, first at +0x38 (not yet worked). */
+   Remaining difference: 65/84 words. The three results are now built in place and stored
+   together at the end, as retail does. Before the second wrap call retail copies i into t0
+   (move t0,v0; addiu t0,t0,1) and keeps d in $f21, y in $f20; here i + 1 is formed in v0 and
+   d takes $f20, which shifts every FPR after it. Not yet diagnosed in the dumps. */
 void CourseAreas::f_0e1ff8(float d, float *px, float *py, float *pz)
 {
     int i = f_0e2690((int)d);
@@ -159,14 +164,19 @@ void CourseAreas::f_0e1ff8(float d, float *px, float *py, float *pz)
     z = p->z;
     x = p->x;
     p = &road[f_0e2690(i + 1)];
-    *px = x * (1.0f - d) + p->x * d;
-    *py = y * (1.0f - d) + (p->y + (float)danmen[p->section].h[32]) * d;
-    *pz = z * (1.0f - d) + p->z * d;
+    x = x * (1.0f - d) + p->x * d;
+    y = y * (1.0f - d) + (p->y + (float)danmen[p->section].h[32]) * d;
+    z = z * (1.0f - d) + p->z * d;
+    *px = x;
+    *py = y;
+    *pz = z;
 }
 
 /* @draft 0x0e2148 us CourseAreas8f_0e2148
    WHAT IT DOES: Returns the road heading at a distance, interpolated the short way round.
-   DIFFERS: 51/70 words differ, first at +0x8 (not yet worked). */
+   Remaining difference: 51/70 words; retail is one instruction longer: after the wrap call it
+   copies the result (move a1,v0) and builds the element address from the copy, and it loads
+   road at the very top. An inline heading helper taking (road, i) (tried once) is worse (63). */
 float CourseAreas::f_0e2148(float d)
 {
     int i = (int)d;
@@ -201,18 +211,20 @@ float CourseAreas::f_0e229c(float d)
     return atan2f(y1 - y0, sqrtf((x1 - x0) * (x1 - x0) + (z1 - z0) * (z1 - z0)));
 }
 
-/* @draft 0x0e2334 us CourseAreas8f_0e2334
+/* @implements 0x0e2334 us CourseAreas8f_0e2334
    WHAT IT DOES: Returns the ground height at a sideways offset (-32 to 31) and a distance.
-   DIFFERS: 23/39 words differ, first at +0x28 (k lands in a1, retail a2). */
+   The point index is taken before the offset is clamped and the point's address formed after
+   it, offset first (handbook: addu with the offset register first is integer arithmetic). */
 float CourseAreas::f_0e2334(float a, float d)
 {
-    RoadPoint *p = &road[(int)f_0e26dc(d)];
+    int i = (int)f_0e26dc(d);
     int k = (int)a;
 
     if (k < -32)
         k = -32;
     if (k >= 32)
         k = 31;
+    RoadPoint *p = (RoadPoint *)(i * (int)sizeof(RoadPoint) + (int)road);
     return p->y + (float)danmen[p->section].h[k + 32];
 }
 
@@ -264,7 +276,9 @@ int CourseAreas::f_0e2448(int a, int b, float x, float z)
 /* @draft 0x0e2558 us CourseAreas8f_0e2558
    WHAT IT DOES: Returns the road point nearest a position within 50 points of a, skipping
    those before b; a when none qualifies.
-   DIFFERS: 51/79 words differ, first at +0x50 (not yet worked). */
+   Remaining difference: 10/78 words, FPR choice only: retail loads road[j].z into $f1 and x
+   into $f0 and squares dx into $f2, dz into $f1; here z takes $f0. The two skip tests are
+   separate continues (a single || is or-ed into one branch). Not yet diagnosed in the dumps. */
 int CourseAreas::f_0e2558(int a, int b, float x, float z)
 {
     float min = -1.0f;
@@ -274,7 +288,9 @@ int CourseAreas::f_0e2558(int a, int b, float x, float z)
 
     for (i = a - 50; i < n && i < a + 50; i++) {
         j = f_0e2690(i);
-        if (j < 0 || j < b)
+        if (j < 0)
+            continue;
+        if (j < b)
             continue;
         dx = road[j].x - x;
         dz = road[j].z - z;
@@ -321,7 +337,9 @@ float CourseAreas::f_0e26dc(float d)
 
 /* @draft 0x0e274c us CourseAreas8f_0e274c
    WHAT IT DOES: Returns the bounding rectangle of the road line.
-   DIFFERS: 29/43 words differ, first at +0x4 (not yet worked). */
+   Remaining difference: 29/43 words. Retail puts the field in $f0 and the bound in $f1 for
+   every test and uses plain beqz (no beqzl) for the i == 0 shortcuts; here the field takes $f1.
+   Spelling the tests as `*minX > p->x` compiles identically (tried once). */
 void CourseAreas::f_0e274c(float *minX, float *maxX, float *minZ, float *maxZ)
 {
     int i;
@@ -358,7 +376,11 @@ float CourseAreas::f_0e27f8(float x, float z)
 
 /* @draft 0x0e286c us CourseAreas8f_0e286c
    WHAT IT DOES: Returns the ground height under a point and the ground's normal there.
-   DIFFERS: 42/62 words differ, first at +0xc (not yet worked). */
+   Remaining difference: 42/62 words. Retail cross-jumps the run-off arm into the road arm's
+   f_0b0d98 call (j with move a1,s3 in the slot), so both arms' copy-outs of the returned
+   vector were identical RTL after reload; here the two copies are scheduled differently and
+   stay separate. Retail also keeps n in s0 and the road set in s1. Pointer locals for the two
+   sets (tried once) change nothing that matters (49 words). */
 float CourseAreas::f_0e286c(float x, float z, Vec4 *n)
 {
     unsigned short id;
@@ -398,7 +420,10 @@ float CourseAreas::f_0e2944(float x, float y, float z)
 /* @draft 0x0e29b8 us CourseAreas8f_0e29b8
    WHAT IT DOES: Finds the ground height below a point in space; returns 0 when there is no
    ground there.
-   DIFFERS: 28/40 words differ, first at +0x30 (not yet worked). */
+   Remaining difference: 28/40 words. Retail loads li s1,0xffff before the first call and
+   compares both results against s1; here the first result goes to s1 and, on the path where it
+   equals 0xffff, cse reuses it as the constant for the second test. A local holding 0xffff
+   (handbook row 309) compiles identically. */
 int CourseAreas::f_0e29b8(float *out, float x, float y, float z)
 {
     Vec4 v;
@@ -466,7 +491,14 @@ static inline float RoadSide(const float *v, RoadPoint *list, int k)
    lies on), then projects the position onto that segment: stores the distance along the road
    (the segment's first point plus the clamped fraction 0..1, corrected for both end points'
    headings) in *pos and the sideways offset (scaled by 1/1024) in *side.
-   DIFFERS: not yet scored. */
+   Remaining difference: 9/694 words, all sched2 order on the projection's tail. Retail adds
+   den's two products before num's after the first heading wrap call, then num += t before
+   den += t; here each pair is the other way round (sched2 keeps sched1's order for these
+   equal-priority sums, and sched1 issues num's sum first because den's dx*c product has the
+   fewest dependents and is chosen last). Retail also stores *pos before *side; with *side
+   written first (needed for retail's s7/s8 assignment: global-alloc ranks side ahead only when
+   its store is earlier) sched2 here stores *side first. Computing dx*c before the sine call
+   (tried) moves FPRs and does not reorder the sums. */
 void CourseAreas::f_0e2f9c(int n, float *side, float *pos, float x, float z)
 {
     RoadPoint *list = road;
@@ -602,8 +634,8 @@ void CourseAreas::f_0e2f9c(int n, float *side, float *pos, float x, float z)
         r = 1.0f;
     else if (r < 0.0f)
         r = 0.0f;
-    *pos = a + r;
     *side = u * 0.0009765625f;
+    *pos = a + r;
 }
 
 /* @implements 0x0e3a74 us CourseAreas8f_0e3a74
@@ -618,7 +650,10 @@ void CourseAreas::f_0e3a74(int i, unsigned short *a, unsigned short *b)
 
 /* @draft 0x0e3a9c us CourseAreas8f_0e3a9c
    WHAT IT DOES: Passes the ground polygon below a point in space on to its polygon set.
-   DIFFERS: 15/37 words differ, first at +0x14 (not yet worked). */
+   Remaining difference: 15/37 words. Retail builds &roadPoly (s0), &v (s1) and &runOffPoly
+   (s2) in the prologue and cross-jumps the run-off arm into the shared f_0af5e8 call (j with
+   move a0,s2 in the slot). Two pointer locals with a call in each arm (tried once) get the
+   prologue pointers but neither the cross-jump nor that register order (36 words). */
 void CourseAreas::f_0e3a9c(float x, float y, float z)
 {
     unsigned short id;
