@@ -516,7 +516,7 @@ CCar *CDjCheck::f_08f048(int n)
     return 0;
 }
 
-/* @draft 0x08f0a8 us f_08f0a8
+/* @implements 0x08f0a8 us f_08f0a8
    WHAT IT DOES: Returns the distance from the player's car to another car. */
 float CDjCheck::f_08f0a8(CCar *c)
 {
