@@ -1,6 +1,8 @@
 #!/bin/sh
 # Extract BOOT.BIN and EBOOT.BIN for USA, Europe and Japan into orig/<region>/
-# and verify every file against the MD5s recorded in tools/refcheck.py.
+# and verify every file against the MD5s recorded in tools/refcheck.py; then
+# build build/allegrex_ops.json (the opcode table of the toolchain's own
+# psp-objdump) from psp-gcc-1.3.1.tar.gz in the same directory.
 #
 #   ./setup.sh [ISO_DIR]          ISO_DIR also from $RR_ISO_DIR
 #   ./setup.sh --selftest         plant a wrong ISO and prove it is refused
@@ -54,3 +56,6 @@ iso_dir=${1:-${RR_ISO_DIR:-$default_iso}}
 out=${RR_ORIG:-$here/orig}
 extract "$iso_dir" "$out"
 echo "setup: reference files verified in $out"
+mkdir -p "$here/build"
+python3 "$here/tools/analysis/mkopcodes.py" "$iso_dir/psp-gcc-1.3.1.tar.gz" \
+    "$here/build/allegrex_ops.json"
