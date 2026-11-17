@@ -350,7 +350,7 @@ When only the order of independent statements is open, compile every permutation
 
 ## Compiler source
 
-`references/gcc-3.3.3/gcc/` holds the GCC 3.3.3 sources most often needed to settle a pass decision (local, gitignored): `calls.c`, `cse.c` (incl. `rtx_cost`), `expr.c`, `function.c` (ADDRESSOF), `loop.c`, `rtlanal.c`, `stmt.c` (`expand_decl`, `preserve_subexpressions_p`), `config/mips/mips.h`. Other files: `https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-3.3.3/gcc/<file>`; add them to the same folder. Read the source before reasoning about a pass from memory. At `-O2`, `preserve_subexpressions_p` is always true (`flag_expensive_optimizations`).
+`references/gcc-3.3.3/gcc/` holds the GCC 3.3.3 sources most often needed to settle a pass decision (local, gitignored): `calls.c`, `cse.c` (incl. `rtx_cost`), `expr.c`, `function.c` (ADDRESSOF), `gcse.c`, `loop.c` (movable threshold: `(has_call ? 1 : 2) * (1 + n_non_fixed_regs)`, about 64 with a call on this port, against `savings * lifetime` and the loop's insn count), `rtlanal.c`, `stmt.c` (`expand_decl`, `preserve_subexpressions_p`), `config/mips/mips.h`. Other files: `https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-3.3.3/gcc/<file>`; add them to the same folder. Read the source before reasoning about a pass from memory. At `-O2`, `preserve_subexpressions_p` is always true (`flag_expensive_optimizations`).
 
 ## Tools
 
