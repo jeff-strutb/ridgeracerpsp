@@ -126,6 +126,7 @@ int f_110630(int t, int level);
 int f_111900(int ch, int a1);
 int f_1112b0(int ch, int ms);
 int f_111f98(int ch);
+int f_112aa8(int a0, int a1, int a2);
 int sceIoLseekAsync(int fd, long long offset, int whence);
 int f_110f58(int stream, const char *name, int id);
 int f_1117d0(int stream, const char *name, int id, int fade);
@@ -386,6 +387,51 @@ void f_111f18(int unused, int flag)
         else
             v->m72 = 4096;
         f_10d228(i + 29);
+    }
+}
+
+/* @draft 0x1128c8 us f_1128c8
+   WHAT IT DOES: Moves the next 16 KB of the read buffer k into the voice ring (0x112aa8).
+   When the file's data runs out first, copies what is left and either marks the end of both
+   voice buffers (no loop point) or restarts the ring at the loop point (the block holding
+   sample m60, rounded to 2048-byte lines) and steps the loop count.
+   Remaining difference: register choice only. Retail gives the loop-point position p s0 and
+   builds pos % 2048 in it; here p gets s1 and the remainder a temporary (global allocation
+   order of p and dst). */
+void f_1128c8(int k)
+{
+    int pos = (D_291980.m60 + 27) / 28 * 16;
+    int r;
+
+    if (D_291980.m52 < D_291980.m88 + 0x4000) {
+        if (D_291980.m60 == -1) {
+            r = f_112aa8(D_291980.m84, D_291980.m52 - D_291980.m88, k << 14);
+            D_291980.m88 = 0;
+            D_291980.m184[r - 15] = 7;
+            D_291980.m188[r - 15] = 7;
+        } else {
+            int p;
+            int dst = k << 14;
+
+            r = f_112aa8(D_291980.m84, D_291980.m52 - D_291980.m88, dst);
+            p = pos % 2048;
+            p += (D_291980.m84 + r) / 2048 * 2048;
+            p += 2048;
+            D_291980.m32 = pos;
+            D_291980.m88 = pos;
+            dst += r;
+            f_112aa8(p % 0x20000, 0x4000 - r, dst);
+            p -= r;
+            p += 0x4000;
+            D_291980.m84 = p % 0x20000;
+            D_291980.m88 = D_291980.m88 - r + 0x4000;
+            D_291980.m152 = -1;
+            D_291980.m128++;
+        }
+    } else {
+        r = f_112aa8(D_291980.m84, 0x4000, k << 14);
+        D_291980.m84 = (D_291980.m84 + r) % 0x20000;
+        D_291980.m88 += 0x4000;
     }
 }
 
