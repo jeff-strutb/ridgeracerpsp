@@ -148,6 +148,11 @@ int f_112c98(int args, void *argp);
 int f_113050(int args, void *argp);
 int sceKernelCreateThread(const char *name, int (*entry)(int, void *), int prio, int stack, int attr, void *opt);
 void *memcpy(void *d, const void *s, unsigned int n);
+int sceIoGetAsyncStat(int fd, int poll, long long *res);
+int sceIoReadAsync(int fd, void *data, int size);
+int sceDisplayWaitVblankStart(void);
+int sceKernelExitThread(int status);
+int iprintf(const char *fmt, ...);
 int sceKernelStartThread(int thid, unsigned int arglen, void *argp);
 int sceKernelWaitThreadEnd(int thid, unsigned int *timeout);
 int sceKernelDeleteThread(int thid);
@@ -418,6 +423,36 @@ int f_112b70(int nch, int pos, int n, int dst, int blk)
         done += k;
     }
     return done;
+}
+
+/* @implements 0x113050 us f_113050
+   WHAT IT DOES: The ATRAC3 read thread for the channel passed in argp: block size 1024 for a
+   host0: file, else the channel's buffer size; opens the channel's file (printing its name and
+   returning -1 when that fails), waits for the open, reads the file into the channel's buffer,
+   waits for the read, notes the bytes read, starts the play thread and exits. */
+int f_113050(int args, void *argp)
+{
+    long long res;
+    int ch = *(int *)argp;
+
+    if (memcmp(D_291a54[ch].name, "host0", 5) == 0)
+        D_291a54[ch].m44 = 1024;
+    else
+        D_291a54[ch].m44 = D_291a54[ch].count;
+    D_291a54[ch].m20 = sceIoOpenAsync(D_291a54[ch].name, 1, 0);
+    if (D_291a54[ch].m20 < 0) {
+        iprintf("cannot open %s\n", D_291a54[ch].name);
+        return -1;
+    }
+    while (sceIoGetAsyncStat(D_291a54[ch].m20, 1, &res) != 0)
+        sceDisplayWaitVblankStart();
+    sceIoReadAsync(D_291a54[ch].m20, D_291a54[ch].buf, D_291a54[ch].count);
+    while (sceIoGetAsyncStat(D_291a54[ch].m20, 1, &res) != 0)
+        sceDisplayWaitVblankStart();
+    D_291a54[ch].m36 = res;
+    sceKernelStartThread(D_291a54[ch].thread2, 4, &ch);
+    sceKernelExitThread(0);
+    return 0;
 }
 
 /* @draft 0x1131dc us f_1131dc
