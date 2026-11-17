@@ -863,7 +863,7 @@ struct Flag {
    gets the final slide along the contact edge (height from the course areas), and the
    remaining outputs get the contact vertex angle, a speed, the edge direction and the edge's
    two end points. Returns 0 (no contact) to 3.
-   DRAFT: complete transcription of every path; size 14,168 vs 14,328 bytes. Proven so far
+   DRAFT: complete transcription of every path; size 14,164 vs 14,328 bytes. Proven so far
    (each matches retail's code at that point): flags is an array of a class with an empty
    constructor (Flag), declared after result = 0 and before Qp, which gives retail's empty
    127-step-32 loop and keeps the frame offsets; every loop indexes the edge points as Vec2
@@ -875,7 +875,7 @@ struct Flag {
    out of line as in retail. All 117 calls now come in retail's order. The first correction's bounds are single
    expressions (xlo = -(o->m4->r + sqrtf(..)), xhi = sqrtf(len) + r + sqrtf(..)): the r operand
    stays a MEM through the shape pointer loaded before the sqrt, so retail reloads o->m4 only once
-   (after len); the second cull loop has retail's while guard. Inner loops whose tests skip to
+   (after len), and so are the later bounds and radius sums; the second cull loop has retail's while guard. Inner loops whose tests skip to
    the next element are for loops with continue (not goto to the increment), which gives
    retail's out-of-line placement of the code after the first test. Open: retail keeps hitAny in memory (spilled) and hoists the angle addresses and the
    constant 1 out of the first cull loop; the block with f_0b1b28 at retail 0x1e78 is still
@@ -1251,16 +1251,10 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                 i = i + 1;
             } while (i < o->m4->n);
         }
-        {
-            float c0 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
-            float c1 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
-            xlo = V1888.x - (o->m4->r + c0);
-            xhi = V1888.x + o->m4->r + c1;
-            float c2 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
-            float c3 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
-            yhi = V1888.y + o->m4->r + c2;
-            ylo = V1888.y - (o->m4->r + c3);
-        }
+        xlo = V1888.x - (o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz));
+        xhi = V1888.x + o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+        yhi = V1888.y + o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+        ylo = V1888.y - (o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz));
         cnt = o->m0;
         if (cnt != 0) {
             i = 0;
@@ -1402,16 +1396,10 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                                         k = k + 1;
                                     } while (k < o->m4->n);
                                 }
-                                {
-                                    float c0 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
-                                    float c1 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
-                                    xlo = -(V1888.x + o->m4->r + c0);
-                                    xhi = V1888.x + o->m4->r + c1;
-                                    float c2 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
-                                    float c3 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
-                                    yhi = V1888.y + o->m4->r + c2;
-                                    ylo = -(V1888.y + o->m4->r + c3);
-                                }
+                                xlo = -(V1888.x + o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz));
+                                xhi = V1888.x + o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+                                yhi = V1888.y + o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+                                ylo = -(V1888.y + o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz));
                                 {
                                     short j = i + 1;
                                     cnt = o->m0;
@@ -1526,10 +1514,9 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
         /* Cull the edges around the slid outline and find how far it must be pushed back. */
         V448.x = P->x + out3[0];
         V448.y = P->z + out3[2];
+        rad = o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
         {
-            float c0 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
             float la = __builtin_sqrtf(acc.a[0] * acc.a[0] + acc.a[1] * acc.a[1] + acc.a[2] * acc.a[2]);
-            rad = o->m4->r + c0;
             xlo = -rad;
             xhi = la - xlo;
             yhi = rad;
@@ -1661,10 +1648,9 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
             V1984.x = V2000.x + acc.a[0];
             V1984.y = V2000.y + acc.a[2];
             ang = -f_09a9dc(acc.a[2], acc.a[0]);
+            rad = o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
             {
-                float c0 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
                 float lv = __builtin_sqrtf(V1808.x * V1808.x + V1808.y * V1808.y);
-                rad = o->m4->r + c0;
                 xlo = -rad;
                 xhi = lv - xlo;
                 yhi = rad;
