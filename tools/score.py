@@ -774,8 +774,12 @@ class Grader:
             rtarget = self.retail.target(rr)
             why = self.check(u, cr, rtarget)
             if why:
-                return dict(res, verdict='BADREF', word=i, detail='word %d %s: %s' % (
-                    i, rname(cr.type), why))
+                comp = []
+                for k, c, _ in refs:
+                    t = self.resolve(u, c.sym, c.addend)
+                    comp.append((k, c.type, t.addr if t.kind == 'addr' else None))
+                return dict(res, verdict='BADREF', word=i, compiled_refs=comp,
+                            detail='word %d %s: %s' % (i, rname(cr.type), why))
             out.append((i, cr.type, rtarget))
         res['refs'] = out
         res['rules'] = sorted(self.used)
@@ -873,8 +877,8 @@ def main(argv=None):
     el = time.time() - t0
     if a.json:
         for r in results:
-            r.pop('refs', None)
-            r.pop('items', None)
+            for k in ('refs', 'items', 'compiled_refs'):
+                r.pop(k, None)
         json.dump({'results': results, 'seconds': round(el, 2), 'compile': tree.times},
                   sys.stdout, indent=1)
         print()

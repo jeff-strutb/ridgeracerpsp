@@ -14,12 +14,16 @@ Steps:
      LO16 v & 0xffff, R_MIPS_32 v), and write the result at the function's file offset.
   3. Compare the whole file with retail.
 
+--files SRC... limits the gate to those real files (their @implements are the count to meet);
+the full gate is the one without it.
+
 Exit status 1 (gate red) on any of:
   - a differing byte anywhere in the file;
   - a placed function that is not EXACT, or whose compiled size differs from funcs.csv;
   - two placed functions that overlap;
   - fewer functions placed than @implements tags in real files, or none placed.
-Exit status 2 when the reference or the compile host is unusable.
+Exit status 2 when the reference fails its MD5 check or RRPSP_CC_HOST/RRPSP_CC_KEY are unset
+(a compile that fails for any other reason makes its functions MISSING, so the gate is red).
 
 --replace SRC=COPY grades COPY (a file inside the repository, for example under build/) in
 place of the real file SRC.  --plant-drop 0xADDR leaves that function out of the placed set;
@@ -55,12 +59,12 @@ def field(typ, target, segbase, word):
     raise ValueError('relocation type %d' % typ)
 
 
-def run(no_cache=False, replace=(), drop=(), force=(), jobs=8):
+def run(no_cache=False, replace=(), drop=(), force=(), only=None, jobs=8):
     t0 = time.time()
     retail = score.Retail()
     tree = score.Tree(use_cache=not no_cache, jobs=jobs)
     g = score.Grader(tree, retail)
-    repl = {Path(a).resolve(): Path(b).resolve() for a, b in replace}
+    repl = {(score.ROOT / a).resolve(): (score.ROOT / b).resolve() for a, b in replace}
     real = [p.resolve() for p in score.source_files() if score.is_real(p)]
     files = [repl.get(p, p) for p in real]
     # The index (tags of real files) must see the replacement, not the original.
@@ -84,7 +88,11 @@ def run(no_cache=False, replace=(), drop=(), force=(), jobs=8):
     tree._index = build_index()
     t_compile = time.time() - t0
     results, problems = [], []
+    scope = None if not only else {repl.get((score.ROOT / x).resolve(), (score.ROOT / x).resolve())
+                                   for x in only}
     for p in files:
+        if scope is not None and p not in scope:
+            continue
         u = tree.units[p]
         problems += u.problems
         for t in u.tags:
@@ -119,7 +127,11 @@ def run(no_cache=False, replace=(), drop=(), force=(), jobs=8):
         sym = next(s for s in u.obj.syms if s.name == r['symbol'] and s.type == score.STT_FUNC
                    and u.obj.defined(s))
         code = bytearray(u.obj.bytes_of(sym.shndx, sym.value, sym.size))
-        for k, typ, target in r.get('refs', []):
+        # A forced (non-EXACT) function has no proven targets; its fields are written from
+        # the compiled side's own resolved addresses where it has them.
+        for k, typ, target in r['refs'] if 'refs' in r else r.get('compiled_refs', []):
+            if target is None:
+                continue
             w = struct.unpack_from('<I', code, 4 * k)[0]
             base = retail.segbase(target)
             if base is None:
@@ -153,7 +165,8 @@ def run(no_cache=False, replace=(), drop=(), force=(), jobs=8):
     if n_placed == 0:
         fails.append('no function placed')
     if n_placed < n_impl:
-        fails.append('%d functions placed, %d @implements tags in real files' % (n_placed, n_impl))
+        fails.append('%d functions placed, %d @implements tags in %s' % (
+            n_placed, n_impl, 'the given files' if only else 'real files'))
     not_exact = [r for r in results if r['verdict'] != 'EXACT']
     return {
         'green': not fails, 'fails': fails, 'placed': n_placed, 'implements': n_impl,
@@ -177,13 +190,17 @@ def main(argv=None):
                     help='place this function even if it is not EXACT (fields left as compiled '
                          'when it has no resolved references)')
     ap.add_argument('--list', action='store_true', help='list every @implements that is not EXACT')
+    ap.add_argument('--files', nargs='+', metavar='SRC',
+                    help='gate only these real files: their @implements are the count to meet '
+                         '(the cross-file index still covers every real file)')
     a = ap.parse_args(argv)
     res = run(a.no_cache, [x.split('=', 1) for x in a.replace],
-              [int(x, 16) for x in a.plant_drop], [int(x, 16) for x in a.plant_force])
+              [int(x, 16) for x in a.plant_drop], [int(x, 16) for x in a.plant_force], a.files)
     if a.json:
         out = dict(res)
         out.pop('results')
-        out['not_exact'] = [{k: v for k, v in r.items() if k not in ('refs', 'items')}
+        out['not_exact'] = [{k: v for k, v in r.items()
+                             if k not in ('refs', 'items', 'compiled_refs')}
                             for r in res['not_exact']]
         json.dump(out, sys.stdout, indent=1)
         print()
@@ -194,7 +211,7 @@ def main(argv=None):
         c = {}
         for r in res['results']:
             c[r['verdict']] = c.get(r['verdict'], 0) + 1
-        print('@implements in real files: %d (%s)' % (res['implements'], ', '.join(
+        print('@implements in %s: %d (%s)' % ('the given files' if a.files else 'real files',res['implements'], ', '.join(
             '%s %d' % kv for kv in sorted(c.items()))))
         print('placed: %d functions, %d bytes' % (res['placed'], res['placed_bytes']))
         print('image md5 %s, retail %s' % (res['image_md5'], res['retail_md5']))
