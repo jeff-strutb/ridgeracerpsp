@@ -532,9 +532,11 @@ void CRidgeComcar::f_0c0d98()
 /* @draft 0x0c0edc us f_0c0edc
    WHAT IT DOES: The boost gauge state machine (0 idle, 1 rising, 2 holding, 3 falling): the
    computer car boosts whenever its boost input is set. Sets the speed factor, capped at 2.
-   DIFFERS: two spots: retail multiplies the falling factor straight into the result register
-   (f4) and stores the hold time's zero floor from f4; this build multiplies through f0 and
-   stores sw zero. If-chains, declaration orders and split multiplies do not fix it.
+   DIFFERS: one word: retail stores the hold time's zero floor from f4 (add's register); this
+   build stores sw zero. (The falling factor's multiplies now match: the intermediate product
+   is add itself, `add = ...; add *= m10068;`, a global pseudo local-alloc cannot tie a
+   temporary into, so both mul.s write f4.) If-chains and declaration orders do not fix the
+   store.
    Deciding pass for the store: gcse's GLOBAL CONST-PROP replaces add with 0.0 in the case 2
    store (the -dG dump says so); retail's store keeps the register, so in retail add's zero
    set was not an available constant set at case 2 (cprop only records a reg = const set whose
@@ -584,8 +586,10 @@ void CRidgeComcar::f_0c0edc()
         if (p->m1096 <= 55.6f)
             add = (55.6f - p->m1096) / 55.6f;
     }
-    if (m10044 == 3)
-        add = (m10036 - 1.0f) * m10084 * m10068;
+    if (m10044 == 3) {
+        add = (m10036 - 1.0f) * m10084;
+        add *= m10068;
+    }
     if (done == 1) {
         m10064 = (1.0f - m10036) * 0.008333f;
         m10052 = (m10052 + 1) % 3;
@@ -741,7 +745,14 @@ void CRidgeComcar::f_0c1438()
    constant's lui); here the constant loads first. Reading the heading into a float local
    first gives the same code, so the insn order going into sched2 is not what decides it.
    (Indexing m10116[sec] directly, not through an element pointer, gives retail's offset-first
-   addu for the course line lookup.) */
+   addu for the course line lookup.)
+   sched2 trace (-fsched-verbose=4): the quarter turn constant is a reload-made pool load
+   (insn 569, with its lui 570) after the heading load (290) in insn order; the heading load
+   only has an anti dependence on the preceding call, so 290 is ready at the same cycle as
+   570. 570 wins (higher priority, via 569), then at the next cycle 569 beats 290 although 290
+   has the lower luid: both are class 3 against the lui, so 569 has the higher priority or
+   more dependents (its f0 output dependence on the next call). Retail picks 290 there. No
+   source lever identified from this; no change made. */
 void CRidgeComcar::f_0c145c(float a, float b, float c)
 {
     CourseAreas *ar = D_23c820.Areas();

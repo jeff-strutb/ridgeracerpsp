@@ -382,9 +382,11 @@ void CRidgeMycar::f_0bff90()
 /* @draft 0x0bff98 us f_0bff98
    WHAT IT DOES: The boost gauge state machine (0 idle, 1 rising, 2 holding, 3 falling) and
    the resulting speed factor, capped at 2.
-   DIFFERS: two spots: retail multiplies the falling factor straight into the result register
-   (f4) and stores the hold time's zero floor from f4; this build multiplies through f0 and
-   stores sw zero. If-chains, declaration orders and split multiplies do not fix it.
+   DIFFERS: one word: retail stores the hold time's zero floor from f4 (add's register); this
+   build stores sw zero. (The falling factor's multiplies now match: the intermediate product
+   is add itself, `add = ...; add *= m10068;`, a global pseudo local-alloc cannot tie a
+   temporary into, so both mul.s write f4.) If-chains and declaration orders do not fix the
+   store.
    Deciding pass for the store: gcse's GLOBAL CONST-PROP replaces add with 0.0 in the case 2
    store (the -dG dump says so); retail's store keeps the register, so in retail add's zero
    set was not an available constant set at case 2 (cprop only records a reg = const set whose
@@ -438,8 +440,10 @@ void CRidgeMycar::f_0bff98()
         if (p->m1096 <= 55.6f)
             add = (55.6f - p->m1096) / 55.6f;
     }
-    if (m10044 == 3)
-        add = (m10036 - 1.0f) * m10084 * m10068;
+    if (m10044 == 3) {
+        add = (m10036 - 1.0f) * m10084;
+        add *= m10068;
+    }
     if (done == 1) {
         m10064 = (1.0f - m10036) * 0.008333f;
         m10052 = (m10052 + 1) % 3;

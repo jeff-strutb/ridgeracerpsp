@@ -128,6 +128,11 @@ int CManagerBase::f_0c5998(void **found, Vec4 *pos, int max, int *nPoly)
 /* @draft 0x0c5b04 us _ZN3Map7WallHit12CManagerBase8f_0c5b04Effff
    DRAFT: two words differ, the register holding the wall size 84 for the multiply (v0 in
    retail, a1 here); every ordering of the count and slot statements tried keeps it.
+   Named cause (lreg dump): local-alloc's combine_regs ties the constant 84 (r199, dies in
+   the multiply insn 78) into the product's quantity (r198), which is also tied to the wall
+   address (r200), so all three get a1. Retail has the product and address tied (a1) but not
+   the constant (v0), so in retail the multiply's dying input was not tieable (or the
+   product's quantity was taken first). No source shape identified; no change made.
    WHAT IT DOES: Adds a wall in the first free slot: an 8 point outline and its bounding box
    grown by 15000 on every side. Returns the slot. */
 int CManagerBase::f_0c5b04(float a, float b, float w, float d)

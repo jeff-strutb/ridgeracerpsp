@@ -96,7 +96,15 @@ void CBankList::f_10d4b0()
    DRAFT: two words: retail stores the slot's header before its data address (the data
    store in the jump's slot); here the scheduler's register-pressure rank puts the data
    store first. The count is read through a copy of the header pointer, which is then
-   advanced to the tones, as retail keeps both. */
+   advanced to the tones, as retail keeps both.
+   sched1 trace (-fsched-verbose=4): the hdr store (insn 103) has no input dependences and
+   only an anti dependence to the jump, so it waits from t=4; at t=8 it loses to the *id
+   store (93, same priority, earlier luid) as retail also has, and at t=11 it loses to the
+   data store (120) on reg weight: 120 kills the data value and, as the last use in source
+   order, the slot pointer (weight -2) against 0. Retail picks hdr at t=11, which needs hdr's
+   weight <= data's while keeping the *id store ahead of it at t=8; moving hdr after data in
+   source only ties the weights (-1/-1) and the luid then still picks data. No source shape
+   found that satisfies both picks; no change made. */
 int CBankList::f_10d4d4(BankHeader *bank, void *src, unsigned short *id)
 {
     BankHeader *h = bank;

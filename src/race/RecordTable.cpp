@@ -635,7 +635,8 @@ static inline float GetF(const unsigned char *p)
    Remaining difference: 21 words in the kind-7 block. Here the third float's address (d + 8) is
    formed with the second's, before the second store, in its own register (a3); retail forms it in
    the same register as the second (a2), after the second store, which suggests the pointer is
-   stepped between the reads rather than offset. */
+   stepped between the reads rather than offset. Tried (2026-11-16): `d += 4` between the reads
+   gives the same code (CSE folds both steps back to v0+4 and v0+8 as separate pseudos; 23 words). */
 extern "C" void f_0dffd8(Key *keys, AnimData *pb, AnimData *pos)
 {
     int i;
@@ -669,7 +670,9 @@ struct SegTab {
    Remaining difference: 17 words. (1) Retail converts the time for the loop tests before the loop's
    blez guard; here loop.c hoists it into the preheader after the guard. (2) Retail holds the first
    frame in t0, the register of the 0/1 result, so the source probably reuses the result variable
-   for it; here it gets a0. */
+   for it; here it gets a0. Tried (2026-11-16): `int ti = (int)time;` before the loop puts the
+   conversion before the guard, but CSE then reuses ti for the later (int)time in the k < 2 arm,
+   which retail converts again (300 B vs 308, 61 words). */
 extern "C" int f_0e01a8(AnimData *pb, int *f0, int *f1, float *frac)
 {
     int wrap = 0;
