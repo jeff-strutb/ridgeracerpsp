@@ -174,14 +174,14 @@ struct CModel {
         level[0] = 255;
         level[9] = 255;
         m1604[0] = 0xffffff;
-        m1632 = 0xffffff;
+        m1604[1] = 0xffffff;
         level[11] = 128;
         m1624 = 0x80000000;
         m1620 = 255;
         m1628 = 0x4746fffe;
         m1604[2] = 0xffffff;
         m1604[3] = 0xffffff;
-        m1604[1] = 0xffffff;
+        m1632 = 0xffffff;
         for (i = 0; i < 2; i++) {
             m1648[i].x = 0;
             m1648[i].y = 1.0f;
@@ -1494,11 +1494,12 @@ FlarePoint D_23c130[13] = {
    WHAT IT DOES: The car model's constructor: builds the model, clears the animation table
    and the wheel rotations, and clears the light levels and flags. */
 
-/* @draft 0x0202b4 us CModelC1Ev
+/* @implements 0x0202b4 us CModelC1Ev
    (the compiler emits it outside .text, in a link once section)
    WHAT IT DOES: The model's constructor: identity matrices, cleared shadow vectors and light
    levels, full colour and the default light settings.
-   Remaining difference: two stores of 0xffffff (to +1632 and +1608) swapped by sched2. */
+   The 0xffffff store to m1632 is last in the source: sched1 prefers the store where the
+   constant's register dies, which pulls it up beside the other one-use constant stores. */
 
 /* @implements 0x01fb68 us __static_initialization_and_destruction_0
    WHAT IT DOES: At startup, computes the two flare outlines (the star and the circle). */

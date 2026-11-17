@@ -986,11 +986,12 @@ int MemoryStick::f_01ae50()
     return r;
 }
 
-/* @draft 0x01afa8 us f_01afa8
+/* @implements 0x01afa8 us f_01afa8
    WHAT IT DOES: Starts saving a replay: writes it into a new stream and opens the save dialog
    on a list of 99 slots, with the replay's texts and the result menu's icons and picture.
-   Remaining difference (10 words): register allocation; retail keeps "ResultMenu" in s2 and
-   the file table in s1, here they are swapped. */
+   Each file index is its own variable: the table address is then first loaded after the
+   first index call, so its live range is shorter than "ResultMenu"'s and local-alloc gives
+   it s1 first (retail: table in s1, "ResultMenu" in s2). */
 void MemoryStick::f_01afa8()
 {
     char *ld = D_1dd6b0;
@@ -1006,11 +1007,14 @@ void MemoryStick::f_01afa8()
     D_1e38f4.f_0061a0(buf, 0x4000, stream->f_019280());
     D_1e38f4.f_0061b0(D_23bab4.f_019494(), D_23bab4.Text1(), replayText);
     p = f_005c34(ld, "RIcon0");
-    D_1e38f4.f_006260(p, D_1c0614[f_00222c("RIcon0", f_01c26c("ResultMenu"))].size);
+    int icon0 = f_00222c("RIcon0", f_01c26c("ResultMenu"));
+    D_1e38f4.f_006260(p, D_1c0614[icon0].size);
     p = f_005c34(ld, "RIcon1");
-    D_1e38f4.f_006274(p, D_1c0614[f_00222c("RIcon1", f_01c26c("ResultMenu"))].size);
+    int icon1 = f_00222c("RIcon1", f_01c26c("ResultMenu"));
+    D_1e38f4.f_006274(p, D_1c0614[icon1].size);
     q = f_005c34(ld, "Pic");
-    D_1e38f4.f_006288(q, D_1c0614[f_00222c("Pic", f_01c26c("ResultMenu"))].size);
+    int pic = f_00222c("Pic", f_01c26c("ResultMenu"));
+    D_1e38f4.f_006288(q, D_1c0614[pic].size);
     D_1e38f4.f_00629c();
     D_1e38f4.f_0064dc(100, 99);
     D_1e38f4.f_006664();

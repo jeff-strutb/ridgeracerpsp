@@ -7822,9 +7822,21 @@ void f_05c7dc(char **self, unsigned n) {
     *self = nd;
 }
 
-/* @draft 0x05fadc us f_05fadc
+/* The rep's reference-count bump (libstdc++'s _M_refcopy), a throw() function inlined into the
+   assignment: its two interrupt calls sit in an exception-spec region, whose __cxa_call_unexpected
+   call is itself covered by the caller's allocator cleanup (retail's second landing pad). */
+static inline char *f_05fadc_refcopy(char *s0) throw() {
+    int st = sceKernelCpuSuspendIntr();
+    volatile int *c = (volatile int *)(s0 - 4);
+    int o = *c; (void)o;
+    *c += 1;
+    sceKernelCpuResumeIntr(st);
+    return s0;
+}
+
+/* @implements 0x05fadc us f_05fadc
    WHAT IT DOES: string assignment: when the two handles differ, takes a copy of the source (sharing its rep by bumping the count under interrupt suspend, or cloning an unshareable one with f_05e404), drops the old rep's reference (freeing it at zero) and installs the new data pointer; returns the destination. */
-char **f_05fadc(char **self, char **a) throw() {
+char **f_05fadc(char **self, char **a) {
     char *s0 = *a;
     char *rp = s0 - 12;
     if (*self - 12 != rp) {
@@ -7833,12 +7845,7 @@ char **f_05fadc(char **self, char **a) throw() {
         if (*(int *)(rp + 8) < 0) {
             r = f_05e404((unsigned *)rp, &g, 0);
         } else {
-            int st = sceKernelCpuSuspendIntr();
-            volatile int *c = (volatile int *)(s0 - 4);
-            int o = *c; (void)o;
-            *c += 1;
-            sceKernelCpuResumeIntr(st);
-            r = s0;
+            r = f_05fadc_refcopy(s0);
         }
         char *d0 = *self;
         char *d2 = d0 - 12;
@@ -8014,7 +8021,7 @@ void *f_021b38(int);
 void f_116dfc(int, int, int, int, void *);
 extern float D_1a2b08;
 void f_046620(void *, int);
-void f_0455e8(float, float, float, float, void *, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int);
+void f_0455e8(void *, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, float, float, float, float);
 void f_0455cc(void *);
 void f_1166d4(int);
 void f_11839c(int);
@@ -8236,8 +8243,8 @@ int f_0463a4(float r, float g, float b, float a, int a0, int x, int p2, int p3, 
     return 0;
 }
 
-/* @draft 0x049b90 us f_049b90
-   WHAT IT DOES: looks up the sprite record of the index at a1+12, scales its width and height by the 2x2 matrix and translation in a2 to get four corner points (with texture coordinates 0..w, 0..h), re-selects the record's palette byte when it changed, and submits the quad through f_0455e8 unless mode (a2+96) is 2; in mode 1 with the +80 field equal to 1 it instead runs the f_0455cc bracket and the virtual call at slot 7 of the object at +28. */
+/* @implements 0x049b90 us f_049b90
+   WHAT IT DOES: looks up the sprite record of the index at a1+12, scales its width and height by the 2x2 matrix and translation in a2 to get four corner points (with texture coordinates 0..w, 0..h), re-selects the record's palette byte when it changed, and submits the quad through f_0455e8 (its four color floats are its last parameters: they go to $f12..$f15 either way, but argument order sets the load order, and retail loads the integer arguments before $f12..$f14) unless mode (a2+96) is 2; in mode 1 with the +80 field equal to 1 it instead runs the f_0455cc bracket and the virtual call at slot 7 of the object at +28. */
 void f_049b90(char *s2, char *s3, char *s1) {
     char *a1 = *(char **)(s2 + 4);
     char *rec = *(char **)(a1 + 40) + *(int *)(s3 + 12) * 12;
@@ -8279,12 +8286,13 @@ void f_049b90(char *s2, char *s3, char *s1) {
         }
         return;
     }
-    f_0455e8(*(float *)(s1 + 64), *(float *)(s1 + 68), *(float *)(s1 + 72), *(float *)(s1 + 76), s2 + 12,
+    f_0455e8(s2 + 12,
              X[0], Y[0], -1, U[0], V[0],
              X[1], Y[1], -1, U[1], V[1],
              X[2], Y[2], -1, U[2], V[2],
              X[3], Y[3], -1, U[3], V[3],
-             tab[*(int *)(s3 + 12)]);
+             tab[*(int *)(s3 + 12)],
+             *(float *)(s1 + 64), *(float *)(s1 + 68), *(float *)(s1 + 72), *(float *)(s1 + 76));
 }
 
 }
@@ -12985,8 +12993,8 @@ void f_04ea4c(void *, void *, void *);
 void f_04e74c(void *, int);
 
 /* @draft 0x0455e8 us f_0455e8
-   WHAT IT DOES: unless the last argument is -1, packs four float components into one 32-bit color, calls f_023198 with the last argument, builds a 40-byte record of twenty 16-bit values stored as low/high byte pairs, passes the color to f_1181c0, submits the record with f_116dfc and returns 0. */
-int f_0455e8(float r, float g, float b, float a, int x0, unsigned short p1, unsigned short p2, unsigned short p3, unsigned short p4, unsigned short p5, unsigned short p6, unsigned short p7, unsigned short p8, unsigned short p9, unsigned short p10, unsigned short p11, unsigned short p12, unsigned short p13, unsigned short p14, unsigned short p15, unsigned short p16, unsigned short p17, unsigned short p18, unsigned short p19, unsigned short p20, int idx) {
+   WHAT IT DOES: unless the index argument (the last integer, after the twenty 16-bit values) is -1, packs the four trailing float components into one 32-bit color, calls f_023198 with the index, builds a 40-byte record of twenty 16-bit values stored as low/high byte pairs, passes the color to f_1181c0, submits the record with f_116dfc and returns 0. */
+int f_0455e8(int x0, unsigned short p1, unsigned short p2, unsigned short p3, unsigned short p4, unsigned short p5, unsigned short p6, unsigned short p7, unsigned short p8, unsigned short p9, unsigned short p10, unsigned short p11, unsigned short p12, unsigned short p13, unsigned short p14, unsigned short p15, unsigned short p16, unsigned short p17, unsigned short p18, unsigned short p19, unsigned short p20, int idx, float r, float g, float b, float a) {
     if (idx != -1) {
         unsigned c = cvp(r) & 0xff;
         c |= (cvp(g) & 0xff) << 8;
