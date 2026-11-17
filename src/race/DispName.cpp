@@ -236,7 +236,10 @@ void CDispName::f_0e6b1c()
    the initialiser's first word last, in the first call's delay slot; four statement orders
    and declaration splits did not move it. The scorer also reports the second double
    constant's high word (272.0) as differing, since it reads 8 bytes from the middle of the
-   constant. */
+   constant.
+   Cycle 2026-11-16: the m.m stores were issued y,z,x against retail's z,x,y (sched2 issues the
+   last independent store first); written x,y,z they now match (29 -> 23 words). The 23 left
+   are the prologue v0/v1 swap and the late initialiser word above, plus the 2 scorer words. */
 unsigned int *CDispName::f_0e6b88(CameraView *cam, Vec4 *pos, unsigned int *dl)
 {
     if (!D_27e888)
@@ -255,9 +258,9 @@ unsigned int *CDispName::f_0e6b88(CameraView *cam, Vec4 *pos, unsigned int *dl)
     Vtx *v = buf[frame++ & 1];
 
     f_0cdbc4(&cam->view, &m);
-    m.m[14] = pos->z;
     m.m[12] = pos->x;
     m.m[13] = pos->y;
+    m.m[14] = pos->z;
     f_028c70();
     f_02842c();
     f_028748(&cam->proj);
