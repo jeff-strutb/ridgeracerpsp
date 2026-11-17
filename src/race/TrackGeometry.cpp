@@ -863,7 +863,7 @@ struct Flag {
    gets the final slide along the contact edge (height from the course areas), and the
    remaining outputs get the contact vertex angle, a speed, the edge direction and the edge's
    two end points. Returns 0 (no contact) to 3.
-   DRAFT: complete transcription of every path; size 14,064 vs 14,328 bytes. Proven so far
+   DRAFT: complete transcription of every path; size 14,108 vs 14,328 bytes. Proven so far
    (each matches retail's code at that point): flags is an array of a class with an empty
    constructor (Flag), declared after result = 0 and before Qp, which gives retail's empty
    127-step-32 loop and keeps the frame offsets; every loop indexes the edge points as Vec2
@@ -920,14 +920,38 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
     bestVert = 0xffff;
     result = 0;
     Flag flags[128];
-    Vec2 Qp, Pp, V1808;
+    PVec v_Qp;
+#define Qp (*(Vec2 *)&v_Qp)
+    PVec v_Pp;
+#define Pp (*(Vec2 *)&v_Pp)
+    PVec v_V1808;
+#define V1808 (*(Vec2 *)&v_V1808)
     PVec v1824;
 #define V1824 (*(Vec2 *)&v1824)
-    Vec2 V1840, V1856, V1872, V1888, V1904;
+    PVec v_V1840;
+#define V1840 (*(Vec2 *)&v_V1840)
+    PVec v_V1856;
+#define V1856 (*(Vec2 *)&v_V1856)
+    PVec v_V1872;
+#define V1872 (*(Vec2 *)&v_V1872)
+    PVec v_V1888;
+#define V1888 (*(Vec2 *)&v_V1888)
+    PVec v_V1904;
+#define V1904 (*(Vec2 *)&v_V1904)
     PlaneRec seg;
-    Vec2 V1936;
+    PVec v_V1936;
+#define V1936 (*(Vec2 *)&v_V1936)
     V4 D, acc;
-    Vec2 V1984, V2000, V2016, V2032, V2048;
+    PVec v_V1984;
+#define V1984 (*(Vec2 *)&v_V1984)
+    PVec v_V2000;
+#define V2000 (*(Vec2 *)&v_V2000)
+    PVec v_V2016;
+#define V2016 (*(Vec2 *)&v_V2016)
+    PVec v_V2032;
+#define V2032 (*(Vec2 *)&v_V2032)
+    PVec v_V2048;
+#define V2048 (*(Vec2 *)&v_V2048)
     V4 v2064, v2080, v2096;
     out3[0] = 0.0f;
     out3[1] = 0.0f;
