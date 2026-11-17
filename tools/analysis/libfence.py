@@ -439,6 +439,20 @@ def report(p, F, m, rows):
         print(f"   {a:#x} {l['ids']} {ev}")
     rc = Counter((r['kind'], r['class']) for r in rows)
     print('object rows:', dict(rc))
+    # Link order: where the first anchored, non-linkonce library fingerprint
+    # of .text lies, and what is unknown before and after it.  Unsettled:
+    # objects before it are command-line objects only if no unidentified
+    # archive was linked earlier (see docs/DENOMINATOR.md).
+    first = min(a for a, (c, i) in m['cls'].items() if c == 'library'
+                and i['how'] == 'fingerprint' and not i['linkonce'])
+    for side, sel in (('before', lambda a: a < first), ('from', lambda a: a >= first)):
+        fs = [f for f in F if f['section'] == '.text' and sel(f['addr'])]
+        cc = Counter(m['cls'][f['addr']][0] for f in fs)
+        bb = Counter()
+        for f in fs:
+            bb[m['cls'][f['addr']][0]] += f['size']
+        print(f'.text {side} the first library .text fingerprint ({first:#x}): '
+              + ', '.join(f'{k} {cc[k]} funcs/{bb[k]} B' for k in ('game', 'library', 'unknown')))
     lines, bad = cie_tests(p, m)
     print('one CIE = one object:', 'not refuted' if not bad else f'REFUTED by {bad}')
     for x in lines:
