@@ -256,18 +256,21 @@ extern "C" float f_0bd210(float x, Unit *u) {
    WHAT IT DOES: clamps the input to the limit record's first value, sets the unit's first and
    second outputs from it, blends the unit's angle with the second argument, and derives the
    unit's remaining outputs from the limit record's third value.
-   Remaining difference: 58 of 61 words differ, first at +0xc (the clamp and the register allocation of the first store group). */
+   Remaining difference (14 words, tail only): the w1 block as `if (x < l->w[1].f)` with the
+   limit re-read (retail reloads it after the w0 store) and the zero store in the else fixed
+   the layout. Left: retail keeps -r in f3 and r/60 in f2 (ours f2/f1), divisors reload into
+   f1, and the w6 store comes after the w8 store and the second divisor load. */
 extern "C" void f_0bd234(Unit *s, float x, float y) {
     Lim *l = (Lim *)s->w[13].p;
     float lim = l->w[1].f;
     float xc = x < lim ? x : lim;
     s->w[0].f = xc * 0.2f * 0.01666666753590107f;
-    if (!(x < lim)) {
-        s->w[1].i = 0;
-    } else {
-        float q = x / lim;
+    if (x < l->w[1].f) {
+        float q = x / l->w[1].f;
         float d = 1.0f - q;
         s->w[1].f = d * d;
+    } else {
+        s->w[1].i = 0;
     }
     float v;
     if (0.0f < y) {

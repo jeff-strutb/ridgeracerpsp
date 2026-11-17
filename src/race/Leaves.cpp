@@ -162,7 +162,9 @@ void CLeaves::f_035fcc()
    down by a slightly random drag, moves, and spins.
    Remaining difference: block layout. Retail falls through from the height test into the
    retire path and places the age test with the live path at the end; here the age test
-   follows the height test. The constants f23 to f27 are also assigned in a different order. */
+   follows the height test. The constants f23 to f27 are also assigned in a different order.
+   Merging the two retire arms with || keeps the same layout (81 words): the retail
+   compare is c.le.s y,g+1 (the <= as written), so the placement comes from bb-reorder. */
 void CLeaves::f_035ff8()
 {
     float gravity;

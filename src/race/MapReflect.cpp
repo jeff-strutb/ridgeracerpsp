@@ -96,8 +96,10 @@ struct RingList {
 extern RingList D_23fbb0;
 
 /* @draft 0x02bbc0 us f_02bbc0
-   Remaining difference: scheduling only; retail stores cmd[0] after the radius and centre
-   constant loads and loads 33 and 32 before 1/32 and the pi constant (47 words).
+   Remaining difference: scheduling only; retail stores cmd[0] (through the symbol, not a0)
+   after the 33 and 32 constant loads, between cmd[12] and cmd[2], and computes 0x21000001
+   late (46 words). The centre 32.0 as a loop local gives retail's constant load order 33, 32,
+   1/32, pi (loop.c hoists in body order).
    WHAT IT DOES: Builds the ring display list once per course: render state (blending on,
    depth test off, through mode 16 bit positions with 32 bit colour), then a triangle strip
    ring round the centre of a 64 x 64 texture, from radius 33 at the settings' alpha out to the
@@ -123,18 +125,19 @@ void f_02bbc0(void)
     l->cmd[12] = 0x0b000000;
     for (i = 0; i < 33; i++) {
         float r0 = 33.0f;
+        float c = 32.0f;
         float r1 = D_23fefc.m88;
         float t = (float)i / 32.0f * 2.0f * 3.24159f;
         RingVert *v = &l->v[i * 2];
-        v[0].x = (int)(cosf(t) * r0 + 32.0f);
-        v[0].y = (int)(sinf(t) * r0 + 32.0f);
+        v[0].x = (int)(cosf(t) * r0 + c);
+        v[0].y = (int)(sinf(t) * r0 + c);
         v[0].z = 0;
         v[0].r = 255;
         v[0].g = 255;
         v[0].b = 255;
         v[0].a = D_23fefc.m84;
-        v[1].x = (int)(cosf(t) * r1 + 32.0f);
-        v[1].y = (int)(sinf(t) * r1 + 32.0f);
+        v[1].x = (int)(cosf(t) * r1 + c);
+        v[1].y = (int)(sinf(t) * r1 + c);
         v[1].z = 0;
         v[1].r = 255;
         v[1].g = 255;

@@ -1107,7 +1107,11 @@ void CCarModel::f_01eebc(int arg)
    the levels to the model (and keeps the scaled values), sets the indicator lamp, steps the
    model's animation table and, for a rotating light, turns it towards its target speed.
    Remaining difference: the rotating light part. Retail keeps the target in $f12 (the
-   constant 0.0698 loaded straight into it) and the speed in $f0; this build swaps them. */
+   constant 0.0698 loaded straight into it) and the speed in $f0; this build swaps them.
+   Retail falls through when m200 < 0.0698 and branches (bc1f) to the 0.349/fmod part placed
+   out of line. An if / else-if / else chain assigning target in each arm gives that bc1f and
+   target in $f12, but loads 0.0698 into $f1 and copies it (+2 words, 128): retail's constant
+   pseudo is the target itself. */
 void CCarModel::f_01eee4()
 {
     float f;

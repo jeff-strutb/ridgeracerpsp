@@ -236,7 +236,11 @@ void CRaceSound::f_01ca78()
    Remaining difference: loop-invariant motion. Retail keeps the sequence manager's address
    unhoisted (lui/addiu in each branch) and hoists the engine package's HI into s5; this build
    hoists the sequence manager's full address into s5, which shifts every saved register.
-   The sort's inner guard is also tested once (slt/beqzl) here, twice (blez) in retail. */
+   The sort's inner guard is also tested once (slt/beqzl) here, twice (blez) in retail.
+   (2026-11-16, diagnosis only) The hoisted full address is &D_1a211c (the memcpy size), not the
+   sequence manager: retail builds it inside the loop (lui a0; addiu v1,a0,lo; lw a2,8(v1),
+   the +8 not folded into the lo), so retail reads the size through a pointer value, not as a
+   constant-array element; the string HIs (CarName s6, MaxRev s7) are what retail hoists. */
 void CRaceSound::f_01ca80()
 {
     char name[48];
@@ -360,9 +364,11 @@ int CRaceSound::f_01d174()
    if there is none), gives each car its engine sample, holds the sound while the game is
    held, finds the idling and wall sound data, measures the sound processor's free voices and
    sets the four effect volumes (lower in one race mode).
-   Remaining difference: register allocation. Retail keeps the engine pointer in s1 and the
-   index in s2 (this build the reverse), and counts the six idling slots down (li 5, bgez)
-   where this build counts up (slti 6). */
+   Remaining difference (29 words): the engine loop indexes D_249330[j] (giv, e++ at the bottom)
+   and the idling loop walks a pointer and a byte offset so k only counts (check_dbra_loop
+   reverses it: li 5, bgez). Left: the idling and four-voice loops swap their counter and
+   pointer registers (retail counter s2, offset s1; n s2, pointer s3), and the fade 1.0 load
+   is scheduled before the D_249330 address where retail loads it after. */
 void CRaceSound::f_01d17c(int a, int b, int *samples, CCamera *cam, int c)
 {
     int i;
@@ -379,13 +385,17 @@ void CRaceSound::f_01d17c(int a, int b, int *samples, CCamera *cam, int c)
     e->id = 0;
     e->f_0c8fec(samples[0]);
     for (int j = 1; j < count; j++) {
-        e++;
+        e = &D_249330[j];
         e->id = j;
         e->f_0c8fec(samples[j]);
     }
     state = Busy();
-    for (int k = 0; k < 6; k++)
-        idling[k] = (CIdling *)D_1dd6b0.f_005a38("Idling")->f_002acc("Data") + k;
+    CIdling **ip = idling;
+    int off = 0;
+    for (int k = 0; k < 6; k++) {
+        *ip++ = (CIdling *)((char *)D_1dd6b0.f_005a38("Idling")->f_002acc("Data") + off);
+        off += sizeof(CIdling);
+    }
     for (int n = 0; n < 4; n++)
         m520[n] = f_10c910(n) - f_10c8f4(n);
     m536 = m520[0] + m520[1] + m520[2] + m520[3];

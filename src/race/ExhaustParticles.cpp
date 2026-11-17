@@ -381,10 +381,9 @@ void CParticles::f_0328b0()
    WHAT IT DOES: Tabulates the particles' looks over their lives: for the 40 frames of an exhaust
    particle, opacity and size from curve 0 and one of 20 cells of a 4 x 5 grid of 32 x 16
    texels; for the 60 frames of a smoke puff, curve 1 and one fixed cell.
-   Remaining difference: loop 1 stores come out alpha, u1, v1, u0, v0 where retail has u1, v1,
-   alpha, u0, v0 (alpha loaded before the size clamp's branch); and loop 2 sets 32 before 127.
-   Moving the alpha store after v1 gives retail's store order but loads alpha after the branch
-   (26 words); next try: alpha read into a local before the clamp, stored after v1. */
+   Remaining difference: alpha read into an unsigned char local before the clamp (retail's lbu)
+   gives retail's store order; left: the lbu of alpha comes after the loop's slti instead of
+   before it (2 words), and loop 2 sets 32 before 127 (s5/s6 swapped). */
 void f_032918(void)
 {
     int alpha, size;
@@ -395,13 +394,14 @@ void f_032918(void)
         int k = (int)(t * 19.0f);
         int u = (k % 4) * 32;
         int v = (k / 4) * 16;
+        unsigned char al = alpha;
         if (size > 128)
             size = 127;
-        c->alpha = alpha;
         c->u0 = u;
         c->v0 = v;
         c->u1 = u + 31;
         c->v1 = v + 15;
+        c->alpha = al;
         c->size = size;
     }
     c = D_2404a8;
@@ -454,7 +454,12 @@ static inline unsigned int Bits(float f)
 
 /* @draft 0x032c20 us f_032c20
    WHAT IT DOES: Draws one particle as a sprite: places it at its view position, takes its look
-   for its age, and writes a four vertex strip with its colour and opacity. */
+   for its age, and writes a four vertex strip with its colour and opacity.
+   Remaining difference (95 words, semantics checked equal to retail): retail's first store
+   (0x3a000009) comes after the saves and the 0xffffff mask is built next to its stack store,
+   where ours hoists it into a2 at the top (pushing age*6 to a3); callee-saved order differs
+   (retail e s5, u0 s8, v0 s6, u1 s4; ours e s4, u0 s6, v0 s5, u1 s8). Declaring mask after
+   the Cell reads made it worse (109). */
 unsigned int *CParticles::f_032c20(Particle *e, unsigned int *p)
 {
     *p++ = 0x3a000009;

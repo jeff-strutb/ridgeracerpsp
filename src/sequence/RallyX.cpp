@@ -920,7 +920,10 @@ void f_02ef14(int pad)
    three seconds, and before that Select returns at once.
    Remaining difference: retail tests the flag's state with its own branch to an out of line
    block (the < 4 test precomputed) and rebuilds the player car's address there; here the two
-   tests are combined with sltu/and and the address is hoisted. The rest matches. */
+   tests are combined with sltu/and and the address is hoisted. The rest matches.
+   Nesting `if (f->state != 0) { if (f->state < 4 && ...) }` splits the branches but keeps the
+   body inline (beqz to the increment; 130 words, a word short): retail's bnez to an out of
+   line block is a layout the nesting alone does not give. */
 void f_02fc50(int pad)
 {
     f_0e9820(&D_24028c, D_240104);

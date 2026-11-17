@@ -1237,7 +1237,9 @@ void f_076328(void *self, int a, char *p)
 void f_076f98(void *);
 /* @draft 0x0759f0 us f_0759f0
    Remaining difference: retail stores the link at sub+28 from the sub register (s4), not
-   folded into self+32 (f_0731a0 gets this with a typed Sub *); and the +453 and +36 byte stores are swapped.
+   folded into self+32; and the +453 and +36 byte stores are swapped. A typed Sub * (f_0731a0's
+   form) gives sw 28(s4) but sched1 then puts the self+476 loop-pointer addiu above the link
+   store (retail: 468 store, li -1, link store, addiu 476), so v0 is not reused: 3 -> 7 words.
    One shared `int i` for both loops was needed (the counter crosses calls, so sched1 hoists
    its li above f_04a620).
    WHAT IT DOES: initialises the menu object: sets up the sub-object at self+4 (f_04a620), links self+456 and self, sets the 101 slots at self+476 to -1, loads the packed table at p into those slots (calling f_0230e0 on each), registers with f_04a648 and f_04b8a0, runs f_076f98 on self+1272 and clears the bytes at +453 and +36. */
@@ -1277,7 +1279,7 @@ void f_0759f0(void *self, int a, char *p)
 void f_077ecc(void *);
 /* @draft 0x0760fc us f_0760fc
    Remaining difference: retail stores self+456 at sub+28 from the sub register (s4), not
-   folded into self+32; and the 960/964/36 stores come before the f_077ecc call (dbr puts
+   folded into self+32 (typed Sub * fixes it but adds 4 words, see f_0759f0); and the 960/964/36 stores come before the f_077ecc call (dbr puts
    the +36 store in its slot). One shared `int i` for both loops was needed (counter in s1).
    WHAT IT DOES: initialises the menu object: sets up the sub-object at self+4 (f_04a620), links self+456 and self, sets the ten slots at self+968 to -1, loads the packed table at p into those slots (calling f_0230e0 on each), registers with f_04a648 and f_04b8a0, clears the words at +956 and +960 and the bytes at +964 and +36, and runs f_077ecc on self+472. */
 void f_0760fc(void *self, int a, char *p)
@@ -1341,7 +1343,7 @@ signed char f_073010(void *self, int c)
 
 /* @draft 0x076778 us f_076778
    Remaining difference: retail stores the link at sub+28 from the sub register (s4), not
-   folded into self+32 (f_0731a0 gets this with a typed Sub *); and the tail stores come out 453, 523, 476, 521, 520, 36 where retail has 523, 476, 521, 520, 36, 453 (sched order).
+   folded into self+32 (typed Sub * fixes it but adds 4 words, see f_0759f0); and the tail stores come out 453, 523, 476, 521, 520, 36 where retail has 523, 476, 521, 520, 36, 453 (sched order).
    One shared `int i` for both loops was needed (the counter crosses calls, so sched1 hoists
    its li above f_04a620).
    WHAT IT DOES: initialises the menu object: sets up the sub-object at self+4 (f_04a620), links self+460 and self (at +472), sets the ten slots at self+480 to -1, loads the packed table at p into those slots (calling f_0230e0 on each), registers with f_04a648 and f_04b8a0, sets the byte at +522 to 1 and clears the flags at +523, +521, +520, +36, +453 and the word at +476. */
@@ -1563,7 +1565,8 @@ void f_0736f0(char *self)
    remainder in place in a0 (subu a0,a0,v0) and loads case 21's word into a0; the index
    arithmetic of case 21 then swaps v0/v1. Folding v and k into t (`t = ...-1; t = t % 12;`,
    `t = a - 21; off = t * 28;`) gives retail's in-place remainder but ties t to a's a1
-   (14 words): retail's k is not tied to a. Next: fold only v into t, keep k separate. */
+   (14 words): retail's k is not tied to a. Folding only v into t (k separate) gives the in-place
+   remainder but t lands in a1 and o in a0 (13 words): t still conflicts with a's register. */
 int f_074240(void *self, int a)
 {
     int r, t, k, off;
@@ -1638,7 +1641,12 @@ int f_074240(void *self, int a)
 
 
 /* @draft 0x06dac0 us f_06dac0
-   WHAT IT DOES: answers a menu-slot query by code (34..83) with argument b from the parent object at self+12: scans the slot flags (+2236, +1400, +5661) for a duplicate of b, compares indexed byte tables (+3704/+2336, +3752/+5662), tests slot flag pairs (+2296/+1460, +2236/+1400), returns table bytes (+2176, +5721 plus 1, +3656, +2322, +2324, +1505 for b == 100); 0 for unknown codes. */
+   WHAT IT DOES: answers a menu-slot query by code (34..83) with argument b from the parent object at self+12: scans the slot flags (+2236, +1400, +5661) for a duplicate of b, compares indexed byte tables (+3704/+2336, +3752/+5662), tests slot flag pairs (+2296/+1460, +2236/+1400), returns table bytes (+2176, +5721 plus 1, +3656, +2322, +2324, +1505 for b == 100); 0 for unknown codes. 
+   Remaining difference (98 words; checked against the listing): case 36 compares unsigned
+   (retail sltu: c must be unsigned) and exits through the common a1 exit (found: a1 = 1; loop
+   end: j exit with a1 = 0 set after the loop), not `return 1`. Making c unsigned and the
+   return an `a = 1; break` gives sltu and retail's exit (move v0,a1) but 1 word short (114,
+   size 492): case 36's after-loop a = 0 is missing. Retail also computes a-34 in place in a1. */
 int f_06dac0(void *self, int a, int b)
 {
     switch (a) {

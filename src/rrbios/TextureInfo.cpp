@@ -309,7 +309,10 @@ int f_023588(unsigned int id)
    (mode, address, load) if it has a palette, and the select list (texture mode, pixel format,
    then the address, buffer width and size of every mipmap level), and flushes both from the
    data cache so the GE sees them.
-   Remaining: the mipmap command giv shape (0xa0 + lv) << 24 is right; the rest is register allocation (img in a3 copied to t8 in retail) and the place of the divide-by-zero check. */
+   Remaining: the mipmap command giv shape (0xa0 + lv) << 24 is right; the rest is register allocation (img in a3 copied to t8 in retail) and the place of the divide-by-zero check.
+   Writing `int a = img;` right after the tex[0] store gives retail's separate copy (move t8,img)
+   but img lands in t2 not a3 and the function grows a word (189 words): retail's img in a3 is
+   decided elsewhere (the div check sits 16 insns after the div in retail, next to it here). */
 void f_0235ac(CInfo *info, TexHeader *h)
 {
     info->head = *h;
