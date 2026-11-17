@@ -871,7 +871,7 @@ struct Flag {
    127-step-32 loop and keeps the frame offsets; every loop indexes the edge points as Vec2
    pts[128] through short jj = i * 2, storing through a float pointer (retail's separate
    &pts + jj*8 base) and reading pts[jj] / pts[jj + 1]; the edge loops of the sweep and of the
-   second look, and the two later edge loops (the count loop and the seg loop, whose seg copy is
+   second look, the later sweep (from istart), and the two later edge loops (the count loop and the seg loop, whose seg copy is
    field by field as in retail's lwc1/swc1), are for loops with "if (flags[i].v) continue;",
    whose continue prediction (56%) makes bb-reorder chain the increment first and put the bodies
    out of line as in retail. All 117 calls now come in retail's order. Open: retail keeps hitAny in memory (spilled) and hoists the angle addresses and the
@@ -1700,14 +1700,11 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                             k = k + 1;
                         } while (k < o->m4->n);
                     }
-                    i = istart;
-                    if (i < (int)cnt) {
-                        do {
-                            if (flags[i].v == 0) {
-                                SWEEP_EDGE(&PJ(i).x, 0, sw2)
-                            }
-                            i = i + 1;
-                        } while (i < (int)cnt);
+                    for (i = istart; i < (int)cnt; i++) {
+                        if (flags[i].v != 0)
+                            continue;
+                        short jj2 = i * 2;
+                        SWEEP_EDGE(&pts[jj2].x, 0, sw2)
                     }
                     acc.a[0] = acc.a[0] + V1824.x;
                     acc.a[2] = acc.a[2] + V1824.y;
