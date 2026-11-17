@@ -865,7 +865,7 @@ struct Flag {
    gets the final slide along the contact edge (height from the course areas), and the
    remaining outputs get the contact vertex angle, a speed, the edge direction and the edge's
    two end points. Returns 0 (no contact) to 3.
-   DRAFT: complete transcription of every path; size 13,996 vs 14,328 bytes. Proven so far
+   DRAFT: complete transcription of every path; size 14,040 vs 14,328 bytes. Proven so far
    (each matches retail's code at that point): flags is an array of a class with an empty
    constructor (Flag), declared after result = 0 and before Qp, which gives retail's empty
    127-step-32 loop and keeps the frame offsets; every loop indexes the edge points as Vec2
@@ -874,7 +874,10 @@ struct Flag {
    second look, the later sweep (from istart), and the two later edge loops (the count loop and the seg loop, whose seg copy is
    field by field as in retail's lwc1/swc1), are for loops with "if (flags[i].v) continue;",
    whose continue prediction (56%) makes bb-reorder chain the increment first and put the bodies
-   out of line as in retail. All 117 calls now come in retail's order. Open: retail keeps hitAny in memory (spilled) and hoists the angle addresses and the
+   out of line as in retail. All 117 calls now come in retail's order. The first correction's bounds are single
+   expressions (xlo = -(o->m4->r + sqrtf(..)), xhi = sqrtf(len) + r + sqrtf(..)): the r operand
+   stays a MEM through the shape pointer loaded before the sqrt, so retail reloads o->m4 only once
+   (after len); the second cull loop has retail's while guard. Open: retail keeps hitAny in memory (spilled) and hoists the angle addresses and the
    constant 1 out of the first cull loop; the block with f_0b1b28 at retail 0x1e78 is still
    placed differently (resolved: it was the seg loop); register choice and scheduling differ throughout.
    Layout aids with no counterpart in the original: the two unused angle locals (retail leaves
@@ -945,8 +948,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
     V1872.x = Pp.x - Qp.x;
     V1872.y = Pp.y - Qp.y;
     V1808 = V1872;
-    V1856 = V1872;
     V1840 = V1872;
+    V1856 = V1872;
     ang = -f_09a9dc(V1808.y, V1808.x);
     rad = o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
     xlo = -rad;
@@ -1042,25 +1045,22 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
         V1840.x = V1888.x - Qp.x;
         V1840.y = V1888.y - Qp.y;
         V1808 = V1840;
+        V1872 = V1840;
+        V1856 = V1840;
         ang = -f_09a9dc(V1808.y, V1808.x);
-        {
-            float c0 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
-            float len = __builtin_sqrtf(V1808.x * V1808.x + V1808.y * V1808.y);
-            xlo = -(o->m4->r + c0);
-            float c1 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
-            xhi = len + o->m4->r + c1;
-            float c2 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
-            float c3 = __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
-            yhi = o->m4->r + c2;
-            ylo = -(o->m4->r + c3);
-        }
+        xlo = -(o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz));
+        xhi = __builtin_sqrtf(V1808.x * V1808.x + V1808.y * V1808.y) + o->m4->r
+              + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+        yhi = o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
+        ylo = -(o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz));
         i = 0;
-        do {
-            V1808 = PJ(i);
+        while (i < o->m0) {
+            short jj = i * 2;
+            V1808 = pts[jj];
             V1808.x = V1808.x - Qp.x;
             V1808.y = V1808.y - Qp.y;
             Rot(ang, &V1808.x, &V1808.y);
-            V1824 = PK(i);
+            V1824 = pts[jj + 1];
             V1824.x = V1824.x - Qp.x;
             V1824.y = V1824.y - Qp.y;
             Rot(ang, &V1824.x, &V1824.y);
@@ -1076,7 +1076,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
             if (V1808.y < ylo && V1824.y < ylo)
                 continue;
             flags[j].v = 0;
-        } while (i < o->m0);
+        }
     }
 
     /* Second look: the outline after the first correction against the vertex contacts. */
