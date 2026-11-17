@@ -786,12 +786,13 @@ struct PVec {
 /* Sweep the outline vertices (from the A to the B arrays) across the edge ep: for every vertex
    path that crosses the edge, form the overshoot, and keep the longest one, pushed on by ten
    units. */
-#define SWEEP_EDGE(ep, TRACK, LBL)                                                             \
+#define SWEEP_EDGE(ep, JJ, TRACK, LBL)                                                         \
     {                                                                                       \
         float ex = (ep)[0] - (ep)[2];                                                       \
         float ey = (ep)[1] - (ep)[3];                                                       \
         short k;                                                                            \
         for (k = 0; k < o->m4->n; k++) {                                                    \
+            float *ep = &pts[JJ].x;                                                         \
             {                                                                               \
                 dA = ex * (Ay[k] - (ep)[1]) + ey * ((ep)[0] - Ax[k]);                          \
                 dB = ex * (By[k] - (ep)[1]) + ey * ((ep)[0] - Bx[k]);                          \
@@ -1097,7 +1098,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
             continue;
         short jj = i * 2;
         float *ep = &pts[jj].x;
-        SWEEP_EDGE(ep, 1, sw1)
+        SWEEP_EDGE(ep, jj, 1, sw1)
     }
 
     /* First correction. */
@@ -1763,7 +1764,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                             continue;
                         short jj2 = i * 2;
                         float *ep = &pts[jj2].x;
-        SWEEP_EDGE(ep, 0, sw2)
+        SWEEP_EDGE(ep, jj2, 0, sw2)
                     }
                     acc.a[0] = acc.a[0] + V1824.x;
                     acc.a[2] = acc.a[2] + V1824.y;
