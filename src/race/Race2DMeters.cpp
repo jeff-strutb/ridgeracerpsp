@@ -94,6 +94,14 @@ struct Rect {
 
 void f_04bf6c(Group *g, int sprite, Corner *c);
 void f_04c104(Group *g, int sprite, int cell);
+
+/* A bar's cell strip: the number of cells at +12. */
+struct Bar {
+    int m0[3];
+    int count;
+    int m16[5];
+};
+void f_04c130(Group *g, int sprite, Bar *b, int cell);
 void f_04c1c8(Group *g, int sprite, Rgba c);
 void f_04c248(Group *g, int sprite, unsigned char on);
 void f_04c3c8(Group *g, int sprite, float x, float y);
@@ -182,6 +190,11 @@ struct MeterLayout {
 };
 extern MeterLayout D_1d5fe8[];
 
+/* Each meter type's bar, and the bars' cell strips dark and lit. */
+extern int D_1d7720[];
+extern Bar D_1d74e0[];
+extern Bar D_1d7600[];
+
 /* A meter: the car's meter type and its sprites. */
 class C2DMeterBase : public C2DDecorationBase {
 public:
@@ -212,6 +225,7 @@ public:
     virtual int Draw();
     virtual int f_101b54();
     virtual void f_101f74(float t);
+    void f_108f64(int on, float t);
 
     int sprite[10];
 };
@@ -559,6 +573,57 @@ int C2DDigitalMeter::Draw()
     return 1;
 }
 
+/* @draft 0x108c54 us C2DDigitalMeter8f_101b54
+   WHAT IT DOES: Updates the digital meter each frame once the start animation runs: fills
+   the rev bar by the engine speed over its top speed (clamped to 0..1), picks the lamp cell
+   and the bar's strip with it, shows the road speed (km/h, or mph when the game says so) and
+   the gear, and blinks the shift lamp at the redline (dim below it). */
+int C2DDigitalMeter::f_101b54()
+{
+    float t;
+
+    if (!C2DDecorationBase::f_101b54())
+        return 0;
+    {
+        float v = D_2407fc->rpm * (1.0f / D_2407fc->maxRpm);
+        float m = MAX(v, 0.0f);
+
+        t = MIN(m, 1.0f);
+    }
+    if (D_2407fc->player->lamp) {
+        Cell(0, 34);
+        f_108f64(1, t);
+    } else {
+        Cell(0, 35);
+        f_108f64(0, t);
+    }
+    {
+        float k = 0.216f;
+
+        if (f_0937f0())
+            k *= 0.6213712f;
+        f_1080d8(7, (int)(D_2407fc->speed * k), 10.0f);
+    }
+    f_107fb0(4, D_2407fc->gear);
+    if (D_2407fc->rpm >= D_2407fc->redline) {
+        int lit = (race->clock / 50 & 8) == 0;
+        float b = lit ? 1.0f : 0.1f;
+        float v = b;
+
+        if (!m28) {
+            if (b == 0.1f)
+                v = 1.0f;
+            else
+                m28 = 1;
+        }
+        Tint(3, v);
+    } else {
+        Tint(3, 0.1f);
+        m28 = 0;
+    }
+    return 0;
+}
+
 /* @implements 0x108ed0 us C2DDigitalMeter8f_101f74
    WHAT IT DOES: Fades the meter's ten sprites in with the start animation. */
 void C2DDigitalMeter::f_101f74(float t)
@@ -567,6 +632,24 @@ void C2DDigitalMeter::f_101f74(float t)
 
     for (i = 0; i < 10; i++)
         Fade(i, t);
+}
+
+/* @draft 0x108f64 us C2DDigitalMeter8f_108f64
+   WHAT IT DOES: Fills the digital meter's bar to the fraction t of its cells, from the meter
+   type's lit or dark cell strip. */
+void C2DDigitalMeter::f_108f64(int on, float t)
+{
+    Bar *b;
+
+    if (!on)
+        b = &D_1d74e0[D_1d7720[type]];
+    else
+        b = &D_1d7600[D_1d7720[type]];
+    {
+        Group *g = group;
+
+        f_04c130(g, f_101f54(0), b, (int)(t * b->count));
+    }
 }
 
 /* @implements 0x10902c us C2DPacmanMeter8f_101b1c
