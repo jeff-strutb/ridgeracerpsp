@@ -498,7 +498,12 @@ extern const MapInfo D_1b0be4[];
    pixels around the course's centre, turns it by the course's map rotation (mirrored when the
    course runs reversed) and offsets it to the map's centre on the sprite.
    Remaining difference: the order of the scale and rotation arithmetic and its registers
-   (8 bytes longer here); the sine and cosine and the stores agree. */
+   (8 bytes longer here); the sine and cosine and the stores agree.
+   2026-11-16 cycle: retail computes mx + 375, my + 2 and loads 8.0 in the block before the
+   flip test (only the two adds, two subs and stores are in the join block), and evaluates
+   cx - mx before the scale muls. Tried `float ox = m->mx + 375.0f, oy = m->my + 2.0f;` before
+   the if: 65 words (mx/my reloaded, 268 bytes); restored. Next lead: the whole expression
+   before the test, e.g. the flip as a conditional inside one expression. */
 void C2DCourseMap::f_101f7c(float x, float z, float *mx, float *my)
 {
     const MapInfo *m = &D_1b0be4[course];
@@ -522,12 +527,16 @@ void C2DCourseMap::f_101f7c(float x, float z, float *mx, float *my)
    DRAFT: complete transcription, not byte-exact (see the remaining difference).
    WHAT IT DOES: Places the map sprite: 104 pixels square at the course's map centre, its
    texture mirrored when the course runs reversed.
-   Remaining difference: the corner stores' order and registers. */
+   Remaining difference: the corner stores' order and registers.
+   2026-11-16 (30 -> 28 words): mx read before my in source gives retail's my-then-mx loads
+   around the f_0f6450 call (the second load fills the delay slot). Still differing: retail
+   keeps my live in f20 and computes -my into f1 (ours negates f20 in place), adds mx+375 and
+   my+2 first, and stores 44 56 24 60 (104.0) / 0 4 16 36 / 32 20 48 52 / zeros 40 8 28 12. */
 void C2DCourseMap::f_10207c()
 {
     const MapInfo *m = &D_1b0be4[course];
-    float my = m->my;
     float mx = m->mx;
+    float my = m->my;
     Corner c[4];
     float x0, x1, y0, y1;
 
@@ -574,30 +583,23 @@ extern Corner D_1d5e44[];
    DRAFT: complete transcription, not byte-exact (see the remaining difference).
    WHAT IT DOES: Places a car marker sprite at a map position with one of the marker texture
    rectangles, and shows or hides it.
-   Remaining difference: retail loads the rectangle's words 4, 0, 8, 12 and stores the corners
-   in pairs sharing a value (c[1].u, c[1].x, c[2].y, c[2].v, c[2].x, c[0].x, ...), with this in s2
-   and the sprite in s1; here in field order with the two saved registers swapped. */
+   2026-11-16 (27 -> 4 words): the corners written as 0x104620's chained pairs, in its statement
+   order (x, y, x+u, y+v, u0, v0, u1, v1), give retail's loads and store order exactly: sched1
+   issues the stores whose value dies first, then the rest by luid. Remaining difference (4
+   words): retail keeps this in s2 and the sprite s in s1 (ours swapped); not yet diagnosed. */
 void C2DCourseMap::f_102190(int s, int rect, unsigned char show, float x, float y)
 {
     const Corner *r = &D_1d5e44[rect];
     Corner c[4];
 
-    c[0].x = x;
-    c[0].y = y;
-    c[0].u = r->x;
-    c[0].v = r->y;
-    c[1].x = x + r->u;
-    c[1].y = y;
-    c[1].u = r->x + r->u;
-    c[1].v = r->y;
-    c[2].x = x;
-    c[2].y = y + r->v;
-    c[2].u = r->x;
-    c[2].v = r->y + r->v;
-    c[3].x = x + r->u;
-    c[3].y = y + r->v;
-    c[3].u = r->x + r->u;
-    c[3].v = r->y + r->v;
+    c[0].x = c[2].x = x;
+    c[0].y = c[1].y = y;
+    c[1].x = c[3].x = x + r->u;
+    c[2].y = c[3].y = y + r->v;
+    c[0].u = c[2].u = r->x;
+    c[0].v = c[1].v = r->y;
+    c[1].u = c[3].u = r->x + r->u;
+    c[2].v = c[3].v = r->y + r->v;
     f_04bf6c(group, s, c);
     f_04c248(group, s, show);
 }
@@ -682,7 +684,13 @@ int C2DCourseMapNormal::Draw()
    or more cars, places the second car's marker (sprite 8): in kind 2 races it is rectangle 1
    and hidden unless that car is set and the race flags it, then blinking with the race
    clock, in other races rectangle 2, shown. Returns 0.
-   Remaining difference: not compared in detail; the transcription is complete. */
+   Remaining difference: not compared in detail; the transcription is complete.
+   2026-11-16 diagnosis (no edit): the code and the block layout agree; the 109 words are a
+   register shift: retail keeps %hi(D_2407fc) in s2 for the whole function (saving s0, s1, s2;
+   ra at 28) and s in s1, so the kind-2 branch reads lw 32044(s2). Ours holds the %hi in s1
+   only up to the second f_101f7c and re-forms it with lui in the kind-2 branch, saving one
+   register fewer. Which pass ends the %hi pseudo's life early (CSE path following past the
+   f_0f6438 test vs gcse) is not yet determined. */
 int C2DCourseMapNormal::f_101b54()
 {
     float mx, my;
@@ -885,7 +893,13 @@ int C2DNitro::Draw()
    returns to 0; then the bars are placed with their shake offsets and an alpha taken from
    the race (the second value when a boost began, else the first). Returns 0.
    Remaining difference: about 40 percent of the words; the test of the boost kind (1 or 2) is
-   merged into one range test here, retail compares the two kinds one after the other. */
+   merged into one range test here, retail compares the two kinds one after the other.
+   2026-11-16 diagnosis (no edit): retail is lw 2108; beql ==1 (s6) ; beql ==2 (s3), both to
+   the m10052 test, with m10052 loaded in both delay slots. fold_range_test turns any
+   `k == 1 || k == 2` into (k-1) < 2u, and a switch with case 1: case 2: is merged into the
+   same range by the case-node merge, so the source must test the kinds in separate
+   conditions (not one || expression; handbook: 0x008244); the exact shape is not derived yet. The s4/s5/s6/s7
+   renumbering follows from the extra constant 2 register (s3) retail keeps. */
 int C2DNitro::f_101b54()
 {
     int i;
@@ -933,7 +947,14 @@ int C2DNitro::f_101b54()
    bar's fill (70 percent size, the width scaled by it too), the other two at 70 percent
    size and fixed width, each from the bar's texture and placement table; then the last
    sprite is given the bar's alpha.
-   Remaining difference: the order of the corner stores of each quad (the values and the loop agree). */
+   Remaining difference: the order of the corner stores of each quad (the values and the loop agree).
+   2026-11-16 (60 -> 55 words): the first quad now writes x1/y1 inline after the u/v pairs, with
+   `c[1].u = c[3].u`, `c[1].x = c[3].x`, `c[2].y = c[3].y`: sched1 issues the stores whose value
+   dies first (retail 120 112 132, now matched), then the rest by ready time and luid. Next step
+   (derived, not tried): retail's remaining order is zeros (124 104 136 108), 152, 156 140, then
+   the x0 pair 128 96 and y0 pair 116 100, so the x0/y0 pair statements come after the u/v ones
+   in the first quad; the zero order 124 104 136 108 is not yet explained. The loop quads
+   (k = 1, 2) differ the same way and were not touched. */
 void C2DNitro::f_103138(int i, float scale, float alpha, float dy)
 {
     int idx[9] = { 3, 4, 5, 7, 8, 6, 0, 1, 2 };
@@ -945,21 +966,19 @@ void C2DNitro::f_103138(int i, float scale, float alpha, float dy)
     Corner c[3][4];
     float x = i * 35.0f + 6.0f;
     float y = dy + 139.0f;
-    float x0, y0, x1, y1;
+    float x0, y0;
     int k;
 
     x0 = x + tbl[0][0] * 0.7f;
     y0 = y + tbl[0][1] * 0.7f;
-    x1 = x0 + tbl[0][2] * 0.7f * scale;
-    y1 = y0 + tbl[0][3] * 0.7f;
     c[0][0].x = c[0][2].x = x0;
     c[0][0].y = c[0][1].y = y0;
-    c[0][3].x = c[0][1].x = x1;
-    c[0][3].y = c[0][2].y = y1;
     c[0][2].u = c[0][0].u = 0;
     c[0][0].v = c[0][1].v = 0;
-    c[0][3].u = c[0][1].u = tbl[0][2] * scale;
+    c[0][1].u = c[0][3].u = tbl[0][2] * scale;
     c[0][2].v = c[0][3].v = tbl[0][3];
+    c[0][1].x = c[0][3].x = x0 + tbl[0][2] * 0.7f * scale;
+    c[0][2].y = c[0][3].y = y0 + tbl[0][3] * 0.7f;
     {
         Group *g = group;
 
@@ -1786,7 +1805,13 @@ int C2DInfoWin::f_101b54()
    DRAFT: complete transcription, not byte-exact (see the remaining difference).
    WHAT IT DOES: Scrolls the info window's background strip: advances the scroll position by 2
    (wrapping at 120) and places the 100 pixel square sprite 0 at the position, its texture
-   rectangle starting at 120 minus the scroll. */
+   rectangle starting at 120 minus the scroll.
+   Remaining difference (23 words, 2026-11-16 diagnosis, no edit): (1) the % 120 keeps m144 + 2
+   in a2 in retail (ours a1, result moved to a2); (2) retail stores m144 in the middle of the
+   corner stores (after 16 36 8 44), ours first; store order retail 32 0 16 36 8 44 m144 20 4 48
+   52 40 28 12 56 24 60, the x/y pairs going 32-before-0 and 20-before-4 as in 0x106090, where
+   flipping those pairs alone made it worse (17 -> 19). Same sched1 store-rank problem as
+   0x106090/0x106120. */
 void C2DInfoWin::f_105fa8(float x, float y)
 {
     Corner c[4];
@@ -1815,7 +1840,13 @@ void C2DInfoWin::f_105fa8(float x, float y)
 /* @draft 0x106090 us C2DInfoWin8f_106090
    DRAFT: complete transcription, not byte-exact (see the remaining difference).
    WHAT IT DOES: Places a 24 pixel square sprite at a position with the texture row n of a strip
-   of 24 pixel rows (the texture rectangle from row n to row n + 1). */
+   of 24 pixel rows (the texture rectangle from row n to row n + 1).
+   Remaining difference (17 words): retail computes v1 = (n+1)*s and both adds before v0 = n*s
+   (mul.s f2; add.s; add.s; mul.s f1), and its store order is 8 16 36 12 44 32 0 20 4 48 52 40
+   28 56 24 60 (offsets in c). 2026-11-16 cycle: writing x and y as `c[0].x = c[2].x` (retail
+   stores 32 before 0, 20 before 4) fixes those two pairs but moves the whole store sequence
+   (19 words); flipping all eight pairs gave 20. Restored. The deciding input is the mul order
+   (v1 before v0) in sched1, not the pair direction. */
 void C2DInfoWin::f_106090(float x, float y, int sprite, int n)
 {
     Corner c[4];
@@ -1840,7 +1871,14 @@ void C2DInfoWin::f_106090(float x, float y, int sprite, int n)
    (29) gets its corners and texture rectangle from the table row of the panel kind b (b - 1
    clamped to 0 to 3). For kind a = 1 it also shows the number sprite (11) with the texture
    rectangle of the digit b, 2 right and 16 below the tag, in red.
-   Remaining difference: not compared in detail; the transcription is complete. */
+   2026-11-16 cycle (16 -> 12 words): the digit move is f_04c278 (retail's call), not MOVE's
+   f_04c3c8; the corners are written as chained pairs (`c[0].x = c[2].x = x0`, as 0x104620),
+   which gives retail's x0/y0 store pairs (32,0 and 20,4). Remaining difference: the order of
+   the twelve corner stores after the add.s block (sched1 rank). Retail: 44 24 16 36 48 52 40 8
+   28 12 56 60 (offsets in c); ours: 8 48 52 12 56 60 16 36 40 28 24 44. Statement order or the
+   pair order inside x1/y1/u1/v1 not yet derived from the sched1 ranking. Lead (from 0x102190,
+   solved the same day): sched1 issues the stores whose value dies (the `a` of `a = b = v`, when
+   v is not used again) first, then the rest by luid; derive the statement order from that. */
 void C2DInfoWin::f_106120(float x, float y, int a, int b)
 {
     int k = b - 1;
@@ -1860,22 +1898,14 @@ void C2DInfoWin::f_106120(float x, float y, int a, int b)
     u1 = u0 + D_1d5f74[k][2];
     v0 = D_1d5f74[k][1];
     v1 = v0 + D_1d5f74[k][3];
-    c[0].x = x0;
-    c[0].y = y0;
-    c[0].u = u0;
-    c[0].v = v0;
-    c[1].x = x1;
-    c[1].y = y0;
-    c[1].u = u1;
-    c[1].v = v0;
-    c[2].x = x0;
-    c[2].y = y1;
-    c[2].u = u0;
-    c[2].v = v1;
-    c[3].x = x1;
-    c[3].y = y1;
-    c[3].u = u1;
-    c[3].v = v1;
+    c[0].x = c[2].x = x0;
+    c[0].y = c[1].y = y0;
+    c[3].x = c[1].x = x1;
+    c[3].y = c[2].y = y1;
+    c[0].u = c[2].u = u0;
+    c[0].v = c[1].v = v0;
+    c[3].u = c[1].u = u1;
+    c[3].v = c[2].v = v1;
     {
         Group *g = group;
 
@@ -1884,7 +1914,11 @@ void C2DInfoWin::f_106120(float x, float y, int a, int b)
     if (a == 1) {
         Show(11, 1);
         RECT(11, D_1b065c[b]);
-        MOVE(11, x0 + 2.0f, y0 + 16.0f);
+        {
+            Group *g = group;
+
+            f_04c278(g, f_101f54(11), x0 + 2.0f, y0 + 16.0f);
+        }
         {
             Group *g = group;
 

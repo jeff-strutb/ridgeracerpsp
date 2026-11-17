@@ -407,7 +407,13 @@ void CRidgeComcar::f_0c0908()
    computes the heading a quarter turn on (wrapped into -pi..pi), and starts the driving
    record (gear, speeds, lane offset) and the course follower.
    DIFFERS: scheduling only: retail loads the heading word into v1 and stores it after the
-   quarter-turn constant's load, and interleaves the ra/s5 restores with the last stores. */
+   quarter-turn constant's load, and interleaves the ra/s5 restores with the last stores.
+   2026-11-16 diagnosis (no edit): sched1 leaves lui LC4 / lw word / lwc1 LC4 / addiu a0 / sw
+   word, which is exactly retail's order with word = v1; but lreg (update_equiv_regs) then moves
+   the set-once, used-once pseudos 201 (lw of a) and 205/207 (the 1.5707964 load) down to their
+   uses (insns 266, 265/264), so their lives no longer overlap and both get v0. Retail's pseudos
+   were not moved; what blocks the move there is not yet known (not the source order). The
+   epilogue interleave (lw ra/s5 between sw 10124/10128) is a separate sched2 tie, not studied. */
 void CRidgeComcar::f_0c0984(int i, CarRow *tab)
 {
     Phys *p = &phys;
@@ -452,7 +458,8 @@ void CRidgeComcar::f_0c0984(int i, CarRow *tab)
    start position, and the target and lap counters reset.
    DIFFERS: register allocation: retail keeps the physics record in s2, reuses the spec's s0
    for the constant 1 and the lane in s1 (here s1, s2, s0), plus the heading copy schedule of
-   0x0c0984. */
+   0x0c0984. 2026-11-16 (23 -> 20 words): the counters are cleared 10124, 10128, 10132 in
+   source (sched2 issues the last one first), giving retail's 10132, 10124, 10128. */
 void CRidgeComcar::f_0c0b3c(Spec *s)
 {
     Phys *p = &phys;
@@ -487,9 +494,9 @@ void CRidgeComcar::f_0c0b3c(Spec *s)
     d->m576 = l->m128 + g * 3000.0f;
     m10136 = -1;
     f->m24 = 1.0f;
-    m10132 = 0;
     m10124 = 0;
     m10128 = 0;
+    m10132 = 0;
 }
 
 /* @implements 0x0c0d00 us f_0c0d00
@@ -837,7 +844,12 @@ void CRidgeComcar::f_0c145c(float a, float b, float c)
    into its fraction and scaled forms, keeps the previous scaled distance, sets the speed along
    the course per second, and runs the direction vector step.
    DIFFERS: retail forms the course areas' address with a separate +12240 before loading the
-   section count (this build folds it into the load), which shifts the schedule after it. */
+   section count (this build folds it into the load), which shifts the schedule after it.
+   2026-11-16 diagnosis (no edit): retail is lui/addiu %lo(D_23c820), addiu +12240, lw 8: the
+   inline Areas() result stays a separate register as in the handbook's f_037568 row (a call on
+   the sub-object), but here the inline Count() load lets combine fold 12240 + 8 into %lo.
+   Retail needs the sub-object pointer to survive as a value (e.g. passed on or reused); the
+   exact source form is not derived. The rest of the 90 words is the schedule shift after it. */
 void CRidgeComcar::f_0c1860()
 {
     Phys *p = &phys;
