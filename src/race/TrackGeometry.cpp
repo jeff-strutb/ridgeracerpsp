@@ -863,7 +863,7 @@ struct Flag {
    gets the final slide along the contact edge (height from the course areas), and the
    remaining outputs get the contact vertex angle, a speed, the edge direction and the edge's
    two end points. Returns 0 (no contact) to 3.
-   DRAFT: complete transcription of every path; size 14,108 vs 14,328 bytes. Proven so far
+   DRAFT: complete transcription of every path; size 14,168 vs 14,328 bytes. Proven so far
    (each matches retail's code at that point): flags is an array of a class with an empty
    constructor (Flag), declared after result = 0 and before Qp, which gives retail's empty
    127-step-32 loop and keeps the frame offsets; every loop indexes the edge points as Vec2
@@ -879,7 +879,9 @@ struct Flag {
    the next element are for loops with continue (not goto to the increment), which gives
    retail's out-of-line placement of the code after the first test. Open: retail keeps hitAny in memory (spilled) and hoists the angle addresses and the
    constant 1 out of the first cull loop; the block with f_0b1b28 at retail 0x1e78 is still
-   placed differently (resolved: it was the seg loop); register choice and scheduling differ throughout.
+   placed differently (resolved: it was the seg loop). The seg loop's edge ends ea and eb are
+   written at each use (retail recomputes (s2 + 1) % 2 per use). Register choice and scheduling
+   still differ throughout.
    Layout aids with no counterpart in the original: the two unused angle locals (retail leaves
    a hole of two slots after the first outline loop) and the packed scratch array tt.
    Retail also reads a stale vector in the slide's second box (V1808 is the leftover of the
@@ -1608,8 +1610,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                                 if (f_0b1b28((const Vec2 *)&seg.x, (const Vec2 *)&seg.z, &V448) > 0.0f)
                                     continue;
                                 {
-                                    Vec2 *ea = &((Vec2 *)&seg)[s2];
-                                    Vec2 *eb = &((Vec2 *)&seg)[(s2 + 1) % 2];
+#define ea (&((Vec2 *)&seg)[s2])
+#define eb (&((Vec2 *)&seg)[(s2 + 1) % 2])
                                     float gap8, gap0, g;
                                     if (eb->y < V2000.y)
                                         continue;
@@ -1628,6 +1630,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                                         if (g <= __builtin_sqrtf(acc.a[0] * acc.a[0] + acc.a[1] * acc.a[1] + acc.a[2] * acc.a[2])) {
                                             bestEdge = (unsigned short)i;
                                             best = g;
+#undef ea
+#undef eb
                                         }
                                     }
                                 }
