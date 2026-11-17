@@ -5,8 +5,13 @@ prx.py pairs every HI16 with the next LO16 in file order; any other LO16
 (the compiler reused a `lui` register for several %lo uses) is left with
 target None.  This module runs a forward data-flow analysis over each
 function of config/us/funcs.csv: the abstract state maps a GPR to the HI16
-`lui` that last wrote it, when every path agrees; any other write, a call
-(caller-saved registers), or disagreement between paths removes it.  Delay
+`lui`s that may have last written it, when every path agrees on the value
+they load (the same immediate and the same relocation base segment); any
+other write, a call (caller-saved registers), or paths that disagree on the
+value remove it.  Paths are joined on the value, not on which `lui` wrote
+it: a loop that reloads the same high half with a second `lui` (0x0d3b2c:
+`lui v1,0xa` before the loop and again in the back edge's delay slot) keeps
+it.  (Joining on the `lui` address, as this module first did, lost those.)  Delay
 slots execute before the transfer; a likely branch's slot only on the taken
 edge.
 
@@ -33,6 +38,7 @@ import funcmap              # noqa: E402
 CALLER_SAVED = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 31}
 CLOBBER_CALLS = True
 LUI_OVERWRITES = True
+JOIN_BY_VALUE = True
 
 
 def _step(p, a, st, his):
@@ -40,23 +46,41 @@ def _step(p, a, st, his):
     i = decode(p.word(a), a)
     if a in his and i.name == 'lui':
         if LUI_OVERWRITES:
-            st[i.rt] = a
+            st[i.rt] = frozenset([a])
         else:
-            st.setdefault(i.rt, a)
+            st.setdefault(i.rt, frozenset([a]))
         return i
     for r in i.writes:
         st.pop(r, None)
     return i
 
 
-def _meet(x, y):
-    return {r: v for r, v in x.items() if y.get(r) == v}
+def _meet(x, y, value=None):
+    """Registers both states agree on.  With value (lui addr -> its loaded value) two
+    different luis that load the same value agree, and the result keeps both."""
+    out = {}
+    for r, v in x.items():
+        w = y.get(r)
+        if w is None:
+            continue
+        if w == v:
+            out[r] = v
+        elif value is not None and len({value(h) for h in v | w}) == 1:
+            out[r] = v | w
+    return out
 
 
 def analyse(p, f, his, tables):
     """{addr: state before addr} for the reachable words of function f."""
     lo, hi = f['addr'], f['addr'] + f['size']
     IN, SLOT, work = {}, {}, []
+
+    def value(h):
+        return (p.word(h) & 0xffff, his[h].addrbase)
+    vf = value if JOIN_BY_VALUE else None
+
+    def _m(x, y):
+        return _meet(x, y, vf)
 
     def join(a, st):
         if not lo <= a < hi:
@@ -65,7 +89,7 @@ def analyse(p, f, his, tables):
             IN[a] = dict(st)
             work.append(a)
         else:
-            m = _meet(IN[a], st)
+            m = _m(IN[a], st)
             if m != IN[a]:
                 IN[a] = m
                 work.append(a)
@@ -78,7 +102,7 @@ def analyse(p, f, his, tables):
         if not i.has_delay:
             join(a + 4, st)
             continue
-        SLOT[a + 4] = dict(st) if a + 4 not in SLOT else _meet(SLOT[a + 4], st)
+        SLOT[a + 4] = dict(st) if a + 4 not in SLOT else _m(SLOT[a + 4], st)
         s2 = dict(st)
         _step(p, a + 4, s2, his)
         if i.is_call and CLOBBER_CALLS:
@@ -97,7 +121,7 @@ def analyse(p, f, his, tables):
             join(a + 8, s2)
     out = dict(IN)
     for a, st in SLOT.items():
-        out[a] = st if a not in out else _meet(out[a], st)
+        out[a] = st if a not in out else _m(out[a], st)
     return out
 
 
@@ -123,9 +147,10 @@ def recover(p, funcs, which=None):
             if st is None:
                 continue
             i = decode(p.word(a), a)
-            h = st.get(i.rs)
-            if h is None:
+            hs = st.get(i.rs)
+            if hs is None:
                 continue
+            h = min(hs)
             hr = his[h]
             lo_r = [r for r in p.reloc_at(a) if r.type_id == 6][0]
             if hr.addrbase != lo_r.addrbase:
@@ -153,6 +178,30 @@ def selftest():
     print(f'unpaired LO16: {total}; recovered {len(rec)}; outside image {len(oob)}')
     if oob:
         fails.append(f'{len(oob)} recovered targets outside the image')
+    # Known answer for the value join: the LO16 at 0x0d3b5c (function 0x0d3b2c, word 12)
+    # uses v1, loaded by `lui v1,0xa` at 0x0d3b34 before the loop and again at 0x0d3b84 in the
+    # back edge's delay slot.  Its high half is the one the paired LO16 at 0x0d3b38 proves,
+    # and its low half equals that LO16's, so its target is that pair's target.
+    global JOIN_BY_VALUE
+    want = p.reloc_at(0x0d3b38)[0].target
+    same_lo = p.reloc_at(0x0d3b38)[0].lo == p.reloc_at(0x0d3b5c)[0].lo
+    JOIN_BY_VALUE = False
+    try:
+        old = recover(p, F)
+    finally:
+        JOIN_BY_VALUE = True
+    print(f'0x0d3b5c (0x0d3b2c word 12): want {want:#x}; join by lui address gives '
+          f'{old.get(0x0d3b5c, (None,))[0]}; join by value gives '
+          f'{hex(rec[0x0d3b5c][0]) if 0x0d3b5c in rec else None}')
+    if not same_lo or rec.get(0x0d3b5c, (None,))[0] != want:
+        fails.append('0x0d3b5c not recovered as %#x by the value join' % want)
+    if 0x0d3b5c in old:
+        fails.append('the address join recovers 0x0d3b5c: the known answer does not test the fix')
+    changed = [a for a in old if a not in rec or rec[a][0] != old[a][0]]
+    print(f'join by lui address: {len(old)} recovered; by value: {len(rec)}; '
+          f'earlier targets lost or changed: {len(changed)}')
+    if changed:
+        fails.append(f'{len(changed)} targets recovered by the address join changed')
     LUI_OVERWRITES = False
     try:
         got2 = recover(p, F, which=lambda r: r.how == 'pair')
