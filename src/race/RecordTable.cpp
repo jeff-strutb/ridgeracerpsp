@@ -1,24 +1,6 @@
 /* Record-table helpers of the object file at retail 0x0db2c4 to 0x0e14d8: calls with fixed
    trailing arguments, and walks over a table of 16-byte records and of 32-byte slots. */
 
-/* A record list: a header whose halfword at +2 is the count, and 16-byte records at +8. */
-struct RecHdr {
-    short m0;
-    unsigned short count;
-};
-
-struct Rec16 {
-    char m0[6];
-    unsigned char key;      /* +6 */
-    char m7[9];
-};
-
-struct RecList {
-    RecHdr *hdr;            /* +0 */
-    int m4;
-    Rec16 *recs;            /* +8 */
-};
-
 struct Flags {
     int m0, m4, m8;
     unsigned flags;         /* +12 */
@@ -28,8 +10,7 @@ struct Holder {
     Flags *inner;           /* +0 */
 };
 
-extern "C" void f_0df538(void *self, RecList *l, int i, int key);
-extern "C" void f_0dedd0(void *slot, RecList *l, int arg, int i);
+
 
 /* Matrix-stack and transform routines (VFPU, src/system). */
 struct Matrix {
@@ -85,6 +66,7 @@ struct AnimData {
 extern "C" unsigned char *f_0db0d0(AnimData *pb, int frame, int idx);
 extern "C" unsigned char *f_0daf64(AnimData *pb, unsigned int frame, int idx);
 extern "C" void f_0de508(void *a, AnimData *pb);
+extern "C" void f_0df538(void *self, AnimData *pb, int i, int key);
 extern "C" void f_0e1e34(AnimData *pb, const unsigned char *p, unsigned short *x, unsigned short *y,
                          unsigned short *z);
 
@@ -95,6 +77,8 @@ struct Key {
     short r[3];             /* +24 */
     unsigned short pad;
 };
+
+extern "C" void f_0dedd0(Key *k, AnimData *pb, int arg, int i);
 
 /* A float read from four unaligned bytes. */
 /* A 16-bit angle (a full turn is 65536), read from two unaligned bytes. */
@@ -412,22 +396,27 @@ extern "C" void f_0dbf04(AngLerp *a)
 }
 
 /* @draft 0x0dfa88 us f_0dfa88
-   WHAT IT DOES: Calls the routine at 0x0df538 for each record of the list whose key equals the given key. */
-extern "C" void f_0dfa88(void *self, RecList *l, int key)
+   WHAT IT DOES: Calls the routine at 0x0df538 for each record of the animation whose key byte equals the
+   given key.
+   Remaining difference: global-alloc gives the loaded key byte t0 and copies it to a3 for the call;
+   retail loads it straight into a3 (the copy preference wins there), which also frees t0 for the
+   header pointer (t1 here) and drops one word. */
+extern "C" void f_0dfa88(void *self, AnimData *pb, int key)
 {
-    for (int i = 0; i < l->hdr->count; i++) {
-        if (l->recs[i].key == key)
-            f_0df538(self, l, i, l->recs[i].key);
+    for (int i = 0; i < pb->hdr->count; i++) {
+        AnimRec *rec = &pb->recs[i];
+        if (rec->key == key)
+            f_0df538(self, pb, i, rec->key);
     }
 }
 
-/* @draft 0x0dfb1c us f_0dfb1c
-   WHAT IT DOES: Calls the routine at 0x0dedd0 for each 32-byte slot starting at the given pointer, one per
-   slot of the list. */
-extern "C" void f_0dfb1c(char *p, RecList *l, int arg)
+/* @implements 0x0dfb1c us f_0dfb1c
+   WHAT IT DOES: Calls the routine at 0x0dedd0 for each record of the animation with that record's pose
+   key. */
+extern "C" void f_0dfb1c(Key *keys, AnimData *pb, int arg)
 {
-    for (int i = 0; i < l->hdr->count; i++, p += 32)
-        f_0dedd0(p, l, arg, i);
+    for (int i = 0; i < pb->hdr->count; i++)
+        f_0dedd0(&keys[i], pb, arg, i);
 }
 
 /* @implements 0x0dfb98 us f_0dfb98
