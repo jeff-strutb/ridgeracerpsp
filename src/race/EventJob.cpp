@@ -1507,6 +1507,16 @@ void CEventHandler::Release(EventWork *w)
 {
 }
 
+/* One set of event data (src/race/EventBuffer.cpp): its events and, per event, its work
+   object. */
+struct Block {
+    int count;
+    Event **events;
+    void **work;
+
+    void *&Work(int i) { return work[i]; }
+};
+
 namespace Map {
 namespace Event {
 
@@ -1518,6 +1528,8 @@ public:
     virtual void Setup(::Event *e) = 0;
     virtual void Stop() = 0;
     virtual void Reset();
+    CEventJobWorkBase() : ref(0) {}
+    void Init() {}
 
     ::Event *ev;
     int ref;
@@ -1537,13 +1549,20 @@ public:
     int m1136;
     int m1140[2];
     int cam;
-    int angle;
+
+    void Init();
 };
 
 /* The helicopter: a moving model of its own. */
 class CHeliWork : public CMotWork {
 public:
     virtual void Update();
+    CHeliWork() { m1164 = 0; m1160 = 0; m1156 = 0; angle = 0; }
+
+    int angle;
+    int m1156;
+    int m1160;
+    int m1164;
 };
 
 /* The cyclists. */
@@ -1552,9 +1571,11 @@ public:
     virtual void Update();
     virtual void Setup(::Event *e);
     virtual void Stop();
+    CCycleWork() { m12 = 0; m16 = 0; }
 
     int *m12;
     int *m16;
+    int m20[4];
 };
 
 /* The flashes. */
@@ -1563,6 +1584,7 @@ public:
     virtual void Update();
     virtual void Setup(::Event *e);
     virtual void Stop();
+    CFlashWork() { m16 = 0; m20 = 0; }
 
     int m12;
     int *m16;
@@ -1575,6 +1597,7 @@ public:
     virtual void Update();
     virtual void Setup(::Event *e);
     virtual void Stop();
+    CHanabiWork() { active = 0; }
 
     int active;
 };
@@ -1586,6 +1609,7 @@ public:
     virtual void Setup(::Event *e);
     virtual void Stop();
     bool IsActive() { return active == 1; }
+    CLeafWork() { active = 0; }
 
     int active;
     int m16;
@@ -1593,6 +1617,7 @@ public:
     float pos[3];
     float rot[3];
     unsigned char colour[3];
+    int m52;
 };
 
 /* The pigeons. */
@@ -1604,6 +1629,7 @@ public:
 
     int m12;
     int *birds;
+    int m20;
 };
 
 /* The cows: a frame animation run forwards or backwards on cue. */
@@ -1623,6 +1649,88 @@ public:
     int m36;
     int frame;
 };
+
+/* The work objects of one kind: an array built from the events of one type. */
+template <class T> class CWorkList {
+public:
+    void Build(Block *b, int type)
+    {
+        int i, k;
+
+        count = 0;
+        for (i = 0; i < b->count; i++)
+            if (b->events[i]->type == type)
+                count++;
+        if (count == 0) {
+            arr = 0;
+            return;
+        }
+        arr = new T[count];
+        k = 0;
+        for (i = 0; i < b->count; i++) {
+            ::Event *e = b->events[i];
+            if (e->type == type) {
+                arr[k].Setup(e);
+                arr[k].Init();
+                b->Work(i) = &arr[k];
+                k++;
+            }
+        }
+    }
+    void Free()
+    {
+        int i;
+
+        for (i = 0; i < count; i++)
+            arr[i].Stop();
+        if (arr)
+            delete[] arr;
+    }
+
+    T *arr;
+    int count;
+};
+
+extern CWorkList<CMotWork> D_254330;
+extern CWorkList<CHeliWork> D_254338;
+extern CWorkList<CCycleWork> D_254340;
+extern CWorkList<CFlashWork> D_254348;
+extern CWorkList<CHanabiWork> D_254350;
+extern CWorkList<CLeafWork> D_254358;
+extern CWorkList<CHatoWork> D_254360;
+extern CWorkList<CUshiWork> D_254368;
+
+/* @draft 0x0d2ef0 us f_0d2ef0
+   WHAT IT DOES: Builds the work objects of every kind from a set of event data: for each kind,
+   counts the events of its type, allocates that many objects, sets each up from its event and
+   records it as the event's work object.
+   Remaining difference: none in the bytes; the call to CMotWork::Init (0x0d3eb0) resolves
+   once that function is tagged. */
+extern "C" void f_0d2ef0(Block *b)
+{
+    D_254330.Build(b, 6);
+    D_254338.Build(b, 21);
+    D_254340.Build(b, 16);
+    D_254348.Build(b, 18);
+    D_254350.Build(b, 32);
+    D_254358.Build(b, 33);
+    D_254360.Build(b, 17);
+    D_254368.Build(b, 34);
+}
+
+/* @draft 0x0d37bc us f_0d37bc
+   WHAT IT DOES: Stops every work object of every kind and frees the arrays. */
+extern "C" void f_0d37bc(void)
+{
+    D_254330.Free();
+    D_254338.Free();
+    D_254340.Free();
+    D_254348.Free();
+    D_254350.Free();
+    D_254358.Free();
+    D_254360.Free();
+    D_254368.Free();
+}
 
 /* @implements 0x0d3e98 us _ZN3Map5Event8CMotWork5Setup
    WHAT IT DOES: Takes the event. */
@@ -1819,6 +1927,12 @@ void CUshiWork::Reset()
     m36 = 0;
     state = 0;
 }
+
+/* @draft 0x0d4fb4 us _ZN3Map5Event9CWorkListINS0_8CMotWorkEE5Build
+   WHAT IT DOES: CWorkList<CMotWork>::Build (defined in the class above), emitted out of line:
+   the tree inliner turned down the first of the eight calls in f_0d2ef0 and inlined the rest.
+   Remaining difference: none in the bytes; the call to CMotWork::Init (0x0d3eb0) resolves
+   once that function is tagged. */
 
 }
 }
