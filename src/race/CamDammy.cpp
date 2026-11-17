@@ -329,14 +329,17 @@ void CCamDammyEye1::f_07f5e8()
         q->m480 = l2;
         float s = 1.0f / f_0cd3cc(l2);
         DView *r = Prev();
-        r->m504 = -g->m12 * r->m500;
+        int nw = -g->m12;
+        int h = g->m16;
+        int top = g->m20 + h / 2 + 1912;
+        r->m504 = nw * r->m500;
         r->m512 = 2048;
-        r->m516 = g->m20 + g->m16 / 2 + 1912;
-        r->m508 = g->m16;
+        r->m516 = top;
+        r->m508 = h;
         q->m496 = s;
         r->m532 = (float)(g->m16 / 2 + 5);
-        r->m520 = (float)-g->m12 * half;
-        r->m524 = (float)g->m16 * half;
+        r->m520 = (float)nw * half;
+        r->m524 = (float)h * half;
         r->m528 = (float)(g->m12 / 2 + 5);
     }
 }
