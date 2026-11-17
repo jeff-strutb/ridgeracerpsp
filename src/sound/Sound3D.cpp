@@ -162,7 +162,18 @@ int C3DSound::f_114234()
    become inaudible. flags >> 4 is the frame time.
    DRAFT: 30 of 296 words differ, all FP register choices in the pan angle: retail keeps the
    zero constant and the angle in f4 (the z == 0, x >= 0 case uses the constant itself as the
-   angle) and the relative z in f3; here zero is f0, the angle f3 and z f4. */
+   angle) and the relative z in f3; here zero is f0, the angle f3 and z f4.
+   Remaining difference (diagnosed 2026-11-16, root is sched1, not global): in the join block
+   (pan div + distance) sched1 ranks the pan div 289 at priority 35 below the muls (47) and the
+   rel.y load 298 (50), so the order is y load, x*x, z*z, y*y, div. local-alloc then gives qty
+   {y, y*y} (5 refs, life 7) priority over {x*x, sum, sum} (6 refs, life 10), so y takes f0 and
+   x*x f1; rel.x (409) follows x*x into f1, which pushes rel.z to f4 and the angle to f3 and
+   breaks the angle/zero tie. Retail's block order is div, y load, params load, nearDist load,
+   x*x, y*y, z*z (faddmul unit busy 28 cycles behind the div), i.e. retail's div outranked the
+   muls: its path to the block end must be >= 48, which the current dependences can't give
+   (div 30 + fix 4 + store 1). One shape that would: the sv->pan store ordered before the
+   v[i].params / nearDist loads (a memory dependence), giving div ~48. Not tried (no evidence
+   yet of what in retail makes that store alias those loads). */
 int C3DSound::f_114300(int flags)
 {
     Vec4 t;
