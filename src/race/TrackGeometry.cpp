@@ -1572,12 +1572,14 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
             {
                 PlaneRec *e = o->m8[i];
                 short jj = i * 2;
-                V1808.x = e->x - V448.x;
-                V1808.y = e->y - V448.y;
+                float d0x = e->x - V448.x, d0y = e->y - V448.y;
+                V1808.x = d0x;
+                V1808.y = d0y;
                 Rot(ang, &V1808.x, &V1808.y);
                 pts[jj] = V1808;
-                V1824.y = e->w - V448.y;
-                V1824.x = e->z - V448.x;
+                float d1y = e->w - V448.y, d1x = e->z - V448.x;
+                V1824.y = d1y;
+                V1824.x = d1x;
                 Rot(ang, &V1824.x, &V1824.y);
                 pts[jj + 1] = V1824;
                 short j = i;
