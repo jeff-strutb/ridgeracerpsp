@@ -310,7 +310,7 @@ extern "C" void f_0b9e0c(void *c)
 }
 
 
-/* @draft 0x0b9098 us f_0b9098
+/* @implements 0x0b9098 us f_0b9098
    WHAT IT DOES: Copies the first three entries of each row of a 4x4 matrix and sets the last
    column to zero, except the bottom right entry which is 1.0. */
 extern "C" void f_0b9098(float *dst, float *src)
@@ -318,10 +318,10 @@ extern "C" void f_0b9098(float *dst, float *src)
     for (int i = 0; i < 4; i++)
         for (int k = 0; k < 3; k++)
             dst[i * 4 + k] = src[i * 4 + k];
-    FLT(dst, 12) = 0.0f;
-    FLT(dst, 60) = 1.0f;
     FLT(dst, 28) = 0.0f;
     FLT(dst, 44) = 0.0f;
+    FLT(dst, 60) = 1.0f;
+    FLT(dst, 12) = 0.0f;
 }
 
 /* @draft 0x0b9c78 us f_0b9c78
