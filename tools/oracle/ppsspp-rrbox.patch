@@ -205,10 +205,10 @@ index 6f39b1b..ab1ec6c 100644
  
 diff --git a/Core/RRBox.cpp b/Core/RRBox.cpp
 new file mode 100644
-index 0000000..b051bbd
+index 0000000..ae37f87
 --- /dev/null
 +++ b/Core/RRBox.cpp
-@@ -0,0 +1,788 @@
+@@ -0,0 +1,923 @@
 +#include "Core/RRBox.h"
 +#include <algorithm>
 +#include <map>
@@ -216,6 +216,7 @@ index 0000000..b051bbd
 +#include <string>
 +#include "Core/MIPS/MIPS.h"
 +#include "Core/MIPS/MIPSTables.h"
++#include "Core/HLE/HLE.h"
 +#include "Core/HLE/sceKernelThread.h"
 +#include "Core/HLE/sceKernelInterrupt.h"
 +#include "Core/CoreTiming.h"
@@ -262,7 +263,8 @@ index 0000000..b051bbd
 +		m->inDelaySlot = inDelaySlot; m->llBit = llBit;
 +	}
 +};
-+struct LockFn { u32 size; int rk; std::vector<u8> cand, orig; std::vector<u8> exec; u64 tested = 0, calls = 0; };
++struct LockFn { u32 size; int rk; std::vector<u8> cand, orig; std::vector<u8> exec; u64 tested = 0, calls = 0; u32 load = 0; };
++static std::vector<std::pair<u32, std::vector<u8>>> g_specData;  // annexed read-only data (DATA lines)
 +static std::map<u32, LockFn> g_lockFns;     // absolute entry -> tested function
 +static FILE *g_lockLog = nullptr;
 +static std::string g_lockCov;
@@ -281,9 +283,21 @@ index 0000000..b051bbd
 +	u64 unrec = 0; u32 unrecFirst = 0;
 +};
 +static Lock g_lk;
-+static inline u8 Peek(u32 a) { return *Memory::GetPointerUnchecked(a); }
-+static inline u32 Peek32(u32 a) { u32 v; memcpy(&v, Memory::GetPointerUnchecked(a), 4); return v; }
-+static inline void Poke(u32 a, u8 v) { *Memory::GetPointerWriteUnchecked(a) = v; }
++// Replay journals: one bit per byte over 0x04000000-0x0C000000 (VRAM and RAM), so membership is
++// constant time; addresses outside fall back to nothing (never written by game code).
++struct ByteSet {
++	static const u32 lo = 0x04000000, hi = 0x0C000000;
++	std::vector<u64> bits;
++	ByteSet() : bits((hi - lo) / 64, 0) {}
++	bool has(u32 a) const { return a >= lo && a < hi && (bits[(a - lo) >> 6] >> ((a - lo) & 63) & 1); }
++	void set(u32 a) { if (a >= lo && a < hi) bits[(a - lo) >> 6] |= 1ULL << ((a - lo) & 63); }
++	void reset(u32 a) { if (a >= lo && a < hi) bits[(a - lo) >> 6] &= ~(1ULL << ((a - lo) & 63)); }
++};
++static ByteSet *g_w2 = nullptr, *g_inset = nullptr;     // replay: written by the candidate; recorded inputs
++static std::vector<std::pair<u32, u8>> g_old2v;         // replay: (byte, value before the candidate wrote it)
++static inline u8 Peek(u32 a) { return Memory::IsValidAddress(a) ? *Memory::GetPointerUnchecked(a) : 0; }
++static inline u32 Peek32(u32 a) { u32 v = 0; if (Memory::IsValidRange(a, 4)) memcpy(&v, Memory::GetPointerUnchecked(a), 4); return v; }
++static inline void Poke(u32 a, u8 v) { if (Memory::IsValidAddress(a)) *Memory::GetPointerWriteUnchecked(a) = v; }
 +// recording
 +static std::string g_recDir;
 +static u64 g_recPerFn = 200;
@@ -301,21 +315,43 @@ index 0000000..b051bbd
 +	currentMIPS->InvalidateICache(a, (int)b.size());
 +}
 +
++static std::vector<u8> Hex(const char *h, size_t n) {
++	std::vector<u8> v;
++	v.reserve(n / 2);
++	for (size_t k = 0; k + 1 < n; k += 2) {
++		auto d = [](char c) { return c <= '9' ? c - '0' : (c | 32) - 'a' + 10; };
++		v.push_back((u8)(d(h[k]) << 4 | d(h[k + 1])));
++	}
++	return v;
++}
++
++// Spec lines: "OFFSET SLOTSIZE RETKIND HEX [LOAD]" (HEX "-": the slot's own bytes) and
++// "DATA ADDR HEX" (read-only data the bodies refer to, written before anything runs).
 +static void ParseSpec(const char *spec, u32 moduleBase) {
 +	g_base = moduleBase;
 +	FILE *f = fopen(spec, "r");
 +	if (!f) { fprintf(stderr, "rrbox: cannot read %s\n", spec); exit(3); }
-+	static char line[1 << 17];
-+	while (fgets(line, sizeof(line), f)) {
-+		unsigned a, size; char rk[16]; static char hex[1 << 17];
-+		if (line[0] == '#' || sscanf(line, "%x %u %15s %s", &a, &size, rk, hex) != 4) continue;
++	char *line = nullptr; size_t cap = 0; ssize_t n;
++	while ((n = getline(&line, &cap, f)) > 0) {
++		if (line[0] == '#') continue;
++		char *tok[6]; int nt = 0;
++		for (char *t = strtok(line, " \n"); t && nt < 6; t = strtok(nullptr, " \n")) tok[nt++] = t;
++		if (nt == 3 && !strcmp(tok[0], "DATA")) {
++			g_specData.push_back({(u32)strtoul(tok[1], nullptr, 16), Hex(tok[2], strlen(tok[2]))});
++			continue;
++		}
++		if (nt < 4) continue;
++		u32 a = (u32)strtoul(tok[0], nullptr, 16);
 +		LockFn fn;
-+		fn.size = size;
++		fn.size = (u32)strtoul(tok[1], nullptr, 10);
++		const char *rk = tok[2];
 +		fn.rk = !strcmp(rk, "void") ? 0 : !strcmp(rk, "int") ? 1 : !strcmp(rk, "wide") ? 2 : 3;
-+		for (size_t k = 0; k + 1 < strlen(hex); k += 2) { unsigned b; sscanf(hex + k, "%2x", &b); fn.cand.push_back((u8)b); }
-+		fn.exec.assign(size / 4, 0);
++		if (strcmp(tok[3], "-")) fn.cand = Hex(tok[3], strlen(tok[3]));
++		fn.load = nt >= 5 ? (u32)strtoul(tok[4], nullptr, 16) : moduleBase + a;
++		fn.exec.assign((fn.cand.empty() ? fn.size : fn.cand.size()) / 4, 0);
 +		g_lockFns[moduleBase + a] = fn;
 +	}
++	free(line);
 +	fclose(f);
 +}
 +
@@ -351,12 +387,31 @@ index 0000000..b051bbd
 +// ---- Case recording, nested: every call of a recorded function is its own case, also when it runs
 +// inside another recorded call. Recording never changes execution, so each open call keeps its own
 +// journal: reads before its own writes are its inputs, its writes outside its frame its outputs.
++// System functions with no effect on memory and no thread switch: a recorded call may make them.
++// Each one's result is kept in the case and given back to the candidate in replay, after its
++// name and the arguments it takes are checked.
++struct SysFn { const char *name; int nargs; };
++static const SysFn g_pureSys[] = {
++	{"sceKernelCpuSuspendIntr", 0}, {"sceKernelCpuResumeIntr", 1}, {"sceKernelCpuResumeIntrWithSync", 1},
++	{"sceKernelGetSystemTimeLow", 0}, {"sceKernelGetThreadId", 0}, {"sceKernelGetThreadCurrentPriority", 0},
++	{"sceGeEdramGetAddr", 0}, {"sceKernelDcacheWritebackRange", 2}, {"sceKernelDcacheWritebackInvalidateRange", 2},
++	{"sceKernelDcacheWritebackAll", 0}, {"sceKernelDcacheWritebackInvalidateAll", 0},
++};
++static int PureSys(const char *name) {
++	for (auto &f : g_pureSys) if (!strcmp(f.name, name)) return f.nargs;
++	return -1;
++}
++struct Sys { char name[48]; u32 a[4]; u32 v0, v1; };
 +struct Rec {
 +	u32 func, ra, sp, stkLo, stkHi; int thread; u64 call;
 +	Regs entry;
 +	std::map<u32, u8> in, old1;
 +	std::vector<u8> ran;                     // words of its own body executed in this call
++	std::vector<Sys> sys;                    // allowed system calls made, in order
++	u64 steps = 0;                           // instructions the call ran (callees included)
 +};
++static Sys g_pendingSys;
++static bool g_pending = false;
 +static std::vector<Rec> g_recs;
 +static std::map<u32, std::vector<u8>> g_recRan;  // words of each body run by the cases kept so far
 +
@@ -388,7 +443,7 @@ index 0000000..b051bbd
 +	snprintf(path, sizeof(path), "%s/%06x.cases", g_recDir.c_str(), off);
 +	if (FILE *f = fopen(path, "ab")) {
 +		u32 n;
-+		fwrite("RRC1", 1, 4, f);
++		fwrite("RRC3", 1, 4, f);
 +		fwrite(&off, 4, 1, f); fwrite(&r.call, 8, 1, f);
 +		fwrite(&r.sp, 4, 1, f); fwrite(&r.stkLo, 4, 1, f); fwrite(&r.stkHi, 4, 1, f);
 +		fwrite(&r.entry, sizeof(Regs), 1, f); fwrite(&after, sizeof(Regs), 1, f);
@@ -396,6 +451,9 @@ index 0000000..b051bbd
 +			n = (u32)v->size(); fwrite(&n, 4, 1, f);
 +			for (auto &x : *v) { fwrite(&x.first, 4, 1, f); fwrite(&x.second, 1, 1, f); }
 +		}
++		n = (u32)r.sys.size(); fwrite(&n, 4, 1, f);
++		if (n) fwrite(r.sys.data(), sizeof(Sys), n, f);
++		fwrite(&r.steps, 8, 1, f);
 +		fclose(f);
 +	}
 +	if (g_lockLog) fprintf(g_lockLog, "CASE %06x %llu\n", off, (unsigned long long)r.call);
@@ -414,10 +472,25 @@ index 0000000..b051bbd
 +			if (pc == r.ra && m->r[MIPS_REG_SP] == r.sp && t == r.thread) { WriteCase(r, m); g_recs.pop_back(); }
 +			else break;
 +		}
-+		if (!why && !g_recs.empty() && (Peek32(pc) & 0xFC00003F) == 0x0000000C) why = "system call inside the call";
++		if (!why && !g_recs.empty() && (Peek32(pc) & 0xFC00003F) == 0x0000000C) {
++			const HLEFunction *info = GetSyscallFuncPointer(MIPSOpcode(Peek32(pc)));
++			if (info && info->name && PureSys(info->name) >= 0) {
++				// allowed: its result is recorded when it returns (OnSyscallReturn)
++				memset(&g_pendingSys, 0, sizeof(g_pendingSys));
++				snprintf(g_pendingSys.name, sizeof(g_pendingSys.name), "%s", info->name);
++				for (int k = 0; k < 4; k++) g_pendingSys.a[k] = m->r[4 + k];
++				g_pending = true;
++			} else {
++				static char w[96];
++				snprintf(w, sizeof(w), "system call inside the call (%s)", info && info->name ? info->name : "?");
++				why = w;
++			}
++		}
 +		if (!why)
-+			for (auto &r : g_recs)
++			for (auto &r : g_recs) {
++				r.steps++;
 +				if (pc >= r.func && pc < r.func + 4 * r.ran.size()) r.ran[(pc - r.func) / 4] = 1;
++			}
 +		if (why) {
 +			// every open call contains it: none of them can be replayed
 +			if (g_lockLog)
@@ -609,7 +682,7 @@ index 0000000..b051bbd
 +		if (!g_lk.replay) {
 +			// an input: read before this call wrote it
 +			if (!g_lk.old1.count(b)) g_lk.in.emplace(b, Peek(b));
-+		} else if (!g_lk.in.count(b) && !g_lk.old2.count(b) && !(b >= g_lk.stkLo && b < g_lk.sp)) {
++		} else if (!g_inset->has(b) && !g_w2->has(b) && !(b >= g_lk.stkLo && b < g_lk.sp)) {
 +			if (!g_lk.unrec++) g_lk.unrecFirst = b;  // the original never read it: not a recorded input
 +		}
 +	}
@@ -632,6 +705,17 @@ index 0000000..b051bbd
 +	MIPSState *m = currentMIPS;
 +	Regs saved; saved.Save(m);
 +	int savedDown = m->downcount;
++	g_w2 = new ByteSet(); g_inset = new ByteSet();
++	u32 annexLo = ~0u, annexHi = 0;  // nothing a case reads or writes may be in it
++	for (auto &d : g_specData) {
++		PutBytes(d.first, d.second);
++		annexLo = std::min(annexLo, d.first); annexHi = std::max(annexHi, d.first + (u32)d.second.size());
++	}
++	for (auto &e : g_lockFns)
++		if (e.second.load != e.first) {
++			annexLo = std::min(annexLo, e.second.load);
++			annexHi = std::max(annexHi, e.second.load + (u32)e.second.cand.size());
++		}
 +	for (auto &e : g_lockFns) {
 +		LockFn &fn = e.second;
 +		u32 off = e.first - moduleBase;
@@ -641,9 +725,17 @@ index 0000000..b051bbd
 +		if (!f) { fprintf(L, "NOCASES %06x\n", off); continue; }
 +		fn.orig.resize(fn.size);
 +		memcpy(fn.orig.data(), Memory::GetPointerUnchecked(e.first), fn.size);
-+		PutBytes(e.first, fn.cand);
++		if (fn.cand.empty()) fn.cand = fn.orig;  // identity: the slot's own bytes
++		PutBytes(fn.load, fn.cand);
++		if (fn.load != e.first) {
++			// the slot jumps to the annexed body, so callers and recursion reach it
++			std::vector<u8> thunk(8, 0);
++			u32 j = 0x08000000 | ((fn.load >> 2) & 0x03FFFFFF);
++			memcpy(thunk.data(), &j, 4);
++			PutBytes(e.first, thunk);
++		}
 +		char magic[4];
-+		while (fread(magic, 1, 4, f) == 4 && !memcmp(magic, "RRC1", 4)) {
++		while (fread(magic, 1, 4, f) == 4 && !memcmp(magic, "RRC", 3) && magic[3] >= '1' && magic[3] <= '3') {
 +			u32 o, n; u64 call;
 +			fread(&o, 4, 1, f); fread(&call, 8, 1, f);
 +			fread(&g_lk.sp, 4, 1, f); fread(&g_lk.stkLo, 4, 1, f); fread(&g_lk.stkHi, 4, 1, f);
@@ -653,14 +745,29 @@ index 0000000..b051bbd
 +				fread(&n, 4, 1, f);
 +				for (u32 k = 0; k < n; k++) { u32 a; u8 b; fread(&a, 4, 1, f); fread(&b, 1, 1, f); (*v)[a] = b; }
 +			}
++			std::vector<Sys> sys;
++			u64 origSteps = 200000;  // older cases did not record it
++			if (magic[3] >= '2') {
++				fread(&n, 4, 1, f);
++				sys.resize(n);
++				if (n) fread(sys.data(), sizeof(Sys), n, f);
++			}
++			if (magic[3] >= '3') fread(&origSteps, 8, 1, f);
++			u64 budget = 10 * origSteps + 10000;
++			size_t si = 0;
++			bool clash = false;
++			for (auto *v : {&in, &out})
++				for (auto &x : *v)
++					if (x.first >= annexLo && x.first < annexHi) clash = true;
++			if (clash) { fprintf(L, "SKIP %06x %llu case touches the annex\n", off, (unsigned long long)call); continue; }
 +			// the inputs
 +			std::map<u32, u8> before;
-+			for (auto &x : in) { before.emplace(x.first, Peek(x.first)); Poke(x.first, x.second); }
-+			g_lk.func = e.first; g_lk.call = call; g_lk.in = in;
-+			g_lk.old2.clear(); g_lk.unrec = 0; g_lk.replay = true; g_lk.phase = 2;
++			for (auto &x : in) { before.emplace(x.first, Peek(x.first)); Poke(x.first, x.second); g_inset->set(x.first); }
++			g_lk.func = e.first; g_lk.call = call;
++			g_old2v.clear(); g_lk.unrec = 0; g_lk.replay = true; g_lk.phase = 2;
 +			g_tracing = true; g_reading = true;
 +			g_lk.entry.Load(m);
-+			m->pc = e.first;
++			m->pc = fn.load;
 +			u32 ra = g_lk.entry.r[MIPS_REG_RA];
 +			fn.exec[0] = 1;
 +			const char *verdict = nullptr; char why[400] = "";
@@ -668,19 +775,33 @@ index 0000000..b051bbd
 +			for (;;) {
 +				u32 pc = m->pc;
 +				if (pc == ra && m->r[MIPS_REG_SP] == g_lk.sp && !m->inDelaySlot) break;
-+				if (pc >= e.first && pc < e.first + fn.size) fn.exec[(pc - e.first) / 4] = 1;
++				if (pc >= fn.load && pc < fn.load + 4 * fn.exec.size()) fn.exec[(pc - fn.load) / 4] = 1;
++				if ((pc & 3) || !Memory::IsValidRange(pc, 4)) { verdict = "DIFF"; snprintf(why, sizeof(why), "runs at an invalid address %08x", pc); break; }
 +				u32 op = Peek32(pc);
-+				if ((op & 0xFC00003F) == 0x0000000C) { verdict = "DIFF"; snprintf(why, sizeof(why), "makes a system call"); break; }
++				if ((op & 0xFC00003F) == 0x0000000C) {
++					// only the original's own allowed system calls, in its order, with its arguments
++					const HLEFunction *info = GetSyscallFuncPointer(MIPSOpcode(op));
++					const char *nm = info && info->name ? info->name : "?";
++					int na = PureSys(nm);
++					bool ok = na >= 0 && si < sys.size() && !strcmp(sys[si].name, nm);
++					for (int k = 0; ok && k < na; k++) ok = sys[si].a[k] == m->r[4 + k];
++					if (!ok) { verdict = "DIFF"; snprintf(why, sizeof(why), "system call %s where the original made %s", nm, si < sys.size() ? sys[si].name : "none"); break; }
++					m->r[MIPS_REG_V0] = sys[si].v0; m->r[MIPS_REG_V1] = sys[si].v1;
++					si++;
++					if (m->inDelaySlot) { m->pc = m->nextPC; m->inDelaySlot = false; } else m->pc += 4;
++					continue;
++				}
 +				if ((op & 0xFC00003E) == 0x00000008) {
 +					u32 t = m->r[(op >> 21) & 31];
 +					if ((t & 3) || !Memory::IsValidAddress(t)) { verdict = "DIFF"; snprintf(why, sizeof(why), "jumps to an invalid address %08x at +%x", t, pc - e.first); break; }
 +				}
-+				if (++steps > 50000000) { verdict = "DIFF"; snprintf(why, sizeof(why), "does not return (instruction budget)"); break; }
++				if (++steps > budget) { verdict = "DIFF"; snprintf(why, sizeof(why), "does not return within %llu instructions (original: %llu)", (unsigned long long)budget, (unsigned long long)origSteps); break; }
 +				bool was = m->inDelaySlot;
 +				MIPSInterpret(MIPSOpcode(op));
 +				if (m->inDelaySlot && was) { m->pc = m->nextPC; m->inDelaySlot = false; }
 +			}
 +			g_reading = false;
++			if (!verdict && si != sys.size()) { verdict = "DIFF"; snprintf(why, sizeof(why), "makes %zu of the original's %zu system calls", si, sys.size()); }
 +			if (!verdict) {
 +				const Regs &a = g_lk.after;
 +				if (m->r[MIPS_REG_SP] != a.r[MIPS_REG_SP]) snprintf(why, sizeof(why), "sp");
@@ -701,7 +822,7 @@ index 0000000..b051bbd
 +					int nd = 0; u32 first = 0; u8 fc = 0, fo = 0;
 +					for (auto &x : out)
 +						if (Peek(x.first) != x.second && !nd++) { first = x.first; fc = Peek(x.first); fo = x.second; }
-+					for (auto &x : g_lk.old2) {
++					for (auto &x : g_old2v) {
 +						if (!Outside(x.first) || out.count(x.first)) continue;
 +						auto i = in.find(x.first);
 +						u8 entryv = i != in.end() ? i->second : x.second;
@@ -715,13 +836,15 @@ index 0000000..b051bbd
 +			if (g_lk.unrec) fprintf(L, " | reads %llu bytes the original did not, first %08x", (unsigned long long)g_lk.unrec, g_lk.unrecFirst);
 +			fprintf(L, "\n");
 +			// put everything back
-+			for (auto &x : g_lk.old2) Poke(x.first, x.second);
++			for (auto it = g_old2v.rbegin(); it != g_old2v.rend(); ++it) { Poke(it->first, it->second); g_w2->reset(it->first); }
 +			for (auto &x : before) Poke(x.first, x.second);
-+			g_lk.old2.clear(); g_lk.phase = 0; g_lk.replay = false;
++			for (auto &x : in) g_inset->reset(x.first);
++			g_old2v.clear(); g_lk.phase = 0; g_lk.replay = false;
 +			g_tracing = false;
 +		}
 +		fclose(f);
 +		PutBytes(e.first, fn.orig);
++		g_lk.replay = false;
 +		u32 nx = 0;
 +		std::string missed;
 +		for (size_t k = 0; k < fn.exec.size(); k++) {
@@ -821,6 +944,11 @@ index 0000000..b051bbd
 +void AddForce(const char *name, int n, u32 value) { g_force[name][n] = value; }
 +
 +void OnSyscallReturn(const char *name) {
++	if (g_pending && name && !strcmp(name, g_pendingSys.name)) {
++		g_pending = false;
++		g_pendingSys.v0 = currentMIPS->r[MIPS_REG_V0]; g_pendingSys.v1 = currentMIPS->r[MIPS_REG_V1];
++		for (auto &r : g_recs) r.sys.push_back(g_pendingSys);
++	}
 +	if (g_force.empty() || !name) return;
 +	auto f = g_force.find(name);
 +	if (f == g_force.end()) return;
@@ -926,6 +1054,13 @@ index 0000000..b051bbd
 +		for (auto &r : g_recs)
 +			for (int i = 0; i < size; i++)
 +				if (Memory::IsValidAddress(addr + i)) r.old1.emplace(addr + i, Peek(addr + i));
++		return;
++	}
++	if (g_lk.replay) {
++		for (int i = 0; i < size; i++) {
++			u32 b = addr + i;
++			if (!g_w2->has(b) && Memory::IsValidAddress(b)) { g_w2->set(b); g_old2v.push_back({b, Peek(b)}); }
++		}
 +		return;
 +	}
 +	if (g_lk.phase) {

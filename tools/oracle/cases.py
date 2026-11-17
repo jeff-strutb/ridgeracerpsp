@@ -35,7 +35,7 @@ sys.path.insert(0, os.path.join(ROOT, 'tools', 'oracle'))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 import a5  # noqa: E402
 import a7  # noqa: E402
-import lock  # noqa: E402
+import bodies  # noqa: E402
 import snap  # noqa: E402
 
 CASES = os.path.join(ROOT, 'build/oracle/cases')
@@ -53,13 +53,25 @@ def rrbox(args, frames, script=None, memstick=None):
     cmd = [a7.BOX, os.path.join(stage, 'BOOT.elf'), '-m', a7.ISO, '-i', '--graphics=software', f'--rr-frames={frames}']
     if script:
         cmd.append(f'--rr-script={script}')
-    p = subprocess.run(cmd + args, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, errors='replace')
+    p = subprocess.run(cmd + args, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, errors='replace',
+                       timeout=1800)
     if p.returncode:
         raise SystemExit(f'rrbox failed ({p.returncode}): {p.stderr[-400:]}')
 
 
+def spec(identity, only=None):
+    """The bodies spec (tools/oracle/bodies.py), cut to `only` (DATA lines kept)."""
+    out, fns, refused = bodies.write(identity)
+    if only:
+        keep = [line for line in open(out) if line.startswith('DATA') or int(line.split()[0], 16) in only]
+        out2 = out + '.only'
+        open(out2, 'w').write(''.join(keep))
+        out, fns = out2, [a for a in fns if a in only]
+    return out, fns, refused
+
+
 def record(scripts, per_fn):
-    sp, fns = lock.spec(identity=True)
+    sp, fns, _ = spec(True)
     for s in scripts:
         name = os.path.splitext(os.path.basename(s))[0]
         d = os.path.join(CASES, name)
@@ -74,7 +86,11 @@ def record(scripts, per_fn):
 
 def validate(addrs, identity, ledger):
     w = a5.watched()
-    sp, fns = lock.spec(identity, set(addrs) if addrs else None)
+    sp, fns, refused = spec(identity, set(addrs) if addrs else None)
+    if refused and not addrs:
+        print(f'cases: {len(refused)} drafts have no testable body:')
+        for r in refused:
+            print('  ' + r)
     dirs = sorted(d for d in glob.glob(os.path.join(CASES, '*')) if os.path.isdir(d) and d != os.path.join(CASES, 'stage'))
     res = {a: {'pass': 0, 'diff': 0, 'first': None, 'unrec': 0, 'exec': set(), 'words': 0, 'scripts': []} for a in fns}
     t = time.time()
@@ -86,7 +102,7 @@ def validate(addrs, identity, ledger):
         name = os.path.basename(d)
         for line in open(log):
             tk = line.split(' ', 3)
-            if tk[0] == 'NOCASES':
+            if tk[0] == 'NOCASES' or tk[0] == 'SKIP':
                 continue
             a = int(tk[1], 16)
             r = res[a]
