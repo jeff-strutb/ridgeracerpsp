@@ -1171,7 +1171,9 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                             V464.x = Cx[k] - rv->x;
                             V480.y = Cy[k1] - rv->y;
                             V480.x = Cx[k1] - rv->x;
+                            V1840 = V1904;
                             V1824 = V1904;
+                            V1856 = V1904;
                             ang = -f_09a9dc(V1824.y, V1824.x);
                             Rot(ang, &V464.x, &V464.y);
                             Rot(ang, &V480.x, &V480.y);
