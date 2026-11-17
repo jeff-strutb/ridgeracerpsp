@@ -11,9 +11,20 @@ void f_01d934(void *);
 void f_08d7f0(void *);
 void f_07e6d0(void *);
 void f_03b400(void *);
+void f_08d764(void *);
+void f_031b98(void *, int);
+void f_0eaca0(void *, int, void *);
+void f_089438(int);
+void f_0894b0(void *snd, int ms);
+void f_0941c8(void *, char *);
+int f_07df70(void *);
+void f_07dff0(void *rp, void *v0, void *v1, void *car, int a, int b, int net, int c, int d, int e, int f);
+void f_01d17c(void *snd, char *course, int b, int c, void *views, int d);
+int f_03b518(void *ctrl, int i);
 }
 extern char D_2402e0[];
 extern char D_242c90[];
+extern char D_242cb0[];
 extern char D_23be80[];
 
 /* A record found in a database table. */
@@ -21,6 +32,35 @@ struct Rec {
     char *rec;
     int m4;
 };
+extern "C" void f_096368(void *bgm, Rec r);
+extern Rec D_27ecd0;
+
+/* A table of the game database: records found by index or by name. */
+struct CTable;
+extern "C" char *f_0368e8(CTable *t, const char *field, char *rec, int a, int b);
+extern "C" char *f_036984(CTable *t, char *name, int i, int *index, int count);
+struct CTable {
+    int m0;
+    int m4;
+    int count;
+    int m12[3];
+    int *index;
+    int m28[2];
+    char *base;
+};
+extern CTable D_2407a8;
+extern CTable D_2407d0;
+
+/* Finds a record by name in a table (none for no name). */
+static inline Rec Find(CTable *t, char *name)
+{
+    Rec r;
+    if (name)
+        r.rec = f_036984(t, name, 0, t->index, t->count);
+    else
+        r.rec = 0;
+    return r;
+}
 
 /* The sound system. */
 class CSound {
@@ -34,6 +74,87 @@ public:
 };
 extern CSound *D_1d3d40;
 
+/* Three words of the start arguments copied as a block. */
+struct Tri {
+    int v[3];
+};
+
+/* The start arguments of a race. */
+struct SeqArgs {
+    char m0[12];
+    int m12;
+    char m16[12];
+    int m28;
+    char m32[548];
+    int m580;
+    int m584;
+    int m588;
+    int m592;
+    char m596[4];
+    Tri m600[3];
+    int m636;
+    int m640;
+    int m644;
+    int m648;
+};
+
+/* The race information's start parameters. */
+struct InfoParams {
+    Rec course;
+    int seed;
+    int m12;
+    int mode;
+    int m20;
+    int m24;
+    int m28;
+    int m32;
+    int m36[2];
+    int m44;
+    int m48;
+    int replay;
+    Tri m56[3];
+    int m92;
+    int m96;
+    int m100;
+    int m104;
+};
+
+/* The race's car controller. */
+struct CarCtrl {
+    char m0[12];
+    int m12;
+    int m16;
+    char m20[12];
+    void *m32;
+};
+
+/* One view of the race. */
+struct View {
+    char m0[656];
+    int m656;
+    char m660[8];
+    int m668;
+    char m672[80];
+    void Set(int a, int b)
+    {
+        m668 = a;
+        m656 = b;
+    }
+};
+
+/* The race information of a wireless race (made by its own object file). */
+class f_0f08f0_t {
+public:
+    f_0f08f0_t();
+    virtual ~f_0f08f0_t();
+    virtual int v2();
+    virtual void v3();
+    virtual void v4();
+    char m4[164];
+};
+extern "C" void f_0f0a54(f_0f08f0_t *info, InfoParams *p);
+extern "C" void f_03a51c(CarCtrl *ctrl, char **setup, int seed, char *list);
+
 namespace RacePSP {
 class CSequenceBase;
 typedef int (CSequenceBase::*Handler)();
@@ -43,24 +164,25 @@ class CSequenceBase {
 public:
     CSequenceBase();
     virtual ~CSequenceBase();
-    virtual void f_038fd4(int arg);
+    virtual void f_038fd4(SeqArgs *a);
     virtual int f_038fdc();
     virtual void f_038fe4();
+    void f_03913c(SeqArgs *a);
     int f_03959c();
     int f_039588();
-    int m4;
+    char *m4;
     int m8;
     int m12;
     int m16;
     int m20;
     int m24;
     int m28;
-    void *m32;
-    void *m36;
+    CarCtrl *m32;
+    View *m36;
     void *m40;
     int m44;
-    int m48;
-    int m52;
+    void *m48;
+    void *m52;
     int state;
     int m60;
     int m64;
@@ -79,7 +201,7 @@ class CSequenceRaceNet : public CSequenceStandard {
 public:
     CSequenceRaceNet();
     virtual ~CSequenceRaceNet();
-    virtual void f_038fd4(int arg);
+    virtual void f_038fd4(SeqArgs *a);
     virtual int f_038fdc();
     virtual void f_038fe4();
 };
@@ -119,6 +241,82 @@ CSequenceRaceNet::~CSequenceRaceNet()
 
 /* @implements 0x041564 us _ZN7RacePSP16CSequenceRaceNetD0Ev
    WHAT IT DOES: the deleting destructor. */
+
+/* @draft 0x04159c us CSequenceRaceNet8f_038fd4
+   WHAT IT DOES: Starts the wireless race: the base start, then state 2, the course's record,
+   the cars (with a new random seed), the wireless race information (with another seed, the
+   start arguments' grid and the replay), both views' modes, the replay, the race sound, the
+   music, the race effects and the camera, and the race sound mode and a 3 second sound fade
+   in.
+   Remaining difference: gcse PRE keeps %hi(D_2407a8) in a sixth saved register across both
+   lookups (frame 192 vs 208), where retail rebuilds it in each; the course record also shares
+   sp+32 instead of retail's own slot at sp+160 (as in the normal circuit sibling 0x03989c). */
+void CSequenceRaceNet::f_038fd4(SeqArgs *a)
+{
+    CSequenceBase::f_03913c(a);
+    state = 2;
+    {
+        char *n = f_0368e8(&D_2407d0, "CourseNumber", m4, 0, 0);
+        Rec r = Find(&D_2407a8, n);
+        D_27ecd0 = r;
+        m16 = m16 * 0x19660d + 0x3c6ef35f;
+        f_03a51c(m32, &m4, m16, a->m32);
+    }
+    f_0f08f0_t *info = new f_0f08f0_t;
+    {
+        InfoParams p;
+        Rec c;
+        char *name = m4;
+        if (name)
+            c.rec = f_036984(&D_2407d0, name, 0, D_2407d0.index, D_2407d0.count);
+        else
+            c.rec = 0;
+        m16 = m16 * 0x19660d + 0x3c6ef35f;
+        p.course = c;
+        p.seed = m16;
+        p.m12 = a->m12;
+        p.mode = m20;
+        p.m20 = a->m28;
+        p.m24 = (int)m32;
+        p.m28 = a->m580;
+        p.m32 = a->m584;
+        p.m44 = a->m588;
+        p.m48 = a->m592;
+        for (int i = 0; i < 3; i++) {
+            p.m56[i].v[0] = a->m600[i].v[0];
+            p.m56[i].v[1] = a->m600[i].v[1];
+            p.m56[i].v[2] = a->m600[i].v[2];
+        }
+        p.replay = f_07df70(m52);
+        p.m92 = a->m636;
+        p.m96 = a->m640;
+        p.m100 = a->m644;
+        p.m104 = a->m648;
+        f_0f0a54(info, &p);
+    }
+    m40 = info;
+    m36[0].Set(1, 0);
+    m36[1].Set(0, 3);
+    f_07dff0(m52, m36, &m36[1], (void *)f_03b518(m32, 0), (int)m32->m32, m32->m12 + m32->m16, m20 != 0, 0, 0, 0, 0);
+    f_01d17c(D_23be80, m4, m32->m12 + m32->m16, (int)m32->m32, m36, 0);
+    {
+        char *n = f_0368e8(&D_2407d0, "CourseNumber", m4, 0, 0);
+        Rec r = Find(&D_2407a8, n);
+        f_0941c8(D_242c90, r.rec);
+        f_096368(D_242cb0, r);
+    }
+    f_08d764(m48);
+    f_031b98(D_2402e0, m32->m12 + m32->m16);
+    f_0eaca0(m32, a->m636, m52);
+    int k;
+    if (m20 == 2)
+        k = 2;
+    else
+        k = m20 == 1;
+    f_089438(k);
+    D_1d3d40->v2(a->m636, 0);
+    f_0894b0(D_1d3d40, 3000);
+}
 
 /* @implements 0x041954 us CSequenceRaceNet8f_038fdc
    WHAT IT DOES: returns to the idle state once the base reports the end, then runs the handler

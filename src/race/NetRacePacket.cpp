@@ -9,7 +9,36 @@
 
 extern "C" {
 void f_09b070(float *out, const void *rot, int n);
+void f_099b98(void *a);
+void f_09bf24(void *q, const void *e);
 }
+
+/* An angle in radians, wrapped into range by f_099b98 when made. */
+union Angle {
+    float a;
+    Angle() : a(0) {}
+    Angle(float r) : a(r) { f_099b98(this); }
+};
+
+/* Three Euler angles and their axis order code, for f_09bf24. */
+struct Euler {
+    Angle a[3];
+    int order;
+    Euler()
+    {
+        a[0] = Angle(0.0f);
+        a[1] = Angle(0.0f);
+        a[2] = Angle(0.0f);
+        order = 0;
+    }
+    void Set(Angle x, Angle y, Angle z, int o)
+    {
+        a[0] = x;
+        a[1] = y;
+        a[2] = z;
+        order = o;
+    }
+};
 
 /* A packet's data type: its queue, the channel and its size (see GamePacketProc.cpp). */
 struct PacketInfo {
@@ -335,6 +364,63 @@ void CNetRacePacket::f_0841e0(CarState *st, char *id, char *out)
     for (unsigned int i = 0; i < 6; i++)
         sum += ((int *)out)[i];
     *(Bytes4 *)p = *(Bytes4 *)&sum;
+}
+
+/* @draft 0x084580 us f_084580
+   WHAT IT DOES: Unpacks a 28-byte car state packet (the inverse of f_0841e0): the sender id to
+   b; the position (x and z less 2^21, y doubled less 120000) and two flags; the velocity (x
+   and z less 32768, y less 2048, all over 16) and four flags; the orientation from three
+   16-bit angles (pi/32768 per step, axis order 4) as a quaternion. Returns 0 when the
+   checksum (the sum of the first six words) agrees, else -1.
+   Remaining difference: the flag bytes. Retail tests the middle flag bits with andi+sltu and
+   keeps (b & 0xf0) >> 4 as andi+sra; here expand's single-bit store-flag gives srl+andi and
+   combine folds the mask into srl. Writing each flag as an if/else store (RTL store-flag) was
+   tried and is wrong: nocmov leaves branches (1040 vs 1000 bytes). The checksum bound is
+   li 6 / sltu in retail against sltiu here, as in f_0841e0. */
+int CNetRacePacket::f_084580(char *in, CarState *car, char *b)
+{
+    unsigned char *p;
+    *(Bytes4 *)b = *(Bytes4 *)in;
+
+    p = (unsigned char *)in + 4;
+    int y = ((p[5] & 0xf0) >> 4) | (p[6] << 4) | ((p[7] & 0x3f) << 12);
+    int z = (((p[2] & 0xc0) >> 6) | (p[3] << 2) | (p[4] << 10) | ((p[5] & 0xf) << 18)) - 0x200000;
+    int x = (p[0] | (p[1] << 8) | ((p[2] & 0x3f) << 16)) - 0x200000;
+    int fl = (p[7] & 0xc0) >> 6;
+    car->m37 = fl & 1;
+    car->m36 = fl >> 1;
+    car->pos.x = (float)x;
+    car->pos.z = (float)z;
+    car->pos.y = (float)y * 2.0f - 120000.0f;
+
+    p = (unsigned char *)in + 12;
+    unsigned int vx = p[0] | (p[1] << 8);
+    unsigned int vz = p[2] | (p[3] << 8);
+    unsigned int vy = p[4] | ((p[5] & 0xf) << 8);
+    fl = (p[5] & 0xf0) >> 4;
+    car->m38 = fl >> 3;
+    car->m39 = fl & 4;
+    car->m40 = fl & 2;
+    car->m41 = fl & 1;
+    car->vel.x = ((float)vx - 32768.0f) * 0.0625f;
+    car->vel.z = ((float)vz - 32768.0f) * 0.0625f;
+    car->vel.y = ((float)vy - 2048.0f) * 0.0625f;
+
+    p = (unsigned char *)in + 18;
+    float ax = (short)(p[0] | (p[1] << 8)) * 9.58738019e-05f;
+    float ay = (short)(p[2] | (p[3] << 8)) * 9.58738019e-05f;
+    float az = (short)(p[4] | (p[5] << 8)) * 9.58738019e-05f;
+    Euler e;
+    Rot4 q;
+    e.Set(Angle(ax), Angle(ay), Angle(az), 4);
+    f_09bf24(&q, &e);
+    car->rot = q;
+
+    p = (unsigned char *)in + 24;
+    int sum = 0;
+    for (unsigned int i = 0; i < 6; i++)
+        sum += ((int *)in)[i];
+    return sum == *(int *)p ? 0 : -1;
 }
 
 /* @implements 0x084968 us f_084968

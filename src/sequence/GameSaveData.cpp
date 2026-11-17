@@ -230,8 +230,7 @@ public:
     void f_0196cc();
     void f_019994(const char *name);
 
-    int m12;
-    int m16;
+    int m12[2]; /* +12, +16: one member (see 0x01be44) */
     int m20;
     int m24[336];
     int m1368[336];
@@ -482,8 +481,8 @@ void Sequence::CGameSaveData::f_01959c()
     f_01c7a4(D_23bb4c, 1, m15688);
     f_01c7a4(D_23bb4c, 0, m15692);
     f_01c7a4(D_23bb4c, 2, m15696);
-    D_1d1a94.a = m12;
-    D_1d1a94.b = m16;
+    D_1d1a94.a = m12[0];
+    D_1d1a94.b = m12[1];
 }
 
 /* @implements 0x019628 us f_019628
@@ -515,8 +514,8 @@ void Sequence::CGameSaveData::f_0196cc()
     unsigned long long tick;
 
     m20 = 0;
-    m12 = 20000;
-    m16 = 2000;
+    m12[0] = 20000;
+    m12[1] = 2000;
     for (int i = 0; i < 336; i++) {
         m24[i] = 0x525d7d;
         m1368[i] = 0x1b747f;
@@ -614,8 +613,8 @@ int Sequence::CGameSaveData::Save(CSaveStream *s)
     start = s->cur;
     version = 105;
     s->Put8(105);
-    s->Put32(m12);
-    s->Put32(m16);
+    s->Put32(m12[0]);
+    s->Put32(m12[1]);
     s->Put8(m20);
     for (int i = 0; i < 336; i++) {
         s->Put32(m24[i]);
@@ -697,8 +696,8 @@ int Sequence::CGameSaveData::Load(CSaveStream *s)
     version = *s->cur++;
     if (version != 105)
         return -1;
-    s->Get32(m12);
-    s->Get32(m16);
+    s->Get32(m12[0]);
+    s->Get32(m12[1]);
     m20 = *s->cur++;
     for (int i = 0; i < 336; i++) {
         s->Get32(m24[i]);
@@ -1354,18 +1353,11 @@ int MemoryStick::f_01bc5c()
 /* @implements 0x01be24 us _GLOBAL__I_
    WHAT IT DOES: The startup entry for this file's static data. */
 
-/* @draft 0x01be44 us _ZN8Sequence13CGameSaveDataaSERKS0_
+/* @implements 0x01be44 us _ZN8Sequence13CGameSaveDataaSERKS0_
    (the compiler emits it outside .text, in a link once section)
-   WHAT IT DOES: Copies a saved game, all but its vtable pointer.
-   Remaining difference (7 words): retail copies the word at +20 before the one at +16; the
-   member grouping that gives that order is not found. Retail's order means the load of +16
-   depends on the store to +12 while +20 does not; with three int fields all are provably
-   disjoint. Making +12/+16 a SavedPair member is wrong: it makes f_01959c's loads disjoint
-   from its D_1d1a94 stores (retail keeps them dependent) and blocks the +20 load too.
-   Retail's full order (lw 12, lw 20, sw 8, sw 12, lw 16, sw 20, sw 16) also needs the +20 store
-   free of the +16 store, so +16 conflicts with the +12 store (true dependence) but not with
-   +20 (output): an asymmetric alias, not a plain type change. An intermediate base holding m12
-   is ruled out: the typeinfo at 0x1a1480 is single inheritance with CSaveDataBase. */
+   WHAT IT DOES: Copies a saved game, all but its vtable pointer. The words at +12 and +16 are
+   one array member, copied as a block: its +16 load then depends on its +12 store, while the
+   int at +20 (another field) stays free of both, which gives retail's order. */
 
 /* @implements 0x01c1dc us _ZN8Sequence13CGameSaveData4SizeEv
    (the compiler emits it outside .text, in a link once section)

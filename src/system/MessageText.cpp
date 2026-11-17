@@ -81,9 +81,30 @@ struct CMessageText {
 
 extern short D_1d3a3c[];
 
+/* One glyph image in a font's glyph table: its rectangle in the font texture (16 bytes). */
+struct MsgGlyphImg {
+    int x0;
+    int y0;
+    int x1;
+    int y1;
+};
+
+/* One laid out line: its glyph count and glyphs (6404 bytes). */
+struct MsgLine {
+    int n;
+    MsgGlyph g[400];
+};
+
+/* A laid out message: its line count and lines. */
+struct MsgLayout {
+    int nlines;
+    MsgLine line[1];
+};
+
 extern "C" void f_07d89c(CMessageText *m, int slot, const char *s, int unused);
 extern "C" short *f_07deec(CMessageText *m, int id);
 extern "C" void f_07dec4(CMessageText *m, MsgGlyph *g, int n, int dx);
+extern "C" void f_07dea0(CMessageText *m, MsgGlyph *g, int n, int dx);
 
 /* @implements 0x07d74c us _ZN12CMessageTextC2Ev
    WHAT IT DOES: Base object constructor: no message file loaded. */
@@ -248,6 +269,100 @@ extern "C" void f_07da28(CMessageText *m, int slot, const unsigned short *s, int
         c = *s;
     }
     *d = 0;
+}
+
+/* @draft 0x07dacc us f_07dacc
+   WHAT IT DOES: Lays out a message into lines of positioned glyphs. The first code of the
+   message is its font; each glyph code takes its rectangle from the font's glyph table and
+   advances the pen by its width. Code -2 ends the line, as does a space (1) once the pen has
+   reached the wrap limit at +408; -3 centres and -5 right-aligns the following lines (within
+   the given width), -4 does nothing, -100 to -199 insert an argument slot (its text or the
+   message it refers to) and codes below -199 insert the message whose id follows in two
+   codes. Inserted text is walked through a stack of return positions. Returns the font, or
+   -1 when the message id is unknown.
+   Remaining difference: allocation. Global-alloc gives the wrap flag a register (fp) and
+   spills the font, where retail keeps the font in s7 and the flag at sp+88; with the flag in a
+   register fold turns "wrap && c == 1" into an and of set-flags where retail branches. Holding
+   the pen state in a local struct was tried and is wrong: it loses retail's strength-reduced
+   line pointers (s4, s6, s8, sp+96), so line is a plain register variable in retail. */
+extern "C" int f_07dacc(CMessageText *m, int id, MsgLayout *out, int width)
+{
+    unsigned short *stk[16];
+    int depth = 0;
+    int line = 0;
+    int n = 0;
+    int x = 0;
+    int center = 0;
+    int right = 0;
+    int wrap = 0;
+    unsigned short *s;
+    int font;
+    short *p = f_07deec(m, id);
+
+    if (p == 0)
+        return -1;
+    font = p[0];
+    s = (unsigned short *)(p + 1);
+    for (;;) {
+        unsigned short u = *s;
+        int c = (short)u;
+        if (c == 0) {
+            if (depth == 0)
+                break;
+            s = stk[--depth];
+            continue;
+        }
+        if (x >= m->m408)
+            wrap = 1;
+        if ((wrap && c == 1) || c == -2) {
+            if (center)
+                f_07dea0(m, out->line[line].g, n, width - x);
+            if (right)
+                f_07dec4(m, out->line[line].g, n, width - x);
+            out->line[line].n = n;
+            line++;
+            n = 0;
+            x = 0;
+            wrap = 0;
+        } else if (c >= 0) {
+            MsgGlyphImg *e = &((MsgGlyphImg *)m->font[font].m0)[c - 1];
+            MsgGlyph *g = &out->line[line].g[n];
+            g->m4[4] = u;
+            g->m4[0] = e->x0;
+            g->m4[1] = e->y0;
+            g->m4[2] = e->x1;
+            g->m4[3] = e->y1;
+            g->m2 = 0;
+            n++;
+            g->x = x;
+            x += e->x1 - e->x0;
+        } else if (c == -3) {
+            center = 1;
+            right = 0;
+        } else if (c == -5) {
+            center = 0;
+            right = 1;
+        } else if (c == -4) {
+        } else if (c < -199) {
+            stk[depth++] = s + 3;
+            s = (unsigned short *)(f_07deec(m, s[1] | (s[2] << 16)) + 1);
+        } else if (c < -99) {
+            MsgArg *a = &m->arg[-100 - c];
+            stk[depth++] = s + 1;
+            s = (unsigned short *)a->text;
+            if (a->text[0] < 0)
+                s = (unsigned short *)(f_07deec(m, a->ref.id) + 1);
+            s--;
+        }
+        s++;
+    }
+    if (center)
+        f_07dea0(m, out->line[line].g, n, width - x);
+    if (right)
+        f_07dec4(m, out->line[line].g, n, width - x);
+    out->nlines = line + 1;
+    out->line[line].n = n;
+    return font;
 }
 
 /* @implements 0x07de74 us f_07de74
