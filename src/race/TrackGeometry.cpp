@@ -758,6 +758,11 @@ struct MapMgr2 {
 };
 extern MapMgr2 D_23c820;
 
+/* f_0b1b28 as f_0b2f18 calls it: a declaration the compiler has not analysed, so the call is
+   not a pure-function libcall block (whose REG_EQUAL note would give each argument pseudo a
+   second use and keep loop.c from substituting it into the argument register). */
+float f_0b1b28_call(const Vec2 *a, const Vec2 *b, const Vec2 *c) __asm__("_Z8f_0b1b28PK4Vec2S1_S1_");
+
 /* The rotation helper used all over the body: wrap the angle, then rotate (x, y) by it.
    The angle temporary is reached through a pointer (as an inlined member call's this would
    be): t itself is a register local turned into ADDRESSOF, which never gets a pseudo as a call
@@ -907,12 +912,11 @@ struct Flag {
    keeps xi = V464.x inline with the rest of the chain out of line, as retail does.
    Layout aids with no counterpart in the original: the two unused angle locals (retail leaves
    a hole of two slots after the first outline loop) and the packed scratch array tt.
-   Sweep inner loop (SWEEP_EDGE): retail has the same pointer copy as the count loop (move
-   s4,v0 before the k loop, ep reloaded from s4), but re-forming ep as the k loop's first
-   statement does not work here: cse1 merges it into the outer ep (the loop body stays in the
-   pre-loop extended block), and gcse load-PREs ep[0]/ep[1] again. Why cse1 opens a new block
-   at the count loop's body but not here is not yet known. Mine also spills two more pseudos
-   than retail (frame 2416 against 2400).
+   The second look's k loop re-forms ep as its first statement (retail's move s4,v0 copy,
+   ep reloaded from it); f_0b1b28 is called through a declaration the compiler has not marked
+   pure, so &ep[2] is formed in the loop as retail's addiu a2,s4,8 (a pure call's libcall note
+   gives the argument a second use, and loop.c then hoists and spills it). Size now matches.
+   Open: frame 2416 against 2400 (two more spill slots than retail), global register choice.
    Retail also reads a stale vector in the slide's second box (V1808 is the leftover of the
    last cull iteration); that is kept here as in retail. */
 extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, float *out4,
@@ -1161,6 +1165,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                 float ex = ep[0] - ep[2];
                 float ey = ep[1] - ep[3];
                 for (k = 0; k < o->m4->n; k++) {
+                    float *ep = &pts[jj].x;
                     {
                         short k1 = (k + 1) % o->m4->n;
                         float c0x = Cx[k], c0y = Cy[k], c1x = Cx[k1], c1y = Cy[k1];
@@ -1179,7 +1184,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                         side = 1;
                         V480.x = Cx[k1];
                         V480.y = Cy[k1];
-                        if (!(f_0b1b28(&V464, &V480, (const Vec2 *)&ep[2]) > 0.0f))
+                        if (!(f_0b1b28_call(&V464, &V480, (const Vec2 *)&ep[2]) > 0.0f))
                             side = 0;
                         {
                             Vec2 *vv = (Vec2 *)((char *)o->m8[i] + 8 * (side ^ 1));
@@ -1617,7 +1622,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                                     V1984 = V1904;
                                     V2000 = V448;
                                 }
-                                if (f_0b1b28((const Vec2 *)&seg.x, (const Vec2 *)&seg.z, &V448) > 0.0f)
+                                if (f_0b1b28_call((const Vec2 *)&seg.x, (const Vec2 *)&seg.z, &V448) > 0.0f)
                                     continue;
                                 {
 #define ea (&((Vec2 *)&seg)[s2])
