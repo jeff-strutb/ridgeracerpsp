@@ -1350,8 +1350,9 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                             V1904.x = 0.0f;
                             bestLen2 = V1904.x;
                             V1904.y = 0.0f;
-                            V464.x = ep[2] - ep[0];
-                            V464.y = ep[3] - ep[1];
+                            float dx = ep[2] - ep[0], dy = ep[3] - ep[1];
+                            V464.x = dx;
+                            V464.y = dy;
                             ang = -f_09a9dc(V464.y, V464.x);
                             V1856.x = __builtin_sqrtf(V464.x * V464.x + V464.y * V464.y);
                             V1856.y = 0.0f;
@@ -1480,8 +1481,9 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
         float f22, f20, f24, f21;
         if (result & 1) {
             PlaneRec *e = o->m8[bestEdge];
-            V448.x = e->z - e->x;
-            V448.y = e->w - e->y;
+            float dx = e->z - e->x, dy = e->w - e->y;
+            V448.x = dx;
+            V448.y = dy;
             f22 = f_09a9dc(V448.y, V448.x);
             f21 = -f22;
             V1808.y = -out3[2];
@@ -1789,8 +1791,9 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
         pA = h0;
         w.a[1] = h1 - h0;
         PlaneRec *e = o->m8[bestEdge];
-        V448.x = e->z - e->x;
-        V448.y = e->w - e->y;
+        float dx = e->z - e->x, dy = e->w - e->y;
+        V448.x = dx;
+        V448.y = dy;
         float eang = f_09a9dc(V448.y, V448.x);
         v2096.a[0] = v2080.a[0] - P->x;
         v2096.a[1] = v2080.a[1] - P->y;
