@@ -182,7 +182,7 @@ void CCamCarCheck::f_07f5e0(int *arg)
         o->m660 = -1;
 }
 
-/* @draft 0x0f3034 us _ZN7CamCtrl12CCamCarCheck8f_07f5e8Ev
+/* @implements 0x0f3034 us _ZN7CamCtrl12CCamCarCheck8f_07f5e8Ev
    WHAT IT DOES: Steps the camera from the pad: one button toggles turning on its own, and
    pairs of analog keys (beyond a dead zone of 80) change the lens, the distance, the turn
    rate, the yaw and the pitch. The yaw wraps within two turns, the pitch stays between 0
@@ -209,10 +209,13 @@ void CCamCarCheck::f_07f5e8()
         lens += (float)(dl - 80) * 1e-5f;
     else if (dl < -80)
         lens += (float)(dl + 80) * 1e-5f;
-    if (dd > 80)
-        dist += (float)(dd - 80);
-    else if (dd < -80)
-        dist += (float)(dd + 80);
+    if (dd > 80) {
+        dd -= 80;
+        dist += (float)dd;
+    } else if (dd < -80) {
+        dd += 80;
+        dist += (float)dd;
+    }
     if (dr > 80)
         spinRate += (float)(dr - 80) * 1e-6f;
     else if (dr < -80)
