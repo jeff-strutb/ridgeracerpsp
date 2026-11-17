@@ -77,7 +77,35 @@ struct StreamFile {
 };
 
 struct SasSlot {
-    char m0[72];
+    unsigned char m0;
+    char m1[3];
+    int m4;
+    char m8;
+    unsigned char m9;
+    unsigned char m10;
+    unsigned char m11;
+    unsigned char m12;
+    unsigned char m13;
+    char m14;
+    unsigned char m15;
+    char m16[8];
+    int m24;
+    short m28;
+    char m30[6];
+    float m36;
+    short m40;
+    short m42;
+    float m44;
+    char m48[4];
+    float m52;
+    short m56;
+    short m58;
+    short m60;
+    short m62;
+    short m64;
+    short m66;
+    short m68;
+    short m70;
     short m72;
 };
 
@@ -104,6 +132,14 @@ int f_111030(int stream);
 int f_111774(int stream, float volume);
 struct SasSlot *f_10d160(int a, int ch);
 void f_10d228(int ch);
+int f_110dbc(int prio, int *slot, int grp);
+void f_110df0(int prio, int slot, int grp, int ch);
+int f_10dfcc(short id, float *mix);
+void f_110664(int pan, int *l, int *r);
+void f_10d274(int ch);
+int f_11b1a8(int ch, int a, int b);
+int f_11af28(int ch, int l, int r, int sl, int sr);
+int f_11af8c(int ch, int pitch);
 int f_112b70(signed char a0, int a1, int a2, int a3, int a4);
 int sceKernelStartThread(int thid, unsigned int arglen, void *argp);
 int sceKernelWaitThreadEnd(int thid, unsigned int *timeout);
@@ -214,6 +250,65 @@ int f_111b18(int unused, const char *name, int a2, int a3)
     D_291980.m136 = 0;
     D_291980.m140 = 0;
     return 0;
+}
+
+/* @draft 0x111be0 us f_111be0
+   WHAT IT DOES: Sets up the two stream voices ch and ch + 1 (left and right, panned -64 and
+   +64 from the stream's pan) from the disc stream's header: rate, format bytes, volume and
+   pan, then starts them on their SAS voices with full pitch. */
+void f_111be0(int ch)
+{
+    float mix[20];
+    int slot = 0;
+    int l, r;
+    int i;
+    int pan = -64;
+    float rate;
+    int base;
+
+    for (i = 0; i < 2; i++) {
+        struct SasSlot *v;
+
+        f_110dbc(127, &slot, 0);
+        v = f_10d160(0, ch);
+        rate = (float)D_291980.m72 / 1000.0f;
+        base = D_291980.m76;
+        v->m42 = 0;
+        v->m40 = base;
+        v->m24 = 0;
+        v->m11 = D_291980.m64;
+        v->m44 = 1.0f;
+        v->m12 = D_291980.m66;
+        v->m15 = 1;
+        v->m13 = D_291980.m68;
+        v->m10 = 1;
+        v->m36 = rate;
+        v->m70 = base + pan;
+        v->m56 = pan;
+        v->m52 = D_291980.m176;
+        v->m4 = 0;
+        v->m58 = 0;
+        v->m28 = 4096;
+        v->m9 = 0;
+        v->m72 = 4096;
+        f_10dfcc(v->m11, mix);
+        v->m68 = f_110630(v->m10, (int)(mix[0] * v->m36 * 255.0f)) << 4;
+        f_110664(v->m70, &l, &r);
+        v->m64 = 0;
+        v->m66 = 0;
+        l = l * v->m68 / 256;
+        r = r * v->m68 / 256;
+        v->m0 = 1;
+        v->m60 = l;
+        v->m62 = r;
+        f_10d274(ch);
+        f_110df0(127, slot, 0, ch);
+        f_11b1a8(ch, 255, 8134);
+        f_11af28(ch, l, r, 0, 0);
+        f_11af8c(ch, 4096);
+        pan += 128;
+        ch++;
+    }
 }
 
 /* @implements 0x111e04 us f_111e04
