@@ -583,8 +583,8 @@ void CourseAreas::f_0e2f9c(int n, float *side, float *pos, float x, float z)
     float c = f_099fc4(h.a);
     float sn = f_09a154(h.a);
     float den = dx * c + dz * sn;
-    float u = (x - ex) * sn - (z - ez) * c;
     float num = (ex - x) * c + (ez - z) * sn;
+    float u = (x - ex) * sn - (z - ez) * c;
     ra.a = e->angle * 3.14159274f * 3.05175781e-05f;
     f_099b98(&ra);
     rb.a = f->angle * 3.14159274f * 3.05175781e-05f;
@@ -597,12 +597,12 @@ void CourseAreas::f_0e2f9c(int n, float *side, float *pos, float x, float z)
     db.a = h.a - rb.a;
     f_099b98(&db);
     den -= u * f_09a218(db.a);
-    num /= den;
-    if (num > 1.0f)
-        num = 1.0f;
-    else if (num < 0.0f)
-        num = 0.0f;
-    *pos = a + num;
+    float r = num / den;
+    if (r > 1.0f)
+        r = 1.0f;
+    else if (r < 0.0f)
+        r = 0.0f;
+    *pos = a + r;
     *side = u * 0.0009765625f;
 }
 
