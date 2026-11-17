@@ -2042,6 +2042,20 @@ void C2DAllTime::f_106e8c(int row, int mn, int sc, int ms, int color, unsigned c
     }
 }
 
+/* @implements 0x107564 us C2DAllTime8f_101f74
+   WHAT IT DOES: Fades the time table's digit sprites to alpha t: for each of the nine
+   columns, the rows at 0, 9, 27, 36 and 45 (row 18 is left alone). */
+void C2DAllTime::f_101f74(float t)
+{
+    for (int i = 0; i < 9; i++) {
+        Fade(i, t);
+        Fade(i + 9, t);
+        Fade(i + 27, t);
+        Fade(i + 36, t);
+        Fade(i + 45, t);
+    }
+}
+
 /* @implements 0x1076c8 us _ZN2Fj12C2DCourseMapD1Ev
    WHAT IT DOES: The course map destructor (only the base vtable store is left). */
 
