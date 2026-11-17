@@ -489,7 +489,7 @@ int C2DAnalogMeter::f_101b54()
     return 0;
 }
 
-/* @draft 0x1088ec us C2DAnalogMeter8f_1088ec
+/* @implements 0x1088ec us C2DAnalogMeter8f_1088ec
    WHAT IT DOES: Builds a needle's corners: the needle rectangle r[0] placed about its pivot
    (r[1]'s corner), turned by the angle a (radians) and moved to the pivot. */
 void C2DAnalogMeter::f_1088ec(Corner *c, const Rect *r, float a)
@@ -634,7 +634,7 @@ void C2DDigitalMeter::f_101f74(float t)
         Fade(i, t);
 }
 
-/* @draft 0x108f64 us C2DDigitalMeter8f_108f64
+/* @implements 0x108f64 us C2DDigitalMeter8f_108f64
    WHAT IT DOES: Fills the digital meter's bar to the fraction t of its cells, from the meter
    type's lit or dark cell strip. */
 void C2DDigitalMeter::f_108f64(int on, float t)
