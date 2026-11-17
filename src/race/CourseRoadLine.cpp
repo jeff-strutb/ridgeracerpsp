@@ -334,27 +334,33 @@ extern "C" float f_0fafe8(void *unused, const Box *a, const Box *b, int flag)
 /* @draft 0x0fb01c us f_0fb01c
    WHAT IT DOES: Finds a value between -1 and 0 for road record k and the lateral value x: it
    takes the road line's two short values at the record's position and returns the ratio of x
-   to the record's span, clamped to the band -1 to 0 (the ratio is taken only once the span is
-   positive). Not yet byte-exact. */
+   to the record's span, clamped to -1..0 on the left side of the road and 0..1 on the right.
+   The 0.0 that r starts with is what CSE substitutes for every later 0.0 (retail keeps it in
+   f20 across the call). Remaining difference: two words, the left arm's sum goes to f1 in
+   retail (the dead 1.0 constant's register), f2 here. */
 extern "C" float f_0fb01c(MapOwner *o, int k, float x)
 {
     char *base = D_23c820;
     short a, b;
-    float t, den, r;
-    Record8 *recs = (Record8 *)((char *)o + 10116) + 0;
-    (void)recs;
-    t = x - (*(float *)((char *)o + 10116 + k * 8)) * 1.024f;
+    float t, den, r = 0.0f;
+
+    t = x - *(float *)(o->recs + k * 8) * 1.024f;
     f_0e3a74(base + 12240, k, &a, &b);
     if (t < 0.0f) {
-        den = (float)a * 0.001f - 1.0f + (*(float *)((char *)o + 10116 + k * 8)) * 1.024f - 2.0f;
+        den = ((float)a * 0.001f - 1.0f) + *(float *)(o->recs + k * 8) * 1.024f - 2.0f;
+        r = t / den;
+        if (r < -1.0f)
+            r = -1.0f;
+        else if (0.0f < r)
+            r = 0.0f;
     } else {
-        den = (float)b * 0.001f - 1.0f - (*(float *)((char *)o + 10116 + k * 8)) * 1.024f - 2.0f;
+        den = ((float)b * 0.001f - 1.0f) - *(float *)(o->recs + k * 8) * 1.024f - 2.0f;
+        r = t / den;
+        if (1.0f < r)
+            r = 1.0f;
+        else if (r < 0.0f)
+            r = 0.0f;
     }
-    r = t / den;
-    if (r < -1.0f)
-        return -1.0f;
-    if (0.0f < r)
-        return 0.0f;
     return r;
 }
 
