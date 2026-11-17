@@ -103,6 +103,8 @@ def source_name(tag):
             return tail.group(2)
         return tag
     names, k = [], 2 + (tag[2] == 'N')
+    while tag[2] == 'N' and k < len(tag) and tag[k] in 'rVK':  # CV-qualifiers of a member function
+        k += 1
     while k < len(tag):
         if tag[k].isdigit():
             n = re.match(r'\d+', tag[k:]).group()
