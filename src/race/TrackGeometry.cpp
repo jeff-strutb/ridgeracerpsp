@@ -1134,21 +1134,20 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                 float *ep = &pts[jj].x;
                 float ex = ep[0] - ep[2];
                 float ey = ep[1] - ep[3];
-                k = 0;
-                if (o->m4->n > 0) {
-                    do {
+                for (k = 0; k < o->m4->n; k++) {
+                    {
                         short k1 = (k + 1) % o->m4->n;
                         float c0x = Cx[k], c0y = Cy[k], c1x = Cx[k1], c1y = Cy[k1];
                         dA = ex * (c0y - ep[1]) + ey * (ep[0] - c0x);
                         dB = ex * (c1y - ep[1]) + ey * (ep[0] - c1x);
                         pA = dA * dB;
                         if (pA > 0.0f)
-                            goto h_next;
+                            continue;
                         sA = (c0x - c1x) * (ep[1] - c0y) + (c0y - c1y) * (c0x - ep[0]);
                         sB = (c0x - c1x) * (ep[3] - c0y) + (c0y - c1y) * (c0x - ep[2]);
                         pB = sA * sB;
                         if (pB > 0.0f)
-                            goto h_next;
+                            continue;
                         V464.x = c0x;
                         V464.y = c0y;
                         side = 1;
@@ -1175,7 +1174,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                             Rot(ang, &V464.x, &V464.y);
                             Rot(ang, &V480.x, &V480.y);
                             if (V464.y * V480.y > 0.0f)
-                                goto h_next;
+                                continue;
                             if (V464.y != 0.0f) {
                                 if (V480.y == 0.0f)
                                     xi = V480.x;
@@ -1199,9 +1198,9 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                             (void)l2;
                             (void)l3;
                             if (2314.81494140625f < xi)
-                                goto h_next;
+                                continue;
                             if (xi <= bestLen2)
-                                goto h_next;
+                                continue;
                             bestEdge = (unsigned short)i;
                             bestLen2 = xi;
                             if (side != 0) {
@@ -1222,9 +1221,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                             bestVert = (unsigned short)k;
                             Rot(-ang, &V1872.x, &V1872.y);
                         }
-                    h_next:
-                        k = k + 1;
-                    } while (k < o->m4->n);
+                    }
                 }
             }
     }
