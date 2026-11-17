@@ -783,43 +783,42 @@ struct PVec {
         short k;                                                                            \
         for (k = 0; k < o->m4->n; k++) {                                                    \
             {                                                                               \
-                float ax = Ax[k], ay = Ay[k], bx = Bx[k], by = By[k];                       \
-                dA = ex * (ay - (ep)[1]) + ey * ((ep)[0] - ax);                          \
-                dB = ex * (by - (ep)[1]) + ey * ((ep)[0] - bx);                          \
+                dA = ex * (Ay[k] - (ep)[1]) + ey * ((ep)[0] - Ax[k]);                          \
+                dB = ex * (By[k] - (ep)[1]) + ey * ((ep)[0] - Bx[k]);                          \
                 pA = dA * dB;                                                      \
                 if (pA > 0.0f)                                                           \
                     continue;                                                  \
-                sA = (ax - bx) * ((ep)[1] - ay) + (ay - by) * (ax - (ep)[0]);            \
-                sB = (ax - bx) * ((ep)[3] - ay) + (ay - by) * (ax - (ep)[2]);            \
+                sA = (Ax[k] - Bx[k]) * ((ep)[1] - Ay[k]) + (Ay[k] - By[k]) * (Ax[k] - (ep)[0]);            \
+                sB = (Ax[k] - Bx[k]) * ((ep)[3] - Ay[k]) + (Ay[k] - By[k]) * (Ax[k] - (ep)[2]);            \
                 pB = sA * sB;                                                      \
                 if (pB > 0.0f)                                                           \
                     continue;                                                  \
                 aA = dA < 0.0f ? -dA : dA;                                      \
                 aB = dB < 0.0f ? -dB : dB;                                      \
                 if (aA == 0.0f && aB == 0.0f) {                                       \
-                    if (ax == bx) {                                                         \
-                        dA = (ep)[1] - ay;                                               \
-                        dB = (ep)[3] - ay;                                               \
+                    if (Ax[k] == Bx[k]) {                                                         \
+                        dA = (ep)[1] - Ay[k];                                               \
+                        dB = (ep)[3] - Ay[k];                                               \
                         if (dA < dB) {                                                \
                             V1808.y = dA;                                                \
-                            V1808.x = (ep)[0] - ax;                                         \
+                            V1808.x = (ep)[0] - Ax[k];                                         \
                         } else {                                                            \
                             V1808.y = dB;                                                \
-                            V1808.x = (ep)[2] - ax;                                         \
+                            V1808.x = (ep)[2] - Ax[k];                                         \
                         }                                                                   \
                     } else {                                                                \
-                        dA = (ep)[0] - ax;                                               \
-                        dB = (ep)[2] - ax;                                               \
+                        dA = (ep)[0] - Ax[k];                                               \
+                        dB = (ep)[2] - Ax[k];                                               \
                         if (dA < dB)                                                  \
-                            V1808.y = (ep)[1] - ay;                                         \
+                            V1808.y = (ep)[1] - Ay[k];                                         \
                         else                                                                \
-                            V1808.y = (ep)[3] - ay;                                         \
+                            V1808.y = (ep)[3] - Ay[k];                                         \
                         V1808.x = dA;                                                    \
                     }                                                                       \
                 } else {                                                                    \
                     float fr = aB / (aA + aB);                                     \
-                    V1808.x = (ax - bx) * fr;                                               \
-                    V1808.y = (ay - by) * fr;                                               \
+                    V1808.x = (Ax[k] - Bx[k]) * fr;                                               \
+                    V1808.y = (Ay[k] - By[k]) * fr;                                               \
                 }                                                                           \
                 if (best < __builtin_sqrtf(V1808.x * V1808.x + V1808.y * V1808.y)) {        \
                     best = __builtin_sqrtf(V1808.x * V1808.x + V1808.y * V1808.y);          \
@@ -863,7 +862,7 @@ struct Flag {
    gets the final slide along the contact edge (height from the course areas), and the
    remaining outputs get the contact vertex angle, a speed, the edge direction and the edge's
    two end points. Returns 0 (no contact) to 3.
-   DRAFT: complete transcription of every path; size 14,164 vs 14,328 bytes. Proven so far
+   DRAFT: complete transcription of every path; size 14,224 vs 14,328 bytes. Proven so far
    (each matches retail's code at that point): flags is an array of a class with an empty
    constructor (Flag), declared after result = 0 and before Qp, which gives retail's empty
    127-step-32 loop and keeps the frame offsets; every loop indexes the edge points as Vec2
@@ -1058,7 +1057,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
         if (flags[i].v != 0)
             continue;
         short jj = i * 2;
-        SWEEP_EDGE(&pts[jj].x, 1, sw1)
+        float *ep = &pts[jj].x;
+        SWEEP_EDGE(ep, 1, sw1)
     }
 
     /* First correction. */
@@ -1708,7 +1708,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                         if (flags[i].v != 0)
                             continue;
                         short jj2 = i * 2;
-                        SWEEP_EDGE(&pts[jj2].x, 0, sw2)
+                        float *ep = &pts[jj2].x;
+        SWEEP_EDGE(ep, 0, sw2)
                     }
                     acc.a[0] = acc.a[0] + V1824.x;
                     acc.a[2] = acc.a[2] + V1824.y;
