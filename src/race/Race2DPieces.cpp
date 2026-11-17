@@ -586,7 +586,12 @@ extern Corner D_1d5e44[];
    2026-11-16 (27 -> 4 words): the corners written as 0x104620's chained pairs, in its statement
    order (x, y, x+u, y+v, u0, v0, u1, v1), give retail's loads and store order exactly: sched1
    issues the stores whose value dies first, then the rest by luid. Remaining difference (4
-   words): retail keeps this in s2 and the sprite s in s1 (ours swapped); not yet diagnosed. */
+   words): retail keeps this in s2 and the sprite s in s1 (ours swapped).
+   2026-11-16 second cycle, diagnosed (no change made): global-alloc priority. lreg: this
+   (pseudo 181) 3 refs over 25 insns, s (182) 2 refs over 18 insns, so this is allocated first
+   and gets s1. s has only 2 refs because the first f_04bf6c call reads the incoming a1
+   directly. Retail needs s ahead of this: a 3rd ref of s or a shorter/longer life; no source
+   shape for that found yet. */
 void C2DCourseMap::f_102190(int s, int rect, unsigned char show, float x, float y)
 {
     const Corner *r = &D_1d5e44[rect];
@@ -1350,14 +1355,20 @@ int C2DRaceInfo::f_101b54()
    with the row in v1. Store order solved 2026-11-16 (24 -> 8 words): sched1 ranks a store
    whose value dies first (INSN_REG_WEIGHT), the rest by luid, and `a = b = v` stores b first;
    retail's order gives the statements x, y, x+w, y+h, u 0, v0, u 200, v1 with x and y written
-   c[0].x = c[2].x and c[0].y = c[1].y. */
+   c[0].x = c[2].x and c[0].y = c[1].y.
+   2026-11-16 second cycle (8 -> 6 words): the head registers came from lreg after sched1 put
+   the 0.5 constant's lui after the table-row sll/addu (its luid was later), so the row took v1.
+   `float half = 0.5f;` declared before the table reads expands the constant load first: the row
+   is now a2 and the HI v1, as in retail. Remaining (6 words): sched2 still issues the two table
+   loads before the 0.5 load (retail: 0.5, +12, +8) and the 240/136 HI lui ahead of the sll. */
 void C2DRaceInfo::f_104620(int kind)
 {
     Corner c[4];
+    float half = 0.5f;
     float w = D_1b0aa8[kind][2];
     float h = D_1b0aa8[kind][3];
-    float x = 240.0f - w * 0.5f;
-    float y = 136.0f - h * 0.5f;
+    float x = 240.0f - w * half;
+    float y = 136.0f - h * half;
     float v0 = kind * 28;
     float v1 = kind * 28 + 28;
 
@@ -2111,7 +2122,12 @@ int C2DAllTime::Draw()
    Remaining difference (4 words): (1) the first f_106e8c call sets a1 before a0 (this); the
    later calls set this first, as here (same open question as C2DNitro 0x102e34). (2) reorg:
    retail's `beqz m252` to the shared `sw m124,252(s0)` keeps a nop slot; here it becomes beqzl
-   with that store stolen from the target (branch-likely choice, cause not found). */
+   with that store stolen from the target (branch-likely choice, cause not found).
+   2026-11-16 second cycle, diagnosed (no change made): (2) is reorg's fill_eager_delay_slots.
+   The `if (m252)` jump (insn 113) has REG_BR_PROB 5000 (no heuristic applies to a compare
+   with 0), so mostly_true_jump returns 1 and the target thread is filled with annulling.
+   Retail must have had that jump at < 50% (or no note); no source shape giving that found.
+   (1): sched2 ties a0<-s0 and a1<-1 (same priority, no deps) and takes a0 by luid. */
 int C2DAllTime::f_101b54()
 {
     int min, sec, ms;

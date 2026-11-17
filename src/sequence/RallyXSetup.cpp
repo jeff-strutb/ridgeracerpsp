@@ -66,7 +66,14 @@ void f_0e7768(void *arg)
    (2) The result: retail keeps it in a0 (move a0,zero in the first branch's delay slot, li a0,1
    as a bnezl likely slot, move v0,a0 at the end), i.e. one result variable set 0 then 1;
    here two returns give v0 constants. Second pass 2026-11-16 applied 'int r = 0; if (D_2400c3
-   && D_2400c4) r = 1; return r;': (2) now matches exactly (14 -> 8 words). Part (1) remains. */
+   && D_2400c4) r = 1; return r;': (2) now matches exactly (14 -> 8 words). Part (1) remains.
+   2026-11-16 third cycle, diagnosed (no change made): local-alloc. The cursor p (pseudo 197) is
+   copied from v0 at the call (copy suggestion v0) and dies in `p + 4` (pseudo 200, tied to p,
+   copy suggestion a0). block_alloc's first pass gives suggested qtys their first free suggested
+   reg in register order, and v0 is free over p's life, so p gets v0. Retail's p in a0 needs v0
+   busy over p's life or no v0 suggestion on p (e.g. p not a plain copy of the call result, or
+   p left to global-alloc); no source shape for that found. The RTL itself (store, p += 4,
+   store, a0 = p + 4) already has retail's shape. */
 int f_0e7858(void)
 {
     int v = D_24518c;

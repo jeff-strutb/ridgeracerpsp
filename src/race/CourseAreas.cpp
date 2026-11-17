@@ -461,7 +461,11 @@ float CourseAreas::f_0e2944(float x, float y, float z)
    gives retail's li 0xffff hoisted before the first call: 7/39 words, retail size.
    Remaining difference: out is s1 and 0xffff s2 (retail s2 / s1), and the second test's tail
    is bne to the store block + j to the epilogue where retail has beq + j back with the lwc1
-   in the j slot. */
+   in the j slot.
+   2026-11-16 second cycle: tried the second call and test nested inside the first test (one id
+   local): 28/40 words, size 160, the && result again (first result kept in s1, 0xffff loaded
+   after the call), and the second test is still bne + j, so nesting is not the layout lever.
+   Restored. */
 int CourseAreas::f_0e29b8(float *out, float x, float y, float z)
 {
     unsigned short id;

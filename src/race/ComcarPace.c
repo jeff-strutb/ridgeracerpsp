@@ -20,11 +20,10 @@ extern char *D_245ecc;
 
 #define FIELD(t, o, off) (*(t *)((char *)(o) + (off)))
 
-/* @draft 0x0fd3fc us f_0fd3fc
-   REMAINING DIFFERENCE (2 words): the last two stores (+7692 and +10132) are issued in the
-   other order than retail (retail: +7692, then +10132 in the jr delay slot). Next lever, not
-   yet tried: sched2 issues the last independent store first, so put the +10132 store before
-   the +7692 store in the source.
+/* @implements 0x0fd3fc us f_0fd3fc
+   2026-11-16 second cycle (2 -> 0 words): sched2 issues the last independent store first, so
+   the +10132 store is written before the +7692 store; retail's order (+7692, then +10132 in the
+   jr delay slot) follows.
    2026-11-16 cycle (26 -> 2 words): one 'bits' variable for both input-bit updates made it a
    global pseudo live across the catch-up block, where local-alloc had put (count - 1) in a0;
    that hard-reg conflict pushed bits to a1 and pulled the count to a0. A separate local 'set'
@@ -119,8 +118,8 @@ void f_0fd3fc(char *car)
     FIELD(float, car, 10128) = 15.0f;
     D_245ec8 = 1;
     FIELD(float, car, 10124) = 0.0f;
-    FIELD(unsigned, car, 7692) = set;
     FIELD(int, car, 10132) = 1;
+    FIELD(unsigned, car, 7692) = set;
 }
 
 /* @implements 0x0fd6c4 us f_0fd6c4
