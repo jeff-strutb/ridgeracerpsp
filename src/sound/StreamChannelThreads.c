@@ -140,7 +140,12 @@ void f_10d274(int ch);
 int f_11b1a8(int ch, int a, int b);
 int f_11af28(int ch, int l, int r, int sl, int sr);
 int f_11af8c(int ch, int pitch);
-int f_112b70(signed char a0, int a1, int a2, int a3, int a4);
+int f_112b70(signed char nch, int pos, int n, int dst, int blk);
+void *f_125c4c(int align, int size);
+int f_112c98(int args, void *argp);
+int f_113050(int args, void *argp);
+int sceKernelCreateThread(const char *name, int (*entry)(int, void *), int prio, int stack, int attr, void *opt);
+void *memcpy(void *d, const void *s, unsigned int n);
 int sceKernelStartThread(int thid, unsigned int arglen, void *argp);
 int sceKernelWaitThreadEnd(int thid, unsigned int *timeout);
 int sceKernelDeleteThread(int thid);
@@ -385,6 +390,52 @@ int f_112aa8(int a0, int a1, int a2)
     }
     f->m84 = wrap;
     return res;
+}
+
+/* @draft 0x1131dc us f_1131dc
+   WHAT IT DOES: Sets up the two ATRAC3 channels: their buffer sizes n0 and n1, every field
+   cleared (full volume, no file), each one's data buffer (n + 2 bytes, none when n is not
+   positive) and 32764-byte work buffer, then creates the play thread (0x112c98) and the read
+   thread (0x113050).
+   Remaining difference: the thread handles' stores reuse the table's high half from the entry
+   block in a saved register (s3, 16 more bytes of frame); retail rebuilds it with lui after the
+   loops. Statement order matches retail. */
+int f_1131dc(int n0, int n1)
+{
+    struct StreamChan *c;
+    int i;
+
+    D_291a54[0].count = n0;
+    D_291a54[1].count = n1;
+    for (i = 0; i < 2; i++) {
+        c = &D_291a54[i];
+        c->state = 0;
+        c->buf = 0;
+        c->m12 = 0;
+        c->m16 = 0;
+        c->m20 = 0;
+        c->m24 = f_110630(1, 255) << 7;
+        c->m28 = 0;
+        c->m32 = 0;
+        c->m36 = 0;
+        c->m40 = 0;
+        c->m48 = 0;
+        c->thread = 0;
+        c->thread2 = 0;
+        c->m44 = 0;
+        c->m60 = -1;
+    }
+    for (i = 0; i < 2; i++) {
+        c = &D_291a54[i];
+        if (c->count > 0)
+            c->buf = f_125c4c(64, c->count + 2);
+        else
+            c->buf = 0;
+        c->m12 = (int)f_125c4c(64, 32764);
+    }
+    D_291a54[0].thread2 = sceKernelCreateThread("ATRAC3 play thread", f_112c98, 17, 0x10000, 0, 0);
+    D_291a54[0].thread = sceKernelCreateThread("ATRAC3 read thread", f_113050, 112, 0x10000, 0, 0);
+    return 0;
 }
 
 /* @draft 0x113328 us f_113328
