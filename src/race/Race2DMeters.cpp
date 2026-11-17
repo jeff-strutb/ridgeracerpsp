@@ -390,7 +390,7 @@ int C2DAnalogMeter::Draw()
     return 1;
 }
 
-/* @draft 0x1084b8 us C2DAnalogMeter8f_101b54
+/* @implements 0x1084b8 us C2DAnalogMeter8f_101b54
    WHAT IT DOES: Updates the analog meter each frame once the start animation runs: turns the
    rev needle over its dial range by the engine speed above 1000 rpm (half speed below 1000
    on type 2 dials), turns the boost needle on dials that have one, picks the lamp cell, shows
@@ -407,13 +407,13 @@ int C2DAnalogMeter::f_101b54()
         float hi = D_1d5fe8[type].r[12].h;
 
         if (D_1d5fe8[type].flag >= 0) {
-            float rpm = D_2407fc->rpm - 1000.0f;
+            float v = D_2407fc->rpm - 1000.0f;
             float a;
 
-            if (D_1d5fe8[type].flag == 2 && rpm < 0)
-                rpm *= 0.5f;
+            if (D_1d5fe8[type].flag == 2 && v < 0)
+                v *= 0.5f;
             a = 1.0f / (D_2407fc->maxRpm - 1000.0f) * (hi - lo);
-            a = lo + a * rpm;
+            a = lo + a * v;
             if (a < 0)
                 a += 360.0f;
             a *= 0.017453292f;
@@ -424,12 +424,12 @@ int C2DAnalogMeter::f_101b54()
                 f_04bf6c(g, f_101f54(6), c);
             }
             if (D_1d5fe8[type].flag == 1) {
-                float t = (D_2407fc->boost + 1.0f) * 0.33333334f;
-                float m;
+                float m, t;
 
+                v = (D_2407fc->boost + 1.0f) * 0.33333334f;
                 lo = D_1d5fe8[type].r[14].w;
                 hi = D_1d5fe8[type].r[14].h;
-                m = MAX(t, 0.0f);
+                m = MAX(v, 0.0f);
                 t = MIN(m, 1.0f);
                 a = t * (hi - lo) + lo;
                 if (a < 0)
