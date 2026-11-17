@@ -1,5 +1,6 @@
-/* Record-table helpers of the object file at retail 0x0db2c4 to 0x0e14d8: calls with fixed
-   trailing arguments, and walks over a table of 16-byte records and of 32-byte slots. */
+/* Animation pose evaluation, the object file at retail 0x0db2c4 to 0x0e14d8: walks over an
+   animation's node stream building matrices (from frame data or from pose keys), builds pose keys
+   from frame data or spline tracks, and blends keys between frames. */
 
 struct Flags {
     int m0, m4, m8;
@@ -35,7 +36,7 @@ void f_028e9c(const Matrix *m);
 struct AnimHdr {
     unsigned short flags;
     unsigned short count;   /* +2: record count */
-    short m4;
+    unsigned short frames;  /* +4: frame count */
     unsigned short frameSize;
     int m8;
     unsigned int mode;
@@ -66,7 +67,6 @@ struct AnimData {
 extern "C" unsigned char *f_0db0d0(AnimData *pb, int frame, int idx);
 extern "C" unsigned char *f_0daf64(AnimData *pb, unsigned int frame, int idx);
 extern "C" void f_0de508(void *a, AnimData *pb);
-extern "C" void f_0df538(void *self, AnimData *pb, int i, int key);
 extern "C" void f_0e1e34(AnimData *pb, const unsigned char *p, unsigned short *x, unsigned short *y,
                          unsigned short *z);
 
@@ -395,13 +395,93 @@ extern "C" void f_0dbf04(AngLerp *a)
         *a = l1;
 }
 
+/* @draft 0x0df538 us f_0df538
+   WHAT IT DOES: Writes one record's frame data into its pose key: the record kind says which part
+   of the key the data holds (a scale, an angle, the packed angles or a translation); with no data
+   the key is reset to no translation, unit scale and zero angles.
+   Remaining difference: (1) retail stores every third component (s[2], t[2]) through an FPR
+   (mtc1 + swc1, 4 places, the 16 missing bytes) and the first two with sw; here all are sw.
+   (2) global-alloc gives the key pointer s5 and the three unions s2-s4; retail gives the key s2
+   and the unions s3-s5. The reset block's store order already matches. */
+extern "C" void f_0df538(Key *k, AnimData *pb, int i, int key)
+{
+    Bytes4 x, y, z;
+    unsigned char *d = f_0daf64(pb, pb->frame, i);
+    AnimRec *rec = &pb->recs[i];
+
+    if (!d) {
+        k->t[0] = k->t[1] = k->t[2] = 0.0f;
+        k->s[0] = k->s[1] = k->s[2] = 1.0f;
+        k->r[0] = k->r[1] = k->r[2] = 0;
+        return;
+    }
+    switch (rec->kind) {
+    case 0:
+        x.b.b0 = d[0]; x.b.b1 = d[1]; x.b.b2 = d[2]; x.b.b3 = d[3];
+        k->s[0] = x.f;
+        break;
+    case 1:
+        x.b.b0 = d[0]; x.b.b1 = d[1]; x.b.b2 = d[2]; x.b.b3 = d[3];
+        k->s[1] = x.f;
+        break;
+    case 2:
+        x.b.b0 = d[0]; x.b.b1 = d[1]; x.b.b2 = d[2]; x.b.b3 = d[3];
+        k->s[2] = x.f;
+        break;
+    case 3:
+        x.b.b0 = d[0]; x.b.b1 = d[1]; x.b.b2 = d[2]; x.b.b3 = d[3];
+        k->s[0] = x.f;
+        d += 4;
+        y.b.b0 = d[0]; y.b.b1 = d[1]; y.b.b2 = d[2]; y.b.b3 = d[3];
+        k->s[1] = y.f;
+        d += 4;
+        z.b.b0 = d[0]; z.b.b1 = d[1]; z.b.b2 = d[2]; z.b.b3 = d[3];
+        k->s[2] = z.f;
+        break;
+    case 4:
+        k->r[0] = d[0] | (d[1] << 8);
+        break;
+    case 5:
+        k->r[1] = d[0] | (d[1] << 8);
+        break;
+    case 6:
+        k->r[2] = d[0] | (d[1] << 8);
+        break;
+    case 7:
+        f_0e1e34(pb, d, (unsigned short *)&k->r[0], (unsigned short *)&k->r[1], (unsigned short *)&k->r[2]);
+        break;
+    case 8:
+        x.b.b0 = d[0]; x.b.b1 = d[1]; x.b.b2 = d[2]; x.b.b3 = d[3];
+        k->t[0] = x.f;
+        break;
+    case 9:
+        x.b.b0 = d[0]; x.b.b1 = d[1]; x.b.b2 = d[2]; x.b.b3 = d[3];
+        k->t[1] = x.f;
+        break;
+    case 10:
+        x.b.b0 = d[0]; x.b.b1 = d[1]; x.b.b2 = d[2]; x.b.b3 = d[3];
+        k->t[2] = x.f;
+        break;
+    case 11:
+        x.b.b0 = d[0]; x.b.b1 = d[1]; x.b.b2 = d[2]; x.b.b3 = d[3];
+        k->t[0] = x.f;
+        d += 4;
+        y.b.b0 = d[0]; y.b.b1 = d[1]; y.b.b2 = d[2]; y.b.b3 = d[3];
+        k->t[1] = y.f;
+        d += 4;
+        z.b.b0 = d[0]; z.b.b1 = d[1]; z.b.b2 = d[2]; z.b.b3 = d[3];
+        k->t[2] = z.f;
+        break;
+    }
+}
+
 /* @draft 0x0dfa88 us f_0dfa88
    WHAT IT DOES: Calls the routine at 0x0df538 for each record of the animation whose key byte equals the
    given key.
    Remaining difference: global-alloc gives the loaded key byte t0 and copies it to a3 for the call;
    retail loads it straight into a3 (the copy preference wins there), which also frees t0 for the
    header pointer (t1 here) and drops one word. */
-extern "C" void f_0dfa88(void *self, AnimData *pb, int key)
+extern "C" void f_0dfa88(Key *self, AnimData *pb, int key)
 {
     for (int i = 0; i < pb->hdr->count; i++) {
         AnimRec *rec = &pb->recs[i];
@@ -647,6 +727,82 @@ extern "C" void f_0e0724(void *a, AnimData *pb)
 {
     pb->frame = (unsigned int)pb->time;
     f_0de508(a, pb);
+}
+
+/* @draft 0x0e0778 us f_0e0778
+   WHAT IT DOES: Builds one record's pose key at the animation's current time: finds the two frames
+   around the time (through the segment table, or the frame divider), builds the key at the first
+   frame alone when the fraction is 0 (or at the second when it is 1), otherwise builds both and
+   blends the second into the first by the fraction, the angles the shorter way round.
+   Remaining difference: 88 words, three places. (1) The k < 2 path stores f1 before f0 here (sched2
+   order); retail stores f0 first. (2) The lerp loads the second key's six floats before the
+   first's; retail loads out's first (likely the first key read into locals first, as in
+   KeyBlend.c). (3) Retail has one shared "set frame, build, return" tail fewer (cross-jumping),
+   which shifts the divider path by a word. */
+extern "C" void f_0e0778(Key *out, AnimData *pb, int arg, int idx)
+{
+    int f0, f1;
+    float frac;
+    Key tmp;
+    AngLerp l;
+    unsigned int k = pb->hdr->mode >> 28;
+
+    if (!f_0e01a8(pb, &f0, &f1, &frac)) {
+        float time = pb->time;
+        if (k < 2) {
+            f0 = (int)time;
+            f1 = f0 + 1;
+            frac = time - (float)f0;
+            if (frac == 0.0f) {
+                pb->frame = (unsigned int)time;
+                f_0dedd0(out, pb, arg, idx);
+                return;
+            }
+        } else {
+            int last = pb->hdr->frames - 1;
+            f0 = (int)(time / (float)(int)k);
+            f1 = f0 + 1;
+            if (time == (float)last && last % (int)k != 0) {
+                pb->frame = f1;
+                f_0dedd0(out, pb, arg, idx);
+                return;
+            }
+            if (pb->hdr->frames / (int)k < f1)
+                frac = (float)((int)time % (int)k) / (float)(int)k;
+            else
+                frac = time / (float)(int)k - (float)f0;
+            if (frac == 0.0f) {
+                pb->frame = f0;
+                f_0dedd0(out, pb, arg, idx);
+                return;
+            }
+        }
+        if (frac == 1.0f) {
+            pb->frame = f1;
+            f_0dedd0(out, pb, arg, idx);
+            return;
+        }
+    }
+    pb->frame = f0;
+    f_0dedd0(out, pb, arg, idx);
+    pb->frame = f1;
+    f_0dedd0(&tmp, pb, arg, idx);
+    out->t[0] = out->t[0] + (tmp.t[0] - out->t[0]) * frac;
+    out->t[1] = out->t[1] + (tmp.t[1] - out->t[1]) * frac;
+    out->t[2] = out->t[2] + (tmp.t[2] - out->t[2]) * frac;
+    out->s[0] = out->s[0] + (tmp.s[0] - out->s[0]) * frac;
+    out->s[1] = out->s[1] + (tmp.s[1] - out->s[1]) * frac;
+    out->s[2] = out->s[2] + (tmp.s[2] - out->s[2]) * frac;
+    l.from[0] = out->r[0];
+    l.from[1] = out->r[1];
+    l.from[2] = out->r[2];
+    l.to[0] = tmp.r[0];
+    l.to[1] = tmp.r[1];
+    l.to[2] = tmp.r[2];
+    f_0dbf04(&l);
+    out->r[0] = (int)((float)l.from[0] + frac * (float)l.delta[0]);
+    out->r[1] = (int)((float)l.from[1] + frac * (float)l.delta[1]);
+    out->r[2] = (int)((float)l.from[2] + frac * (float)l.delta[2]);
 }
 
 /* @draft 0x0e0efc us f_0e0efc
