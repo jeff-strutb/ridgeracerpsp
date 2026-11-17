@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """The fence: library / game / unknown for every function and object.
 
-    libfence.py              write config/us/libfuncs.csv and config/us/tus.csv
+    libfence.py              write config/us/libfuncs.csv, tus.csv and fence.csv
+                             (fence.csv: class and evidence for every function)
     libfence.py --check      rebuild and compare with the committed CSVs
     libfence.py --selftest   prove the fingerprint and the classes catch planted faults
 
@@ -63,6 +64,7 @@ import funcmap                      # noqa: E402
 ROOT = HERE.parent.parent
 LIBCSV = ROOT / 'config' / 'us' / 'libfuncs.csv'
 TUCSV = ROOT / 'config' / 'us' / 'tus.csv'
+FENCECSV = ROOT / 'config' / 'us' / 'fence.csv'
 
 
 class FenceError(Exception):
@@ -341,7 +343,24 @@ def tu_rows(p, F, m):
     return rows
 
 
-def write(F, m, rows, libcsv=LIBCSV, tucsv=TUCSV):
+def fence_evidence(m, a):
+    c, info = m['cls'][a]
+    if c == 'library':
+        return info['how']
+    if c == 'game':
+        return ' '.join(e.split(':')[0] for e in info)
+    if info and 'conflict' in info:
+        return 'conflict'
+    return ''
+
+
+def write(F, m, rows, libcsv=LIBCSV, tucsv=TUCSV, fencecsv=FENCECSV):
+    with open(fencecsv, 'w', newline='') as fh:
+        w = csv.writer(fh, lineterminator='\n')
+        w.writerow(['addr', 'size', 'class', 'evidence'])
+        for f in F:
+            w.writerow([f"0x{f['addr']:06x}", f['size'], m['cls'][f['addr']][0],
+                        fence_evidence(m, f['addr'])])
     with open(libcsv, 'w', newline='') as fh:
         w = csv.writer(fh, lineterminator='\n')
         w.writerow(['addr', 'size', 'how', 'object', 'section', 'symbol', 'tarballs'])
@@ -485,15 +504,16 @@ def main(argv):
     p, F, blobs, names, m, rows = run()
     report(p, F, m, rows)
     if argv[1:] == ['--check']:
-        a, b = LIBCSV.with_suffix('.check'), TUCSV.with_suffix('.check')
-        write(F, m, rows, a, b)
-        same = a.read_text() == LIBCSV.read_text() and b.read_text() == TUCSV.read_text()
-        a.unlink()
-        b.unlink()
-        print('libfuncs.csv/tus.csv', 'match' if same else 'DIFFER from a fresh build')
+        a, b, c = (x.with_suffix('.check') for x in (LIBCSV, TUCSV, FENCECSV))
+        write(F, m, rows, a, b, c)
+        same = all(x.read_text() == y.read_text()
+                   for x, y in ((a, LIBCSV), (b, TUCSV), (c, FENCECSV)))
+        for x in (a, b, c):
+            x.unlink()
+        print('libfuncs.csv/tus.csv/fence.csv', 'match' if same else 'DIFFER from a fresh build')
         return 0 if same else 1
     write(F, m, rows)
-    print('wrote config/us/libfuncs.csv, config/us/tus.csv')
+    print('wrote config/us/libfuncs.csv, config/us/tus.csv, config/us/fence.csv')
     return 0
 
 
