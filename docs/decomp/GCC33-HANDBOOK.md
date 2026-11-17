@@ -292,6 +292,8 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | An implicit `operator=` that loads one field only after another field's store (but not a third) | the two adjacent fields as **one array member** (`int m12[2]`). Its block copy loads one element only after storing the other, while separate fields stay apart (nonoverlapping component refs). | 0x01be44 (GameSaveData) |
 | A pointer formed in a saved register before a call and used after it | compute the pointer in the source **before the call** (`Vec4 *dt = (Vec4 *)d->m[3]; f(...);`) | 0x0a22cc, 0x0a318c (RotationMath) |
 | A constructor call whose register arguments are loaded before its stacked one | read the elements through an **inline accessor** (`At(i, j)`) | 0x09e4b8, 0x0a0944 (Matrix33/34) |
+| A constant (`li 9`) set into a saved register above a call, ahead of the loop that uses it | one **shared loop counter** for the loop before the call and the loop after it: the pseudo then crosses the call (REG_N_CALLS_CROSSED > 0), which is what lets sched1 hoist it | 0x07343c, MenuMovie 0x0760fc/0x076778/0x0759f0 (26-27 -> 3-7 words) |
+| Two block copies whose scratch registers differ (v0,v1,t0,t1 in the second) | reload hands out spill registers round-robin: make a value live across the first copy (read `int n = r.size;` before it) so the second copy's registers shift | 0x083328 (GamePacketProc::Receive) |
 
 **Callee prototypes are behaviour.** This includes the v0 versus v1 choice for later temporaries (f_01c2cc, f_01c648). Declaring a void-called function as returning `int`, or giving a callee too few arguments, changes register allocation downstream (f_0f1aa0, f_08e0c8).
 
