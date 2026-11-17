@@ -907,6 +907,12 @@ struct Flag {
    keeps xi = V464.x inline with the rest of the chain out of line, as retail does.
    Layout aids with no counterpart in the original: the two unused angle locals (retail leaves
    a hole of two slots after the first outline loop) and the packed scratch array tt.
+   Sweep inner loop (SWEEP_EDGE): retail has the same pointer copy as the count loop (move
+   s4,v0 before the k loop, ep reloaded from s4), but re-forming ep as the k loop's first
+   statement does not work here: cse1 merges it into the outer ep (the loop body stays in the
+   pre-loop extended block), and gcse load-PREs ep[0]/ep[1] again. Why cse1 opens a new block
+   at the count loop's body but not here is not yet known. Mine also spills two more pseudos
+   than retail (frame 2416 against 2400).
    Retail also reads a stale vector in the slide's second box (V1808 is the leftover of the
    last cull iteration); that is kept here as in retail. */
 extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, float *out4,
