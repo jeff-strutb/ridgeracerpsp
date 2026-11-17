@@ -2305,13 +2305,15 @@ void f_05caac(int *p)
     operator delete(p);
 }
 
-/* @draft 0x05daa4 us f_05daa4
+/* @implements 0x05daa4 us f_05daa4
    WHAT IT DOES: Constructor of a small holder object: stores the first argument in word 0, zeroes
    word 1, and when the argument is non-zero allocates a 4-byte cell holding 1 and points word 1
-   at it.    Remaining difference: retail saves s0 and uses a 32-byte frame with an EH landing pad for the allocated cell; ours has no frame and no landing pad. */
-void f_05daa4(int *p, int a1)
+   at it. The empty-dtor guard gives retail's landing pad and 32-byte frame; the pointer-typed
+   argument makes GCC predict the allocation path as the fall-through. */
+void f_05daa4(int *p, void *a1)
 {
-    p[0] = a1;
+    swgB::GuardE g;
+    p[0] = (int)a1;
     p[1] = 0;
     if (a1) {
         int *q = (int *)f_04dfa0(4);
@@ -3749,14 +3751,17 @@ extern "C" void *f_06a534(void *self) {
 }
 
 /* @draft 0x06a7b8 us f_06a7b8
-   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d40 and D_1a4d44 after it, hands it to f_05daa4 together with this, and returns this. */
+   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d40 and D_1a4d44 after it, hands it to f_05daa4 together with this, and returns this.
+   Remaining difference: 5 words with f_06a534's shape (y, x read into locals first; 11 -> 5). Storing the vtable through void ** alone also put n[1]=0 in the jal slot (11 -> 10). Left: retail does lui vt, lui a2/lw a2 (x), lui a3/lw a3 (y), addiu vt: each global's lui uses its own load's register, so each hi/lw pair stayed adjacent with the vt la first; ours hoists both luis (sched1 -fsched-verbose=4: the load chains outrank the la). Same open cause as f_06a534 ("vtable lui first"). */
 struct SwgFC06a7b8 {
     SwgFM m;
     SwgFC06a7b8() {
     unsigned *n = (unsigned *)f_05db08(16);
-    *(void **)n = &D_1a4270;
-    n[2] = D_1a4d40;
-    n[3] = D_1a4d44;
+    unsigned y = D_1a4d44;
+    unsigned x = D_1a4d40;
+    n[0] = (unsigned)&D_1a4270;
+    n[2] = x;
+    n[3] = y;
     n[1] = 0;
     f_05daa4(this, n);
     
@@ -3768,14 +3773,17 @@ extern "C" void *f_06a7b8(void *self) {
 }
 
 /* @draft 0x06a8f0 us f_06a8f0
-   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d58 and D_1a4d5c after it, hands it to f_05daa4 together with this, and returns this. */
+   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d58 and D_1a4d5c after it, hands it to f_05daa4 together with this, and returns this.
+   Remaining difference: f_06a534's shape (y, x read into locals first) gives 5 words; left: the order of the three address luis after f_05db08 (see f_06a7b8's note). */
 struct SwgFC06a8f0 {
     SwgFM m;
     SwgFC06a8f0() {
     unsigned *n = (unsigned *)f_05db08(16);
+    unsigned y = D_1a4d5c;
+    unsigned x = D_1a4d58;
     n[0] = (unsigned)&D_1a4270;
-    n[2] = D_1a4d58;
-    n[3] = D_1a4d5c;
+    n[2] = x;
+    n[3] = y;
     n[1] = 0;
     f_05daa4(this, n);
     
@@ -3787,14 +3795,17 @@ extern "C" void *f_06a8f0(void *self) {
 }
 
 /* @draft 0x06aa50 us f_06aa50
-   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d60 and D_1a4d64 after it, hands it to f_05daa4 together with this, and returns this. */
+   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d60 and D_1a4d64 after it, hands it to f_05daa4 together with this, and returns this.
+   Remaining difference: f_06a534's shape (y, x read into locals first) gives 5 words; left: the order of the three address luis after f_05db08 (see f_06a7b8's note). */
 struct SwgFC06aa50 {
     SwgFM m;
     SwgFC06aa50() {
     unsigned *n = (unsigned *)f_05db08(16);
+    unsigned y = D_1a4d64;
+    unsigned x = D_1a4d60;
     n[0] = (unsigned)&D_1a4270;
-    n[2] = D_1a4d60;
-    n[3] = D_1a4d64;
+    n[2] = x;
+    n[3] = y;
     n[1] = 0;
     f_05daa4(this, n);
     
@@ -3806,14 +3817,17 @@ extern "C" void *f_06aa50(void *self) {
 }
 
 /* @draft 0x06aecc us f_06aecc
-   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d70 and D_1a4d74 after it, hands it to f_05daa4 together with this, and returns this. */
+   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d70 and D_1a4d74 after it, hands it to f_05daa4 together with this, and returns this.
+   Remaining difference: f_06a534's shape (y, x read into locals first) gives 5 words; left: the order of the three address luis after f_05db08 (see f_06a7b8's note). */
 struct SwgFC06aecc {
     SwgFM m;
     SwgFC06aecc() {
     unsigned *n = (unsigned *)f_05db08(16);
+    unsigned y = D_1a4d74;
+    unsigned x = D_1a4d70;
     n[0] = (unsigned)&D_1a4270;
-    n[2] = D_1a4d70;
-    n[3] = D_1a4d74;
+    n[2] = x;
+    n[3] = y;
     n[1] = 0;
     f_05daa4(this, n);
     
@@ -3825,14 +3839,17 @@ extern "C" void *f_06aecc(void *self) {
 }
 
 /* @draft 0x06af34 us f_06af34
-   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d78 and D_1a4d7c after it, hands it to f_05daa4 together with this, and returns this. */
+   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d78 and D_1a4d7c after it, hands it to f_05daa4 together with this, and returns this.
+   Remaining difference: f_06a534's shape (y, x read into locals first) gives 5 words; left: the order of the three address luis after f_05db08 (see f_06a7b8's note). */
 struct SwgFC06af34 {
     SwgFM m;
     SwgFC06af34() {
     unsigned *n = (unsigned *)f_05db08(16);
+    unsigned y = D_1a4d7c;
+    unsigned x = D_1a4d78;
     n[0] = (unsigned)&D_1a4270;
-    n[2] = D_1a4d78;
-    n[3] = D_1a4d7c;
+    n[2] = x;
+    n[3] = y;
     n[1] = 0;
     f_05daa4(this, n);
     
