@@ -1432,14 +1432,13 @@ float CEvent17::Eval(EventWork *w)
     return 0.0f;
 }
 
-/* @draft 0x0d247c us _ZN8CEvent173Run
+/* @implements 0x0d247c us _ZN8CEvent173Run
    WHAT IT DOES: Draws every pigeon of the shared flock at the event's position plus its
    offset, with its own matrix, either facing the camera or (flag 0x80000) turned by the
    event's rotation on both sides. A flying pigeon (state 2) runs its wing frames from its
    speed; when the event gives a hold range, a pigeon past it shows the last frame.
-   Remaining difference: the translation call's arguments are built z first in retail (the
-   offset's z in $f0, pos.z loaded before pos.x, the z sum added first); here expand_call
-   evaluates them left to right. The shape that puts z first is not found. */
+   The translation's sums are locals, z first (expand_call builds call arguments left to
+   right), with the offset's x read before both so its load issues first. */
 int CEvent17::Run(EventWork *w, int arg)
 {
     EvHato *sh = (EvHato *)w->shared->p;
@@ -1458,7 +1457,10 @@ int CEvent17::Run(EventWork *w, int arg)
     for (int i = 0; i < sh->count; i++) {
         HatoBird *b = &sh->birds[i];
         f_02842c();
-        f_0287cc(w->ev->pos.x + b->x, w->ev->pos.y, w->ev->pos.z + b->z);
+        float bx = b->x;
+        float tz = w->ev->pos.z + b->z;
+        float tx = w->ev->pos.x + bx;
+        f_0287cc(tx, w->ev->pos.y, tz);
         if (!face && (w->ev->flags & 1)) {
             Vec3 r = f_0dacd4(w->ev);
             f_02853c(r.z);
