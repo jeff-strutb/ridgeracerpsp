@@ -785,7 +785,10 @@ void f_0026cc(PackageLoader *l)
    Unless asked not to, it waits for the loading to finish.
    Remaining difference: register allocation only. The file count is computed into v1
    (retail a0, with the pointer in v1), and the request fields are loaded with lhu and
-   stored in a different order than retail's lh loads. */
+   stored in a different order than retail's lh loads. `last - first` compiles identically to
+   the current spelling. The lh (not lhu) loads of first/last/sectors for the halfword
+   request fields mean retail's values pass through int (e.g. an inline Request builder
+   with int parameters); a plain short-to-short copy gives lhu. Look there next. */
 void f_002734(PackageLoader *l, unsigned char nowait)
 {
     int n = -(D_1b8c04[l->package].first - D_1b8c04[l->package].last);

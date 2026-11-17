@@ -244,7 +244,11 @@ void CParticles::f_03228c()
 /* @draft 0x032298 us f_032298
    WHAT IT DOES: Draws the particles of one view: sets up the sprite render state, moves and
    ages every live particle (retiring the expired ones), sorts them by depth and draws them
-   back to front. */
+   back to front.
+   Remaining difference: in both Pop()s retail has head+1 in v0 and the slt in v1; here the
+   other way. lreg: Next's i (head+1) lives into the `return i` arm, so global-alloc takes it
+   after local-alloc has given the block-local slt result v0. Retail's i must be block-local
+   (born first) or the slt global; the Next/Pop spelling that does this is not yet found. */
 unsigned int *CParticles::f_032298(View *view, unsigned int *p)
 {
     if (smoke.Count() == 0 && fire.Count() == 0)
@@ -376,7 +380,11 @@ void CParticles::f_0328b0()
 /* @draft 0x032918 us f_032918
    WHAT IT DOES: Tabulates the particles' looks over their lives: for the 40 frames of an exhaust
    particle, opacity and size from curve 0 and one of 20 cells of a 4 x 5 grid of 32 x 16
-   texels; for the 60 frames of a smoke puff, curve 1 and one fixed cell. */
+   texels; for the 60 frames of a smoke puff, curve 1 and one fixed cell.
+   Remaining difference: loop 1 stores come out alpha, u1, v1, u0, v0 where retail has u1, v1,
+   alpha, u0, v0 (alpha loaded before the size clamp's branch); and loop 2 sets 32 before 127.
+   Moving the alpha store after v1 gives retail's store order but loads alpha after the branch
+   (26 words); next try: alpha read into a local before the clamp, stored after v1. */
 void f_032918(void)
 {
     int alpha, size;

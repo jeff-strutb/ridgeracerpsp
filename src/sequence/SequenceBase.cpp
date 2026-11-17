@@ -400,7 +400,10 @@ void CSequenceBase::f_0392b0()
 /* @draft 0x039480 us f_039480
    WHAT IT DOES: Builds the race camera and clears its state.
    Draft: retail forms the state's address (raw block + 3120) in s1 before the eyes'
-   constructor call and stores through it after; this source forms it after the call. */
+   constructor call and stores through it after; this source forms it after the call.
+   sched1 lets a pseudo set after a call move above it only if that pseudo already crosses a
+   call (REG_N_CALLS_CROSSED), so retail's state pointer must be a value also live across
+   another call (not yet found; m0 is stored from the raw block, the rest through s1). */
 void CSequenceBase::f_039480()
 {
     m52 = new Camera[1];

@@ -425,7 +425,9 @@ void CRaceSound::f_01d17c(int a, int b, int *samples, CCamera *cam, int c)
    the hold state. With more than four cars it keeps only the three loudest rivals' engines
    playing. It then steps every car's engine sound and measures the free voices again.
    Remaining difference: two words at the end, a sched2 tie: retail stores the listener's x
-   before loading the 1.0 for its w, this build loads first. */
+   before loading the 1.0 for its w, this build loads first. Retail's 1.0 is a named .rodata
+   word (D_1a1734), not a cst4 literal: if its load is ordered by aliasing after the x store,
+   the source evaluates it after `x = ...` (not as a Set argument, which loads it first). */
 void CRaceSound::f_01d4b8(int flags)
 {
     int i, k;

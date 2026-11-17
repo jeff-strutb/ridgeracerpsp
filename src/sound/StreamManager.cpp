@@ -122,7 +122,8 @@ CStreamManager::CStreamManager()
    Remaining difference: retail keeps each global's full address in s1 (built before the new)
    and both new results in s0, and shares one li 1 for the store and the result; here the
    first global is stored through its %lo, the objects use other saved registers and the 1
-   is loaded twice. */
+   is loaded twice. Pointer locals for the two globals (`T **ps = &D; *ps = new T;`) change
+   nothing: cse folds them back to constants. */
 int CStreamManager::f_095f9c()
 {
     D_242ca4 = new CStreamState;

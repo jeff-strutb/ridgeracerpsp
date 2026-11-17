@@ -1132,23 +1132,29 @@ void f_06c954(void *self, int a, char *p)
     f_04b23c((char *)self + 4, (char *)self + 44);
 }
 
-/* @draft 0x07343c us f_07343c
+/* @implements 0x07343c us f_07343c
+   Written as f_0731a0: the 8/16 select (row 249), one shared counter, a guarded do-while.
    WHAT IT DOES: sets the 300 slots at self+2396 to -1, then reads a packed table header at p+4 and for each entry stores the pointer p+offset into the slot at self+2396+index*4 and calls f_0230e0 on it. */
 void f_07343c(void *self, char *p)
 {
     struct { B4 h, a, b; } t;
     t.h = *(B4 *)(p + 4);
-    int off = ((*(int *)&t.h & 1) == 0) * 8 + 8;
-    for (int k = 0; k < 300; k++)
-        at<int>(self, 2396 + k * 4) = -1;
-    char *q = p + off;
-    for (int i = 0; i < *(int *)&t.h; i++) {
+    unsigned o8 = (*(volatile int *)&t.h & 1) ? 8 : 16;
+    int i;
+    for (i = 0; i < 300; i++)
+        at<int>(self, 2396 + i * 4) = -1;
+    i = 0;
+    if (*(int *)&t.h > 0) {
+    char *q = (char *)(o8 + (unsigned)p);
+    do {
         t.a = *(B4 *)q;
         t.b = *(B4 *)(q + 4);
         q += 8;
         char *e = p + *(int *)&t.a;
         at<char *>(self, 2396 + *(int *)&t.b * 4) = e;
         f_0230e0(e);
+        i++;
+    } while (i < *(int *)&t.h);
     }
 }
 
@@ -1230,6 +1236,10 @@ void f_076328(void *self, int a, char *p)
 
 void f_076f98(void *);
 /* @draft 0x0759f0 us f_0759f0
+   Remaining difference: retail stores the link at sub+28 from the sub register (s4), not
+   folded into self+32 (f_0731a0 gets this with a typed Sub *); and the +453 and +36 byte stores are swapped.
+   One shared `int i` for both loops was needed (the counter crosses calls, so sched1 hoists
+   its li above f_04a620).
    WHAT IT DOES: initialises the menu object: sets up the sub-object at self+4 (f_04a620), links self+456 and self, sets the 101 slots at self+476 to -1, loads the packed table at p into those slots (calling f_0230e0 on each), registers with f_04a648 and f_04b8a0, runs f_076f98 on self+1272 and clears the bytes at +453 and +36. */
 void f_0759f0(void *self, int a, char *p)
 {
@@ -1237,13 +1247,14 @@ void f_0759f0(void *self, int a, char *p)
     f_04a620(sub);
     at<void *>(self, 468) = self;
     at<void *>(sub, 28) = (char *)self + 456;
-    for (int k = 0; k < 101; k++)
-        at<int>(self, 476 + k * 4) = -1;
+    int i;
+    for (i = 0; i < 101; i++)
+        at<int>(self, 476 + i * 4) = -1;
     struct { B4 h, a, b; } t;
     t.h = *(B4 *)(p + 4);
     unsigned off = ((*(int *)&t.h & 1) == 0) * 8;
     unsigned o8 = off + 8;
-    int i = 0;
+    i = 0;
     if (*(int *)&t.h > 0) {
     char *q = (char *)(o8 + (unsigned)p);
     do {
@@ -1265,6 +1276,9 @@ void f_0759f0(void *self, int a, char *p)
 
 void f_077ecc(void *);
 /* @draft 0x0760fc us f_0760fc
+   Remaining difference: retail stores self+456 at sub+28 from the sub register (s4), not
+   folded into self+32; and the 960/964/36 stores come before the f_077ecc call (dbr puts
+   the +36 store in its slot). One shared `int i` for both loops was needed (counter in s1).
    WHAT IT DOES: initialises the menu object: sets up the sub-object at self+4 (f_04a620), links self+456 and self, sets the ten slots at self+968 to -1, loads the packed table at p into those slots (calling f_0230e0 on each), registers with f_04a648 and f_04b8a0, clears the words at +956 and +960 and the bytes at +964 and +36, and runs f_077ecc on self+472. */
 void f_0760fc(void *self, int a, char *p)
 {
@@ -1272,13 +1286,14 @@ void f_0760fc(void *self, int a, char *p)
     f_04a620(sub);
     at<void *>(self, 468) = self;
     at<void *>(sub, 28) = (char *)self + 456;
-    for (int k = 0; k < 10; k++)
-        at<int>(self, 968 + k * 4) = -1;
+    int i;
+    for (i = 0; i < 10; i++)
+        at<int>(self, 968 + i * 4) = -1;
     struct { B4 h, a, b; } t;
     t.h = *(B4 *)(p + 4);
     unsigned off = ((*(int *)&t.h & 1) == 0) * 8;
     unsigned o8 = off + 8;
-    int i = 0;
+    i = 0;
     if (*(int *)&t.h > 0) {
     char *q = (char *)(o8 + (unsigned)p);
     do {
@@ -1325,6 +1340,10 @@ signed char f_073010(void *self, int c)
 }
 
 /* @draft 0x076778 us f_076778
+   Remaining difference: retail stores the link at sub+28 from the sub register (s4), not
+   folded into self+32 (f_0731a0 gets this with a typed Sub *); and the tail stores come out 453, 523, 476, 521, 520, 36 where retail has 523, 476, 521, 520, 36, 453 (sched order).
+   One shared `int i` for both loops was needed (the counter crosses calls, so sched1 hoists
+   its li above f_04a620).
    WHAT IT DOES: initialises the menu object: sets up the sub-object at self+4 (f_04a620), links self+460 and self (at +472), sets the ten slots at self+480 to -1, loads the packed table at p into those slots (calling f_0230e0 on each), registers with f_04a648 and f_04b8a0, sets the byte at +522 to 1 and clears the flags at +523, +521, +520, +36, +453 and the word at +476. */
 void f_076778(void *self, int a, char *p)
 {
@@ -1332,13 +1351,14 @@ void f_076778(void *self, int a, char *p)
     f_04a620(sub);
     at<void *>(self, 472) = self;
     at<void *>(sub, 28) = (char *)self + 460;
-    for (int k = 0; k < 10; k++)
-        at<int>(self, 480 + k * 4) = -1;
+    int i;
+    for (i = 0; i < 10; i++)
+        at<int>(self, 480 + i * 4) = -1;
     struct { B4 h, a, b; } t;
     t.h = *(B4 *)(p + 4);
     unsigned off = ((*(int *)&t.h & 1) == 0) * 8;
     unsigned o8 = off + 8;
-    int i = 0;
+    i = 0;
     if (*(int *)&t.h > 0) {
     char *q = (char *)(o8 + (unsigned)p);
     do {
@@ -1541,7 +1561,9 @@ void f_0736f0(char *self)
    Remaining difference (2026-11-16, diagnosis only, nothing changed): global-alloc gives t
    (shared by cases 12 and 21-28 through add1) v1 where retail has a0: retail computes the
    remainder in place in a0 (subu a0,a0,v0) and loads case 21's word into a0; the index
-   arithmetic of case 21 then swaps v0/v1. */
+   arithmetic of case 21 then swaps v0/v1. Folding v and k into t (`t = ...-1; t = t % 12;`,
+   `t = a - 21; off = t * 28;`) gives retail's in-place remainder but ties t to a's a1
+   (14 words): retail's k is not tied to a. Next: fold only v into t, keep k separate. */
 int f_074240(void *self, int a)
 {
     int r, t, k, off;

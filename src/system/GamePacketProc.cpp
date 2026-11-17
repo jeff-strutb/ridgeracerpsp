@@ -351,11 +351,10 @@ struct Reply {
     int time;
 };
 
-/* @draft 0x083328 us _ZN14GamePacketProc7ReceiveEiiPci
-   REMAINING DIFFERENCE: the stamp byte copies take their registers in another order (retail
-   v0, v1, t0, t1), and for type 2 retail computes the time before copying the stamp and
-   stores it in the send call's slot. Named char fields, a byte-wise copy method and a
-   pointer local were tried.
+/* @implements 0x083328 us _ZN14GamePacketProc7ReceiveEiiPci
+   The reply size is read into a local before the stamp copy: the block copy's scratch
+   registers come from reload's round-robin over the spill registers, so the type 2 copy
+   must see t0 live for the type 3 copy to get v0, v1, t0, t1.
    WHAT IT DOES: Handles a received packet. A packet shorter than its type's size is reported
    and dropped. Type 2 is answered at once with a type 3 packet carrying the sender's stamp and
    the counter less 50 (not below zero); type 3 has the local stamp written into it; every
@@ -377,9 +376,10 @@ void GamePacketProc::Receive(int from, int header, char *data, int size)
         t = m0 - 50;
         if (t < 0)
             t = 0;
+        int n = r.size;
         rep.stamp = *(Stamp *)data;
         rep.time = t;
-        f_086a60(D_241810, from, 0x300, &rep, r.size);
+        f_086a60(D_241810, from, 0x300, &rep, n);
     } else if (info.type == 3) {
         Stamp *d = (Stamp *)(data + 8);
         *d = *(Stamp *)this;

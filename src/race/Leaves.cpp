@@ -220,7 +220,9 @@ void CLeaves::f_035ff8()
    (2 words); everything else matches. global-alloc gives s7 to the higher-priority HIGH; equal
    refs, so the shorter live range wins, i.e. the one whose f12/f14 load comes first in sched1's
    output. Retail's needs the f14 (532) load first: the reversed-argument order also seen in
-   RaceEffects f_031c40 and DjEvent f_08d484. */
+   RaceEffects f_031c40 and DjEvent f_08d484. greg: the two HIGHs (190 = lower pseudo, 532)
+   tie on priority, so the lower allocno takes s7. `float h = 532.0f;` before the call (to
+   create 532's pseudo first) wrecks the function (size 848); not the source. */
 unsigned int *CLeaves::f_0362a8(unsigned int *p)
 {
     p = f_0249a0(D_240620, p);
