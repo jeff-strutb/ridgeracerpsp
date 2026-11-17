@@ -189,6 +189,27 @@ extern "C" void f_0e43ec(EffectMgr *m, void *owner);
 /* The frame counter. */
 extern int D_23faec;
 
+#define VFPU_BEGIN ".set push\n\t.set noreorder\n\t"
+#define VFPU_END "\n\t.set pop"
+
+/* The VFPU's sine and cosine (of a quarter turn per unit). No memory clobber: loads around
+   them stay hoisted (CEvent17::Eval keeps the flock pointer out of its loop). */
+static inline float VSin(float a)
+{
+    float r;
+    __asm__ volatile(VFPU_BEGIN "lv.s S400, %1\n\tvsin.s S401, S400\n\tsv.s S401, %0" VFPU_END
+                     : "=m"(r) : "m"(a));
+    return r;
+}
+
+static inline float VCos(float a)
+{
+    float r;
+    __asm__ volatile(VFPU_BEGIN "lv.s S400, %1\n\tvcos.s S401, S400\n\tsv.s S401, %0" VFPU_END
+                     : "=m"(r) : "m"(a));
+    return r;
+}
+
 /* An object shared by every job of one kind, kept alive by a reference count: built when
    the first job takes it. */
 struct EvShared;
@@ -224,6 +245,28 @@ struct EvTimer {
     int started;
     int m28[2];
     int m36;
+};
+
+/* A pigeon of the flock shared by the jobs of type 17 (128 bytes). */
+struct HatoBird {
+    int state;          /* 0: perched, 1: flying, 2: animated */
+    float x, z;         /* its offset from the event */
+    float speed;
+    float range;        /* +16 */
+    float rate;         /* +20 */
+    int m24[7];
+    int m52;
+    Matrix m;           /* +64 */
+};
+
+/* The shared flock of type 17 (Map::Event::CHatoWork). */
+struct EvHato {
+    EvSharedVt *vt;
+    int m4;
+    int ref;
+    int count;
+    HatoBird *birds;
+    int cam;            /* the camera it was last scattered for */
 };
 
 struct EvSharedHolder {
@@ -1300,6 +1343,104 @@ void CEvent33::Release(EventWork *w)
     f_0ec35c(&((EvLoop *)w->shared->p)->snd);
 }
 
+/* @draft 0x0d2204 us _ZN8CEvent174Eval
+   WHAT IT DOES: Takes the shared flock on the job's first frame (building it when this is the
+   first taker) and, when the camera has cut, scatters every pigeon to a random offset at rest;
+   once the camera passes the event's start distance, sets the perched flock flying. Scores 0.
+   Remaining difference: 4 words at the scatter loop's end. sched2 issues the reload of the
+   sine (a reload insn: the asm result is REG_EQUIV to its stack slot) before the m52 zero
+   store on priority; retail issues the store first and then the count load before the
+   multiply. */
+float CEvent17::Eval(EventWork *w)
+{
+    EvHato *sh = (EvHato *)w->shared->p;
+
+    if (w->m16 == 0) {
+        if (++sh->ref == 1)
+            sh->vt->Init((EvShared *)sh);
+        int cam = *(int *)((char *)D_2542a0 + 572);
+        if (cam != sh->cam) {
+            sh->cam = cam;
+            for (int i = 0; i < sh->count; i++) {
+                HatoBird *b = &sh->birds[i];
+                b->state = 0;
+                b->speed = b->rate * -1.7881393432617188e-06f * D_23c820.Rand();
+                float r = b->range * 3.0517578125e-05f * D_23c820.Rand();
+                float a = (float)(D_23c820.Rand() * 2) * 6.2831855f * 1.52587890625e-05f * 0.63661975f;
+                b->x = r * VCos(a);
+                b->z = r * VSin(a);
+                b->m52 = 0;
+            }
+        }
+    }
+    if (sh->birds->state == 0) {
+        int len = D_23c820.length;
+        int at = (int)VIEW_DIST() + len - w->ev->m8;
+        while (at >= len)
+            at -= len;
+        if (at >= *f_0dad68(w->ev, 0x700, 0))
+            for (int i = 0; i < sh->count; i++)
+                sh->birds[i].state = 1;
+    }
+    return 0.0f;
+}
+
+/* @draft 0x0d247c us _ZN8CEvent173Run
+   WHAT IT DOES: Draws every pigeon of the shared flock at the event's position plus its
+   offset, with its own matrix, either facing the camera or (flag 0x80000) turned by the
+   event's rotation on both sides. A flying pigeon (state 2) runs its wing frames from its
+   speed; when the event gives a hold range, a pigeon past it shows the last frame.
+   Remaining difference: the translation call's arguments are built z first in retail (the
+   offset's z in $f0, pos.z loaded before pos.x, the z sum added first); here expand_call
+   evaluates them left to right. The shape that puts z first is not found. */
+int CEvent17::Run(EventWork *w, int arg)
+{
+    EvHato *sh = (EvHato *)w->shared->p;
+    int frames = *f_0dad68(w->ev, 0x40000, 0);
+    int period = *f_0dad68(w->ev, 0xe00000, 0);
+    int from = -1, len = -1;
+    Matrix m;
+
+    int keys = (w->ev->flags >> 21) & 7;
+    if (keys >= 6) {
+        from = *f_0dad68(w->ev, 0xe00000, 4);
+        len = *f_0dad68(w->ev, 0xe00000, 5);
+    }
+    int face = !(w->ev->flags & 0x80000);
+    f_028c70();
+    for (int i = 0; i < sh->count; i++) {
+        HatoBird *b = &sh->birds[i];
+        f_02842c();
+        f_0287cc(w->ev->pos.x + b->x, w->ev->pos.y, w->ev->pos.z + b->z);
+        if (!face && (w->ev->flags & 1)) {
+            Vec3 r = f_0dacd4(w->ev);
+            f_02853c(r.z);
+            f_0284fc(r.y);
+            f_0284bc(r.x);
+        }
+        f_028748(&b->m);
+        if (face)
+            f_028748(&D_2542b0);
+        else if (w->ev->flags & 1) {
+            Vec3 r = f_0dacd4(w->ev);
+            f_02853c(r.z);
+            f_0284fc(r.y);
+            f_0284bc(r.x);
+        }
+        f_028d94(&m);
+        int frame = 0;
+        if (b->state == 2) {
+            float t = b->speed * 1024.0f;
+            frame = (int)(t / ((float)period * 60.0f)) % (frames - 1) + 1;
+            if (from >= 0 && len > 0 && (int)(t / 60.0f) % (from + len) > from)
+                frame = frames - 1;
+        }
+        arg = f_0fed54(w->ev->obj + frame, &m, arg, -1);
+    }
+    f_028ca8();
+    return arg;
+}
+
 /* @implements 0x0d274c us _ZN8CEvent177Release
    WHAT IT DOES: Lets go of the shared object, complaining when the count goes below zero. */
 void CEvent17::Release(EventWork *w)
@@ -1690,14 +1831,23 @@ public:
             }
         }
     }
+    void UpdateAll()
+    {
+        for (int i = 0; i < count; i++)
+            arr[i].Update();
+    }
+    void ResetAll()
+    {
+        for (int i = 0; i < count; i++)
+            arr[i].Reset();
+    }
     void Free()
     {
         int i;
 
         for (i = 0; i < count; i++)
             arr[i].Stop();
-        if (arr)
-            delete[] arr;
+        delete[] arr;
     }
 
     T *arr;
@@ -1729,12 +1879,10 @@ extern "C" void f_0d2ef0(Block *b)
     D_254368.Build(b, 34);
 }
 
-/* @draft 0x0d37bc us f_0d37bc
-   WHAT IT DOES: Stops every work object of every kind and frees the arrays.
-   Remaining difference: CWorkList<CMotWork>::Free is called out of line (the same eager
-   instantiation as Build's first call: mark_used under -fexceptions); retail inlines all eight,
-   so its first Free call was instantiated by the inliner. The shape that defers it is not
-   found: a throwing call before it does defer it (checked with -Winline), but retail has none. */
+/* @implements 0x0d37bc us f_0d37bc
+   WHAT IT DOES: Stops every work object of every kind and frees the arrays. Free's first call
+   is instantiated eagerly too, and is inlined only when written with a plain `delete[] arr`
+   (the compiler's own null test): with an explicit `if` the eager instance is refused. */
 extern "C" void f_0d37bc(void)
 {
     D_254330.Free();
@@ -1745,6 +1893,31 @@ extern "C" void f_0d37bc(void)
     D_254358.Free();
     D_254360.Free();
     D_254368.Free();
+}
+
+/* @implements 0x0d3b2c us f_0d3b2c
+   WHAT IT DOES: Updates every work object of every kind for a frame (the view arguments are
+   not used). */
+extern "C" void f_0d3b2c(int a, void *view, void *s)
+{
+    D_254330.UpdateAll();
+    D_254338.UpdateAll();
+    D_254340.UpdateAll();
+    D_254348.UpdateAll();
+    D_254350.UpdateAll();
+    D_254358.UpdateAll();
+    D_254360.UpdateAll();
+    D_254368.UpdateAll();
+}
+
+/* @implements 0x0d3d94 us f_0d3d94
+   WHAT IT DOES: Resets the work objects of the kinds that keep a camera cut counter (the
+   moving models, the helicopter and the cows). */
+extern "C" void f_0d3d94(void)
+{
+    D_254330.ResetAll();
+    D_254338.ResetAll();
+    D_254368.ResetAll();
 }
 
 /* @implements 0x0d3e98 us _ZN3Map5Event8CMotWork5Setup
