@@ -162,7 +162,9 @@ int CExcelData::Type(const char *name)
    WHAT IT DOES: The index of the column with the given name (after its type letter), or
    -1.
    DIFFERS: one word: the skip loop's first load is addressed as 1(s1) (the entry plus one)
-   where retail uses 0(s0). The skip loop is a goto loop: retail's is not rotated. */
+   where retail uses 0(s0). The skip loop is a goto loop: retail's is not rotated.
+   Tried (2026-11-16): moving the first load after the label (c = *q; q++; if (c) goto next)
+   lets loop.c rotate the loop (22 words); the load must stay before the label. */
 int CExcelData::Find(const char *name)
 {
     char *p = names;
