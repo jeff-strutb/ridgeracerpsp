@@ -9,6 +9,8 @@ SceUID sceKernelCreateSema(const char *name, unsigned int attr, int init, int ma
 int sceKernelDeleteSema(SceUID sema);
 int sceKernelWaitSema(SceUID sema, int count, unsigned int *timeout);
 int sceKernelSignalSema(SceUID sema, int count);
+int sceKernelDelayThread(unsigned int usec);
+int sceKernelExitThread(int status);
 }
 
 int f_119dc8(int channel, int samples);
@@ -25,15 +27,8 @@ extern int D_242bd0;
 extern int D_242bd4;
 extern int D_242bd8;
 
-class CAudioQueue {
-public:
-    CAudioQueue(int size, int count, int arg);
-    ~CAudioQueue();
-    int f_08cd90();
-    int f_08cdc8(void **out);
-    int f_08ce0c();
-    int f_08ce84();
-
+/* The queue's data; the sound thread works on a copy of it. */
+struct SAudioQueue {
     SceUID sema;
     int *quit;
     void **bufs;
@@ -41,7 +36,17 @@ public:
     int *read;
     int *filled;
     int *count;
-    int m28;
+    SceUID start; /* signalled when the movie starts playing */
+};
+
+class CAudioQueue : public SAudioQueue {
+public:
+    CAudioQueue(int size, int count, int arg);
+    ~CAudioQueue();
+    int f_08cd90();
+    int f_08cdc8(void **out);
+    int f_08ce0c();
+    int f_08ce84();
 };
 
 /* @draft 0x08cb30 us _ZN11CAudioQueueC2Eiii
@@ -66,7 +71,7 @@ CAudioQueue::CAudioQueue(int size, int n, int arg)
     read = &D_242bc8;
     filled = &D_242bcc;
     count = &D_242bd0;
-    m28 = arg;
+    start = arg;
 }
 
 /* @implements 0x08cd58 us _ZN11CAudioQueueD2Ev
@@ -123,5 +128,45 @@ int CAudioQueue::f_08ce84()
 {
     f_119f80(1, 0x8000, 0x8000, bufs[*read]);
     *read = (*read + 1) % *count;
+    return 0;
+}
+
+/* @implements 0x08cef8 us f_08cef8
+   WHAT IT DOES: The sound thread. Works on a copy of the queue: waits for the start signal,
+   then until the quit flag is set plays each queued buffer and (from the second one on)
+   releases the buffer played before it, or sleeps a millisecond and counts a stall when
+   nothing is queued. On quit it plays what is left, releasing each, sends a silent buffer
+   to channel 1 and ends the thread. */
+int f_08cef8(SceSize args, void *argp)
+{
+    CAudioQueue *p = (CAudioQueue *)argp;
+    SAudioQueue q = *p;
+    int n = 0;
+
+    sceKernelWaitSema(q.start, 1, 0);
+    while (*p->quit == 0) {
+        if (*p->filled > 0) {
+            p->f_08ce84();
+            if (n > 0) {
+                sceKernelWaitSema(q.sema, 1, 0);
+                (*q.filled)--;
+                sceKernelSignalSema(q.sema, 1);
+            } else
+                n++;
+            D_242bd4++;
+        } else {
+            D_242bd8++;
+            sceKernelDelayThread(1000);
+        }
+    }
+    while (*p->filled > 0) {
+        p->f_08ce84();
+        sceKernelWaitSema(q.sema, 1, 0);
+        (*q.filled)--;
+        sceKernelSignalSema(q.sema, 1);
+        D_242bd4++;
+    }
+    f_119f80(1, 0x8000, 0x8000, 0);
+    sceKernelExitThread(0);
     return 0;
 }

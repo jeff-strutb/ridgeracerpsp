@@ -168,6 +168,29 @@ void CDjCheck::f_08e0b4()
     carWait = 0;
 }
 
+/* @implements 0x08e0c8 us f_08e0c8
+   WHAT IT DOES: One frame of the race sound checks. Unless system flag +11 or +12 is set it
+   checks wall hits, car hits, sirens, horns and the drift squeal, and, while race info word
+   +20 is clear, the wheel squeal count and the final lap. The course's ambient sounds are
+   checked every frame. */
+void CDjCheck::f_08e0c8()
+{
+    CSystemFlags *g = D_1d88a0;
+
+    if (!g->m11 && !g->m12) {
+        f_08e160();
+        f_08e388();
+        f_08e5d4();
+        f_08e7a8();
+        f_08e97c();
+        if (!D_2407fc->m20) {
+            f_08ee48();
+            f_08ef74();
+        }
+    }
+    f_08ea3c();
+}
+
 /* @implements 0x08e160 us f_08e160
    WHAT IT DOES: Wall hits. While the wait timer runs it only counts down. When the player's
    car has hit a wall, the timer restarts at 10 frames, the hit angle is folded into -pi/2 to

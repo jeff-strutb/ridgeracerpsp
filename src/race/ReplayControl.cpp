@@ -626,6 +626,20 @@ extern "C" void f_07ee5c(Replay *r)
         r->clock += 5;
 }
 
+/* @implements 0x07ee80 us f_07ee80
+   WHAT IT DOES: One replay frame for the first replay kind (its state 0 handler): pad
+   handling, the clock and overlays, the camera switch and the current camera's step. Its
+   body is the same as f_07eec8's. */
+void Replay::f_07ee80()
+{
+    Replay *r = this;
+
+    f_07ebdc(r);
+    f_07ecb8(r);
+    f_07edd4(r);
+    r->curCam->Step();
+}
+
 /* @implements 0x07eec8 us f_07eec8
    WHAT IT DOES: One replay frame: pad handling, the clock and overlays, the camera switch and
    the current camera's step. */

@@ -5,6 +5,17 @@
 
 #include <string.h>
 
+extern "C" int sprintf(char *buf, const char *fmt, ...);
+const char *f_093680(void);
+int f_0937f0(void);
+void *f_005a38(void *loader, const char *name);
+void *f_002acc(void *pkg, const char *name);
+void *f_005c34(void *loader, const char *name);
+void *f_022d00(void *file, int id);
+void *f_022de4(int area, void *file, int id);
+extern char D_1dd6b0[];
+extern char D_240768[];
+
 void f_0451b4(int size);
 void f_0f52a4(void *sub, int kind, void *owner);
 void f_04b914(void *movie);
@@ -257,6 +268,80 @@ void CRace2DNormal::v5()
     f_04d3b4(movie);
     f_04d548(movie);
     fade->f_0895cc();
+}
+
+/* @draft 0x089cd4 us f_089cd4
+   WHAT IT DOES: Loads the race panel's parts. Takes the panel package for the panel type
+   (soukou_pm_swg for type 20, soukou_rx_swg for 21, soukou_nm_swg otherwise) from the
+   language's package, then walks the type's part table up to its -1 end: part 27 comes from
+   the sequence loader, parts below 28 from the language's package, and the rest from the
+   player car's own package ("<car name>_M"), using the "_MPH" variant of the speedometer
+   parts for American English. Each part is registered as a texture (kind 0) or in area 1
+   by its id, and its object and id are kept in the overlay's tables. Returns 0.
+   Remaining difference: global-alloc gives s8 to the hoisted constant 21 here, where retail
+   gives it to the D_240768 buffer address (21 rematerialised as li a1,21); the rest follows
+   from that, plus the loop's closing store order (retail 556, 44, 1068). The type tests are
+   right-nested so fold does not turn them into and-ed set-on-compare values; the 256-byte
+   work array only reproduces retail's frame (the name buffer at sp+256). */
+int CRace2DNormal::f_089cd4(int arg)
+{
+    char work[256];
+    char mph[32];
+    char *buf;
+    int i;
+
+    if (type == 20)
+        m1580 = f_002acc(f_005a38(D_1dd6b0, f_093680()), "soukou_pm_swg");
+    else if (type == 21)
+        m1580 = f_002acc(f_005a38(D_1dd6b0, f_093680()), "soukou_rx_swg");
+    else
+        m1580 = f_002acc(f_005a38(D_1dd6b0, f_093680()), "soukou_nm_swg");
+    buf = D_240768;
+    for (i = 0; i < 36; i++) {
+        int kind;
+        int id;
+        char *name;
+        void *obj;
+
+        if (type == 20) {
+            kind = D_1d40a4[i].kind;
+            id = D_1d40a4[i].id;
+            name = D_1d40a4[i].name;
+        } else if (type == 21) {
+            kind = D_1d43ec[i].kind;
+            id = D_1d43ec[i].id;
+            name = D_1d43ec[i].name;
+        } else {
+            kind = D_1d3d44[i].kind;
+            id = D_1d3d44[i].id;
+            name = D_1d3d44[i].name;
+        }
+        if (kind == -1)
+            return 0;
+        if (i == 27)
+            obj = f_005c34(D_1dd6b0, name);
+        else if (i < 28)
+            obj = f_002acc(f_005a38(D_1dd6b0, f_093680()), name);
+        else if ((type == 20 && (id == 0x400001f && f_0937f0()))
+                 || (type == 21 && (id == 0x400001e && f_0937f0()))
+                 || (type != 21 && (type != 20 && ((id == 0x4000022 || id == 0x4000023)
+                                                    && f_0937f0())))) {
+            sprintf(mph, "%s%s", name, "_MPH");
+            sprintf(buf, "%s_M", f_0368e8(&D_240740, "CarName", D_2407fc->car, 0, 0));
+            obj = f_002acc(f_005a38(D_1dd6b0, buf), mph);
+        } else {
+            sprintf(buf, "%s_M", f_0368e8(&D_240740, "CarName", D_2407fc->car, 0, 0));
+            obj = f_002acc(f_005a38(D_1dd6b0, buf), name);
+        }
+        if (kind == 0)
+            f_022d00(obj, id);
+        else
+            f_022de4(1, obj, id);
+        m44[i] = obj;
+        m556[i] = id;
+        m1068[i] = id;
+    }
+    return 0;
 }
 
 /* @implements 0x08a060 us f_08a060

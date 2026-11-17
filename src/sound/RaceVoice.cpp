@@ -3,6 +3,7 @@
    a repeat of the same event in the same frame; the voice set follows the console
    language. */
 
+int f_01c260(void);
 int f_0f65a4(void);
 int f_0f67c0(int bank, int set, int voice, float vol);
 void f_0f6864(int bank, int h);
@@ -130,6 +131,112 @@ void CRaceVoice::f_092e94(int h)
 void CRaceVoice::f_092eb4()
 {
     last = 81;
+}
+
+/* @implements 0x092ec0 us f_092ec0
+   WHAT IT DOES: Picks the voice for a race event. Sets the voice set from the console
+   language (633 English, 557 French, 630 Spanish, 583 German, 605 Italian; English for
+   American English and anything else) and returns the event's voice number. Events 0 and 1
+   choose at random from the frame count: event 0 one of voices 0 to 3, event 1 voice 0 or
+   1 from the second voice set (634, 558, 631, 584, 606). Unlisted events give voice 4. */
+int CRaceVoice::f_092ec0(int ev)
+{
+    int r = 0;
+    int rnd = D_1d88a0->frame * 0x19660d + 0x3c6ef35f;
+
+    set = 633;
+    if (rnd < 0)
+        rnd = -rnd;
+    if (f_01c260() == 1)
+        set = 633;
+    else if (f_01c260() == 2)
+        set = 557;
+    else if (f_01c260() == 3)
+        set = 630;
+    else if (f_01c260() == 4)
+        set = 583;
+    else if (f_01c260() == 5)
+        set = 605;
+    else if (f_01c260() == 6)
+        set = 633;
+    else
+        set = 633;
+
+    switch (ev) {
+    case 0:
+        if (rnd % 4 == 0)
+            r = 0;
+        else if (rnd % 4 == 1)
+            r = 1;
+        else if (rnd % 4 == 2)
+            r = 2;
+        else if (rnd % 4 == 3)
+            r = 3;
+        break;
+    case 1:
+        if (f_01c260() == 1)
+            set = 634;
+        else if (f_01c260() == 2)
+            set = 558;
+        else if (f_01c260() == 3)
+            set = 631;
+        else if (f_01c260() == 4)
+            set = 584;
+        else if (f_01c260() == 5)
+            set = 606;
+        else if (f_01c260() == 6)
+            set = 634;
+        else
+            set = 634;
+        if (rnd % 2 == 0)
+            r = 0;
+        else if (rnd % 2 == 1)
+            r = 1;
+        break;
+    case 3: r = 6; break;
+    case 4: r = 5; break;
+    case 5: r = 7; break;
+    case 6: r = 8; break;
+    case 7: r = 9; break;
+    case 8: r = 10; break;
+    case 9: case 10: r = 1; break;
+    case 11: r = 11; break;
+    case 12: r = 12; break;
+    case 13: case 14: r = 1; break;
+    case 15: r = 13; break;
+    case 16: r = 14; break;
+    case 17: case 18: case 19: r = 1; break;
+    case 20: r = 15; break;
+    case 21: r = 16; break;
+    case 22: r = 17; break;
+    case 23: r = 18; break;
+    case 24: r = 19; break;
+    default: r = 4; break;
+    case 49: case 58: r = 28; break;
+    case 50: case 59: r = 20; break;
+    case 51: case 60: r = 26; break;
+    case 52: case 61: r = 21; break;
+    case 53: case 62: r = 24; break;
+    case 54: case 63: r = 22; break;
+    case 55: case 64: r = 23; break;
+    case 56: case 65: r = 27; break;
+    case 57: case 66: r = 25; break;
+    case 67: r = 29; break;
+    case 68: r = 30; break;
+    case 69: r = 31; break;
+    case 70: r = 32; break;
+    case 71: r = 46; break;
+    case 72: r = 47; break;
+    case 73: r = 48; break;
+    case 74: r = 49; break;
+    case 75: r = 50; break;
+    case 76: r = 51; break;
+    case 77: r = 52; break;
+    case 78: r = 53; break;
+    case 79: r = 54; break;
+    case 80: r = 17; break;
+    }
+    return r;
 }
 
 CRaceVoice D_242c60;
