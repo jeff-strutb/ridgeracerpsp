@@ -329,10 +329,29 @@ struct CMainMenuSetData : CMenuData {
     int m60;
     int m64;
 };
+/* The save record the main menu set-up reads its unlock state from. */
+struct MainMenuRecord {
+    unsigned char m0[145];
+    unsigned char m145[47][10];
+    unsigned char pad615[9];
+    unsigned char m624[48];
+    unsigned char m672[48];
+    unsigned char m720;
+    unsigned char pad721[1344];
+    unsigned char m2065[60];
+    unsigned char m2125[843];
+    unsigned char m2968;
+};
 struct CMainMenuSetData2 : CMainMenuSetData {
     CMainMenuSetData2();
     ~CMainMenuSetData2();
     void Init();
+    void f_078f20(MainMenuRecord *d);
+    bool m68[60];
+    bool m128[26];
+    bool m154[8];
+    bool m162[5];
+    int m168;
 };
 struct CRaceResultData : CMenuData {
     CRaceResultData();
@@ -426,22 +445,68 @@ struct CWirelessOpponentListData : CMenuData {
     int m24;
     int m28;
 };
+/* One wireless race result row: the sort key (the race time) and six more words. */
+struct WirelessResult {
+    unsigned int key;
+    int m4[6];
+};
 struct CWirelessRaceResultData : CMenuData {
     CWirelessRaceResultData();
     ~CWirelessRaceResultData();
     void Init();
+    void f_07a19c();
     int m8;
-    char m12[224];
+    WirelessResult m12[8];
 };
 struct CMainMenuData : CMenuData {
     CMainMenuData();
     ~CMainMenuData();
     void Init();
+    int m8;
+    int m12;
+    int m16;
+    int m20;
+    int m24;
+    int m28;
+    int m32[10];
+    int m72[14];
+    char m128[56];
+    bool m184[60];
+    bool m244[26];
+    bool m270[10];
+    int m280;
+    int m284;
+    bool m288;
+    bool m289;
+    bool m290;
+    bool m291;
 };
 struct COptionMenuData : CMenuData {
     COptionMenuData();
     ~COptionMenuData();
     void Init();
+    int m8;
+    int m12;
+    int m16;
+    int m20;
+    int m24;
+    bool m28;
+    bool m29;
+    bool m30;
+    bool m31;
+    bool m32;
+    bool m33;
+    bool m34;
+    bool m35;
+    bool m36;
+    bool m37;
+    bool m38;
+    char m39[18];
+    char m57[18];
+    bool m75;
+    int m76;
+    int m80;
+    int m84[60];
 };
 struct CMusicPlayerData : CMenuData {
     CMusicPlayerData();
@@ -802,10 +867,10 @@ void CMainMenuSetData::Init()
     m56 = 0;
 }
 
-/* @draft 0x078d1c us _ZN6Select17CMainMenuSetData2C2Ev
+/* @implements 0x078d1c us _ZN6Select17CMainMenuSetData2C2Ev
    WHAT IT DOES: Base object constructor of the second main menu set-up settings: builds the base, sets the
    vtable and resets the settings with Init. */
-/* @draft 0x078d70 us _ZN6Select17CMainMenuSetData2C1Ev
+/* @implements 0x078d70 us _ZN6Select17CMainMenuSetData2C1Ev
    WHAT IT DOES: Complete object constructor, the same as the base object one. */
 CMainMenuSetData2::CMainMenuSetData2()
 {
@@ -820,6 +885,134 @@ CMainMenuSetData2::CMainMenuSetData2()
    WHAT IT DOES: Deleting destructor: destroys the object and frees it. */
 CMainMenuSetData2::~CMainMenuSetData2()
 {
+}
+
+/* @implements 0x078e4c us _ZN6Select17CMainMenuSetData24InitEv
+   WHAT IT DOES: Sets the menu id (19), clears the base settings and every flag table, then sets
+   the flags at +69 to +71 and every other flag from +129 to +139. */
+void CMainMenuSetData2::Init()
+{
+    m8[0] = 0;
+    m8[1] = 0;
+    m8[2] = 0;
+    m8[3] = 0;
+    m8[4] = 0;
+    m8[5] = 0;
+    m8[6] = 0;
+    m8[7] = 0;
+    m8[8] = 0;
+    m8[9] = 0;
+    m8[10] = 0;
+    m8[11] = 0;
+    m4 = 19;
+    int i;
+    for (i = 0; i < 60; i++)
+        m68[i] = 0;
+    m68[1] = 1;
+    m68[3] = 1;
+    m68[2] = 1;
+    for (i = 0; i < 26; i++)
+        m128[i] = 0;
+    m128[1] = 1;
+    m128[3] = 1;
+    m128[5] = 1;
+    m128[7] = 1;
+    m128[9] = 1;
+    m128[11] = 1;
+    for (i = 0; i < 8; i++)
+        m154[i] = 0;
+    m162[0] = 0;
+    m162[1] = 0;
+    m162[2] = 0;
+    m162[3] = 0;
+    m162[4] = 0;
+    m56 = 0;
+    m60 = 0;
+    m64 = 0;
+    m168 = 0;
+}
+
+/* @draft 0x078f20 us _ZN6Select17CMainMenuSetData28f_078f20EPNS_14MainMenuRecordE
+   WHAT IT DOES: Rebuilds the flag tables from a save record: clears them and sets the default
+   flags as Init does (plus the flag at +126 when the flag at +56 is set and selection byte 18 is
+   10), then for every selection byte from index 1 up to the record's count: type 10 adds the
+   record's points to the word at +168 and, by the record's kind, sets one flag in the first,
+   third or fourth table, or (kind 2) sets each first-table flag whose record entry matches the
+   pair derived from the record's value and whose flag three or six places back is set; types 1
+   to 6 (and 10) then set the second-table flags named by the record's first 1 to 6 entries.
+   Remaining difference: in the kind-2 loop retail strength-reduces the record pointer d+k (own
+   register, +1 per pass); loop.c here rates that giv "not worth while" (benefit 4 - add 4 = 0). */
+void CMainMenuSetData2::f_078f20(MainMenuRecord *d)
+{
+    int i;
+    for (i = 0; i < 60; i++)
+        m68[i] = 0;
+    m68[1] = 1;
+    m68[3] = 1;
+    m68[2] = 1;
+    if (m56 && ((unsigned char *)m8)[18] == 10)
+        m68[58] = m56;
+    for (i = 0; i < 26; i++)
+        m128[i] = 0;
+    m128[1] = 1;
+    m128[3] = 1;
+    m128[5] = 1;
+    m128[7] = 1;
+    m128[9] = 1;
+    m128[11] = 1;
+    for (i = 0; i < 8; i++)
+        m154[i] = 0;
+    m162[0] = 0;
+    m162[1] = 0;
+    m162[2] = 0;
+    m162[3] = 0;
+    m162[4] = 0;
+    m168 = 0;
+    for (i = 1; i < d->m720; i++) {
+        switch (((unsigned char *)m8)[i]) {
+        case 10:
+            m168 += d->m0[i];
+            switch (d->m672[i]) {
+            case 1:
+                m68[d->m624[i]] = 1;
+                break;
+            case 2: {
+                int a = (d->m624[i] + 1) / 2;
+                int b = (d->m624[i] + 1) % 2 + 1;
+                for (int k = 1; k < d->m2968 - 4; k++) {
+                    if (a == d->m2065[k] && b == d->m2125[k] && m68[k - 3 * b])
+                        m68[k] = 1;
+                }
+                break;
+            }
+            case 3:
+                m154[d->m624[i]] = 1;
+                break;
+            case 4:
+                m162[d->m624[i]] = 1;
+                break;
+            }
+        case 6:
+            if (d->m145[i][5])
+                m128[d->m145[i][5]] = 1;
+        case 5:
+            if (d->m145[i][4])
+                m128[d->m145[i][4]] = 1;
+        case 4:
+            if (d->m145[i][3])
+                m128[d->m145[i][3]] = 1;
+        case 3:
+            if (d->m145[i][2])
+                m128[d->m145[i][2]] = 1;
+        case 2:
+            if (d->m145[i][1])
+                m128[d->m145[i][1]] = 1;
+        case 1:
+            if (d->m145[i][0])
+                m128[d->m145[i][0]] = 1;
+            break;
+        }
+    }
 }
 
 /* @implements 0x07924c us _ZN6Select15CRaceResultDataC2Ev
@@ -1198,10 +1391,26 @@ void CWirelessRaceResultData::Init()
     memset(m12, 0, sizeof m12);
 }
 
-/* @draft 0x07a2c0 us _ZN6Select13CMainMenuDataC2Ev
+/* @implements 0x07a19c us _ZN6Select23CWirelessRaceResultData8f_07a19cEv
+   WHAT IT DOES: Sorts the result rows into ascending order of their key (a selection-style
+   exchange sort over the row count at +8), swapping whole rows. */
+void CWirelessRaceResultData::f_07a19c()
+{
+    for (int i = 0; i < m8 - 1; i++) {
+        for (int j = i; j < m8; j++) {
+            if (m12[j].key < m12[i].key) {
+                WirelessResult t = m12[i];
+                m12[i] = m12[j];
+                m12[j] = t;
+            }
+        }
+    }
+}
+
+/* @implements 0x07a2c0 us _ZN6Select13CMainMenuDataC2Ev
    WHAT IT DOES: Base object constructor of the main menu settings: builds the base, sets the
    vtable and resets the settings with Init. */
-/* @draft 0x07a314 us _ZN6Select13CMainMenuDataC1Ev
+/* @implements 0x07a314 us _ZN6Select13CMainMenuDataC1Ev
    WHAT IT DOES: Complete object constructor, the same as the base object one. */
 CMainMenuData::CMainMenuData()
 {
@@ -1218,10 +1427,59 @@ CMainMenuData::~CMainMenuData()
 {
 }
 
-/* @draft 0x07a504 us _ZN6Select15COptionMenuDataC2Ev
+/* @implements 0x07a3f0 us _ZN6Select13CMainMenuData4InitEv
+   WHAT IT DOES: Sets the menu id (5), the six words from +8 and the word at +280 to 1, clears
+   the rest of the settings and the three flag tables, then sets the flags at +185 to +187 and
+   every other flag from +245 to +255. */
+void CMainMenuData::Init()
+{
+    m4 = 5;
+    m8 = 1;
+    m12 = 1;
+    m16 = 1;
+    m24 = 1;
+    m280 = 1;
+    m20 = 1;
+    m28 = 1;
+    m284 = 0;
+    m289 = 0;
+    m288 = 0;
+    m290 = 0;
+    m291 = 0;
+    m32[0] = 0;
+    m32[1] = 0;
+    m32[2] = 0;
+    m32[3] = 0;
+    m32[4] = 0;
+    m32[5] = 0;
+    m32[6] = 0;
+    m32[7] = 0;
+    m32[8] = 0;
+    m32[9] = 0;
+    memset(m128, 0, sizeof m128);
+    int i;
+    for (i = 0; i < 60; i++)
+        m184[i] = 0;
+    for (i = 0; i < 32; i++)
+        m244[i] = 0;
+    for (i = 0; i < 10; i++)
+        m270[i] = 0;
+    m244[1] = 1;
+    m244[3] = 1;
+    m244[5] = 1;
+    m244[7] = 1;
+    m244[9] = 1;
+    m244[11] = 1;
+    m128[9] = 0;
+    m184[1] = 1;
+    m184[2] = 1;
+    m184[3] = 1;
+}
+
+/* @implements 0x07a504 us _ZN6Select15COptionMenuDataC2Ev
    WHAT IT DOES: Base object constructor of the option menu settings: builds the base, sets the
    vtable and resets the settings with Init. */
-/* @draft 0x07a558 us _ZN6Select15COptionMenuDataC1Ev
+/* @implements 0x07a558 us _ZN6Select15COptionMenuDataC1Ev
    WHAT IT DOES: Complete object constructor, the same as the base object one. */
 COptionMenuData::COptionMenuData()
 {
@@ -1236,6 +1494,37 @@ COptionMenuData::COptionMenuData()
    WHAT IT DOES: Deleting destructor: destroys the object and frees it. */
 COptionMenuData::~COptionMenuData()
 {
+}
+
+/* @implements 0x07a634 us _ZN6Select15COptionMenuData4InitEv
+   WHAT IT DOES: Sets the menu id (10), the three level words to 100, clears the flags and
+   both name buffers, sets the flags at +29, +30, +75 and the word at +76 to 1, and clears the
+   60-word table at +84. */
+void COptionMenuData::Init()
+{
+    m4 = 10;
+    m29 = 1;
+    m30 = 1;
+    m8 = 100;
+    m12 = 100;
+    m16 = 100;
+    m28 = 0;
+    m76 = 1;
+    m20 = 0;
+    m24 = 0;
+    m31 = 0;
+    m32 = 0;
+    m33 = 0;
+    m34 = 0;
+    m35 = 0;
+    m36 = 0;
+    m37 = 0;
+    m38 = 0;
+    memset(m39, 0, sizeof m39);
+    memset(m57, 0, sizeof m57);
+    m75 = 1;
+    for (int i = 0; i < 60; i++)
+        m84[i] = 0;
 }
 
 /* @implements 0x07a6f0 us _ZN6Select16CMusicPlayerDataC2Ev
