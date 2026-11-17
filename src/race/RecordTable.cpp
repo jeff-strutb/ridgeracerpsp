@@ -28,15 +28,8 @@ struct Holder {
     Flags *inner;           /* +0 */
 };
 
-struct Obj {
-    char m0[24];
-    int value;              /* +24 */
-    float f28;              /* +28 */
-};
-
 extern "C" void f_0df538(void *self, RecList *l, int i, int key);
 extern "C" void f_0dedd0(void *slot, RecList *l, int arg, int i);
-extern "C" void f_0de508(void *a, Obj *o);
 
 /* Matrix-stack and transform routines (VFPU, src/system). */
 struct Matrix {
@@ -80,7 +73,7 @@ struct AnimRec {
 
 struct AnimData {
     AnimHdr *hdr;           /* +0 */
-    int *head;              /* +4 */
+    int *head;              /* +4: word 6 is the segment table offset */
     AnimRec *recs;          /* +8 */
     unsigned char *nodes;   /* +12 */
     int *tab;               /* +16: three key-track offsets per record, then their key counts */
@@ -91,6 +84,7 @@ struct AnimData {
 
 extern "C" unsigned char *f_0db0d0(AnimData *pb, int frame, int idx);
 extern "C" unsigned char *f_0daf64(AnimData *pb, unsigned int frame, int idx);
+extern "C" void f_0de508(void *a, AnimData *pb);
 extern "C" void f_0e1e34(AnimData *pb, const unsigned char *p, unsigned short *x, unsigned short *y,
                          unsigned short *z);
 
@@ -553,17 +547,117 @@ extern "C" void f_0dfdc8(AnimData *pb, Key *k, int idx)
     }
 }
 
-/* @draft 0x0e0724 us f_0e0724
-   WHAT IT DOES: Stores a float as a fixed integer in the object's +24 field (values from 2^31 up keep the
-   sign bit set), then calls the routine at 0x0de508. */
-extern "C" void f_0e0724(void *a, Obj *o)
+/* A float from four unaligned bytes at p. */
+static inline float GetF(const unsigned char *p)
 {
-    float x = o->f28;
-    int v = (int)x;
-    if (x >= 2147483648.0f)
-        v = (int)(x - 2147483648.0f) | 0x80000000;
-    o->value = v;
-    f_0de508(a, o);
+    Bytes4 u;
+
+    u.b.b0 = p[0];
+    u.b.b1 = p[1];
+    u.b.b2 = p[2];
+    u.b.b3 = p[3];
+    return u.f;
+}
+
+/* @draft 0x0dffd8 us f_0dffd8
+   WHAT IT DOES: Builds the pose keys of every record from the spline tracks; for records of kind 7
+   the translation comes instead from the second animation's frame data (three unaligned floats),
+   unless that animation's header has flag 0x100 set, in which case nothing is built.
+   Remaining difference: 21 words in the kind-7 block. Here the third float's address (d + 8) is
+   formed with the second's, before the second store, in its own register (a3); retail forms it in
+   the same register as the second (a2), after the second store, which suggests the pointer is
+   stepped between the reads rather than offset. */
+extern "C" void f_0dffd8(Key *keys, AnimData *pb, AnimData *pos)
+{
+    int i;
+
+    if (pos->hdr->flags & 0x100)
+        return;
+    for (i = 0; i < pb->hdr->count; i++, keys++) {
+        f_0dfdc8(pb, keys, i);
+        AnimRec *rec = &pb->recs[i];
+        if (rec->kind == 7) {
+            unsigned char *d = f_0daf64(pos, pos->frame, i);
+            keys->t[0] = GetF(d);
+            keys->t[1] = GetF(d + 4);
+            keys->t[2] = GetF(d + 8);
+        }
+    }
+}
+
+/* The frame segment table of an animation: segment end frames, segment lengths and the count. */
+struct SegTab {
+    unsigned short end[32];     /* +0 */
+    unsigned short len[32];     /* +64 */
+    unsigned short n;           /* +128 */
+};
+
+/* @draft 0x0e01a8 us f_0e01a8
+   WHAT IT DOES: Splits the animation's current time into the two frames to blend and the fraction
+   between them, through the segment table (each passed segment adds its length to the frame base;
+   the last frame of a segment does not blend forward) and the header's frame divider. Returns 0 when
+   the animation has no segment table or fewer than two segments.
+   Remaining difference: 17 words. (1) Retail converts the time for the loop tests before the loop's
+   blez guard; here loop.c hoists it into the preheader after the guard. (2) Retail holds the first
+   frame in t0, the register of the 0/1 result, so the source probably reuses the result variable
+   for it; here it gets a0. */
+extern "C" int f_0e01a8(AnimData *pb, int *f0, int *f1, float *frac)
+{
+    int wrap = 0;
+    int off = pb->head[6];
+    int i, base, a, b;
+    unsigned int k;
+    float time, fr;
+    AnimHdr *h;
+    SegTab *sg;
+
+    if (off == 0)
+        return 0;
+    h = pb->hdr;
+    sg = (SegTab *)((char *)h + off);
+    if (sg->n < 2)
+        return 0;
+    time = pb->time;
+    base = 0;
+    for (i = 0; i < sg->n - 1; i++) {
+        if ((int)time == sg->end[i] - 1)
+            wrap = 1;
+        if ((int)time < sg->end[i])
+            break;
+        base += sg->len[i];
+    }
+    k = h->mode >> 28;
+    if (k < 2) {
+        a = (int)time;
+        fr = 0.0f;
+        b = a;
+        if (wrap != 1) {
+            fr = time - (float)a;
+            b = a + 1;
+        }
+    } else if (!wrap) {
+        float q = time / (float)(int)k;
+        a = (int)q;
+        b = a + 1;
+        fr = q - (float)a;
+    } else {
+        float q = time / (float)(int)k;
+        a = b = (int)q + 1;
+        fr = 1.0f;
+    }
+    *f0 = a + base;
+    *f1 = b + base;
+    *frac = fr;
+    return 1;
+}
+
+/* @implements 0x0e0724 us f_0e0724
+   WHAT IT DOES: Sets the animation's whole frame number from its current time (an unsigned
+   conversion), then calls the routine at 0x0de508. */
+extern "C" void f_0e0724(void *a, AnimData *pb)
+{
+    pb->frame = (unsigned int)pb->time;
+    f_0de508(a, pb);
 }
 
 /* @draft 0x0e0efc us f_0e0efc
