@@ -534,7 +534,11 @@ void CRidgeComcar::f_0c0d98()
    computer car boosts whenever its boost input is set. Sets the speed factor, capped at 2.
    DIFFERS: two spots: retail multiplies the falling factor straight into the result register
    (f4) and stores the hold time's zero floor from f4; this build multiplies through f0 and
-   stores sw zero. If-chains, declaration orders and split multiplies do not fix it. */
+   stores sw zero. If-chains, declaration orders and split multiplies do not fix it.
+   Deciding pass for the store: gcse's GLOBAL CONST-PROP replaces add with 0.0 in the case 2
+   store (the -dG dump says so); retail's store keeps the register, so in retail add's zero
+   set was not an available constant set at case 2 (cprop only records a reg = const set whose
+   reg is not set again later in the same block). */
 void CRidgeComcar::f_0c0edc()
 {
     Phys *p = &phys;
