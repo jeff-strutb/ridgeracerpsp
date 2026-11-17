@@ -1,3 +1,0 @@
-# frames 1800
-# Boot to the title and let the attract sequence run, no input.
-0 NONE
