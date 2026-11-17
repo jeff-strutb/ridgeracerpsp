@@ -46,6 +46,7 @@ extern int D_291a0c;
 extern struct Slot D_291a48[];
 extern int D_281ec0;
 extern const float D_1b2e78;
+extern const float D_1b2e7c;
 extern const float D_1b2e84;
 extern const float D_1b2e88;
 extern const float D_1b2e8c;
@@ -58,7 +59,7 @@ void free(void *p);
 int f_111b18(int ch, int a1, int a2, int a3);
 int f_111e04(void);
 void f_111f18(int ch, int a1);
-void f_110f58(int ch, int a1, int a2);
+int f_110f58(int ch, int a1, int a2);
 int f_111228(int ch);
 int f_111030(int ch);
 
@@ -109,6 +110,26 @@ int f_110f10(void)
     free(D_291980[0].m184);
     free(D_291980[0].m188);
     return 0;
+}
+
+/* @implements 0x110f58 us f_110f58
+   WHAT IT DOES: Starts stream ch from file name with id: a busy stream is stopped (0x111030),
+   reset to full volume and stepped once (0x111e04) first; the slot's fade count is cleared
+   and the file is opened (0x111b18), whose result is returned. 0x8000000a for a bad channel. */
+int f_110f58(int ch, int name, int id)
+{
+    struct Chan *c;
+
+    if (badch(ch))
+        return 0x8000000a;
+    c = &D_291980[ch];
+    if (c->state != 0) {
+        f_111030(ch);
+        c->m176 = D_1b2e7c;
+        f_111e04();
+    }
+    D_291a48[ch].m8 = 0;
+    return f_111b18(ch, name, id, 0);
 }
 
 /* @implements 0x111030 us f_111030
