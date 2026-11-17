@@ -251,7 +251,12 @@ void f_0ce6c4(EventList *l, CEventDataMgr *m)
    WHAT IT DOES: Restarts the list at a position: releases every buffer, places both cursors
    and takes every event whose range holds the position.
    DIFFERS: 3 words after the second cursor call: retail stores the cursor before loading the
-   event count (`sw v0,40(s2); lui; lw a1,24(s2)`), ours loads the count first. */
+   event count (`sw v0,40(s2); lui; lw a1,24(s2)`), ours loads the count first.
+   -da (2026-11-16): the count load is the loop's duplicated entry test (jump.c's header copy,
+   insn 231). In sched1 it is ready at the same clock as the cur1 store (both after the call
+   result copy) and wins on priority (it feeds the branch); the two addresses are s2+24 and
+   s2+40, so no dependence holds it back. Retail needs the load not ready before the store;
+   the source shape is not yet known. */
 void f_0ce7e4(EventList *l, int lap, int pos)
 {
     int i, len, d;
