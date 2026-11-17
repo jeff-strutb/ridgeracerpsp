@@ -350,7 +350,96 @@ void f_09fc34(Mat34 *m, const Quat *q)
     m->m[2][2] = 1.0f - (xx + yy);
 }
 
-void f_099b98(float *a);
+/* Euler angles with their axis order code. */
+struct EulIn {
+    float a[3];
+    int order;
+};
+extern const signed char D_1abf6c[];
+float f_09a154(float a);
+float f_099fc4(float a);
+
+/* @implements 0x09bd84 us f_09bd84
+   WHAT IT DOES: Builds the quaternion of three Euler angles with an axis order code (the
+   axis triple from the table at D_1abf6c, the low bit the parity that negates the middle
+   angle): the half angles' cosines and sines combined into the axis part (written through
+   the permutation, middle component negated for odd parity) and w. */
+void f_09bd84(Quat *o, const void *in)
+{
+    const EulIn *e = (const EulIn *)in;
+    const signed char *t = D_1abf6c + e->order * 3;
+    int i = t[0];
+    int j = t[1];
+    int k = t[2];
+    int odd = e->order & 1;
+    float ti = e->a[i] * 0.5f;
+    float tj = e->a[j] * 0.5f;
+    float th = e->a[k] * 0.5f;
+    if (odd)
+        tj = -tj;
+    float ci = f_09a154(ti);
+    float cj = f_09a154(tj);
+    float ch = f_09a154(th);
+    float si = f_099fc4(ti);
+    float sj = f_099fc4(tj);
+    float sh = f_099fc4(th);
+    float cc = ci * ch;
+    float cs = ci * sh;
+    float sc = si * ch;
+    float ss = si * sh;
+    float a[3];
+    a[i] = cj * sc - sj * cs;
+    a[j] = cj * ss + sj * cc;
+    a[k] = cj * cs - sj * sc;
+    o->v[3] = cj * cc + sj * ss;
+    if (odd)
+        a[j] = -a[j];
+    o->v[0] = a[0];
+    o->v[1] = a[1];
+    o->v[2] = a[2];
+}
+
+/* @implements 0x09bf24 us f_09bf24
+   WHAT IT DOES: Builds the quaternion of three Euler angles with an axis order code (the
+   axis triple from the table at D_1abf6c, the low bit the parity that negates the middle
+   angle; twin of f_09bd84): the half angles' cosines and sines combined into the axis part (written through
+   the permutation, middle component negated for odd parity) and w. */
+void f_09bf24(Quat *o, const void *in)
+{
+    const EulIn *e = (const EulIn *)in;
+    const signed char *t = D_1abf6c + e->order * 3;
+    int i = t[0];
+    int j = t[1];
+    int k = t[2];
+    int odd = e->order & 1;
+    float ti = e->a[i] * 0.5f;
+    float tj = e->a[j] * 0.5f;
+    float th = e->a[k] * 0.5f;
+    if (odd)
+        tj = -tj;
+    float ci = f_09a154(ti);
+    float cj = f_09a154(tj);
+    float ch = f_09a154(th);
+    float si = f_099fc4(ti);
+    float sj = f_099fc4(tj);
+    float sh = f_099fc4(th);
+    float cc = ci * ch;
+    float cs = ci * sh;
+    float sc = si * ch;
+    float ss = si * sh;
+    float a[3];
+    a[i] = cj * sc - sj * cs;
+    a[j] = cj * ss + sj * cc;
+    a[k] = cj * cs - sj * sc;
+    o->v[3] = cj * cc + sj * ss;
+    if (odd)
+        a[j] = -a[j];
+    o->v[0] = a[0];
+    o->v[1] = a[1];
+    o->v[2] = a[2];
+}
+
+float *f_099b98(float *a);
 float f_099fc4(float a);
 float cosf(float);
 extern const float D_1abfa4, D_1abfa8;
@@ -855,7 +944,7 @@ Mat43 *f_0a26b4(Mat43 *d, const Mat43 *a, const Mat43 *b)
 }
 
 extern const float D_1abfac, D_1abfb0, D_1abfb4, D_1abfb8;
-void f_099b98(float *a);
+float *f_099b98(float *a);
 void f_09c158(Quat *d, const Vec4a *ax, int a);
 
 /* @implements 0x09c1ec us f_09c1ec
@@ -1048,7 +1137,7 @@ struct Quat4 { float v[4]; };
 extern "C" {
 float c_acos(float x) __asm__("f_09ab88");
 float c_atan2(float y, float x) __asm__("f_09a86c");
-void c_wrap(float *a) __asm__("f_099b98");
+float *c_wrap(float *a) __asm__("f_099b98");
 void c_eul2quat(Quat4 *o, const void *in) __asm__("f_09bf24");
 void c_quat2rv(Quat4 *o, const Quat4 *a) __asm__("f_09b2a8");
 }

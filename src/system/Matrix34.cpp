@@ -47,6 +47,7 @@ struct Mat34 {
     Mat34(const Mat44 &s);
     Mat34 &f_09ff44();
     float f_0a0140() const;
+    Mat34 &f_0a01ac(const Mat34 &s);
     Mat34 &f_0a039c();
     Mat34 f_0a0944() const;
     Mat34 &f_0a082c(Angle a, int i, int j);
@@ -173,6 +174,27 @@ float Mat34::f_0a0140() const
 {
     return m[0][0] * m[1][1] * m[2][2] - m[0][0] * m[1][2] * m[2][1] + m[1][0] * m[2][1] * m[0][2]
            - m[1][0] * m[0][1] * m[2][2] + m[2][0] * m[1][2] * m[0][1] - m[2][0] * m[1][1] * m[0][2];
+}
+
+/* @draft 0x0a01ac us f_0a01ac
+   WHAT IT DOES: Sets the matrix to the inverse of s (the adjugate over the determinant) and
+   returns it.
+   Remaining difference: sched2 puts sw ra first; retail stores it after the argument moves.
+   Cause (RTL dumps): f_0a0140 is defined above in this file, so GCC marks it pure and the call
+   carries memory dependences on the saves; a callee not detected as pure gives retail's order. */
+Mat34 &Mat34::f_0a01ac(const Mat34 &s)
+{
+    float inv = 1.0f / s.f_0a0140();
+    m[0][0] = (s.m[1][1] * s.m[2][2] - s.m[1][2] * s.m[2][1]) * inv;
+    m[1][0] = (s.m[1][2] * s.m[2][0] - s.m[1][0] * s.m[2][2]) * inv;
+    m[2][0] = (s.m[1][0] * s.m[2][1] - s.m[1][1] * s.m[2][0]) * inv;
+    m[0][1] = (s.m[2][1] * s.m[0][2] - s.m[2][2] * s.m[0][1]) * inv;
+    m[1][1] = (s.m[2][2] * s.m[0][0] - s.m[2][0] * s.m[0][2]) * inv;
+    m[2][1] = (s.m[2][0] * s.m[0][1] - s.m[2][1] * s.m[0][0]) * inv;
+    m[0][2] = (s.m[0][1] * s.m[1][2] - s.m[0][2] * s.m[1][1]) * inv;
+    m[1][2] = (s.m[0][2] * s.m[1][0] - s.m[0][0] * s.m[1][2]) * inv;
+    m[2][2] = (s.m[0][0] * s.m[1][1] - s.m[0][1] * s.m[1][0]) * inv;
+    return *this;
 }
 
 /* @implements 0x0a039c us f_0a039c

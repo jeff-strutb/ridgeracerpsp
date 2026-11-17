@@ -497,6 +497,9 @@ void CCamTV::f_0803dc()
 }
 
 /* @draft 0x0803e4 us _ZN7CamCtrl6CCamTV8f_0803e4Ev
+   Remaining difference: the two %hi registers of 80/D_24144c are swapped (retail v0 for
+   D_24144c); local-alloc gives the 80.0 pseudo the first choice because update_equiv_regs
+   moves its lui next to its use and shortens its life.
    WHAT IT DOES: The camera's aim offset: the course direction at the car, looking ahead by
    the shot's ramp read at the value at 656, scaled by half of 80 over the speed unit (at
    most 1, which is kept at 660). */
@@ -518,6 +521,9 @@ Vec4 CCamTV::f_0803e4()
 }
 
 /* @draft 0x0804bc us _ZN7CamCtrl6CCamTV8f_0804bcEv
+   Remaining difference: retail loads D_1d3a64 before the position copy (here after it,
+   held by the copy's float stores; declaring it const did not move it) and orders the
+   unit vector's stores x, z, y, w and the final copy's registers differently.
    WHAT IT DOES: Aims the camera: the followed object's position less the shot position
    (the height raised by 350, the car's and the shot's heights, then halved) and its
    length; then, when the shot has a look set, its mode and a unit vector turned by the
@@ -613,6 +619,9 @@ void CCamTV::f_07f834(int *arg)
 }
 
 /* @draft 0x081b10 us _ZN7CamCtrl6CCamTV8f_081b10Ev
+   Remaining difference: only the course areas address of mode 1: sched1 here hoists its
+   lui/addiu into the entry block (retail keeps it in the mode 1 block, after this->param
+   is read through a0); everything else is the same code two words later.
    WHAT IT DOES: Places the fixed shot of the current fixed mode on the course: in mode 1
    at the followed car (0.8 in from its side, height taken from the object, kind 3); in
    mode 2 five across at the race position with its height raised 4000, aimed at a point
@@ -622,12 +631,13 @@ void CCamTV::f_081b10()
     if (m752 == 1) {
         TVOwner *o = (TVOwner *)param.v[2];
         float pos = o->car.pos;
+        float side = *(float *)o->car.p20 - 0.8f;
         if (pos < 0.0f)
             pos = 0.0f;
         D_23c820.Areas()->f_0e2d10(&D_1d3aac[0].pos.x, &D_1d3aac[0].pos.y, &D_1d3aac[0].pos.z,
-                                   *(float *)o->car.p20 - 0.8f, pos);
-        D_1d3aac[0].fixed = 3;
+                                   side, pos);
         D_1d3aac[0].pos.y = ((TVOwner *)param.v[2])->m144.y;
+        D_1d3aac[0].fixed = 3;
     } else if (m752 == 2) {
         CourseAreas *areas = D_23c820.Areas();
         float pos = D_2407fc->m44;
