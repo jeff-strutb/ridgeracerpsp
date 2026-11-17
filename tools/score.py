@@ -36,7 +36,14 @@ WHAT IS COMPARED, per function (retail = the USA BOOT.BIN through refcheck/prx.p
          row of config/us/libsyms.csv (tools/analysis/libsyms.py); else an import whose
          SHA-1 NID (first four bytes, little-endian) is the NID of exactly one retail stub.
          A C++ method named f_XXXXXX is not taken as naming its own address (an override is
-         often named after the base slot it fills), so a method must be tagged.
+         often named after the base slot it fills) unless the method-name rule below applies.
+       - the method-name rule (owner's ruling): a C++ method that no tag in this file or any
+         real file claims, and that no real file defines a body for, resolves to the address
+         in its name (f_XXXXXX) when that is a funcs.csv start.  Each site's retail target
+         must equal it exactly, and if any site of the symbol in the run points elsewhere,
+         every function using the symbol is BADREF (finalize; so a single-file run sees only
+         that file's sites, and the image gate's whole-tree run is the one that counts).
+         Applies to data references (vtable slots) by the same test.
        - object data (a local symbol or section symbol in a data section, or a global data
          symbol defined in this object or in another real file's object that names no
          address): the item holding the target must have byte-identical contents at retail's
@@ -406,6 +413,22 @@ def name_address(name):
     return None
 
 
+def method_address(name):
+    """The address a C++ method's own name gives (innermost name f_XXXXXX in a nested name with
+    parameters), or None.  Used only by the method-name rule, under its limits."""
+    if not name.startswith('_ZN'):
+        return None
+    i = 3
+    while i < len(name) and name[i] in 'rVK':
+        i += 1
+    ids, j = _ids(name, i)
+    if len(ids) >= 2 and name[j:j + 1] == 'E' and name[j + 1:]:
+        m = PLAIN.match(ids[-1])
+        if m and m.group(1) == 'f':
+            return int(m.group(2), 16)
+    return None
+
+
 def load_libsyms():
     out = {}
     with open(ROOT / 'config' / 'us' / 'libfuncs.csv') as fh:
@@ -561,20 +584,30 @@ class Tree:
         if self._index is None:
             files = [p for p in source_files(self.src) if is_real(p, self.src)]
             self.compile_many(files)
-            funcs, data = {}, {}
-            for p in files:
-                u = self.units[p.resolve()]
-                if u.obj is None:
-                    continue
-                for idx, a in u.sym_addr.items():
-                    funcs.setdefault(u.obj.syms[idx].name, set()).add(a)
-                for s in u.obj.syms:
-                    if (s.bind != STB_LOCAL and u.obj.defined(s) and not u.obj.is_code(s.shndx)
-                            and s.type in (STT_OBJECT, STT_NOTYPE)
-                            and u.obj.secs[s.shndx].flags & SHF_ALLOC):
-                        data.setdefault(s.name, []).append((u, s))
-            self._index = (funcs, data)
+            self._index = self.build_index(files)
         return self._index
+
+    def build_index(self, files):
+        """(funcs, data, bodies) over the given (compiled) files: tagged function symbols ->
+        addresses, global data symbols -> [(unit, sym)], and the names of global functions
+        that some file defines a body for."""
+        funcs, data, bodies = {}, {}, set()
+        for p in files:
+            u = self.units[Path(p).resolve()]
+            if u.obj is None:
+                continue
+            for idx, a in u.sym_addr.items():
+                funcs.setdefault(u.obj.syms[idx].name, set()).add(a)
+            for s in u.obj.syms:
+                if s.bind == STB_LOCAL or not u.obj.defined(s):
+                    continue
+                if u.obj.is_code(s.shndx):
+                    if s.type == STT_FUNC:
+                        bodies.add(s.name)
+                elif (s.type in (STT_OBJECT, STT_NOTYPE)
+                      and u.obj.secs[s.shndx].flags & SHF_ALLOC):
+                    data.setdefault(s.name, []).append((u, s))
+        return funcs, data, bodies
 
 
 # ------------------------------------------------------------------ grading
@@ -594,6 +627,9 @@ class Grader:
         self.conflicts = set()     # item keys two references placed at different addresses
         self.used, self.used_items = set(), set()
         self.collect, self.pending = None, []
+        self.use_method_names = True
+        self.item_fx = {}
+        self.used_methods, self.method_bad = set(), {}
 
     # -- compiled target of one relocation
     def resolve(self, u, sym, addend):
@@ -618,7 +654,7 @@ class Grader:
         if sym.index in u.sym_addr:
             cands.append((u.sym_addr[sym.index], 'tag in this file'))
         else:
-            funcs, data = self.tree.index()
+            funcs, data, _ = self.tree.index()
             if name in funcs:
                 if len(funcs[name]) > 1:
                     return Target('none', None, None, None, None, '%s is tagged at %s' % (
@@ -640,13 +676,23 @@ class Grader:
             stubs = self.retail.stub_nid.get(nid_of(name), [])
             if len(stubs) == 1:
                 cands.append((stubs[0], 'import NID %08x' % nid_of(name)))
+        if not cands and self.use_method_names:
+            # The owner's ruling: an untagged method with no body anywhere in the tree takes
+            # the address in its name, if that is a function start.  check() requires each
+            # site's retail target to equal it, and finalize() fails every user of a symbol
+            # one of whose sites points elsewhere.
+            ma = method_address(name)
+            if ma is not None and not obj.defined(sym) and sym.index not in u.sym_addr:
+                funcs, _, bodies = self.tree.index()
+                if name not in funcs and name not in bodies and ma in self.retail.funcs:
+                    cands.append((ma, 'method-name'))
         if cands:
             return Target('addr', cands[0][0] + addend, None, None, None, '%s (%s)' % (
                 name, cands[0][1]))
         if obj.defined(sym) and not obj.is_code(sym.shndx):
             return Target('data', None, u, sym.shndx, sym.value + addend, 'data %s' % name)
         if sym.shndx == SHN_UNDEF:
-            _, data = self.tree.index()
+            _, data, _ = self.tree.index()
             if name in data:
                 du, ds = data[name][0]
                 return Target('data', None, du, ds.shndx, ds.value + addend,
@@ -671,6 +717,10 @@ class Grader:
         if t.kind == 'addr':
             self.used.add(t.how.split('(')[-1].split(' ')[0].rstrip(')')
                           if t.how.endswith(')') else 'local-code')
+            if t.how.endswith('(method-name)'):
+                self.used_methods.add(rel.sym.name)
+                if t.addr != rtarget:
+                    self.method_bad.setdefault(rel.sym.name, (t.addr, rtarget))
             if t.addr == rtarget:
                 return None
             return 'compiled %s -> %#08x, retail -> %#08x' % (t.how, t.addr, rtarget)
@@ -692,10 +742,22 @@ class Grader:
                 self.conflicts.add(key)
                 return '%s: item %s+%#x is at %#08x for another reference, here %#08x' % (
                     how, obj.secs[sec].name, start, b, base)
+            # A function that reuses a checked item inherits what checking it recorded: the
+            # rules used, the method-name symbols (so finalize() sees every user), nested
+            # items, and in collection mode the collected references.
+            fx = self.item_fx.get(key)
+            if fx:
+                self.used |= fx[0]
+                self.used_methods |= fx[1]
+                self.used_items |= fx[2]
+                self.pending.extend(fx[3])
             return reason
         self.items[key] = (base, None)          # a cycle back here is consistent so far
+        before = (set(self.used), set(self.used_methods), set(self.used_items), len(self.pending))
         reason = self._item(u, sec, start, end, base, how, depth)
         self.items[key] = (base, reason)
+        self.item_fx[key] = (self.used - before[0], self.used_methods - before[1],
+                             self.used_items - before[2], list(self.pending[before[3]:]))
         return reason
 
     def _item(self, u, sec, start, end, base, how, depth):
@@ -741,6 +803,7 @@ class Grader:
     def grade(self, u, tag):
         self.used, self.used_items = set(), set()
         self.pending = []
+        self.used_methods = set()
         res = {'addr': tag.addr, 'name': tag.name, 'kind': tag.kind, 'file': u.rel,
                'line': tag.line, 'real': u.real}
         f = self.retail.funcs.get(tag.addr)
@@ -800,6 +863,7 @@ class Grader:
         res['refs'] = out
         res['rules'] = sorted(self.used)
         res['items'] = sorted(self.used_items)
+        res['methods'] = sorted(self.used_methods)
         if self.pending:
             return dict(res, verdict='PENDING', pending=list(self.pending),
                         detail='otherwise EXACT; %d references collected' % len(self.pending))
@@ -816,6 +880,14 @@ class Grader:
                     r['verdict'] = 'BADREF'
                     r['detail'] = 'data item %s section %d+%#x is placed at two retail addresses' % (
                         k[0], k[1], k[2])
+            if r['verdict'] == 'EXACT':
+                bad = [m for m in r.get('methods', []) if m in self.method_bad]
+                if bad:
+                    m = bad[0]
+                    r['verdict'] = 'BADREF'
+                    r['detail'] = ('method-name rule: another site of %s points at %#08x, not '
+                                   'its name address %#08x' % (m, self.method_bad[m][1],
+                                                              self.method_bad[m][0]))
         return results
 
     def grade_unit(self, u, which=None):
@@ -896,7 +968,7 @@ def main(argv=None):
     el = time.time() - t0
     if a.json:
         for r in results:
-            for k in ('refs', 'items', 'compiled_refs'):
+            for k in ('refs', 'items', 'compiled_refs', 'methods'):
                 r.pop(k, None)
         json.dump({'results': results, 'seconds': round(el, 2), 'compile': tree.times},
                   sys.stdout, indent=1)

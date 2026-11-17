@@ -28,6 +28,10 @@ Gates, in order (exit status 1 if any is red):
                  7 a non-EXACT @implements staged for commit           pre-commit refuses
                  8 a library call site pointed at another library function: libsyms refuses
                    the symbol (tools/analysis/libsyms.py --selftest)
+                10 an untagged method (method-name rule) renamed to the next function's
+                   address                                              score BADREF, image red
+                11 one call of an untagged method changed to another one that two other
+                   functions also call: all three functions BADREF (finalize)
                  9 a library source compiled with one token changed, or with -O1 for -O2:
                    stock 1.3.1 no longer reproduces the reference object, so the unit is not
                    admitted (tools/analysis/libsource.py --selftest)
@@ -67,17 +71,26 @@ FAULTS = [
     ('float constant changed', 'src/race/SpeedUnit.c', 0x06b714, '1.609344f', '1.609345f'),
     ('same-shaped callees swapped', 'src/race/FadeSequence.cpp', 0x0ff7f0,
      'f_100bbc();\n    f_0e9eb4();', 'f_0e9eb4();\n    f_100bbc();'),
+    # Fault 10: an untagged method with no body, resolved by the method-name rule, renamed (its
+    # declaration and the call) to the next function's address, 0x115834.
+    ('untagged method renamed to the next function', 'src/sound/SoundPack.cpp', 0x114a4c,
+     '*f_115800', 'f_115834'),
 ]
 
 
 def plant(tag, rel, addr, old, new):
-    """Copy rel to build/plant/<tag>/rel with the first `old` after the tag of addr replaced."""
+    """Copy rel to build/plant/<tag>/rel with the first `old` after the tag of addr replaced
+    (every occurrence in the file when old starts with '*')."""
     text = (ROOT / rel).read_text(encoding='latin-1')
     at = text.index('@implements 0x%06x ' % addr)
-    k = text.index(old, at)
+    if old.startswith('*'):
+        out = text.replace(old[1:], new)
+    else:
+        k = text.index(old, at)
+        out = text[:k] + new + text[k + len(old):]
     dst = PLANT / tag / rel
     dst.parent.mkdir(parents=True, exist_ok=True)
-    dst.write_text(text[:k] + new + text[k + len(old):], encoding='latin-1')
+    dst.write_text(out, encoding='latin-1')
     return dst
 
 
@@ -212,7 +225,7 @@ def faults():
     tree = score.Tree()
     files = [rel for _, rel, _, _, _ in FAULTS]
     base = image.run(only=files)
-    out.append(('baseline: score and image on the four files', base['green'] and
+    out.append(('baseline: score and image on the %d files' % len(files), base['green'] and
                 all(r['verdict'] == 'EXACT' for r in base['results'] if r['addr'] in
                     {a for _, _, a, _, _ in FAULTS}),
                 'image %s, %d/%d EXACT' % ('GREEN' if base['green'] else 'RED',
@@ -236,7 +249,8 @@ def faults():
             caught = caught and byte and not fo['green']
             ev += ' | forced into the image: %s' % '; '.join(
                 f for f in fo['fails'] if 'differ' in f)[:160]
-        out.append(('%d %s (%s %#08x)' % (k, name, rel, addr), caught, ev))
+        label = k if k <= 4 else k + 5          # the later faults keep their own numbers
+        out.append(('%d %s (%s %#08x)' % (label, name, rel, addr), caught, ev))
     # 5: a stale object.  (a) The good object of the real file is put at the output path of
     # fault 1's copy, newer than the source; the gate must recompile and still be red.
     cp = copies[1]
@@ -280,6 +294,20 @@ def faults():
     lines = p.stdout.strip().splitlines()
     out.append(('8 library call site pointed at another library function', p.returncode == 0,
                 ' | '.join(l for l in lines if 'after' in l or 'other rows' in l)[:240]))
+    # 11: one site of an untagged method made to point elsewhere fails every user of it.  In
+    # f_038604 the first call of Codec::f_044a28 becomes Codec::f_044c3c, which f_037d6c and
+    # f_0386a8 also call (correctly): all three must be BADREF.
+    rel = 'src/race/PlayerInputProxy.cpp'
+    cp = plant('f11', rel, 0x038604, 'codec.f_044a28(0);', 'codec.f_044c3c(0);')
+    g = score.Grader(score.Tree())
+    rs = [r for r in g.grade_unit(g.tree.unit(cp))]
+    g.finalize(rs)
+    v = {r['addr']: r for r in rs}
+    want = (0x038604, 0x037d6c, 0x0386a8)
+    out.append(('11 one site of an untagged method points elsewhere (%s)' % rel,
+                all(v[a]['verdict'] == 'BADREF' for a in want),
+                ' | '.join('%#08x %s: %s' % (a, v[a]['verdict'], v[a]['detail'][-110:])
+                           for a in want)))
     # 9: a source proof unit is no longer admitted after a one-token change or other flags.
     p = subprocess.run([sys.executable, str(ROOT / 'tools' / 'analysis' / 'libsource.py'),
                         '--selftest'], capture_output=True, text=True)

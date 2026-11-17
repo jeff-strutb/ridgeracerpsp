@@ -71,21 +71,7 @@ def run(no_cache=False, replace=(), drop=(), force=(), only=None, jobs=8):
     tree.compile_many(files)
     idx_files = files
 
-    def build_index():
-        fx, dx = {}, {}
-        for p in idx_files:
-            u = tree.units[p]
-            if u.obj is None:
-                continue
-            for i, a in u.sym_addr.items():
-                fx.setdefault(u.obj.syms[i].name, set()).add(a)
-            for s in u.obj.syms:
-                if (s.bind != score.STB_LOCAL and u.obj.defined(s) and not u.obj.is_code(s.shndx)
-                        and s.type in (score.STT_OBJECT, score.STT_NOTYPE)
-                        and u.obj.secs[s.shndx].flags & score.SHF_ALLOC):
-                    dx.setdefault(s.name, []).append((u, s))
-        return fx, dx
-    tree._index = build_index()
+    tree._index = tree.build_index(idx_files)
     t_compile = time.time() - t0
     results, problems = [], []
     scope = None if not only else {repl.get((score.ROOT / x).resolve(), (score.ROOT / x).resolve())
@@ -200,7 +186,7 @@ def main(argv=None):
         out = dict(res)
         out.pop('results')
         out['not_exact'] = [{k: v for k, v in r.items()
-                             if k not in ('refs', 'items', 'compiled_refs')}
+                             if k not in ('refs', 'items', 'compiled_refs', 'methods')}
                             for r in res['not_exact']]
         json.dump(out, sys.stdout, indent=1)
         print()
