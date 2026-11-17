@@ -1566,9 +1566,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                         if (!(seg.y < seg.w))
                             s2 = 0;
                         s2 = s2 ^ 1;
-                        k = 0;
-                        if (o->m4->n > 0) {
-                            do {
+                        for (k = 0; k < o->m4->n; k++) {
+                            {
                                 short k1 = (k + 1) % o->m4->n;
                                 V1904.y = By[k];
                                 V1904.x = Bx[k];
@@ -1582,15 +1581,15 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                                     V2000 = V448;
                                 }
                                 if (f_0b1b28((const Vec2 *)&seg.x, (const Vec2 *)&seg.z, &V448) > 0.0f)
-                                    goto j_next;
+                                    continue;
                                 {
                                     Vec2 *ea = &((Vec2 *)&seg)[s2];
                                     Vec2 *eb = &((Vec2 *)&seg)[(s2 + 1) % 2];
                                     float gap8, gap0, g;
                                     if (eb->y < V2000.y)
-                                        goto j_next;
+                                        continue;
                                     if (V1984.y < ea->y)
-                                        goto j_next;
+                                        continue;
                                     if (V2000.y < ea->y)
                                         gap8 = (V2000.x + (ea->y - V2000.y) * ((V1984.x - V2000.x) / (V1984.y - V2000.y))) - ea->x;
                                     else
@@ -1607,9 +1606,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                                         }
                                     }
                                 }
-                            j_next:
-                                k = k + 1;
-                            } while (k < o->m4->n);
+                            }
                         }
                     }
             }
