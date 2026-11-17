@@ -1722,6 +1722,10 @@ CarPhysWork D_245430;
 
 /* @implements 0x0af2cc us __static_initialization_and_destruction_0
    WHAT IT DOES: At startup, builds the global physics record D_245430 (f_0a6f88); at shutdown, tears it down (f_0a6fac). */
+/* @implements 0x0af340 us _GLOBAL__I
+   WHAT IT DOES: Runs the start up half of the above (previously drafted by hand in AngleWrap.c). */
+/* @implements 0x0af360 us _GLOBAL__D
+   WHAT IT DOES: Runs the exit half of the above. */
 
 
 /* @draft 0x0a74cc us f_0a74cc

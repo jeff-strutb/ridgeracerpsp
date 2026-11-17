@@ -1,4 +1,5 @@
-/* Angle and period wrapping helpers (retail 0x0af340 to 0x0af678). The periods are
+/* Angle and period wrapping helpers (retail 0x0af380 to 0x0af678;
+   0x0af340/0x0af360 are CarPhysics.cpp's _GLOBAL__I/_D). The periods are
    globals set at start up elsewhere: a full turn and a half turn in radians, and integer
    periods with their halves. */
 
@@ -7,22 +8,6 @@ extern float D_2456b4; /* half turn (pi) */
 extern int D_2456b8;   /* integer period */
 extern int D_2456bc;   /* half of the integer period */
 extern int D_2456c0;   /* a second integer period */
-
-void f_0af2cc(int a, int b); /* car physics: event dispatch on (a, b) */
-
-/* @implements 0x0af340 us f_0af340
-   WHAT IT DOES: Calls the car physics handler f_0af2cc with 1 and the 0xffff "none" key. */
-void f_0af340(void)
-{
-    f_0af2cc(1, 0xffff);
-}
-
-/* @implements 0x0af360 us f_0af360
-   WHAT IT DOES: Calls the car physics handler f_0af2cc with 0 and the 0xffff "none" key. */
-void f_0af360(void)
-{
-    f_0af2cc(0, 0xffff);
-}
 
 /* @implements 0x0af380 us f_0af380
    WHAT IT DOES: Returns *a - *b wrapped into the half-open range around zero by adding or
