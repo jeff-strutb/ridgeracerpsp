@@ -4,6 +4,11 @@
    method emitted with its vtable. */
 
 namespace CamCtrl {
+union Angle;
+}
+extern "C" void f_099b98(CamCtrl::Angle *);
+
+namespace CamCtrl {
 
 struct CamParam {
     int v[6];
@@ -26,20 +31,46 @@ struct V3 {
     float x, y, z;
 };
 
+struct Vec4 {
+    float x, y, z, w;
+};
+
+/* An angle, passed by value in an integer register. */
+union Angle {
+    float f;
+    int i;
+};
+
 /* A car as the camera reads it. */
 struct SCar {
     char p0[2144];
     float m2144;  /* distance along the course */
+    char p2148[64];
+    int m2212;    /* the car's setting */
 };
 
-/* A scenery point (152 bytes). */
+/* A scenery point (152 bytes): the camera moves from pos to pos1 and its target from at to
+   at1 over a timed move (start, then accel, cruise and decel frames), with the lens going
+   from fov to fov1. */
 struct SPoint {
     V3 pos;
-    char p12[12];
+    V3 pos1;
     V3 at;
-    char p36[36];
+    V3 at1;
+    float ang[3];  /* the fixed turn */
+    V3 base;       /* the kept eye, unless zero */
     float fov;
-    char p76[44];
+    float fov1;
+    float m80;     /* the sways' time scale */
+    float m84;     /* sway amplitudes */
+    float m88;
+    float m92;
+    float m96;     /* the view's distance, unless zero */
+    int start;
+    int accel;
+    int cruise;
+    int decel;
+    char p116[4];
     float m120;
     char p124[28];
 };
@@ -56,21 +87,29 @@ struct SParam {
 
 /* The view the camera drives. */
 struct SView {
-    V3 pos;
-    char p12[468];
+    union {
+        V3 pos;
+        Vec4 eye;   /* the same words copied whole */
+    };
+    char p16[464];
     float m480;   /* lens angle */
     char p484[4];
     float m488;   /* far distance */
     char p492[4];
     float m496;   /* lens scale */
-    char p500[108];
+    char p500[72];
+    int m572;
+    char p576[32];
     V3 m608;      /* the point looked at */
     char p620[40];
     int m660;
     int m664;
     int m668;
     int m672;
-    char p676[36];
+    char p676[12];
+    Vec4 m688;    /* the eye, kept */
+    float m704;
+    float m708;
     float m712;
     char p716[20];
     int m736;
@@ -80,6 +119,7 @@ struct SView {
 struct CourseAreas {
     int f_0e2690(int pos);
     int f_0e2448(int a, int b, float x, float z);
+    void f_0e2f9c(int area, int *out, float *at, float x, float z);
     int m0;
 };
 struct MapMgr {
@@ -92,8 +132,76 @@ struct MapMgr {
 struct CamSway {
     void f_0f3f30();
     void f_0f411c(float t);
-    char m0[204];
+    char m0[196];
+    float m196;   /* the sway */
+    float m200;
 };
+
+/* A 3x4 matrix. */
+struct M34 {
+    float m[12];
+};
+
+/* An angle wrapped into range. */
+struct Rad {
+    Angle a;
+    Rad(float f)
+    {
+        a.f = f;
+        f_099b98(&a);
+    }
+};
+
+/* Rotation angles and their axis order. */
+struct Rot {
+    Rad r[3];
+    int order;
+};
+
+}
+
+extern "C" {
+CamCtrl::Rot f_0825dc(CamCtrl::Vec4 v);
+void f_09f92c(CamCtrl::M34 *m, const CamCtrl::Rot &e);
+CamCtrl::M34 *f_0a6aec(CamCtrl::M34 *d, const CamCtrl::M34 *a, const CamCtrl::M34 *b);
+void f_0a4160(CamCtrl::Vec4 *o, const CamCtrl::M34 *m, int order);
+}
+
+/* The time scale, pi and the sway's least amplitude. */
+extern float D_1d5d98;
+extern float D_1d5d90;
+extern float D_1d5db4;
+
+namespace CamCtrl {
+
+/* The rotation as a matrix. */
+inline M34 FromRot(const Rot &e)
+{
+    M34 m;
+    f_09f92c(&m, e);
+    return m;
+}
+
+/* The product of two matrices. */
+inline M34 Mul(const M34 &a, const M34 &b)
+{
+    M34 r;
+    f_0a6aec(&r, &a, &b);
+    return r;
+}
+
+/* Puts the eye on a view. */
+inline void SetEye(SView *v, const Vec4 &eye)
+{
+    v->pos.x = eye.x;
+    v->pos.y = eye.y;
+    v->pos.z = eye.z;
+}
+
+inline float Lerp(float a, float b, float t)
+{
+    return (b - a) * t + a;
+}
 
 }
 
@@ -191,6 +299,103 @@ void CCamScenery::f_07f5e0(int *arg)
         o->m660 = -1;
     t->m736 = 0;
     t->m712 = cur->m120;
+}
+
+/* @draft 0x0f4c7c us _ZN7CamCtrl11CCamScenery8f_07f5e8Ev
+   WHAT IT DOES: Steps the camera by 5 frames along the point's timed move: the share of the
+   move done (eased in over the accel frames, linear while cruising, eased out over the decel
+   frames) places the eye between the point's two positions, its target between the two
+   targets and the lens between the two angles. The view is aimed along eye to target, swayed
+   by the two sways (stronger while moving) and turned by the point's fixed angles, the eye is
+   kept (or the point's base eye), the view's distance is the car's (or the point's), and the
+   course area under the eye is updated.
+   Remaining difference: retail keeps the not-started case as the fall-through and moves the
+   ramp's four arms after the epilogue; here ce2 (find_if_case_1) hoists the not-started
+   arm's zero into the test block and inverts the branch, so the ramp falls through and every
+   later word is displaced. The frame is 16 bytes larger, and retail reloads the eye's y and z
+   from the stack after storing the view's x (the eye local may alias the view there); the
+   call sequence, the matrix products and their copy loops, and the tail match. */
+void CCamScenery::f_07f5e8()
+{
+    float k = 0.0f;
+    float f;
+    m444 += 5;
+    SPoint *e = cur;
+    float total = (float)(e->accel + e->decel) * 0.5f + (float)e->cruise;
+    if (m444 <= e->start) {
+        f = 0.0f;
+    } else if (m444 <= e->start + e->accel) {
+        k = (float)(m444 - e->start) / (float)e->accel;
+        f = k * k * 0.5f * (float)e->accel / total;
+    } else if (m444 <= e->start + e->accel + e->cruise) {
+        f = (float)(m444 - e->start - e->accel) / (float)e->cruise;
+        k = 1.0f;
+        f = ((float)e->accel * 0.5f + f * (float)e->cruise) / total;
+    } else if (m444 <= e->start + e->accel + e->cruise + e->decel) {
+        float u = (float)(m444 - e->start - e->accel - e->cruise) / (float)e->decel;
+        k = 1.0f - u;
+        f = ((float)e->accel * 0.5f + (float)e->cruise +
+             (float)e->decel * 0.5f * (1.0f - k * k)) / total;
+    } else {
+        f = 1.0f;
+    }
+    float *sw = &sway2.m196;
+    SView *v = View();
+    float amp = D_1d5db4 + (1.0f - D_1d5db4) * k;
+    v->m480 = Lerp(e->fov, e->fov1, f) * 0.5f * 0.5f;
+    v->m496 = 1.0f / f_0cd3cc(v->m480);
+    SPoint *c = cur;
+    SView *u = View();
+    Vec4 p;
+    p.x = Lerp(c->pos.x, c->pos1.x, f);
+    p.y = Lerp(c->pos.y, c->pos1.y, f);
+    p.z = Lerp(c->pos.z, c->pos1.z, f);
+    SetEye(u, p);
+    Vec4 d;
+    d.x = Lerp(c->at.x, c->at1.x, f);
+    d.y = Lerp(c->at.y, c->at1.y, f);
+    d.z = Lerp(c->at.z, c->at1.z, f);
+    d.x -= p.x;
+    d.y -= p.y;
+    d.z -= p.z;
+    Rot r = f_0825dc(d);
+    M34 m = FromRot(r);
+    sway2.f_0f411c(cur->m80 * D_1d5d98);
+    r.r[0] = Rad(amp * cur->m88 * sway2.m196 * 16.0f * D_1d5d90 * 3.0517578125e-05f);
+    r.r[1] = Rad(amp * cur->m84 * sw[1] * 16.0f * D_1d5d90 * 3.0517578125e-05f);
+    sway.f_0f411c(cur->m80 * D_1d5d98);
+    r.r[2] = Rad(amp * cur->m92 * sway.m196 * 16.0f * D_1d5d90 * 3.0517578125e-05f);
+    m = Mul(m, FromRot(r));
+    r.r[0] = Rad(cur->ang[0]);
+    r.r[1] = Rad(cur->ang[1]);
+    r.r[2] = Rad(cur->ang[2]);
+    m = Mul(m, FromRot(r));
+    Vec4 out;
+    SView *w = View();
+    f_0a4160(&out, &m, 4);
+    SPoint *g = cur;
+    w->m608.x = out.x;
+    w->m608.y = out.y;
+    w->m608.z = out.z;
+    SView *t = View();
+    if (g->base.x == 0.0f) {
+        t->m688 = t->eye;
+    } else {
+        t->m688.x = g->base.x;
+        t->m688.y = g->base.y;
+        t->m688.z = g->base.z;
+    }
+    SCar *car = (SCar *)param.v[2];
+    if (g->m96 == 0.0f)
+        t->m704 = car->m2144;
+    else
+        t->m704 = g->m96;
+    t->m572 = car->m2212 + 1;
+    t->m708 = t->m480 + t->m480;
+    {
+        int area[2];
+        D_23c820.Areas()->f_0e2f9c((int)m448, area, &m448, p.x, p.z);
+    }
 }
 
 /* @implements 0x0f525c us _ZN7CamCtrl11CCamScenery8f_07f5f8Ev

@@ -312,17 +312,16 @@ extern "C" void f_0fdee0(void *car, void *bits)
     char *ph = (char *)car + 5792;
     char *d = (char *)car + 7092;
     char *s2 = (char *)car + 7996;
-    signed char k = *(signed char *)bits;
-    float a = (float)k;
+    float a = (float)*(signed char *)bits;
     if (a < 0.0f)
         a = -a;
     FR(s2, 20) = FR(s2, 12) * a / 127.0f;
     FR(s2, 16) = FR(s2, 8) * a / 127.0f;
-    if (k == 0) {
+    if (*(signed char *)bits == 0) {
         FR(ph, 1108) = FR(ph, 1108) * 0.2f;
     } else {
         float v;
-        if (k < 0) {
+        if (*(signed char *)bits < 0) {
             v = FR(ph, 1108) + FR(s2, 32);
             FR(ph, 1108) = v;
             if (!(v < FR(s2, 16)))
@@ -338,11 +337,9 @@ extern "C" void f_0fdee0(void *car, void *bits)
     if (FR(s2, 16) == 0.0f) {
         FR(s2, 44) = 0.0f;
     } else {
-        float q = FR(ph, 1108) / FR(s2, 16);
-        float aq = q;
-        if (q < 0.0f)
-            aq = -q;
-        FR(s2, 44) = aq < 1.0f ? aq : 1.0f;
+        FR(s2, 44) = FR(ph, 1108) / FR(s2, 16);
+        FR(s2, 44) = FR(s2, 44) < 0.0f ? -FR(s2, 44) : FR(s2, 44);
+        FR(s2, 44) = FR(s2, 44) < 1.0f ? FR(s2, 44) : 1.0f;
     }
     if (WR(d, 4) == 0)
         f_0fd6f8(car);
@@ -370,12 +367,10 @@ extern "C" float f_0fe064(void *car, int k)
     short h = HR(ph, 468);
     float t = FR(car, 2144) + (float)(h != 0 ? -k : k);
     float r = f_0e26dc(g, t);
-    float o0, o1, o2;
-    f_0e2d10(g, &o0, &o1, &o2, FR(car, 2148), r);
     Vec4Out v;
-    v.x = o0;
-    v.y = -o1;
-    v.z = -o2;
+    f_0e2d10(g, &v.x, &v.y, &v.z, FR(car, 2148), r);
+    v.z = -v.z;
+    v.y = -v.y;
     v.w = 1.0f;
     f_0a5e1c(&v, 0.001f);
     Vec4Out w = v;
@@ -416,11 +411,9 @@ extern "C" void f_0fe674(void *car)
         float f20 = 0.0f;
         if (WR(s, 16) == 0) {
             float f1 = f3 - f0;
-            if (0.0f <= f1 && f1 <= 1.0f) {
+            if (0.0f <= f1 && f1 <= 2000.0f) {
                 f20 = f1 / 1000.0f;
-                float f2 = 1.0f;
-                if (f20 < 1.0f)
-                    f2 = f20;
+                float f2 = f20 < 1.0f ? f20 : 1.0f;
                 f2 = f2 * 0.5f;
                 f20 = f2 + 0.5f;
                 f1 = FR(s, 80) * 0.3199999928f * f20;
@@ -439,7 +432,7 @@ extern "C" void f_0fe674(void *car)
         if (f20 <= 0.0f) {
             WR(car, 1804) = 0;
         } else {
-            WR(car, 1804) = (1.0f <= f20) ? 1 : 2;
+            WR(car, 1804) = (1.0f <= f20) ? 2 : 1;
         }
     }
     if (0.0f < FR(s, 104)) {
@@ -466,7 +459,11 @@ extern "C" void f_0fe674(void *car)
    flag at +1020 is set, the sub-block's force (+128) is formed from the wheel record at +176,
    the speed at +1096 (clamped to 0..1) and the timer, and the car's value at +856 is advanced.
    The length of the vector at +224 sets the lateral grip and the fade of the car's values at
-   +10096, +1728, +1732 and +1736/+1740, which depend on the timer at +124 being zero. */
+   +10096, +1728, +1732 and +1736/+1740, which depend on the timer at +124 being zero.
+   Remaining difference: transcribed from retail; up to the length the code matches. Retail
+   keeps sqrt's result in f0 and copies it to f2 (here f1), so the speed curve's FP
+   registers differ from there on (f2/f5 swapped), and the 12-byte shorter body places the
+   clamp of the slip fade out of line differently. */
 extern "C" float sqrtf(float);
 
 extern "C" void f_0fe2a8(void *car, void *bp)
@@ -478,15 +475,15 @@ extern "C" void f_0fe2a8(void *car, void *bp)
     float f2 = (float)bits->b11 / 7.0f;
     FR(s, 120) = f2;
     float f20;
-    if (bits->b11 == 0) {
-        FR(s, 124) = 0.0f;
-        f20 = FR(s, 124);
-    } else {
+    if (bits->b11 != 0) {
         float sum = FR(s, 124) + 0.0833333358f;
         FR(s, 124) = sum;
         float f1 = sum < f2 ? sum : f2;
         FR(s, 124) = f1;
         f20 = f1 / FR(s, 120);
+    } else {
+        WR(s, 124) = 0;
+        f20 = FR(s, 124);
     }
     if (WR(ph, 1020) != 0) {
         float x = FR(ph, 1096);
@@ -500,56 +497,53 @@ extern "C" void f_0fe2a8(void *car, void *bp)
             FR(s, 128) = -v;
         FR(ph, 856) = FR(ph, 856) + FR(s, 128);
     }
-    float sq = FR(ph, 224) * FR(ph, 224) + FR(ph, 228) * FR(ph, 228) + FR(ph, 232) * FR(ph, 232);
-    float len = __builtin_sqrtf(sq);
-    if (len != len)
-        len = sqrtf(sq);
-    float g2;
-    if (!(len < 2.7777779102f)) {
-        float g = len - 1.6666679382f;
-        if (55.555599212f < g)
+    float *w = (float *)(ph + 224);
+    float len = sqrtf(w[0] * w[0] + w[1] * w[1] + w[2] * w[2]);
+    float g;
+    if (len < 2.77778006f) {
+        g = 0.0f;
+    } else {
+        g = len - 1.66666794f;
+        if (55.5555992f < g)
             g = 1.0f;
         else
             g = g * 0.0240000002f;
-        g2 = g;
-    } else {
-        g2 = 0.0f;
     }
-    float f6 = g2 * g2;
+    float g2 = g * g;
     if (0.0f < f20)
-        FR(car, 10096) = FR(car, 10096) + (f20 * 5.0f) * g2;
-    float f3 = FR(car, 10096);
-    if (!(f3 < 20.0f)) {
-        f3 = f3 - 20.0f;
-        if (80.0f < f3)
-            f3 = 1.0f;
+        FR(car, 10096) = FR(car, 10096) + f20 * 5.0f * g;
+    float x = FR(car, 10096);
+    float h;
+    if (x < 20.0f) {
+        h = 0.0f;
+    } else {
+        h = x - 20.0f;
+        if (80.0f < h)
+            h = 1.0f;
         else
-            f3 = f3 * 0.0125000002f;
+            h = h * 0.0125000002f;
     }
-    float f4 = f3;
-    float z = 0.0f;
-    float t0 = z * g2;
-    float t1 = (z * 1.5f) * f6;
-    float t2 = (z + z) + t0;
-    float t3 = t2 + t1;
-    if (30.0f < f4)
-        t3 = t3 + 0.2f;
-    float d = f4 - t3;
+    float t = h * 2.0f + h * g + h * 1.5f * g2;
+    if (30.0f < x)
+        t = t + 0.2f;
+    float d = x - t;
     FR(car, 10096) = d;
     float q = (d - 50.0f) * 0.02f;
-    float qc = q < 0.0f ? 0.0f : q;
-    float h = 1.0f < qc ? 1.0f : qc;
-    FR(car, 1728) = h * 0.8999999762f;
-    FR(car, 1732) = h * 0.3499999940f;
-    if (FR(s, 124) == q) {
+    q = q < 0.0f ? 0.0f : q;
+    q = 1.0f < q ? 1.0f : q;
+    FR(car, 1728) = q * 0.8999999762f;
+    FR(car, 1732) = q * 0.3499999940f;
+    if (FR(s, 124) == 0.0f) {
         float a = FR(car, 1736);
         float b = a * 0.1299999952f + 0.0599999987f;
-        FR(car, 1740) = q;
-        float na = a - b;
-        FR(car, 1736) = 0.0f < na ? na : 0.0f;
+        FR(car, 1740) = 0.0f;
+        a = a - b;
+        FR(car, 1736) = a;
+        FR(car, 1736) = 0.0f < a ? a : 0.0f;
     } else {
-        float b = FR(car, 1736) + 0.2099999934f;
+        float a = FR(car, 1736) + 0.2099999934f;
         FR(car, 1740) = 1.0f;
-        FR(car, 1736) = b < 1.0f ? b : 1.0f;
+        FR(car, 1736) = a;
+        FR(car, 1736) = a < 1.0f ? a : 1.0f;
     }
 }
