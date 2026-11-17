@@ -287,9 +287,7 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 
 ## Open residue (not understood; do not guess)
 
-- **f_0922a0.** Retail returns through `v1` + `move v0,v1` and computes `2 - (x==0)` with `sltiu`/`li`/`subu`.
-  - Holding the comparison in a variable gives the arithmetic, but with the result in `v0`.
-  - Under nocmov, the inline form folds to `(x!=0)+1`.
+- **f_0922a0.** Solved 2026-11-16: see the symptom table (ternary into a result variable).
 - **f_0c644c.** Retail if-converts a `max` but keeps the branch for the upper clamp `if (i>3) i=3`. Eight spellings were tried under **stock** 1.3.1. Re-test under nocmov.
 - **f_14df20** (C++ refcount dispose in an EH region). With `-fexceptions` plus a cleanup, 8 of 28 words still differ, all in the `blez` delay-slot fill. Re-test as `.cpp` under the current scorer.
 - **f_07a838** (C++ constructor with a landing pad). Not yet transcribed as `.cpp`.
