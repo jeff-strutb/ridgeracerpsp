@@ -40,23 +40,32 @@ int f_093bf0(void *s, int i, int cls);
 int f_093c18(void *s, int i, int cls);
 int f_093ca0(void *s, int i);
 int f_093cb4(void *s, int i);
+int f_093c78(void *s, int i);
+int f_093c8c(void *s, int i);
 
 struct CCar {
     char pad0[76];
     int m76;
-    char pad80[128];
+    char pad80[112];
+    float m192;
+    char pad196[12];
     int rot[4];
     char pad224[1568];
     float m1792;
-    char pad1796[8];
+    int m1796;
+    int m1800;
     int m1804;
     char pad1808[28];
     float m1836[3];
     char pad1848[40];
     int m1888;
-    char pad1892[60];
+    char pad1892[8];
+    float m1900;
+    char pad1904[48];
     int m1952;
-    char pad1956[188];
+    char pad1956[8];
+    float m1964;
+    char pad1968[176];
     float m2144;
     char pad2148[64];
     int m2212;
@@ -229,6 +238,35 @@ int CDjSection::f_08fef4()
     return m12;
 }
 
+/* @implements 0x08ff5c us f_08ff5c
+   WHAT IT DOES: The section split check, in race mode 1 once the player is on a section: runs
+   the cornering judge and the drift count; when the judge says 2 and the player did not drift,
+   compares the split of the section in turn against its reference and returns 3, 1, 2 or 4 by
+   the section's two flags (0 when the split was not beaten), then moves on to the next section
+   in turn. */
+int CDjSection::f_08ff5c()
+{
+    int r = 0;
+    CCar *p = D_2407fc->player;
+    if (D_2407fc->m56 == 1 && p->m2212 >= 0) {
+        int a = f_08f988();
+        int b = f_08fef4();
+        if (a == 2) {
+            if (b == 0 && m20[p->m2212][m4].m20 - m20[p->m2212][m4].m16 < m20[p->m2212][m4].m8) {
+                if (m20[p->m2212][m4].m12 && m20[p->m2212][m4].m13)
+                    r = 3;
+                else if (m20[p->m2212][m4].m12)
+                    r = 1;
+                else
+                    r = m20[p->m2212][m4].m13 ? 2 : 4;
+            }
+            if (++m4 == m16)
+                m4 = 0;
+        }
+    }
+    return r;
+}
+
 static inline CCar *Car(int i)
 {
     return D_2407fc->cars[i];
@@ -283,6 +321,9 @@ public:
     int f_091a4c();
     void f_091258();
     void f_091578();
+    int f_091bf0();
+    int f_091d9c();
+    int f_0922a0();
 
     CDjSection *section;
     int *count;
@@ -722,6 +763,50 @@ void CDjDetect::f_090aa4()
     }
 }
 
+/* @implements 0x090ef0 us f_090ef0
+   WHAT IT DOES: The per-car checks: the boost gauges (events 25, and 26 outside state 2), the
+   player's full gauges in mode 1 (27 to 29), the drift against the nearest rival (38, 37, 40,
+   39), the boost level (41, 42), the spin (45) and the jumps (46, 47). */
+void CDjDetect::f_090ef0()
+{
+    int r = f_091e9c();
+    if (r == 1)
+        f_0902bc(25);
+    if (!f_09066c() && r == 2)
+        f_0902bc(26);
+    r = f_092080();
+    if (f_0906f8()) {
+        if (r == 1)
+            f_0902bc(27);
+        if (r == 2)
+            f_0902bc(28);
+        if (r == 3)
+            f_0902bc(29);
+    }
+    r = f_091bf0();
+    if (r == -2)
+        f_0902bc(38);
+    if (r == -1)
+        f_0902bc(37);
+    if (r == 2)
+        f_0902bc(40);
+    if (r == 1)
+        f_0902bc(39);
+    r = f_091d9c();
+    if (r == 1)
+        f_0902bc(41);
+    if (r == 2)
+        f_0902bc(42);
+    r = f_09211c();
+    if (r == 1)
+        f_0902bc(45);
+    r = f_0922a0();
+    if (r == 1)
+        f_0902bc(46);
+    if (r == 2)
+        f_0902bc(47);
+}
+
 /* @implements 0x0910f4 us f_0910f4
    WHAT IT DOES: The rival checks of mode 1: outside state 3 the car behind (events 30, 31),
    then the overtakes (33 passed, 32 passed by), and outside state 3 the car ahead (36, 35)
@@ -837,6 +922,180 @@ int CDjDetect::f_09196c()
     return 1;
 }
 
+/* @draft 0x091714 us f_091714
+   WHAT IT DOES: Overtake check. Measures the gaps to the cars ahead and behind (500 when there
+   is none) and forgets a pending overtake once both are beyond 15. When the player's place
+   changed, notes an overtake made (1) or suffered (-1), or cancels it if the place went back.
+   Otherwise counts the frames of a pending overtake: after 48 it is dropped, and once the gap
+   (behind for a pass made, ahead for one suffered) exceeds 10 it returns 1 or -1; else 0.
+   Remaining difference: the result variable is zeroed at the top and lives in a2 (the race
+   pointer then takes a1); retail sets the return value in a0 on each path after the pointer's
+   last use, so the zero stores belong to the individual exits, not one initialised local. */
+int CDjDetect::f_091714()
+{
+    float ahead = 500.0f;
+    float lim = 10.0f;
+    if (f_0903e4()) {
+        float d = f_0903e4()->m2144;
+        ahead = d - f_0903c4()->m2144;
+        if (ahead < 0)
+            ahead += f_090728();
+    }
+    float behind;
+    if (f_090474()) {
+        float d = f_0903c4()->m2144;
+        behind = d - f_090474()->m2144;
+        if (behind < 0)
+            behind += f_090728();
+    } else
+        behind = 500.0f;
+    if (ahead > lim + 5.0f && behind > lim + 5.0f) {
+        m368 = 0;
+        m372 = 0;
+    }
+    int r = 0;
+    int wait = 48;
+    if (m36 != D_2407fc->m112) {
+        m372 = 0;
+        if (m368 == 0) {
+            if (D_2407fc->m112 < m36)
+                m368 = 1;
+            else if (D_2407fc->m112 > m36)
+                m368 = -1;
+        } else if (m368 == 1) {
+            if (D_2407fc->m112 < m36)
+                m368 = 1;
+            else if (D_2407fc->m112 > m36)
+                m368 = 0;
+        } else if (m368 == -1) {
+            if (D_2407fc->m112 < m36)
+                m368 = 0;
+            else if (D_2407fc->m112 > m36)
+                m368 = -1;
+        }
+    } else if (m368 == 1) {
+        if (++m372 > wait) {
+            m372 = 0;
+            m368 = 0;
+        } else if (behind > lim) {
+            r = 1;
+            m372 = 0;
+            m368 = 0;
+        }
+    } else if (m368 == -1) {
+        if (++m372 > wait) {
+            m372 = 0;
+            m368 = 0;
+        } else if (ahead > lim) {
+            r = -1;
+            m372 = 0;
+            m368 = 0;
+        }
+    }
+    return r;
+}
+
+/* @implements 0x091a4c us f_091a4c
+   WHAT IT DOES: Battle check, once per lap: forgets records older than 3600 frames, records
+   the cars ahead and behind in the first free of three slots, and when all three slots are
+   full returns 1 if one car of the first record is also in the second and the third (the
+   player has been fighting the same car for three laps), clearing the newest record. */
+int CDjDetect::f_091a4c()
+{
+    int r = 0;
+    if (m36 != D_2407fc->m112) {
+        for (int i = 0; i < 3; i++)
+            if (m16 - m328[i].a > 3600) {
+                m328[i].a = 0;
+                m328[i].b = -1;
+                m328[i].c = -1;
+            }
+        for (int i = 0; i < 3; i++)
+            if (m328[i].a == 0) {
+                m328[i].a = m16;
+                m328[i].b = (int)f_0903e4();
+                m328[i].c = (int)f_090474();
+                break;
+            }
+        if (m328[0].a && m328[1].a && m328[2].a) {
+            if (m328[0].b == m328[1].b || m328[0].b == m328[1].c) {
+                if (m328[0].b == m328[2].b || m328[0].b == m328[2].c)
+                    r = 1;
+            } else if (m328[0].c == m328[1].b || m328[0].c == m328[1].c) {
+                if (m328[0].c == m328[2].b || m328[0].c == m328[2].c)
+                    r = 1;
+            }
+            int k = 0;
+            for (int i = 0; i < 3; i++)
+                if (m328[k].a < m328[i].a)
+                    k = i;
+            m328[k].a = 0;
+            m328[k].b = -1;
+            m328[k].c = -1;
+        }
+    }
+    return r;
+}
+
+/* @implements 0x091bf0 us f_091bf0
+   WHAT IT DOES: Drift chance against the nearest rival: while the player drifts at an angle of
+   at least 1.5, returns on 20 of every 100 frames below 3, and on every frame from 3 up, a
+   value for the drift: -1 or -2 when the player is behind the rival, 1 or 2 when level or
+   ahead; otherwise 0. */
+int CDjDetect::f_091bf0()
+{
+    float lo = 1.5f;
+    float hi = 3.0f;
+    int n = 100;
+    if (!f_0903c4()->m1952)
+        return 0;
+    CCar *c = f_090530();
+    if (!c)
+        return 0;
+    float d = c->m192;
+    CCar *p = f_0903c4();
+    if (p->m192 < d) {
+        if (p->m1964 < lo)
+            return 0;
+        if (p->m1964 < hi) {
+            if (m16 % 100 < 20)
+                return -1;
+            return 0;
+        }
+        if (m16 % 100 < n)
+            return -2;
+        return 0;
+    }
+    if (p->m1964 < lo)
+        return 0;
+    if (p->m1964 < hi)
+        return m16 % 100 < 20;
+    if (m16 % 100 < n)
+        return 2;
+    return 0;
+}
+
+/* @draft 0x091d9c us f_091d9c
+   WHAT IT DOES: Boost chance: while the player boosts with a level of at least 1.5, returns 1
+   on 20 of every 100 frames below level 3, and 2 from level 3 up; otherwise 0. The 100 held
+   in a local is what cse substitutes for the remainder's multiplier (retail's li s1,100).
+   Remaining difference: the result lives in a1, not v0: sched1 hoists the level-1.5 return-0
+   set above the constant's lui, which local-alloc's update_equiv_regs then puts in v0. */
+int CDjDetect::f_091d9c()
+{
+    int n = 100;
+    if (!f_0903c4()->m1888)
+        return 0;
+    float v = f_0903c4()->m1900;
+    if (v < 1.5f)
+        return 0;
+    if (v < 3.0f)
+        return m16 % 100 < 20;
+    if (m16 % 100 < n)
+        return 2;
+    return 0;
+}
+
 /* @implements 0x091e74 us f_091e74
    WHAT IT DOES: Tells whether the race's leader changed since the last call. */
 int CDjDetect::f_091e74()
@@ -941,5 +1200,18 @@ int CDjDetect::f_09211c()
         r = 1;
     }
     m316 = 0;
+    return r;
+}
+
+/* @implements 0x0922a0 us f_0922a0
+   WHAT IT DOES: Jump check: when the player is in the air (state 1) over a jump the DJ talks
+   about, returns 2 for a large jump and 1 for a small one; otherwise 0. */
+int CDjDetect::f_0922a0()
+{
+    int r;
+    if (f_0903c4()->m1796 == 1 && f_093c78(D_242c90.sections, f_0903c4()->m1800))
+        r = f_093c8c(D_242c90.sections, f_0903c4()->m1800) ? 2 : 1;
+    else
+        r = 0;
     return r;
 }
