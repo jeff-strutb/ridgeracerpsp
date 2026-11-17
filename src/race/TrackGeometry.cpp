@@ -894,7 +894,7 @@ struct Flag {
    where retail has base addressing. The k loop reads o->m4->n in its test and in the modulus
    (no local n): gcse replaces the fully redundant in-loop loads with copies of the reaching
    register, which are retail's move a1,v1 / move t0,v1 and the in-loop move a1,t0. Still
-   different here: (the block after the k loop re-forms ep, as retail's addu s1,t2,s1);
+   different here (the block after the k loop re-forms ep, as retail's addu s1,t2,s1):
    after the loop retail computes both V464 differences into $f0/$f1 and copies them to the
    argument registers, where this computes x straight into $f13.
    The second look's xi selection is an == else-if chain (V464.y == 0, then V480.y == 0): the
@@ -902,6 +902,12 @@ struct Flag {
    keeps xi = V464.x inline with the rest of the chain out of line, as retail does.
    Layout aids with no counterpart in the original: the two unused angle locals (retail leaves
    a hole of two slots after the first outline loop) and the packed scratch array tt.
+   Rot's angle temporary: here it is a register local that ADDRESSOF puts on the stack, so its
+   address is set straight into a0 (addiu a0,sp,2120 inside the loop) and loop.c never sees a
+   movable; retail has the address in a pseudo that loop.c hoists (addiu s3,sp,2120 before the
+   outline loop, move a0,s3 inside). Declaring the temporary in the calling block (a macro Rot)
+   changes nothing: 3.3's expand_decl gives every addressable non-BLKmode local the same
+   register + ADDRESSOF treatment. What gives retail the pseudo is not yet known.
    Retail also reads a stale vector in the slide's second box (V1808 is the leftover of the
    last cull iteration); that is kept here as in retail. */
 extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, float *out4,
