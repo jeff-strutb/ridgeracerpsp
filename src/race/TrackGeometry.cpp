@@ -882,6 +882,10 @@ struct Flag {
    placed differently (resolved: it was the seg loop). The seg loop's edge ends ea and eb are
    written at each use (retail recomputes (s2 + 1) % 2 per use). Register choice and scheduling
    still differ throughout.
+   One-cycle diagnosis, count-loop body: retail re-forms ep after the inner loop (addu s1,t2,s1)
+   with base addressing (addiu t2,sp,496); a per-use ep gives offset addressing (496(a0)), so ep
+   is a pointer variable and the re-forming is reload rematerialising it under pressure. Retail
+   also spills hitAny (2284) where this keeps it in s6.
    Layout aids with no counterpart in the original: the two unused angle locals (retail leaves
    a hole of two slots after the first outline loop) and the packed scratch array tt.
    Retail also reads a stale vector in the slide's second box (V1808 is the leftover of the
