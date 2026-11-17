@@ -238,9 +238,9 @@ int f_1115ac(int ch, unsigned int size)
     return 0;
 }
 
-/* @draft 0x111644 us f_111644
+/* @implements 0x111644 us f_111644
    WHAT IT DOES: Stores a halfword into channel ch's m18. */
-int f_111644(int ch, short v)
+int f_111644(int ch, int v)
 {
     int r = 0x8000000a;
     if (!badch(ch)) {
