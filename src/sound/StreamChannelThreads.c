@@ -18,7 +18,7 @@ struct StreamChan {
     int state;
     int count;
     void *buf;
-    int m12;
+    int *m12;
     int m16;
     int m20;
     int m24;
@@ -153,6 +153,19 @@ int sceIoReadAsync(int fd, void *data, int size);
 int sceDisplayWaitVblankStart(void);
 int sceKernelExitThread(int status);
 int iprintf(const char *fmt, ...);
+int sceAtracSetDataAndGetID(void *buf, int size);
+int sceAtracSetLoopNum(int id, int n);
+int sceAtracGetRemainFrame(int id, int *remain);
+int sceAtracDecodeData(int id, int *out, int *samples, int *end, int *remain);
+int sceAtracGetStreamDataInfo(int id, unsigned char **wptr, unsigned int *avail, unsigned int *rpos);
+int sceAtracAddStreamData(int id, unsigned int n);
+int sceAtracReleaseAtracID(int id);
+int sceIoLseek(int fd, long long offset, int whence);
+int sceIoClose(int fd);
+int f_119dc8(int channel, int samples);
+int f_119f80(int channel, int left, int right, void *buf);
+int f_126f1c(const char *s);
+void *memset(void *d, int c, unsigned int n);
 int sceKernelStartThread(int thid, unsigned int arglen, void *argp);
 int sceKernelWaitThreadEnd(int thid, unsigned int *timeout);
 int sceKernelDeleteThread(int thid);
@@ -425,6 +438,112 @@ int f_112b70(int nch, int pos, int n, int dst, int blk)
     return done;
 }
 
+/* @draft 0x112c98 us f_112c98
+   WHAT IT DOES: The ATRAC3 play thread for the channel passed in argp: registers the channel's
+   data with the ATRAC decoder (printing the error code and returning -1 on failure), sets its
+   loop count, opens audio channel ch + 1 and waits for the read thread when asked to. Then it
+   decodes frame after frame into the work buffer, refilling the stream with an async read once
+   fewer than m32 frames remain, outputs every whole 2048-sample block (silent on the first
+   pass of a fade in), and keeps the stream fed, until the stream ends or is stopped. Pads the
+   last block with silence, releases the decoder, closes the file and exits.
+   Remaining difference: one instruction. Where the two start paths join, retail builds the
+   channel's address in a0, stores state 3 through it and copies it to the loop's pointer
+   (move s1,a0); here the address goes straight into s1, which shifts every later word by
+   one. The rest of the function lines up word for word. */
+int f_112c98(int args, void *argp)
+{
+    int remain;
+    int samples;
+    int end;
+    unsigned char *wptr;
+    unsigned int wsize;
+    unsigned int rpos;
+    long long res;
+    int ch = *(int *)argp;
+    int written = 0;
+    int reading = 0;
+    int pos = 0;
+    struct StreamChan *p = &D_291a54[ch];
+    struct StreamChan *c;
+    int r;
+
+    end = 0;
+    p->m16 = r = sceAtracSetDataAndGetID(p->buf, p->m36);
+    if (r != 0) {
+        iprintf("error in sceAtracSetData (error code 0x%X)\n", r);
+        return -1;
+    }
+    sceAtracSetLoopNum(0, p->m60);
+    f_119dc8(ch + 1, 2048);
+    sceAtracGetRemainFrame(p->m16, &remain);
+    p->m32 = remain / 2;
+    p->state = 2;
+    if (p->m48 == 1) {
+        while (p->m48 != 2)
+            sceDisplayWaitVblankStart();
+    }
+    D_291a54[ch].state = 3;
+    c = &D_291a54[ch];
+    do {
+        sceAtracDecodeData(c->m16, c->m12 + pos, &samples, &end, &remain);
+        if (reading == 0 && remain != -1 && remain < c->m32) {
+            sceAtracGetStreamDataInfo(c->m16, &wptr, &wsize, &rpos);
+            if (c->m44 < wsize)
+                wsize = c->m44;
+            if (c->m36 != rpos) {
+                sceIoLseek(c->m20, rpos, 0);
+                c->m36 = rpos;
+            }
+            sceIoReadAsync(c->m20, wptr, wsize);
+            reading = 1;
+        }
+        pos += samples;
+        if (pos - written >= 2048) {
+            int n = (pos - written) & ~63;
+
+            f_119dc8(ch + 1, n);
+            if (D_291a54[ch].m28 == 1) {
+                f_119f80(ch + 1, 0, 0, D_291a54[ch].m12 + written);
+                D_291a54[ch].m28 = 2;
+            } else {
+                f_119f80(ch + 1, D_291a54[ch].m24, D_291a54[ch].m24, D_291a54[ch].m12 + written);
+            }
+            written += n;
+        }
+        if (pos >= 6144) {
+            pos -= written;
+            memcpy(c->m12, c->m12 + written, pos * 4);
+            written = 0;
+        }
+        if ((remain == 0) & (reading > 0)) {
+            sceIoGetAsyncStat(c->m20, 0, &res);
+            f_126f1c("nuSoundAtrac3:file read is too slow !");
+        } else {
+            if (sceIoGetAsyncStat(c->m20, 1, &res) == 0)
+                reading = -1;
+            if (reading >= 0)
+                continue;
+        }
+        sceAtracAddStreamData(c->m16, (unsigned int)res);
+        reading = 0;
+        c->m36 += (int)res;
+    } while (D_291a54[ch].m28 != 2 && end == 0);
+    D_291a54[ch].state = 5;
+    D_291a54[ch].m28 = 0;
+    if (D_291a54[ch].m24 > 0 && pos - written > 0) {
+        int pad = written - pos + 2048;
+
+        memset(D_291a54[ch].m12 + pos, 0, pad * 4);
+        f_119f80(ch + 1, 0, 0, D_291a54[ch].m12 + written);
+    }
+    sceAtracReleaseAtracID(D_291a54[ch].m16);
+    if (D_291a54[ch].m20 != 0)
+        sceIoClose(D_291a54[ch].m20);
+    D_291a54[ch].state = 0;
+    sceKernelExitThread(0);
+    return 0;
+}
+
 /* @implements 0x113050 us f_113050
    WHAT IT DOES: The ATRAC3 read thread for the channel passed in argp: block size 1024 for a
    host0: file, else the channel's buffer size; opens the channel's file (printing its name and
@@ -495,7 +614,7 @@ int f_1131dc(int n0, int n1)
             c->buf = f_125c4c(64, c->count + 2);
         else
             c->buf = 0;
-        c->m12 = (int)f_125c4c(64, 32764);
+        c->m12 = f_125c4c(64, 32764);
     }
     D_291a54[0].thread2 = sceKernelCreateThread("ATRAC3 play thread", f_112c98, 17, 0x10000, 0, 0);
     D_291a54[0].thread = sceKernelCreateThread("ATRAC3 read thread", f_113050, 112, 0x10000, 0, 0);
