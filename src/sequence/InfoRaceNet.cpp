@@ -470,10 +470,12 @@ static inline Name CourseOf(const char *seq)
    counters, the course's sectors and where each ends (no times yet), the course sizes, and
    starts the ranking checker on the cars (the player's place, the standing table and its
    shot); finally the ranking's car of each place.
-   Remaining difference: the control flow, the calls and the stores follow retail, but the
-   frame is 80 bytes against 112: retail keeps four stack temporaries (the sequence row at
-   0, the course row found at 32 and copied to 16, the car row copied to 48, the ranking's
-   laps at 32), here the course and car rows share 0 and 16. Retail also addresses the size
+   Cycle 2026-11-16: the sequence, course and car rows held in named locals (seq, course,
+   row; the lever from CInfoTimeAttack::f_0eefd8) give retail's 112-byte frame (was 80) --
+   kept, 323 -> 311 words, 1520 -> 1516 vs 1556 bytes.
+   Remaining difference: the control flow, the calls and the stores follow retail; the
+   stack slots of the rows may still differ as on 0x0eefd8 (retail: course found at 32 and
+   copied to 16, car row at 48, laps at 32). Retail also addresses the size
    table D_1a211c from a base register at every read (lui/addiu then lw 4 or 8), as if the
    size index were a variable propagated after expansion; here one address is CSE'd for the
    whole function. Register allocation and store order follow from those. */
@@ -525,8 +527,10 @@ void CInfoRaceNet::f_0f0aa8(InfoSetup *s)
         m80->f_037d6c(0, s->m92);
         m84->f_0386a8();
     }
-    D_2408f0->seq = D_2407d0.Find((const char *)m4[0]);
-    D_2408f0->course = CourseOf((const char *)m4[0]);
+    Name seq = D_2407d0.Find((const char *)m4[0]);
+    D_2408f0->seq = seq;
+    Name course = CourseOf((const char *)m4[0]);
+    D_2408f0->course = course;
     RaceInfo *ri = D_2408f0;
     ri->m16 = m4[2];
     ri->m20 = s->m16;
@@ -548,7 +552,8 @@ void CInfoRaceNet::f_0f0aa8(InfoSetup *s)
     c->m124 = 2;
     car = c;
     ri = D_2408f0;
-    ri->car = Name(c->m92);
+    Name row = Name(c->m92);
+    ri->car = row;
     c->m10116 = m80;
     ri->m112 = ri->m60 - 1;
     ri->m124 = ri->m28;
@@ -603,13 +608,13 @@ void CInfoRaceNet::f_0f0aa8(InfoSetup *s)
    every member is. Returns 1 for the end once its frame has come and the session is
    finished, 2 (3 when the connection is lost) when the session is down, and raises the two
    timed events at +40 and +48.
-   Remaining difference: the two member scans. Retail places the test after a member's
-   "in the session" flag (+18) out of line and falls through to the loop latch; here the test
-   falls through. The flag test is a compare with zero, which GCC's opcode heuristic leaves
-   unpredicted (50%, the .bp dump), so the layout is the RTL's own order, and retail's RTL
-   had the test after the latch. Which loop spelling gives that order is not found. The rest
-   (the car scan, the clock and the end) is retail's apart from register choice that
-   follows. */
+   Cycle 2026-11-16: both member scans written 'if (!m[i].m18) continue;' followed by the
+   test (handbook: a block after 'if (cond) continue;' goes out of line), so the rest of the
+   test sits out of line and the flag test falls through to the latch as in retail: 115 ->
+   12 words, size now 952 as retail.
+   Remaining difference: register choice only: retail loads m96 into a2 (here a0) at the
+   three reloads after the clock, and the State()->m9 == 8 test uses v0/a0/v1 where here it
+   is a1/v1/v0. Not yet diagnosed (next: the lreg/greg allocation of the m96 pseudo). */
 int CInfoRaceNet::f_0f10bc()
 {
     if (m72 == 1)
@@ -652,7 +657,9 @@ int CInfoRaceNet::f_0f10bc()
         NetMember *m = D_241810.Me();
         int ok = 1;
         for (int i = 0; i < 8; i++) {
-            if (m[i].m18 && m[i].m28 == -2 && m[i].m32 == -2) {
+            if (!m[i].m18)
+                continue;
+            if (m[i].m28 == -2 && m[i].m32 == -2) {
                 ok = 0;
                 break;
             }
@@ -663,7 +670,9 @@ int CInfoRaceNet::f_0f10bc()
         if (D_241810.m4 == 0) {
             int all = 1;
             for (int i = 0; i < 8; i++) {
-                if (m[i].m18 && m[i].m10 != 8) {
+                if (!m[i].m18)
+                    continue;
+                if (m[i].m10 != 8) {
                     all = 0;
                     break;
                 }
@@ -772,7 +781,11 @@ void CInfoRaceNet::f_038a78()
    information.
    Remaining difference: the frame (retail 64 bytes, two fewer saved registers) and the
    member scan's addressing (retail steps a member pointer from member 1 with member 0's
-   address precomputed); the clock sampling loop is close. */
+   address precomputed); the clock sampling loop is close.
+   Cycle 2026-11-16: retail rebuilds &D_241810 (lui/addiu) where needed; here it stays in s2
+   and &member-scan bases in s6/s7. Tried dropping the 'net' local (D_241810. directly): 123
+   -> 196 words, 800 bytes, still 80-byte frame with s0-s7 -- reverted; the extra saved
+   registers come from elsewhere (the member scan's precomputed bases, s7 = D_241810+168). */
 int CInfoRaceNet::f_0f178c()
 {
     f_038a80(0);
@@ -900,7 +913,14 @@ int CInfoRaceNet::f_0f1b34()
    Remaining difference: allocation around the checker's shot, as in the normal circuit
    information's result state: retail computes the checker's address late into s0 and loads
    D_2408f0 into the same register in the call's slot; here the address gets its own saved
-   register. The control flow and the stores match. */
+   register. The control flow and the stores match.
+   Cycle 2026-11-16 (diff + sched order): the root is the order of two insns before the
+   f_0ee6b8 call. Retail: a0 = &director, then the D_2408f0 load (dbr puts it in the jal
+   slot), so &director dies before the pointer is born and both share s0. Here the pointer
+   load comes first (expand_assignment expands the LHS before the inlined wrapper's body,
+   whose parameter copy carries the a0 move), so they overlap. Same order on 0x0f1f78 and on
+   the normal circuit's 0x03f5b8. A non-inline direct call is not the answer (a CALL_EXPR
+   rhs is expanded before the LHS, putting the load after the call). No change tried. */
 int CInfoRaceNet::f_0f1bd8()
 {
     NetMember *me = D_241810.Me();
@@ -994,7 +1014,13 @@ int CInfoRaceNet::f_0f1e64()
    WHAT IT DOES: the replay state: records the ranking checker's shot and the car.
    Remaining difference: the saved registers of D_2408f0's high part and of the loaded record
    pointer are swapped (retail s1/s2), and retail loads the pointer in the call's slot (the
-   same residue as the normal circuit information's replay state). */
+   same residue as the normal circuit information's replay state).
+   Cycle 2026-11-16 (lreg): local-alloc orders by priority log2(refs)*refs/span: the record
+   pointer (pseudo 183, 2 refs over 6 insns) outranks D_2408f0's high part (185, 3 refs over
+   22), so it takes s1. Retail's order needs the pointer live over more than ~15 insns, i.e.
+   sched1 loading it earlier or its store later. No source change found that implies that;
+   none tried. (tools/fn.py --rtl misses this section: the bare tag name is matched without
+   the class prefix.) */
 int CInfoRaceNet::f_0f1f78()
 {
     D_2408f0->m220 = director.f_0ee6b8();

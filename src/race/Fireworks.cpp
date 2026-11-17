@@ -283,6 +283,9 @@ void f_0e4a9c(Fireworks *m)
    fadeRate, then infoIndex in the call's delay slot; here useTable goes first (leftmost of the
    chained assignment) and m56 lands in the delay slot. Untried lever: the chain written as
    visible = useTable = 1 (handbook: leftmost element first, the rest right to left).
+   Tried (2026-11-16): visible = useTable = 1 stores visible then useTable back to back (still
+   7 words); separate statements in retail's store order lose the shared 1 that retail loads
+   at entry (li a3,1 first) and cost 39 words.
    WHAT IT DOES: Sets the fireworks up: the spark texture of the event's object, the settings,
    the quad, all sixteen shells ready to burst, the curve tables and the quad again. */
 void f_0e428c(Fireworks *m, Data *data)
