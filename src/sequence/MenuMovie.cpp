@@ -1537,7 +1537,11 @@ void f_0736f0(char *self)
 
 
 /* @draft 0x074240 us f_074240
-   WHAT IT DOES: answers a menu state query by code (10..77) from the parent object at self+12: returns and clears a flag, indexed byte tables, a 1..12 cycling index, fields at +1024, +996, +1044 and +1030 and several equality/non-zero tests; 0 for unknown codes. */
+   WHAT IT DOES: answers a menu state query by code (10..77) from the parent object at self+12: returns and clears a flag, indexed byte tables, a 1..12 cycling index, fields at +1024, +996, +1044 and +1030 and several equality/non-zero tests; 0 for unknown codes.
+   Remaining difference (2026-11-16, diagnosis only, nothing changed): global-alloc gives t
+   (shared by cases 12 and 21-28 through add1) v1 where retail has a0: retail computes the
+   remainder in place in a0 (subu a0,a0,v0) and loads case 21's word into a0; the index
+   arithmetic of case 21 then swaps v0/v1. */
 int f_074240(void *self, int a)
 {
     int r, t, k, off;

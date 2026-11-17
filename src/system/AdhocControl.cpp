@@ -264,7 +264,10 @@ int CAdhocControl::f_088664()
    WHAT IT DOES: Joins the game's group, bringing networking up first when it is down.
    Returns 1 when the connect started, 0x80000021 while busy, or a library error.
    Remaining difference: on a failed connect retail clears the joining flag before copying
-   the error into the result register (this source copies first; two words). */
+   the error into the result register (two words). sched1 decides it: the block's jump to the
+   return label has a true dependence on the result copy (priority 2) and only an anti one on
+   the store (priority 1). Ending the function with the fail path (separate busy returns)
+   removes that jump but bbro then lays the function out 16 bytes longer. */
 int CAdhocControl::f_0886c0()
 {
     int s, st, r, c;

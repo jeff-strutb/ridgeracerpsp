@@ -912,7 +912,11 @@ void *f_002e5c(FileLoader *l)
    WHAT IT DOES: Constructs the unpack queue and the load job, both empty.
    Remaining difference: the seven stores are scheduled in another order (retail: ring tail,
    queue flag, queue head, queue tail, vptr, busy, ring head; here the vptr comes first).
-   Constructor spellings, member init lists and declaration orders were tried. */
+   Constructor spellings, member init lists and declaration orders were tried.
+   2026-11-16: sched1 (interblock) hoists the vtable address HIGH/LO (insns 96/97) above the
+   guard's branch, so the vptr store is ready at t=0 in the store block and goes first; reload
+   then rematerialises the address next to the store. Retail's order is what the store block
+   gives when the vtable address is computed inside it (zero stores fill its two cycles). */
 
 /* @implements 0x002ebc us _GLOBAL__I
    WHAT IT DOES: Runs the constructors of this object file's globals at startup. */

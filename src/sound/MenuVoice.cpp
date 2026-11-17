@@ -78,7 +78,8 @@ void CMenuVoice::f_0929ac()
    language announcement picks its own set); returns the voice handle, or -1 when the event
    has no voice (18).
    Draft: retail loads the bank handle before the voice set for the play call (a load order
-   tie). */
+   tie). 2026-11-16: retail's f_0f67c0 is CSePlayer::f_0f67c0(set, snd, vol) and D_242c5c a
+   CSePlayer *; calling it as a method on that pointer compiles identically (no change). */
 int CMenuVoice::f_0929b4(int ev)
 {
     set = 632;

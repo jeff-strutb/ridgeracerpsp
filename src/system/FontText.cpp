@@ -211,7 +211,11 @@ extern "C" int f_07d574(TextStyle *t, int x0, int y0, int z0, int u0, int v0, in
    3 centres it on x. Returns 0 when the style has no texture table or the string is empty,
    otherwise 1.
    Remaining difference: as in f_07d060, the alignment 3 block builds the 0.5 constant's
-   address half in v1 instead of v0 (local-alloc choice); every other word matches. */
+   address half in v1 instead of v0 (local-alloc choice); every other word matches.
+   (2026-11-16: the cause is sched1. With the mult's latency pending it issues the 0.5 HIGH and
+   load (insns 97, 99) before floatsisf2 (96); update_equiv_regs then moves them after 96, but
+   local-alloc still sees 203 (the product) live across 4 insns, overlapping 207, so 207 gets
+   v1. Retail needs 96 ahead of the constant in sched1's order.) */
 extern "C" int f_07c03c(TextStyle *t, int x, int y, int pitch, int align, const char *s,
                         float r, float g, float b, float a)
 {
@@ -315,7 +319,8 @@ extern "C" int f_07c344(TextStyle *t, int x, int y, int align, const char *s, fl
    no texture table or the string is empty, otherwise 1.
    Remaining difference: in the alignment 3 block the 0.5 constant's address half is built in
    v1 instead of v0 (local-alloc gives it v1 after update_equiv_regs moves the load next to its
-   use); every other word matches. */
+   use); every other word matches. Root cause as in f_07c03c: sched1 places the constant's
+   HIGH and load ahead of floatsisf2 while the mult's latency is pending. */
 extern "C" int f_07d060(TextStyle *t, int x, int y, int pitch, int align, unsigned int n,
                         const char *s, float r, float g, float b, float a)
 {

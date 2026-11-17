@@ -539,7 +539,7 @@ extern const float D_1abfa4, D_1abfa8;
 /* Rotation vector scaled to an axis-angle quaternion: (axis * sin(a/2), cos(a/2)). */
 /* @draft 0x09c0c4 us f_09c0c4
    WHAT IT DOES: Builds an axis-angle quaternion: the axis scaled by sin(angle/2) with w = cos(angle/2).
-   Remaining difference: 11 of 37 words: retail loads the constant after moving the angle into $f20 and multiplies in place; the scheduler here loads the constant first. */
+   Remaining difference: 8 of 37 words: local-alloc ties h to the dying constant (operand 1 of the mult; the angle is a subreg of a, not tieable), so the angle is reloaded into $f0 and mtc1 is scheduled early; retail ties h to the angle ($f20, mtc1 after the $f20 save). `float x = *(float *)&a; h = x * D` (the fix that matched f_09ca50) gives 9 words: x is not tied to h either (x in $f0, constant in $f1). */
 void f_09c0c4(Quat *d, const Vec3 *ax, int a)
 {
     float h = D_1abfa4 * *(float *)&a;
@@ -556,7 +556,7 @@ void f_09c0c4(Quat *d, const Vec3 *ax, int a)
 
 /* @draft 0x09c158 us f_09c158
    WHAT IT DOES: Builds an axis-angle quaternion: the axis scaled by sin(angle/2) with w = cos(angle/2).
-   Remaining difference: 11 of 37 words: retail loads the constant after moving the angle into $f20 and multiplies in place; the scheduler here loads the constant first. */
+   Remaining difference: 8 of 37 words: local-alloc ties h to the dying constant (operand 1 of the mult; the angle is a subreg of a, not tieable), so the angle is reloaded into $f0 and mtc1 is scheduled early; retail ties h to the angle ($f20, mtc1 after the $f20 save). `float x = *(float *)&a; h = x * D` (the fix that matched f_09ca50) gives 9 words: x is not tied to h either (x in $f0, constant in $f1). */
 void f_09c158(Quat *d, const Vec3 *ax, int a)
 {
     float h = D_1abfa8 * *(float *)&a;
@@ -1138,14 +1138,13 @@ extern "C" {
 float f_09ab88(float x);
 float f_099fc4(float a);
 
-/* @draft 0x09ca50 us f_09ca50
+/* @implements 0x09ca50 us f_09ca50
    WHAT IT DOES: Quaternion interpolation from a toward b by a half angle: when a and b differ
    (1 - |a.b| above a small epsilon) o is a weighted sum of a and b whose weights are the
    sines of the wrapped angles (omega - t/2) and t/2 over sin(omega), omega the angle between
    them (b's weight negated when their dot product is negative); otherwise o is a copy of a.
-   Returns o.
-   Remaining difference: register choice for t * 0.5 (kept across the calls in f21): retail
-   moves t itself into f21 and loads 0.5 into f0; here 0.5 lands in f21 and t in f0. */
+   Returns o. t is read into a float local first (local-alloc then ties the half angle to
+   it, not to the 0.5 constant). */
 Quat *f_09ca50(Quat *o, const Quat *a, const Quat *b, Angle t)
 {
     int flip;
@@ -1158,10 +1157,11 @@ Quat *f_09ca50(Quat *o, const Quat *a, const Quat *b, Angle t)
     if (1.0f - cosom > 9.99999975e-06f) {
         float omega = f_09ab88(cosom);
         float sinom = f_099fc4(omega);
-        WAng h(t.a * 0.5f);
+        float ta = t.a;
+        WAng h(ta * 0.5f);
         WAng d(omega - h.a);
         float scale0 = f_099fc4(d.a) / sinom;
-        WAng e(t.a * 0.5f);
+        WAng e(ta * 0.5f);
         float scale1 = f_099fc4(e.a) / sinom;
         if (flip)
             scale1 = -scale1;
@@ -1382,7 +1382,7 @@ struct Ang {
     Ang() : a(0.0f) {}
     Ang(float x) : a(x) { c_wrap(&a); }
 };
-struct AngI { int a; AngI() : a(0) {} AngI(const Ang &o) { a = *(const int *)&o; } };
+union AngI { int a; float f; AngI() : a(0) {} AngI(const Ang &o) { a = *(const int *)&o; } };
 struct Euler {
     AngI e[3];
     float w;
@@ -1401,9 +1401,8 @@ extern const float D_1ac0b8, D_1ac0bc, D_1ac0c0, D_1ac0c4, D_1ac0c8, D_1ac0cc;
 extern const float D_1ac0d0, D_1ac0d4, D_1ac0d8, D_1ac0dc, D_1ac0e0, D_1ac0e4;
 extern const float D_1ac0e8, D_1ac0ec, D_1ac0f0, D_1ac0f4, D_1ac0f8, D_1ac0fc;
 
-/* @draft 0x0a4408 us f_0a4408
-   WHAT IT DOES: Converts a rotation matrix (3x3, rows of three) to a rotation vector in d: if the antisymmetric part of the matrix is above a small threshold the axis is that part scaled to the angle acos((clamped trace - 1) / 2); otherwise it extracts Euler angles (each wrapped by f_099b98, with a gimbal fallback when the cosine of the middle angle is tiny), builds a quaternion with f_09bf24 and converts it with f_09b2a8.
-   Remaining difference: six words differ: retail copies the last Euler angle through v1 and loads the middle-angle operands before the copy. */
+/* @implements 0x0a4408 us f_0a4408
+   WHAT IT DOES: Converts a rotation matrix (3x3, rows of three) to a rotation vector in d: if the antisymmetric part of the matrix is above a small threshold the axis is that part scaled to the angle acos((clamped trace - 1) / 2); otherwise it extracts Euler angles (each wrapped by f_099b98, with a gimbal fallback when the cosine of the middle angle is tiny), builds a quaternion with f_09bf24 and converts it with f_09b2a8. */
 void f_0a4408(Vec3 *d, const float *m)
 {
     d->v[0] = m[5] - m[7];
@@ -1440,9 +1439,8 @@ void f_0a4408(Vec3 *d, const float *m)
     *(Quat4 *)d = r;
 }
 
-/* @draft 0x0a4724 us f_0a4724
-   WHAT IT DOES: Converts a rotation matrix (3x3, rows of three) to a rotation vector in d: if the antisymmetric part of the matrix is above a small threshold the axis is that part scaled to the angle acos((clamped trace - 1) / 2); otherwise it extracts Euler angles (each wrapped by f_099b98, with a gimbal fallback when the cosine of the middle angle is tiny), builds a quaternion with f_09bf24 and converts it with f_09b2a8.
-   Remaining difference: six words differ: retail copies the last Euler angle through v1 and loads the middle-angle operands before the copy. */
+/* @implements 0x0a4724 us f_0a4724
+   WHAT IT DOES: Converts a rotation matrix (3x3, rows of three) to a rotation vector in d: if the antisymmetric part of the matrix is above a small threshold the axis is that part scaled to the angle acos((clamped trace - 1) / 2); otherwise it extracts Euler angles (each wrapped by f_099b98, with a gimbal fallback when the cosine of the middle angle is tiny), builds a quaternion with f_09bf24 and converts it with f_09b2a8. */
 void f_0a4724(Vec3 *d, const float *m)
 {
     d->v[0] = m[5] - m[7];
@@ -1479,9 +1477,8 @@ void f_0a4724(Vec3 *d, const float *m)
     *(Quat4 *)d = r;
 }
 
-/* @draft 0x0a4a40 us f_0a4a40
-   WHAT IT DOES: Converts a rotation matrix (3x4, rows of four) to a rotation vector in d: if the antisymmetric part of the matrix is above a small threshold the axis is that part scaled to the angle acos((clamped trace - 1) / 2); otherwise it extracts Euler angles (each wrapped by f_099b98, with a gimbal fallback when the cosine of the middle angle is tiny), builds a quaternion with f_09bf24 and converts it with f_09b2a8.
-   Remaining difference: six words differ: retail copies the last Euler angle through v1 and loads the middle-angle operands before the copy. */
+/* @implements 0x0a4a40 us f_0a4a40
+   WHAT IT DOES: Converts a rotation matrix (3x4, rows of four) to a rotation vector in d: if the antisymmetric part of the matrix is above a small threshold the axis is that part scaled to the angle acos((clamped trace - 1) / 2); otherwise it extracts Euler angles (each wrapped by f_099b98, with a gimbal fallback when the cosine of the middle angle is tiny), builds a quaternion with f_09bf24 and converts it with f_09b2a8. */
 void f_0a4a40(Vec3 *d, const float *m)
 {
     d->v[0] = m[6] - m[9];
@@ -1518,9 +1515,8 @@ void f_0a4a40(Vec3 *d, const float *m)
     *(Quat4 *)d = r;
 }
 
-/* @draft 0x0a4d5c us f_0a4d5c
-   WHAT IT DOES: Converts a rotation matrix (3x4, rows of four) to a rotation vector in d: if the antisymmetric part of the matrix is above a small threshold the axis is that part scaled to the angle acos((clamped trace - 1) / 2); otherwise it extracts Euler angles (each wrapped by f_099b98, with a gimbal fallback when the cosine of the middle angle is tiny), builds a quaternion with f_09bf24 and converts it with f_09b2a8.
-   Remaining difference: six words differ: retail copies the last Euler angle through v1 and loads the middle-angle operands before the copy. */
+/* @implements 0x0a4d5c us f_0a4d5c
+   WHAT IT DOES: Converts a rotation matrix (3x4, rows of four) to a rotation vector in d: if the antisymmetric part of the matrix is above a small threshold the axis is that part scaled to the angle acos((clamped trace - 1) / 2); otherwise it extracts Euler angles (each wrapped by f_099b98, with a gimbal fallback when the cosine of the middle angle is tiny), builds a quaternion with f_09bf24 and converts it with f_09b2a8. */
 void f_0a4d5c(Vec3 *d, const float *m)
 {
     d->v[0] = m[6] - m[9];
@@ -1640,17 +1636,15 @@ inline EulOutB::EulOutB(const float *m, int order_, const float &eps)
 }
 extern "C" { extern const float D_1ac098; extern const float D_1ac09c; }
 
-/* @draft 0x0a3eb8 us f_0a3eb8
-   WHAT IT DOES: Extracts three Euler angles from a 3x3 rotation matrix for the axis order code (0..23, three signed bytes per order in the table at D_1abf6c plus a parity bit): the middle angle from atan2 of the off-axis element and the sqrt of the sum of squares of two elements, with the gimbal-lock fallback when that is below a threshold; every angle is wrapped by f_099b98, negated first when the order's low bit is set; the rows of the matrix are four floats wide.
-   Remaining difference: 47 of 170 words differ, all after the first branch: retail stores the last angle in the delay slot of the parity test after the two branches join (plain bnez), this source gets bnezl with the first negation load in the slot; moving the last angle into a joined local fixes the shape but changes the register assignment. */
+/* @implements 0x0a3eb8 us f_0a3eb8
+   WHAT IT DOES: Extracts three Euler angles from a 3x3 rotation matrix for the axis order code (0..23, three signed bytes per order in the table at D_1abf6c plus a parity bit): the middle angle from atan2 of the off-axis element and the sqrt of the sum of squares of two elements, with the gimbal-lock fallback when that is below a threshold; every angle is wrapped by f_099b98, negated first when the order's low bit is set; the rows of the matrix are four floats wide. */
 void f_0a3eb8(EulOutB *d, const float *m, int order)
 {
     new (d) EulOutB(m, order, D_1ac098);
 }
 
-/* @draft 0x0a4160 us f_0a4160
-   WHAT IT DOES: Extracts three Euler angles from a 3x3 rotation matrix for the axis order code (0..23, three signed bytes per order in the table at D_1abf6c plus a parity bit): the middle angle from atan2 of the off-axis element and the sqrt of the sum of squares of two elements, with the gimbal-lock fallback when that is below a threshold; every angle is wrapped by f_099b98, negated first when the order's low bit is set; the rows of the matrix are four floats wide.
-   Remaining difference: 47 of 170 words differ, all after the first branch: retail stores the last angle in the delay slot of the parity test after the two branches join (plain bnez), this source gets bnezl with the first negation load in the slot; moving the last angle into a joined local fixes the shape but changes the register assignment. */
+/* @implements 0x0a4160 us f_0a4160
+   WHAT IT DOES: Extracts three Euler angles from a 3x3 rotation matrix for the axis order code (0..23, three signed bytes per order in the table at D_1abf6c plus a parity bit): the middle angle from atan2 of the off-axis element and the sqrt of the sum of squares of two elements, with the gimbal-lock fallback when that is below a threshold; every angle is wrapped by f_099b98, negated first when the order's low bit is set; the rows of the matrix are four floats wide. */
 void f_0a4160(EulOutB *d, const float *m, int order)
 {
     new (d) EulOutB(m, order, D_1ac09c);

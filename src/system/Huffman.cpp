@@ -378,15 +378,15 @@ void CCodec::f_04449c(Pos *p, int n)
     }
 }
 
-/* @draft 0x044500 us f_044500
-   WHAT IT DOES: Reads the next n bits of channel c (right-aligned) and moves past them.
-   Remaining difference: register choice for the right shift count (8 - bit). */
+/* @implements 0x044500 us f_044500
+   WHAT IT DOES: Reads the next n bits of channel c (right-aligned) and moves past them. */
 Code CCodec::f_044500(Chan *c, int n)
 {
     Pos p = c->rd;
     Word w;
+    int k;
     w.b[3] = 0;
-    for (int k = 2; k >= 0; k--) {
+    for (k = 2; k >= 0; k--) {
         w.b[k] = data[p.pos + (p.blk << 8)];
         if (p.pos == 255) {
             p.pos = 0;
@@ -395,7 +395,8 @@ Code CCodec::f_044500(Chan *c, int n)
             p.pos++;
         }
     }
-    w.w >>= 8 - p.bit;
+    k = 8 - p.bit;
+    w.w >>= k;
     w.h[1] = 0;
     w.w <<= n;
     Code r;
@@ -478,11 +479,10 @@ int CCodec::f_044644(int ch)
     return r;
 }
 
-/* @draft 0x0447ac us f_0447ac
+/* @implements 0x0447ac us f_0447ac
    WHAT IT DOES: Loads saved channels from len bytes at p (the form f_044644 gives): each
    channel's header, then its data copied into fresh blocks. Returns how many channels were
-   loaded.
-   Remaining difference: the copy pointer and the counter of the last block swap v1 and a0. */
+   loaded. */
 int CCodec::f_0447ac(unsigned char *p, int len)
 {
     unsigned char *end = p + len;
@@ -513,10 +513,11 @@ int CCodec::f_0447ac(unsigned char *p, int len)
         c->m4 = b;
         c->rd.Set(b);
         int left = c->m32;
+        int k;
         while (left != 0) {
             if (left > 256) {
                 unsigned char *d = &data[c->rd.blk << 8];
-                for (int k = 0; k < 256; k++)
+                for (k = 0; k < 256; k++)
                     *d++ = *p++;
                 int nb = f_0441e4();
                 next[c->rd.blk] = nb;
@@ -525,7 +526,7 @@ int CCodec::f_0447ac(unsigned char *p, int len)
             } else {
                 c->wr.pos = left - 1;
                 unsigned char *d = &data[c->rd.blk << 8];
-                for (int k = 0; k < left; k++)
+                for (k = 0; k < left; k++)
                     *d++ = *p++;
                 c->wr.blk = c->rd.blk;
                 left = 0;
@@ -682,5 +683,11 @@ CLibObject D_240ffc;
    WHAT IT DOES: Reads the next byte of channel c: from a pending zero run, or by decoding the
    bits read ahead and refilling them.
    Remaining difference: scheduling of each code alignment (16 - len computed into a1 before the argument moves in retail).
-   Remaining difference: as f_044e5c, the scheduling of the code alignment.
-   Remaining difference: the order of the two copies of the code length (argument and saved register) and one register choice. */
+   Remaining difference: as f_044e5c, the scheduling of the code alignment (f_044fcc, 2026-11-16:
+   retail computes 16 - len into a1 before the argument moves and stores the dead 16(sp) copy
+   of the call's result after the shift; in our sched1 region those copies (insns 38/39,
+   priority 3 and 11) go first and v0 is free for the subtraction. Not yet a source lever.)
+   Remaining difference: the order of the two copies of the code length (argument and saved register) and one register choice.
+   (f_04506c, 2026-11-16: sched2 ties them, priority 20 each, and takes luid order; the saved
+   copy len = v0 necessarily precedes a2 = len in the RTL, so retail's a2-first order needs the
+   argument to be its own pseudo set from v0 ahead of len's copy; source shape not found.) */
