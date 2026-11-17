@@ -10,6 +10,7 @@ Gates, in order (exit status 1 if any is red):
   attribution  no tracked file, and no commit message on this branch since main, carries
                AI-attribution text (the hooks' patterns).
   libsyms      config/us/libsyms.csv is what tools/analysis/libsyms.py builds now (--check).
+  untagged     docs/UNTAGGED.md is what tools/untagged.py writes now (--check).
   compiler     the control set (src/control/CONTROL.md, 60 functions): every function's size,
                words and relocation types equal retail's (no DIFFERS, no MISSING), which is
                what pins the compiler.  How many are also EXACT (references proven) is printed.
@@ -27,6 +28,9 @@ Gates, in order (exit status 1 if any is red):
                  7 a non-EXACT @implements staged for commit           pre-commit refuses
                  8 a library call site pointed at another library function: libsyms refuses
                    the symbol (tools/analysis/libsyms.py --selftest)
+                 9 a library source compiled with one token changed, or with -O1 for -O2:
+                   stock 1.3.1 no longer reproduces the reference object, so the unit is not
+                   admitted (tools/analysis/libsource.py --selftest)
                  + commit-msg refuses an attribution trailer; the tags check flags a missing
                    WHAT IT DOES and an address tagged twice
                Planted copies live under build/plant/; src/ and the git index are not touched
@@ -145,6 +149,12 @@ def g_attribution():
 def g_libsyms():
     p = subprocess.run([sys.executable, str(ROOT / 'tools' / 'analysis' / 'libsyms.py'),
                         '--check'], capture_output=True, text=True)
+    return p.returncode == 0, (p.stdout.strip().splitlines() or ['no output'])[-1]
+
+
+def g_untagged():
+    p = subprocess.run([sys.executable, str(ROOT / 'tools' / 'untagged.py'), '--check'],
+                       capture_output=True, text=True)
     return p.returncode == 0, (p.stdout.strip().splitlines() or ['no output'])[-1]
 
 
@@ -270,6 +280,12 @@ def faults():
     lines = p.stdout.strip().splitlines()
     out.append(('8 library call site pointed at another library function', p.returncode == 0,
                 ' | '.join(l for l in lines if 'after' in l or 'other rows' in l)[:240]))
+    # 9: a source proof unit is no longer admitted after a one-token change or other flags.
+    p = subprocess.run([sys.executable, str(ROOT / 'tools' / 'analysis' / 'libsource.py'),
+                        '--selftest'], capture_output=True, text=True)
+    lines = p.stdout.strip().splitlines()
+    out.append(('9 library source changed by one token, or built with -O1', p.returncode == 0,
+                ' | '.join(l for l in lines if 'changed' in l or '-O1' in l)[:240]))
     # commit-msg and tag checks.
     with tempfile.NamedTemporaryFile('w', suffix='.msg', delete=False) as fh:
         fh.write('Change something\n\nCo-' + 'Authored-By: Cl' + 'aude <noreply@anthr' +
@@ -319,8 +335,8 @@ def g_faults():
                         capture_output=True, text=True).stdout
     if st:
         print('    src/ or config/ changed:\n' + st)
-    return all(ok for _, ok, _ in res) and not st, '%d/%d caught; src/ and config/ unchanged' % (
-        sum(ok for _, ok, _ in res), len(res))
+    return all(ok for _, ok, _ in res) and not st, '%d/%d caught; src/ and config/ %s' % (
+        sum(ok for _, ok, _ in res), len(res), 'differ from HEAD' if st else 'unchanged')
 
 
 def main(argv=None):
@@ -336,6 +352,7 @@ def main(argv=None):
         run.gate('tags', g_tags)
         run.gate('attribution', g_attribution)
         run.gate('libsyms', g_libsyms)
+        run.gate('untagged', g_untagged)
         run.gate('compiler', g_compiler)
         if run.gate('image', lambda: g_image(a.no_cache)) or 'gate' in STATE:
             run.gate('tiers', g_tiers)

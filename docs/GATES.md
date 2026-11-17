@@ -145,6 +145,77 @@ typeinfo vtables that class typeinfo points at, `__class_type_info` and
 `__si_class_type_info`, agree at every site. Both are refused all the same, because
 their `__do_dyncast` slot is refused (above). They are listed in the data part of the CSV.
 
+### Source proofs (`tools/analysis/libsource.py`, match kind `source`)
+
+The owner approved one download: the GCC 3.3.3 release source from the GNU project's server,
+as its two parts. They are kept untracked in the main checkout's `references/` and checked by
+sha256 before use:
+
+| File | Bytes | sha256 |
+|---|---:|---|
+| `gcc-core-3.3.3.tar.bz2` | 11,553,433 | `a4bf992ca719711a77d09b84fc496bbe6fcecb8feac996c2e6e102d3cbbe15eb` |
+| `gcc-g++-3.3.3.tar.bz2` | 2,074,860 | `5b82243239d4a400cfe94ac9b27a008c510aa55c574b2df1f6e95b45d6a70bc4` |
+
+They are unpacked under `build/gcc-src/`. No script from them is run: the one generated header
+the libgcc units need (`tconfig.h`) is written by `libsource.py` from what `gcc/mkconfig.sh`
+writes.
+
+A unit is first **admitted**: compiled with STOCK psp-gcc 1.3.1, it must reproduce the
+reference archive's object exactly. That means the same allocated sections, the same bytes
+with relocated fields masked, and the same relocations (offset, type, symbol, addend). Only
+then is it compiled with the pinned 1.3.1-nocmov. A symbol is **proven** when that build
+equals retail at the address all sites agree on, and every relocation target is proven in turn.
+
+The flags were read from the makefiles and stated before compiling:
+- libgcc's fp-bit units: from `LIBGCC2_CFLAGS`, `mklibgcc.in` and `mips/t-elf`. They are
+  `-O2 -DIN_GCC -DCROSS_COMPILE -DIN_LIBGCC2 -D__GCC_FLOAT_NOT_NEEDED -G 0
+  -DFINE_GRAINED_LIBRARIES -DL_<name>` on `dp-bit.c`. There is no `-g`, because the reference
+  objects carry no debug sections. `tconfig.h` is the one for a mipsel ELF target.
+- libsupc++: from `libsupc++/Makefile.am` and the top-level `CXXFLAGS`. They are
+  `-g -O2 -fno-implicit-templates`. There are no section-splitting flags (the reference
+  `tinfo.o` has one `.text`) and no PIC (its relocations are absolute).
+
+Each source is flattened (every include that resolves in the source tree is inlined, with line
+markers) so that `cc.py` can send it.
+
+| Unit | Reference object | Admitted | Proven at retail |
+|---|---|---|---|
+| `tinfo.cc` | `libsupc++.a(tinfo.o)` | yes, exact | `__class_type_info` vtable 0x1b71a8, `__si_class_type_info` vtable 0x1b7178 (every slot, typeinfo and name) |
+| `fp-bit.c -DL_df_to_sf` | `libgcc.a(_df_to_sf.o)` | yes, exact | `__truncdfsf2` 0x164f7c |
+| `fp-bit.c -DL_ge_df` | `libgcc.a(_ge_df.o)` | **no** | not attempted |
+| `fp-bit.c -DL_lt_df` | `libgcc.a(_lt_df.o)` | **no** | not attempted |
+
+The store-flag differences that refused `__truncdfsf2` and `__do_dyncast` under the cmov rule
+are what the retail compiler makes of the same source: the pinned compiler, given the admitted
+source and flags, produces retail's words.
+
+**`_ge_df`/`_lt_df` are not reproduced, so they stop there.** Stock 1.3.1 with the stated flags
+gives a 96-byte stack frame where the reference objects have 112. Every other word is equal,
+apart from the stack offsets that follow from the frame size (the saved `s0`/`ra` and the
+`a2`/`a3` argument spill move by 16). The flags were not changed to find out why.
+
+**`__gedf2`/`__ltdf2`, what the evidence says.** In the GCC 3.3.3 source (`gcc/config/fp-bit.c`)
+the only difference between the two functions is the value returned when an operand is a NaN:
+`__gedf2` returns -1 ("false, truth >= 0") and `__ltdf2` returns 1 ("false, truth < 0"). In
+retail, 0x164c48, which the game source calls as `__gedf2`, is word for word the reference
+`__ltdf2`; 0x164bc0, called as `__ltdf2`, is the reference `__gedf2`. So at every call site
+retail calls the other comparison, and the game source writes each comparison the other way
+round. The two forms agree except when an operand is a NaN. The sites are generated in
+`docs/UNTAGGED.md` (section 3):
+
+| Call | Function | Source line | Retail calls |
+|---|---|---|---|
+| 0x091fe8 | 0x091e9c | `src/sound/DjDetect.cpp:1363` `if (a < 0)` | `__gedf2` body |
+| 0x09200c | 0x091e9c | `src/sound/DjDetect.cpp:1365` `if (!(a >= 15.0))` | `__ltdf2` body |
+| 0x06acc8 | 0x06ac38 | `src/system/SwgPlayer.cpp:7041` `if (d - fl >= D_1a4d68)` | `__ltdf2` body |
+| 0x06a008 | 0x069f28 | `src/system/SwgPlayer.cpp:7156` `if (d >= 0.0)` | `__ltdf2` body |
+
+`src/` is not changed; the rows stay refused.
+
+`libsource.py --selftest` takes the admitted `_df_to_sf` unit. Changing one token
+(`sffrac |= 1` to `sffrac |= 2`) or building with `-O1` for `-O2` each stops it from being
+admitted. `validate.py` runs it as fault 9.
+
 `libsyms.py --selftest` plants one call site of `free` pointing at `malloc`'s address. `free`
 is then refused with 1 disagreeing site, and no other row changes. `libsyms.py --check`
 rebuilds the CSV and compares it; `validate.py` runs both.
@@ -203,7 +274,8 @@ itself.
 
 Runs, with times: `reference` (six MD5s), `tags`, `attribution` (tracked files and this
 branch's commit messages), `libsyms` (`libsyms.csv` is what `libsyms.py` builds now; it went red
-once, rightly, when the `hilo.py` fix raised the site counts), `compiler` (the 60 control functions: size, words and relocation
+once, rightly, when the `hilo.py` fix raised the site counts), `untagged` (`docs/UNTAGGED.md` is
+what `tools/untagged.py` writes now), `compiler` (the 60 control functions: size, words and relocation
 types equal, which is what pins the compiler; EXACT is printed beside it), `image`, `tiers`,
 and `faults`. Red if any gate is red. From a fresh clone after `./setup.sh`: 26 s with no
 compile cache, 12 s cached.
@@ -300,12 +372,11 @@ address tagged twice`.
 
 ## Open questions (not settled by analysis)
 
-- **References that no tool output resolves.** Library symbols that `libsyms.py` refuses (the
-  typeinfo vtables, `__truncdfsf2`, the swapped `__gedf2`/`__ltdf2`), C++ methods that no tag
-  claims, and LO16s whose high half `hilo.py` still does not recover. Each makes its function
-  BADREF, so the image gate is red. `score.py --tree` lists them with the first failing
-  reference.
-- **Whether the store-flag substitutes for a conditional move are accepted** as "closely
-  matches" (they decide `__truncdfsf2` and both typeinfo vtables).
+- **References that no tool output resolves.** The swapped `__gedf2`/`__ltdf2` calls, C++ methods
+  that no tag claims (`docs/UNTAGGED.md`), and LO16s whose high half `hilo.py` still does not
+  recover. Each makes its function BADREF, so the image gate is red. `score.py --tree` lists
+  them with the first failing reference.
+- **The `_ge_df`/`_lt_df` frame.** Why the reference objects have a 112-byte frame where stock
+  1.3.1 gives 96 with the makefile flags is not known.
 - **Whether rules 4 and 6 (libfuncs.csv symbols, import NIDs) are accepted** as proof of a
   target.

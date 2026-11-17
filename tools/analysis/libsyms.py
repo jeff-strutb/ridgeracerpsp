@@ -39,8 +39,15 @@ the address, for the reference symbol's size, have relocations of the same type 
 offsets and equal bytes elsewhere, and each relocated word's retail target closely matches
 the reference's target symbol by these same rules (code by the code rule, data recursively).
 
+A third kind, source, comes from tools/analysis/libsource.py for symbols the two kinds above
+refuse: the GCC 3.3.3 source of the symbol, compiled with flags that make STOCK psp-gcc 1.3.1
+reproduce the reference archive's object exactly, then compiled with the pinned
+1.3.1-nocmov, equals retail at the agreed address (bytes, relocation types, and every target
+proven in turn).  The source, flags and reproduced object are recorded in the row.
+
 Rows: symbol, kind (code/data), address, sites, disagreeing, match, reference, accepted,
-reason.  tools/score.py resolves only rows with accepted = yes (rule 'libsyms').
+reason, source, flags, reproduced.  tools/score.py resolves only rows with accepted = yes
+(rule 'libsyms').
 """
 import csv
 import io
@@ -57,7 +64,7 @@ from allegrex import decode  # noqa: E402
 ROOT = HERE.parent.parent
 CSV = ROOT / 'config' / 'us' / 'libsyms.csv'
 FIELDS = ['symbol', 'kind', 'address', 'sites', 'disagreeing', 'match', 'reference', 'accepted',
-          'reason']
+          'reason', 'source', 'flags', 'reproduced']
 CALL_CLOBBERS = True
 
 
@@ -361,13 +368,13 @@ def write(rows, path=CSV):
             w.writerow(r)
 
 
-def load(path=CSV):
-    """{symbol: address} of the accepted rows."""
+def load(path=CSV, kinds=None):
+    """{symbol: address} of the accepted rows (of the given match kinds, default all)."""
     if not Path(path).is_file():
         return {}
     with open(path) as fh:
         return {r['symbol']: int(r['address'], 16) for r in csv.DictReader(fh)
-                if r['accepted'] == 'yes'}
+                if r['accepted'] == 'yes' and (kinds is None or r['match'] in kinds)}
 
 
 def show(rows):
@@ -375,9 +382,9 @@ def show(rows):
         print('%s symbols:' % kind)
         for r in rows:
             if r['kind'] == kind:
-                print('  %-3s %-44s %s sites %3d disagreeing %d %-5s %s %s' % (
+                print('  %-3s %-44s %s sites %3d disagreeing %d %-6s %s %s' % (
                     r['accepted'], r['symbol'][:44], r['address'], r['sites'], r['disagreeing'],
-                    r['match'] or '-', r['reference'], r['reason']))
+                    r['match'] or '-', r['reference'], r['reason'][:160]))
 
 
 def selftest():
@@ -407,7 +414,8 @@ def selftest():
 def main(argv):
     if argv[1:] == ['--selftest']:
         return selftest()
-    rows = build(observe())
+    import libsource
+    rows, _, _ = libsource.prove_rows(build(observe()))
     if argv[1:] == ['--check']:
         with open(CSV) as fh:
             old = list(csv.DictReader(fh))

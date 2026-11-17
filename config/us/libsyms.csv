@@ -1,14 +1,14 @@
-symbol,kind,address,sites,disagreeing,match,reference,accepted,reason
-_Unwind_Resume,code,0x166df8,231,0,exact,psp-gcc-1.3.1 libgcc.a(unwind-dw2.o),yes,
-_ZTVN10__cxxabiv117__class_type_infoE,data,0x1b71a8,21,0,,,no,"word +4 -> _ZTIN10__cxxabiv117__class_type_infoE: word +0 -> _ZTVN10__cxxabiv120__si_class_type_infoE: word +36 -> _ZNK10__cxxabiv120__si_class_type_info12__do_dyncastEiNS_17_: size retail 40 words, reference 39"
-_ZTVN10__cxxabiv120__si_class_type_infoE,data,0x1b7178,82,0,,,no,"word +36 -> _ZNK10__cxxabiv120__si_class_type_info12__do_dyncastEiNS_17_: size retail 40 words, reference 39"
-_ZdaPv,code,0x1521c8,59,0,exact,psp-gcc-1.3.1 libstdc++.a(del_opv.o),yes,
-_ZdlPv,code,0x1521a8,199,0,exact,psp-gcc-1.3.1 libstdc++.a(del_op.o),yes,
-_Znwj,code,0x1534a4,76,0,cmov,psp-gcc-1.3.1 libstdc++.a(new_op.o),yes,
-__cxa_call_unexpected,code,0x153138,4,0,exact,psp-gcc-1.3.1 libstdc++.a(eh_personality.o),yes,
-__gedf2,code,0x164c48,3,0,,,no,"retail 0x164c48 is an exact copy of __eqdf2, __ledf2, __ltdf2, __nedf2, not of __gedf2"
-__ltdf2,code,0x164bc0,1,0,,,no,"retail 0x164bc0 is an exact copy of __gedf2, __gtdf2, not of __ltdf2"
-__truncdfsf2,code,0x164f7c,16,0,,,no,"size retail 31 words, reference 30"
-free,code,0x125e38,33,0,exact,psp-gcc-1.3.1 libc.a(malloc.o),yes,
-iprintf,code,0x126e54,27,0,exact,psp-gcc-1.3.1 libc.a(iprintf.o),yes,
-malloc,code,0x125e14,13,0,exact,psp-gcc-1.3.1 libc.a(malloc.o),yes,
+symbol,kind,address,sites,disagreeing,match,reference,accepted,reason,source,flags,reproduced
+_Unwind_Resume,code,0x166df8,231,0,exact,psp-gcc-1.3.1 libgcc.a(unwind-dw2.o),yes,,,,
+_ZTVN10__cxxabiv117__class_type_infoE,data,0x1b71a8,21,0,source,"GCC 3.3.3 source, 1.3.1-nocmov",yes,,libstdc++-v3/libsupc++/tinfo.cc,-g -O2 -fno-implicit-templates,psp-gcc-1.3.1 libsupc++.a(tinfo.o)
+_ZTVN10__cxxabiv120__si_class_type_infoE,data,0x1b7178,82,0,source,"GCC 3.3.3 source, 1.3.1-nocmov",yes,,libstdc++-v3/libsupc++/tinfo.cc,-g -O2 -fno-implicit-templates,psp-gcc-1.3.1 libsupc++.a(tinfo.o)
+_ZdaPv,code,0x1521c8,59,0,exact,psp-gcc-1.3.1 libstdc++.a(del_opv.o),yes,,,,
+_ZdlPv,code,0x1521a8,199,0,exact,psp-gcc-1.3.1 libstdc++.a(del_op.o),yes,,,,
+_Znwj,code,0x1534a4,76,0,cmov,psp-gcc-1.3.1 libstdc++.a(new_op.o),yes,,,,
+__cxa_call_unexpected,code,0x153138,4,0,exact,psp-gcc-1.3.1 libstdc++.a(eh_personality.o),yes,,,,
+__gedf2,code,0x164c48,3,0,,,no,"retail 0x164c48 is an exact copy of __eqdf2, __ledf2, __ltdf2, __nedf2, not of __gedf2 | source: stock 1.3.1 does not reproduce psp-gcc-1.3.1 libgcc.a(_ge_df.o): .text+0x0: byte built a0, reference 90",gcc/config/fp-bit.c,-O2 -DIN_GCC -DCROSS_COMPILE -DIN_LIBGCC2 -D__GCC_FLOAT_NOT_NEEDED -G 0 -DFINE_GRAINED_LIBRARIES -DL_ge_df,no: psp-gcc-1.3.1 libgcc.a(_ge_df.o)
+__ltdf2,code,0x164bc0,1,0,,,no,"retail 0x164bc0 is an exact copy of __gedf2, __gtdf2, not of __ltdf2 | source: stock 1.3.1 does not reproduce psp-gcc-1.3.1 libgcc.a(_lt_df.o): .text+0x0: byte built a0, reference 90",gcc/config/fp-bit.c,-O2 -DIN_GCC -DCROSS_COMPILE -DIN_LIBGCC2 -D__GCC_FLOAT_NOT_NEEDED -G 0 -DFINE_GRAINED_LIBRARIES -DL_lt_df,no: psp-gcc-1.3.1 libgcc.a(_lt_df.o)
+__truncdfsf2,code,0x164f7c,16,0,source,"GCC 3.3.3 source, 1.3.1-nocmov",yes,,gcc/config/fp-bit.c,-O2 -DIN_GCC -DCROSS_COMPILE -DIN_LIBGCC2 -D__GCC_FLOAT_NOT_NEEDED -G 0 -DFINE_GRAINED_LIBRARIES -DL_df_to_sf,psp-gcc-1.3.1 libgcc.a(_df_to_sf.o)
+free,code,0x125e38,33,0,exact,psp-gcc-1.3.1 libc.a(malloc.o),yes,,,,
+iprintf,code,0x126e54,27,0,exact,psp-gcc-1.3.1 libc.a(iprintf.o),yes,,,,
+malloc,code,0x125e14,13,0,exact,psp-gcc-1.3.1 libc.a(malloc.o),yes,,,,
