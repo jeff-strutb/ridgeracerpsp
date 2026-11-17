@@ -865,17 +865,18 @@ struct Flag {
    gets the final slide along the contact edge (height from the course areas), and the
    remaining outputs get the contact vertex angle, a speed, the edge direction and the edge's
    two end points. Returns 0 (no contact) to 3.
-   DRAFT: complete transcription of every path; size 13,956 vs 14,328 bytes. Proven so far
+   DRAFT: complete transcription of every path; size 13,996 vs 14,328 bytes. Proven so far
    (each matches retail's code at that point): flags is an array of a class with an empty
    constructor (Flag), declared after result = 0 and before Qp, which gives retail's empty
    127-step-32 loop and keeps the frame offsets; every loop indexes the edge points as Vec2
    pts[128] through short jj = i * 2, storing through a float pointer (retail's separate
    &pts + jj*8 base) and reading pts[jj] / pts[jj + 1]; the edge loops of the sweep and of the
-   second look are for loops with "if (flags[i].v) continue;", whose continue prediction (56%)
-   puts their bodies out of line at the function's end as in retail. The calls now line up to
-   0xea4. Open: retail keeps hitAny in memory (spilled) and hoists the angle addresses and the
+   second look, and the two later edge loops (the count loop and the seg loop, whose seg copy is
+   field by field as in retail's lwc1/swc1), are for loops with "if (flags[i].v) continue;",
+   whose continue prediction (56%) makes bb-reorder chain the increment first and put the bodies
+   out of line as in retail. All 117 calls now come in retail's order. Open: retail keeps hitAny in memory (spilled) and hoists the angle addresses and the
    constant 1 out of the first cull loop; the block with f_0b1b28 at retail 0x1e78 is still
-   placed differently; register choice and scheduling differ throughout.
+   placed differently (resolved: it was the seg loop); register choice and scheduling differ throughout.
    Layout aids with no counterpart in the original: the two unused angle locals (retail leaves
    a hole of two slots after the first outline loop) and the packed scratch array tt.
    Retail also reads a stale vector in the slide's second box (V1808 is the leftover of the
@@ -1249,12 +1250,12 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                     continue;
                 flags[j].v = 0;
             } while (i < cnt);
-            cnt = o->m0;
-            i = 0;
-            if (cnt != 0) {
-                do {
-                    if (flags[i].v == 0) {
-                        float *ep = &PJ(i).x;
+            for (i = 0; i < o->m0; i++) {
+                if (flags[i].v != 0)
+                    continue;
+                    {
+                        short jj0 = i * 2;
+                        float *ep = &pts[jj0].x;
                         float ex = ep[0] - ep[2];
                         float ey = ep[1] - ep[3];
                         k = 0;
@@ -1410,8 +1411,6 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                             }
                         }
                     }
-                    i = i + 1;
-                } while (i < (int)o->m0);
             }
         }
     }
@@ -1556,12 +1555,16 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                     i = i + 1;
                 } while (i < o->m4->n);
             }
-            cnt = o->m0;
-            if (cnt != 0) {
-                i = 0;
-                do {
-                    if (flags[i].v == 0) {
-                        seg = *(PlaneRec *)&PJ(i);
+            for (i = 0; i < o->m0; i++) {
+                if (flags[i].v != 0)
+                    continue;
+                    {
+                        short jj1 = i * 2;
+                        float *ep = &pts[jj1].x;
+                        seg.x = ep[0];
+                        seg.y = ep[1];
+                        seg.z = ep[2];
+                        seg.w = ep[3];
                         V1840.x = seg.z - seg.x;
                         V1840.y = seg.w - seg.y;
                         V1936 = V1840;
@@ -1617,8 +1620,6 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                             } while (k < o->m4->n);
                         }
                     }
-                    i = i + 1;
-                } while (i < (int)o->m0);
             }
             if (0.0f < best) {
                 V1824.y = 0.0f;
