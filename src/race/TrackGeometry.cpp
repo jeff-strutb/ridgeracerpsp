@@ -885,14 +885,16 @@ struct Flag {
    with base addressing (addiu t2,sp,496); a per-use ep gives offset addressing (496(a0)), so ep
    is a pointer variable and the re-forming is reload rematerialising it under pressure. Retail
    also spills hitAny (2284) where this keeps it in s6.
-   One-cycle diagnosis, count-loop inner k loop (retail 0x2434..0x24d0, the -5 word step): retail
-   reads ep[0]/ep[1] in the loop through a copy of the pre-loop pointer (move a0,v0) and resets
-   the divisor from a second copy of n each pass (move a1,t0), so the loop is bottom-tested;
-   here gcse load-PREs ep[0]/ep[1] against the pre-loop ex/ey loads (same pseudo s0), which
-   forces the beqzl exit, the latch reloads and the j back. Re-forming ep inside the k loop
-   (float *ep = &pts[jj0].x as the body's first statement) compiles identically: gcse merges
-   the address back into the outer pseudo. Not yet found: what keeps retail's in-loop pointer
-   a distinct pseudo.
+   Count-loop inner k loop (retail 0x2434..0x24d0): ep is re-formed as the k loop's first
+   statement. cse1 gives the in-loop &pts[jj0] its own pseudo, so gcse does not load-PRE
+   ep[0]/ep[1] against the pre-loop ex/ey loads; loop.c hoists the address and it survives as
+   retail's move a0,v0, giving retail's bottom-tested loop with ep reloaded at each use. (With
+   one ep, gcse PREs those loads into the latch: beqzl exit, latch reloads, j back.) Reading
+   ex/ey as pts[jj0] - pts[jj0 + 1] also stops the PRE but gives offset addressing (496(v0))
+   where retail has base addressing. Still different here: retail copies n twice (move a1,v1;
+   move t0,v1; move a1,t0 inside the loop) and re-forms ep after the loop (addu s1,t2,s1);
+   after the loop retail computes both V464 differences into $f0/$f1 and copies them to the
+   argument registers, where this computes x straight into $f13.
    Open: the second look's xi selection. Retail keeps xi = V464.x inline and puts both other
    cases out of line; the != form here and an == else-if chain (tried once) both differ.
    Layout aids with no counterpart in the original: the two unused angle locals (retail leaves
@@ -1296,6 +1298,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                         float ey = ep[1] - ep[3];
                         int n = o->m4->n;
                         for (k = 0; k < n; k++) {
+                            float *ep = &pts[jj0].x;
                             short k1 = (k + 1) % n;
                             dA = ex * (By[k] - ep[1]) + ey * (ep[0] - Bx[k]);
                             dB = ey * (ep[0] - Bx[k1]) + ex * (By[k1] - ep[1]);
