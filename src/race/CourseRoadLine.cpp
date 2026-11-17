@@ -379,23 +379,26 @@ extern "C" float f_0fb194(void *self, int i, float x)
     return x >= 0.0f ? 1.0f : -1.0f;
 }
 
-/* @draft 0x0fb240 us f_0fb240
+/* @implements 0x0fb240 us f_0fb240
    WHAT IT DOES: Takes the road line's short value at the lower or upper side (chosen by the sign
    of x) for record k, scales it with the record's first float, clamps the sum at zero and
-   returns the record's scaled value plus that clamped value times x. Not yet byte-exact. */
+   returns the record's scaled value plus that clamped value times x. */
 extern "C" float f_0fb240(MapOwner *o, int k, float x)
 {
-    short a, b, v;
-    float rec0, d;
+    short a, b;
+    float d;
 
     char *base = D_23c820;
     f_0e3a74(base + 12240, k, &a, &b);
-    v = x < 0.0f ? a : b;
-    rec0 = *(float *)(o->recs + k * 8);
-    d = (float)v * 0.001f - 1.0f + rec0 * 1.024f - 2.0f;
+    if (x < 0.0f)
+        d = ((float)a * 0.001f - 1.0f) + *(float *)(o->recs + k * 8) * 1.024f;
+    else
+        d = ((float)b * 0.001f - 1.0f) - *(float *)(o->recs + k * 8) * 1.024f;
+    d -= 2.0f;
     if (d < 0.0f)
         d = 0.0f;
-    return rec0 * 1.024f + d * x;
+    d = *(float *)(o->recs + k * 8) * 1.024f + d * x;
+    return d;
 }
 
 /* @implements 0x0fb364 us f_0fb364
