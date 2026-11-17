@@ -595,15 +595,14 @@ void f_0e98e8(Car *t, int ax0, int ay0, int bx0, int by0, Car *c)
                 nd = d ? 2 : 0;
         }
         if (nd != -1 && nd != c->dir && (nd + 2) % 4 != c->dir)
-            c->want = c->turn = nd;
+            c->turn = c->want = nd;
     }
     f_0e8840(c);
 }
 
-/* @draft 0x0e9bf0 us f_0e9bf0
+/* @implements 0x0e9bf0 us f_0e9bf0
    WHAT IT DOES: The autopilot's steering at a junction: along the axis on which the target
-   is farther, towards it, never straight back; then takes the turn chosen.
-   DRAFT: two words still differ at +0x160 (only partly checked). */
+   is farther, towards it, never straight back; then takes the turn chosen. */
 void f_0e9bf0(Car *c, short tx, short ty)
 {
     short px = c->cx;
@@ -645,7 +644,7 @@ void f_0e9bf0(Car *c, short tx, short ty)
         }
         int back = (nd + 2) % 4;
         if (nd != -1 && nd != c->dir && back != c->dir)
-            c->want = c->turn = nd;
+            c->turn = c->want = nd;
     }
     f_0e8840(c);
 }
