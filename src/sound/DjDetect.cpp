@@ -181,7 +181,7 @@ static inline Pair GetM(int i)
     return r;
 }
 
-/* @draft 0x08f680 us f_08f680
+/* @implements 0x08f680 us f_08f680
    WHAT IT DOES: Looks up the player car's class, counts the course's sections and allocates a
    record row per car, each record starting from the section's reference times for that class
    and its two flags.
