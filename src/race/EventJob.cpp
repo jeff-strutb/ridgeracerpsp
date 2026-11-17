@@ -5,6 +5,8 @@
    of what it holds, and Flag answers 1. Types without handlers of their own use the base
    class's. The object file ends with the job work list the handlers run under. */
 
+#include <string.h>
+
 struct Vec3 {
     float x, y, z;
 };
@@ -58,8 +60,14 @@ struct EvData {
     EvObject *objs;
 };
 
+/* The course's model classes, kept by the map manager. */
+struct MapClass {
+    int m[4];
+};
+
 /* The map manager (src/race/MapManager.cpp), holding the event data at +12144. */
 struct MapMgr {
+    MapClass *Classes() { return &m12976; }
     EvData *Events() { return &m12144; }
     EvObject &Object(int i) { return m12144.objs[i]; }
     int Rand()
@@ -71,7 +79,9 @@ struct MapMgr {
     EvData m12144;
     char m12152[96];
     int length;         /* +12248: the course's length */
-    char m12252[752];
+    char m12252[724];
+    MapClass m12976;    /* the course's model classes */
+    char m12992[12];
     int frame;          /* +13004 */
     int m13008[3];
     unsigned int seed;  /* +13020 */
@@ -166,6 +176,8 @@ struct EvLoop {
     int m0[4];
     int snd;
 };
+extern "C" char *f_0d8114(MapClass *c, int id);
+extern "C" void f_0daf30(void *pb, char *d);
 extern "C" void f_0ec2b8(void *snd);
 extern "C" void f_0ec2cc(void *snd);
 extern "C" void f_0ec35c(void *snd);
@@ -1543,11 +1555,12 @@ public:
     virtual void Stop();
     virtual void Reset();
 
-    int m12[9];
+    int anim[9];        /* +12: its animation's parameter block */
     Vec4 matrix[4];
     int m112[256];
-    int m1136;
-    int m1140[2];
+    float m1136;        /* the animation's start time */
+    float m1140;        /* its speed */
+    char loop;          /* +1144 */
     int cam;
 
     void Init();
@@ -1700,12 +1713,10 @@ extern CWorkList<CLeafWork> D_254358;
 extern CWorkList<CHatoWork> D_254360;
 extern CWorkList<CUshiWork> D_254368;
 
-/* @draft 0x0d2ef0 us f_0d2ef0
+/* @implements 0x0d2ef0 us f_0d2ef0
    WHAT IT DOES: Builds the work objects of every kind from a set of event data: for each kind,
    counts the events of its type, allocates that many objects, sets each up from its event and
-   records it as the event's work object.
-   Remaining difference: none in the bytes; the call to CMotWork::Init (0x0d3eb0) resolves
-   once that function is tagged. */
+   records it as the event's work object. */
 extern "C" void f_0d2ef0(Block *b)
 {
     D_254330.Build(b, 6);
@@ -1719,7 +1730,11 @@ extern "C" void f_0d2ef0(Block *b)
 }
 
 /* @draft 0x0d37bc us f_0d37bc
-   WHAT IT DOES: Stops every work object of every kind and frees the arrays. */
+   WHAT IT DOES: Stops every work object of every kind and frees the arrays.
+   Remaining difference: CWorkList<CMotWork>::Free is called out of line (the same eager
+   instantiation as Build's first call: mark_used under -fexceptions); retail inlines all eight,
+   so its first Free call was instantiated by the inliner. The shape that defers it is not
+   found: a throwing call before it does defer it (checked with -Winline), but retail has none. */
 extern "C" void f_0d37bc(void)
 {
     D_254330.Free();
@@ -1749,6 +1764,35 @@ void CMotWork::Stop()
    WHAT IT DOES: Default: nothing to reset. */
 void CEventJobWorkBase::Reset()
 {
+}
+
+/* @draft 0x0d3eb0 us _ZN3Map5Event8CMotWork4Init
+   WHAT IT DOES: Sets the moving model up from its event: its animation's parameter block from
+   the model class the event names, its start time and speed (from the event's parameters
+   when given, else 0 and 60), whether it loops, and no camera seen yet.
+   Remaining difference: the first test's arms are laid out the other way round. The bp pass
+   gives `n < 2` the opcode-positive heuristic (canonicalised to n > 1, 79%) on top of the call
+   heuristic (30%), 61.7% for the call arm, so bbro makes it the fall-through; retail keeps
+   the zero store there, as for `n < 3`. */
+void CMotWork::Init()
+{
+    int id = *f_0dad68(ev, 0xe0, 0);
+    memset(anim, 0, sizeof anim);
+    f_0daf30(anim, f_0d8114(D_23c820.Classes(), id));
+    int n = (ev->flags & 0x3800) >> 11;
+    if (n < 2)
+        m1136 = 0;
+    else
+        m1136 = (float)*f_0dad68(ev, 0x3800, 1) * 60.0f;
+    if (n < 3)
+        m1140 = 60.0f;
+    else
+        m1140 = (float)*f_0dad68(ev, 0x3800, 2) * 0.6f;
+    if (*f_0dad68(ev, 0x3800, 0))
+        loop = 0;
+    else
+        loop = 1;
+    cam = -1;
 }
 
 /* @implements 0x0d3fe8 us _ZN3Map5Event8CMotWork5Reset
@@ -1928,11 +1972,12 @@ void CUshiWork::Reset()
     state = 0;
 }
 
-/* @draft 0x0d4fb4 us _ZN3Map5Event9CWorkListINS0_8CMotWorkEE5Build
-   WHAT IT DOES: CWorkList<CMotWork>::Build (defined in the class above), emitted out of line:
-   the tree inliner turned down the first of the eight calls in f_0d2ef0 and inlined the rest.
-   Remaining difference: none in the bytes; the call to CMotWork::Init (0x0d3eb0) resolves
-   once that function is tagged. */
+/* @implements 0x0d4fb4 us _ZN3Map5Event9CWorkListINS0_8CMotWorkEE5Build
+   WHAT IT DOES: CWorkList<CMotWork>::Build (defined in the class above), emitted out of line.
+   With -fexceptions, mark_used instantiates a template called before the caller is known to
+   throw (the first call of f_0d2ef0) at once, and that instance meets the inliner's size limit
+   with its real statement count; the later instances are instantiated by the inliner itself
+   and inlined. */
 
 }
 }
