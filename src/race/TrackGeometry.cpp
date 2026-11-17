@@ -865,7 +865,7 @@ struct Flag {
    gets the final slide along the contact edge (height from the course areas), and the
    remaining outputs get the contact vertex angle, a speed, the edge direction and the edge's
    two end points. Returns 0 (no contact) to 3.
-   DRAFT: complete transcription of every path; size 14,040 vs 14,328 bytes. Proven so far
+   DRAFT: complete transcription of every path; size 14,052 vs 14,328 bytes. Proven so far
    (each matches retail's code at that point): flags is an array of a class with an empty
    constructor (Flag), declared after result = 0 and before Qp, which gives retail's empty
    127-step-32 loop and keeps the frame offsets; every loop indexes the edge points as Vec2
@@ -877,7 +877,9 @@ struct Flag {
    out of line as in retail. All 117 calls now come in retail's order. The first correction's bounds are single
    expressions (xlo = -(o->m4->r + sqrtf(..)), xhi = sqrtf(len) + r + sqrtf(..)): the r operand
    stays a MEM through the shape pointer loaded before the sqrt, so retail reloads o->m4 only once
-   (after len); the second cull loop has retail's while guard. Open: retail keeps hitAny in memory (spilled) and hoists the angle addresses and the
+   (after len); the second cull loop has retail's while guard. Inner loops whose tests skip to
+   the next element are for loops with continue (not goto to the increment), which gives
+   retail's out-of-line placement of the code after the first test. Open: retail keeps hitAny in memory (spilled) and hoists the angle addresses and the
    constant 1 out of the first cull loop; the block with f_0b1b28 at retail 0x1e78 is still
    placed differently (resolved: it was the seg loop); register choice and scheduling differ throughout.
    Layout aids with no counterpart in the original: the two unused angle locals (retail leaves
@@ -1258,25 +1260,20 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                         float *ep = &pts[jj0].x;
                         float ex = ep[0] - ep[2];
                         float ey = ep[1] - ep[3];
-                        k = 0;
-                        if (o->m4->n > 0) {
-                            int n = o->m4->n;
-                            do {
-                                short k1 = (k + 1) % n;
-                                dA = ex * (By[k] - ep[1]) + ey * (ep[0] - Bx[k]);
-                                dB = ey * (ep[0] - Bx[k1]) + ex * (By[k1] - ep[1]);
-                                pA = dA * dB;
-                                if (pA > 0.0f)
-                                    goto i_next;
-                                sA = (Bx[k] - Bx[k1]) * (ep[1] - By[k]) + (By[k] - By[k1]) * (Bx[k] - ep[0]);
-                                sB = (Bx[k] - Bx[k1]) * (ep[3] - By[k]) + (By[k] - By[k1]) * (Bx[k] - ep[2]);
-                                pB = sA * sB;
-                                if (pB > 0.0f)
-                                    goto i_next;
-                                break;
-                            i_next:
-                                k = k + 1;
-                            } while (k < n);
+                        int n = o->m4->n;
+                        for (k = 0; k < n; k++) {
+                            short k1 = (k + 1) % n;
+                            dA = ex * (By[k] - ep[1]) + ey * (ep[0] - Bx[k]);
+                            dB = ey * (ep[0] - Bx[k1]) + ex * (By[k1] - ep[1]);
+                            pA = dA * dB;
+                            if (pA > 0.0f)
+                                continue;
+                            sA = (Bx[k] - Bx[k1]) * (ep[1] - By[k]) + (By[k] - By[k1]) * (Bx[k] - ep[0]);
+                            sB = (Bx[k] - Bx[k1]) * (ep[3] - By[k]) + (By[k] - By[k1]) * (Bx[k] - ep[2]);
+                            pB = sA * sB;
+                            if (pB > 0.0f)
+                                continue;
+                            break;
                         }
                         if (k < o->m4->n) {
                             V1904.x = 0.0f;
@@ -1298,23 +1295,18 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                                     k = k + 1;
                                 } while (k < o->m4->n);
                             }
-                            if (o->m4->n > 0) {
-                                k = 0;
-                                do {
-                                    if (!(Cy[k] < 0.0f)) {
-                                        if (Cx[k] < 0.0f)
-                                            goto c_next;
-                                        if (V1856.x < Cx[k])
-                                            goto c_next;
-                                        if (Cy[k] <= bestLen2)
-                                            goto c_next;
-                                        bestEdge = (unsigned short)i;
-                                        bestVert = (unsigned short)k;
-                                        bestLen2 = Cy[k];
-                                    }
-                                c_next:
-                                    k = k + 1;
-                                } while (k < o->m4->n);
+                            for (k = 0; k < o->m4->n; k++) {
+                                if (Cy[k] < 0.0f)
+                                    continue;
+                                if (Cx[k] < 0.0f)
+                                    continue;
+                                if (V1856.x < Cx[k])
+                                    continue;
+                                if (Cy[k] <= bestLen2)
+                                    continue;
+                                bestEdge = (unsigned short)i;
+                                bestVert = (unsigned short)k;
+                                bestLen2 = Cy[k];
                             }
                             if (o->m4->n > 0) {
                                 int n = o->m4->n;
