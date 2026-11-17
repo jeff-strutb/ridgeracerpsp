@@ -1238,12 +1238,14 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                             V1856 = V1840;
                             V1904 = V1840;
                             float l1 = __builtin_sqrtf(V1904.x * V1904.x + V1904.y * V1904.y);
-                            V1904.x = Cx[k] - Ax[k];
-                            V1904.y = Cy[k] - Ay[k];
+                            float t2x = Cx[k] - Ax[k], t2y = Cy[k] - Ay[k];
+                            V1904.x = t2x;
+                            V1904.y = t2y;
                             float l2 = __builtin_sqrtf(V1904.x * V1904.x + V1904.y * V1904.y);
                             short k2 = (k + 1) % o->m4->n;
-                            V1904.x = Cx[k2] - Ax[k2];
-                            V1904.y = Cy[k2] - Ay[k2];
+                            float t3x = Cx[k2] - Ax[k2], t3y = Cy[k2] - Ay[k2];
+                            V1904.x = t3x;
+                            V1904.y = t3y;
                             float l3 = __builtin_sqrtf(V1904.x * V1904.x + V1904.y * V1904.y);
                             (void)l1;
                             (void)l2;
