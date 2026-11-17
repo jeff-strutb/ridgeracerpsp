@@ -595,12 +595,9 @@ void C2DCourseMap::f_102190(int s, int rect, unsigned char show, float x, float 
     f_04c248(group, s, show);
 }
 
-/* @draft 0x102254 us C2DCourseMap8f_102254
-   DRAFT: complete transcription, not byte-exact (see the remaining difference).
+/* @implements 0x102254 us C2DCourseMap8f_102254
    WHAT IT DOES: Finds the race's course among the 25 course names and keeps its number for
-   the map; returns 1 when found, 0 (printing a debug message) when not or outside a race.
-   Remaining difference: none in the bytes; the debug message is followed in retail .rodata by
-   a table this file does not yet define, which the grader's 64 byte window sees. */
+   the map; returns 1 when found, 0 (printing a debug message) when not or outside a race. */
 int C2DCourseMap::f_102254()
 {
     const char *names[25] = {

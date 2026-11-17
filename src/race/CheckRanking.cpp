@@ -134,7 +134,7 @@ extern "C" int f_0edc98(Entry *a, Entry *b)
     return a->f_0edcf0(lap, b->time, b->done, b->dist);
 }
 
-/* @draft 0x0edcc4 us f_0edcc4
+/* @implements 0x0edcc4 us f_0edcc4
    WHAT IT DOES: The same comparison in the second order (by the second finishing time). */
 extern "C" int f_0edcc4(Entry *a, Entry *b)
 {
