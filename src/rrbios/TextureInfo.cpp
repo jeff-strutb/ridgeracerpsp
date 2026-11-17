@@ -270,7 +270,10 @@ CInfo *f_02347c(unsigned int id)
    WHAT IT DOES: Takes a record for a new texture id, at the front of the used list, and enters
    it in the table with its command lists cleared. If the id is already present the record goes
    back to the free list and 0 is returned.
-   Remaining: the block layout matches, but the id and the record pointer swap s1/s2, and the result goes through a2 instead of v0. */
+   Remaining: the block layout matches, but the id and the record pointer swap s1/s2, and the result goes through a2 instead of v0.
+   Retail returns 0 from the Erase arm and p from the other (a null p jumps to the `move v0,zero`
+   block), but writing two returns (`Erase; return 0;` / `return p;`) makes the success arm the
+   fall-through and still uses a2 (49 words). */
 CInfo *f_0234a4(unsigned int id)
 {
     CInfo tmp;

@@ -643,7 +643,9 @@ struct StripVertex {
    matrices the routine uses are saved and restored around it.
    Remaining difference (23 words, all register choice): the strip vertex count is allocated to
    a2 and the vertex offset word to a1 (retail the reverse), the hoisted command constants take
-   t3 to t6 in another order, and the 0xff mask is scheduled after the base mask. */
+   t3 to t6 in another order, and the 0xff mask is scheduled after the base mask. Declaring
+   n before lo (pseudo order) changes nothing. Hoisted constants: retail t3 0x04040000, t4 11,
+   t5 0x10000000, t6 0x01000000; here t3 11, t4 0x01000000, t5 0x04040000, t6 0x10000000. */
 void f_02b854(int mode, StripVertex *out, unsigned int *dl, const unsigned int *cmds,
               StripVertex **outEnd, unsigned int **dlEnd)
 {

@@ -12506,7 +12506,7 @@ struct Obj9b : Base9 {
 };
 
 /* @draft 0x058a44 us f_058a44
-   Remaining difference: one word, the inlined string destructor on the unwind path uses blez where retail has blezl (branch likely). dbr fills the slot from the target block (move a0,s2 for f_04eee8, label used once) non-annulled because a0 is set first at the fall-through (move a0,sp for f_04ed28, REG_BR_PROB 531); retail's annul means a0 counted as live there (opposite_needed), cause not found.
+   Remaining difference: one word, the inlined string destructor on the unwind path uses blez where retail has blezl (branch likely). dbr fills the slot from the target block (move a0,s2 for f_04eee8, label used once) non-annulled because a0 is set first at the fall-through (move a0,sp for f_04ed28, REG_BR_PROB 531); retail's annul means a0 counted as live there (opposite_needed), cause not found. Checked 2026-11-16 (f1fb5e, .s): the block layout, the three j stubs and the filled jal f_04ed28 / move a0,sp slot all match retail, and the f_04eee8 call sits in its own EH region (LEHB898); the fall-through label starts a block, so mark_target_live_regs takes a0 from live_at_start (dead). Row 59's throw() lever runs the other way (it removed a blezl), so it is not the fix here.
    WHAT IT DOES: pops the top argument as a handle; asks the object at the next entry of the list at +344 (virtual slot 9) for a value, then if the handle's type (slot 6) is 7 and the value is nonzero, fetches its name string (slot 21), terminates it and passes it to f_15e078, otherwise returns slot 23 of the handle minus one; returns -1 for the null value case. */
 int f_058a44(char *s) {
     char *t = s + 328;

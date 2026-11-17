@@ -81,7 +81,9 @@ void f_024aec(CInfo *info)
    WHAT IT DOES: Sets the GE up for a texture straight from a texture file: palette mode and
    load if it has one, then the texture mode and the address, size and buffer width of every
    mipmap level.
-   Remaining: only the three temporaries of the mipmap step (v1, t0, a3) and the w - 1 temporary come out in other registers. */
+   Remaining: only the three temporaries of the mipmap step (v1, t0, a3) and the w - 1 temporary come out in other registers.
+   Local-alloc in the loop block: retail gives (w+n-1) and its quotient v1, (ht+7) a3, the bw
+   temporary t0; here the bw temporary takes v1 first. Pow2() for tw/th: 45 words (worse). */
 void f_024b34(TexHeader *h)
 {
     if (h->clutOfs) {

@@ -61,7 +61,10 @@ void CCamShake::Reset1()
 /* @draft 0x082984 us _ZN9CCamShake7Update1Ev
    REMAINING DIFFERENCE: the noise index registers (retail keeps the next index in a1 and
    steps it in place before the byte store) and the order of the rumble and noise stores.
-   Post-increments on the member and an int index stepped in place were tried.
+   Post-increments on the member and an int index stepped in place were tried. An int j
+   lets combine fold j + 1 into i + 2; `unsigned char j` keeps j and steps it in place
+   (22 -> 20 words). Left: the index's `andi` is tied to j's register (v1) here, while
+   retail masks into v1 and keeps j unmasked in a1 (so `this` goes to a2).
    WHAT IT DOES: The rumble: zero at low speed, rising to full strength 38.9 units of speed
    later, times the next two noise samples. */
 void CCamShake::Update1()
@@ -75,9 +78,9 @@ void CCamShake::Update1()
             t = 1.0f;
     }
     int i = noise;
-    int j = i + 1;
+    unsigned char j = i + 1;
     float a = D_1aa5f4[i] * 0.0608999953f;
-    float b = D_1aa5f4[(unsigned char)j] * 0.0548099987f;
+    float b = D_1aa5f4[j] * 0.0548099987f;
     rumble = t;
     noise = j + 1;
     rumbleX = a * t;

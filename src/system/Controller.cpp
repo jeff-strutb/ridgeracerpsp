@@ -283,7 +283,10 @@ void CController::f_042440(int mask, int i, short v)
    the input counts as held (and pressed if it was not held last frame) and repeats.
    Remaining difference: retail stores the level before the 128 test (the test result reuses
    the address register v0) and fills that branch's slot from the timer reset (bnezl); here
-   the test is hoisted above the store into v1 and the store fills the slot. */
+   the test is hoisted above the store into v1 and the store fills the slot. The `slti` in v0
+   after `sh` is an anti dependence on the dying address register, so in retail the compare
+   came after the store when local-alloc ran; here sched1 hoists it first (priority 2 vs 1),
+   then it cannot share v0. What keeps sched1 from hoisting it in retail is open. */
 void CController::f_0424a4(int mask, int i, int v, int dir, int boost)
 {
     if (v >= 0) {

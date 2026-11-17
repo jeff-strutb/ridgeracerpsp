@@ -143,7 +143,11 @@ extern RaceInfo *D_2407fc;
    there is one, and the subtitle player (by race kind). Returns 1 (0 when the parts fail).
    Remaining difference: the database copy size, the copy buffer's address and its high half
    take saved registers s5, s1, s4 here against s1, s4, s5 in retail; the string pool also
-   needs the panel loader's strings (f_089cd4) ahead of the course names. */
+   needs the panel loader's strings (f_089cd4) ahead of the course names. After the first
+   lookup retail loads the size (lui v1; lw s1) before `move a1,v0`, so the size pseudo is
+   allocated first by global-alloc (s1, then the address s4, then its high half s5); here
+   `move a1,v0` goes first and the order is address, high half, size. Also `lbu v0` vs v1
+   for TourExtra. */
 int CRace2DNormal::f_089464(int a, int b)
 {
     CRace2DBase::f_089464(a, b);

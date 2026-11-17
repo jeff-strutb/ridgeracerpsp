@@ -84,21 +84,22 @@ unsigned int D_23c210[3];
    WHAT IT DOES: Sets up texture memory for n textures: the start and fill point of the palette
    area and of texture areas 1 and 2 in video memory (area 1 from 0xcc000, area 2 from
    0x154000, both ending at 0x1fe000), the info store and the id lists. Returns 1 on success.
-   Remaining: the eight start, fill point and end stores come out in another order and with other registers; no order of the statements (all 1440 tried) gives retail's. */
+   Remaining: no order of eight plain statements (all 1440 tried) gives retail's. The chained
+   assignments (handbook rows 76/224) give retail's value registers (a1, t1, t2; 22 -> 12
+   words); left: the order of the six area stores (ours 1f8[1], 210[1], 204[2], 204[1],
+   1f8[2], 210[2]; retail 204[2], 210[2], 1f8[2], 1f8[1], 204[1], 210[1]) and the array
+   address registers (204/210 swapped between a3 and a2). */
 int f_022c30(int n)
 {
     unsigned int base = (unsigned int)sceGeEdramGetAddr();
     unsigned int a = base + 0xcc000;
     unsigned int e = a + 0x132000;
     unsigned int b = base + 0x154000;
-    D_23c204[1] = a;
-    D_23c210[1] = e;
-    D_23c1f8[2] = b;
-    D_23c1f8[1] = a;
-    D_23c204[2] = b;
+    D_23c204[2] = D_23c1f8[2] = b;
     D_23c210[2] = e;
-    D_23c1f0 = base + 960;
-    D_23c1f4 = base + 960;
+    D_23c1f8[1] = D_23c204[1] = a;
+    D_23c210[1] = e;
+    D_23c1f4 = D_23c1f0 = base + 960;
     if (!f_023340(n))
         return 0;
     return f_024474(n) != 0;

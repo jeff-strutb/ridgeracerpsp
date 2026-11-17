@@ -153,22 +153,23 @@ int CStreamPreLoad::f_095ebc(int pack)
 
 /* @draft 0x095f08 us f_095f08
    WHAT IT DOES: Returns where a stream sits in the pack's pre-load buffer, or 0.
-   Remaining difference: retail keeps the header loaded for the test in v1 and passes it to
-   the lookup, with the success path out of line after the shared log call; here the layout
-   and the header's register differ. */
+   Remaining difference: the `!m4` arm written first gives retail's layout (success out of
+   line after the shared log call); left: retail sets a0 to the Buff message before the
+   `bnez v0` (lui before, addiu in the slot, as for the other two messages), here the slot
+   takes the success path's `move a0,v1` and the message follows the branch. */
 char *CStreamPreLoad::f_095f08(int pack, int stream)
 {
     if (pack < 0 || pack >= 1) {
         f_093f90("StreamPreLoad: SearchBuffAddr Failed! Invalid PackID[%d]\n", pack);
     } else if (!m0) {
         f_093f90("StreamPreLoad: SearchBuffAddr Failed! Pack[%d] has not been Registered yet.\n", pack);
-    } else if (m4) {
+    } else if (!m4) {
+        f_093f90("StreamPreLoad: SearchBuffAddr Failed! Buff[%d] has not been Registered yet.\n", pack);
+    } else {
         int off = f_114b2c(m0, stream);
         if (off < 0)
             return 0;
         return m4 + off;
-    } else {
-        f_093f90("StreamPreLoad: SearchBuffAddr Failed! Buff[%d] has not been Registered yet.\n", pack);
     }
     return 0;
 }

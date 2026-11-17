@@ -372,6 +372,10 @@ extern "C" unsigned int *f_02bdcc(char *part, Vec4 *view, unsigned int *p)
 /* @draft 0x02c650 us _ZN10MapReflectC2Ev
    Remaining difference: store order from +0x94: retail stores m8, m104 and m140 to m164 after
    the D_23ff70 store and m100 last (27 words); the first 37 words match in field order.
+   The int D_23ff70 store is an alias barrier for the int field stores, so retail's split
+   (before it: 12..60, 124, 128, 136, 152, 160; after: 8, 140, 144, 148, 156, 164, 104) is
+   either the source order or D_23ff70 has another alias set; as `void *` it stays 27 words
+   with all stores reordered, so not that. The C1 copy has the same body.
    WHAT IT DOES: Sets the reflection settings to their defaults (the base object constructor;
    the same body as the complete object constructor that follows). */
 MapReflect::MapReflect()

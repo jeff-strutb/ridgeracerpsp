@@ -225,7 +225,8 @@ void CFadeMask::f_0895cc()
    Remaining difference: only the order of the constructors' zero stores. Retail interleaves
    them: the two overlays' +4..+40 words, then the movie player overlay's +1580/+1584, the
    vtables, the normal overlay's +1588, the mask's +28, then the rest; here each object's
-   stores stay together. */
+   stores stay together. The order is set by sched1's interblock region pass (-fsched-verbose:
+   all 24 zero stores ready at t=0 with equal priority, taken in LUID order), not by sched2. */
 
 /* @implements 0x08973c us _GLOBAL__I_
    WHAT IT DOES: Static construction of the file's objects. */

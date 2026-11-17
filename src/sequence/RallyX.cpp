@@ -285,7 +285,11 @@ void f_02e264(int demo)
 /* @draft 0x02e380 us f_02e380
    WHAT IT DOES: Starts a new game: three lives, no score, no extra life awarded, no new high
    score; unless a stage was chosen in stage select, starts from the first stage. Then starts
-   the first round. */
+   the first round.
+   Remaining difference: sched1's interblock pass moves SelectStages' address setup (insns 56,
+   64, 70, 76: the lui's and D_1d5910's addiu) speculatively into the entry block; retail
+   keeps the entry block to its own five lui's and the inlined block intact (then the two
+   byte stores come out 75 then 74 as in retail). What stops the motion in retail is open. */
 void f_02e380(void)
 {
     signed char chosen = D_1d1a90;

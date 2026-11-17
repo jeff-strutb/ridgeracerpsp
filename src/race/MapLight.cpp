@@ -264,7 +264,11 @@ static inline Vec4 *White(Vec4 *c)
 
 /* @draft 0x02cf3c us f_02cf3c
    Remaining difference: one word, the green blend product (mul.s $f4,$f3,$f4 in retail,
-   operands swapped here); no spelling of the three blends tried gives both.
+   operands swapped here); no spelling of the three blends tried gives both. Cause (lreg dump,
+   2026-11-16): sched1 orders z's product, 1 - a, x's product, y's product, so a dies in y's
+   product; written a * out->y, local-alloc ties that product to a (dying op1, $f3) instead of
+   to out->y. Retail's mul.s $f4,$f3,$f4 needs a still live there (its last use after the three
+   products, e.g. the subtraction scheduled last), so the source order is not the lever.
    WHAT IT DOES: Works out the light at a point on the course. Of the light polygons under the
    point it takes the lowest one that contains it (points just outside an edge count while
    nothing has been found yet), blends the polygon's corner colours at the point, and returns

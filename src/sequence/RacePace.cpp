@@ -379,7 +379,9 @@ void RaceCars::f_0408b8(NetName n)
    WHAT IT DOES: for the sequences numbered 1, 4 and 5, loads the pace package named after the
    current sequence ("Pace_<name>").
    Remaining difference: only the saved register numbering. Retail gives the copy size
-   (D_1a2120) s1 and the table, field name and buffer addresses s2 to s5; here the size is s5. */
+   (D_1a2120) s1 and the table, field name and buffer addresses s2 to s5; here the size is s5
+   (global-alloc takes the size last; same pattern as 0x0897ec). Reading the size into a local
+   before the lookup moves its load above the call (66 words, worse). */
 void f_040c90()
 {
     char name[64];
