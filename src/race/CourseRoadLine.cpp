@@ -459,32 +459,36 @@ extern "C" void f_0fb3f0(MapOwner *o, int mode)
    WHAT IT DOES: Looks up the road record of the segment's index and the owner's road line
    values for it, and when the lateral value lies inside -2 to 2 it calls the owner's virtual
    step 28 with the sum or difference of the two bounds and writes the result and a flag to the
-   out pair; otherwise it zeroes the out pair. Not yet byte-exact. */
+   out pair; otherwise it zeroes the out pair.
+   Remaining difference: register choice only; retail gives s to s1 and out to s0, here the
+   other way round (global allocation order of the two parameters). */
 extern "C" void f_0fb534(char *o, char *s, char *out)
 {
-    int idx = INT(s, 428);
     char *recs = *(char **)(o + 10116);
     float m = FLD(s, 444);
-    float t = FLD(recs + idx * 8, 0) * 1.024f - m;
+    float t = FLD(recs + INT(s, 428) * 8, 0) * 1.024f - m;
     short a, b;
-    short v;
-    float fv, t2, res;
+    float t2, res;
 
     if (2.0f < t || t < -2.0f) {
-        INT(out, 4) = 0;
         FLD(out, 0) = 0.0f;
+        INT(out, 4) = 0;
         return;
     }
-    f_0e3a74(D_23c820 + 12240, idx, &a, &b);
-    v = (m < 0.0f) ? b : a;
-    fv = (float)v * 0.001f;
-    if (m < 0.0f)
-        t2 = ((fv - m) - 2.0f) * 0.5f + m;
-    else
-        t2 = ((fv + m) - 2.0f) * 0.5f - m;
-    res = ((float (*)(void *, int, float))((*(void ***)o)[28]))(o, idx, t2);
-    INT(out, 4) = 1;
+    char *base = D_23c820;
+
+    f_0e3a74(base + 12240, INT(s, 428), &a, &b);
+    m = FLD(s, 444);
+    if (m < 0.0f) {
+        t2 = (((float)b * 0.001f - m) - 2.0f) * 0.5f;
+        t2 += m;
+    } else {
+        t2 = (((float)a * 0.001f + m) - 2.0f) * 0.5f;
+        t2 -= m;
+    }
+    res = ((float (*)(void *, int, float))((*(void ***)o)[28]))(o, INT(s, 428), t2);
     FLD(out, 0) = res;
+    INT(out, 4) = 1;
 }
 
 /* @draft 0x0fb680 us f_0fb680
