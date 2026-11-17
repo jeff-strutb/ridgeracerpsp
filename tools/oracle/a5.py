@@ -228,6 +228,11 @@ def run(exe, script, trace, watch, calls, cycles_ref=None, cap=None, ref_trace=N
            f'--rr-hash-skip={a7.TEXT_RAM[0]:x}:{a7.TEXT_RAM[1]:x}']
     if cycles_ref:
         cmd.append(f'--rr-cycles-ref={cycles_ref}')
+    # A trace left by an earlier run would be read by the ref_trace check below before rrbox
+    # rewrites it, and stop this run at once (isolate.py's second round got an empty call log).
+    for f in (trace, calls):
+        if os.path.exists(f):
+            os.remove(f)
     p = subprocess.Popen(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     while p.poll() is None:
         try:
