@@ -9,7 +9,9 @@ extern float D_1d5d94;
 namespace CamCtrl {
 union Angle;
 }
-extern "C" void f_099b98(CamCtrl::Angle *);
+extern "C" CamCtrl::Angle *f_099b98(CamCtrl::Angle *);
+/* The eased ramp of x over [0, 1]. */
+extern "C" float f_0f4290(float x);
 
 namespace CamCtrl {
 
@@ -32,7 +34,24 @@ public:
 
 struct Vec4 {
     float x, y, z, w;
+    void operator+=(const Vec4 &o)
+    {
+        x += o.x;
+        y += o.y;
+        z += o.z;
+    }
 };
+
+/* A vector scaled, as a point (w = 1). */
+static inline Vec4 operator*(float t, const Vec4 &v)
+{
+    Vec4 r;
+    r.x = t * v.x;
+    r.y = t * v.y;
+    r.z = t * v.z;
+    r.w = 1.0f;
+    return r;
+}
 
 /* A car's replay camera data. */
 struct TVCar {
@@ -59,8 +78,21 @@ struct TVOwner {
 struct TVLook {
     int on;
     int mode;
-    char p8[8];
+    float start;
+    float m12;
     float a, b;
+    float m24;
+};
+
+/* A shot's eased move: frames to speed up, at speed and to slow down, its start time and
+   end, and whether it keeps its value. */
+struct TVMove {
+    int cruise;
+    int accel;
+    int decel;
+    float start;
+    float target;
+    int keep;
 };
 
 /* A camera shot. */
@@ -79,7 +111,8 @@ struct TVShot {
     char ramp[16];
     /* The shot's look: on, a mode, and its two turn angles. */
     TVLook look;
-    char p80[44];
+    char p84[16];
+    TVMove move;
     int m124;
     int m128;
     int m132;
@@ -89,12 +122,17 @@ struct TVShot {
     int m156;
     char p160[80];
     float m240;
-    char p244[68];
+    char p244[32];
+    int m276;
+    char p280[8];
+    float m288;
+    char p292[20];
 };
 
 /* The course collision areas of the map manager. */
 struct CourseAreas {
     int f_0e2690(int pos);
+    float f_0e26dc(float pos);
     int f_0e2448(int a, int b, float x, float z);
     void f_0e2d10(float *x, float *y, float *z, float fx, float fz);
     int m0;
@@ -139,15 +177,33 @@ struct Rad {
 
 /* The lens data of the camera's view. */
 struct TVView {
-    char p0[488];
+    float px, py, pz;
+    char p12[468];
+    float fov;
+    float m484;
     float m488;
-    char p492[168];
+    char p492[4];
+    float zoom;
+    char p500[72];
+    int m572;
+    char p576[32];
+    float m608, m612, m616;
+    char p620[40];
     int m660;
     int m664;
     int m668;
     int m672;
-    char p676[36];
+    char p676[12];
+    float m688, m692, m696;
+    char p700[4];
+    float m704;
+    float m708;
     float m712;
+    int m716;
+    char p720[16];
+    float m736;
+    int m740;
+    float m744;
 };
 
 class CCamTV : public CCamProto {
@@ -157,6 +213,10 @@ public:
     void f_080b50();
     void f_080f90();
     void f_0817e0();
+    void f_080660();
+    void f_08140c(struct Mat34 *out, float t, float ry, float rx, float lim);
+    void f_081944();
+    float f_081610();
     void f_081b10();
     void f_0817fc(struct Mat34 *out, float t, float ry, float rx);
     void f_081604();
@@ -183,29 +243,36 @@ public:
     TVShot *shot;
     TVCar *car;
     TVTimer t40;
-    char p44[200];
+    char p44[192];
+    float sway1X, sway1Y;
     TVTimer t244;
     char p248[192];
     float swayX, swayY;
     int m448;
     char p452[12];
     float shotX, shotY, shotZ;
-    char p476[40];
+    char p476[4];
+    float m480, m484, m488;
+    char p492[4];
+    float m496, m500, m504;
+    char p508[4];
+    float m512;
     float m516;
-    int m520;
+    float m520;
     float m524;
     float m528;
     float m532;
     int m536;
     int m540;
     int m544;
-    char p548[8];
+    int m548;
+    char p552[4];
     int m556;
     int m560;
     char p564[12];
     Vec4 m576;
-    int m592;
-    int m596;
+    float m592;
+    float m596;
     char p600[12];
     int m612;
     int m616;
@@ -221,13 +288,13 @@ public:
     Angle m692;
     Angle m696;
     int m700;
-    int m704;
-    char p708[4];
-    int m712;
-    int m716;
+    float m704;
+    float m708;
+    float m712;
+    float m716;
     float m720;
     int m724;
-    int m728;
+    float m728;
     float m732;
     float m736;
     int m740;
@@ -403,6 +470,8 @@ void CCamTV::f_081360()
 extern float D_1d5d98;
 extern float D_1d5d90;
 extern float D_1d3a68;
+/* Frames per unit of the shot moves. */
+extern float D_1d5da0;
 
 namespace CamCtrl {
 
@@ -437,6 +506,32 @@ extern "C" void f_09f92c(CamCtrl::Mat34 *m, const CamCtrl::Euler &e);
 
 namespace CamCtrl {
 
+/* @implements 0x08140c us _ZN7CamCtrl6CCamTV8f_08140cEPNS_5Mat34Effff
+   WHAT IT DOES: Advances the camera shake by t and builds the shake rotation: the shake
+   strength (blended from the values at 720 and 708 by 704, over lim times 0.03 and at
+   most 1) eased and scaled by the shake's fade-in at 716, turns the shake's two components
+   by rx and ry into angles (order 4) in out; then fades the shake in a step (0.2 of the
+   time scale) up to 1. */
+void CCamTV::f_08140c(Mat34 *out, float t, float ry, float rx, float lim)
+{
+    float x = m720 * (1.0f - m704);
+    x = x + m708 * m704;
+    float l = lim * 0.03f;
+    if (l < x)
+        x = 1.0f;
+    else
+        x = x / l;
+    x = f_0f4290(x) * m716 * 16.0f * D_1d5d90 * D_1d3a68;
+    t40.f_0f411c(t * D_1d5d98);
+    float *sw = &sway1X;
+    Mat34 m;
+    f_09f92c(&m, Euler(EAngle(rx * sway1X * x), EAngle(ry * sw[1] * x), EAngle(0.0f), 4));
+    *out = m;
+    m716 = m716 + D_1d5d98 * 0.2f;
+    if (1.0f < m716)
+        m716 = 1.0f;
+}
+
 /* @implements 0x0817fc us _ZN7CamCtrl6CCamTV8f_0817fcEPNS_5Mat34Efff
    WHAT IT DOES: Advances the camera sway by t and builds the sway rotation: the sway's two
    components scaled by rx and ry into angles (16 sway units to the radian step), turned
@@ -449,6 +544,44 @@ void CCamTV::f_0817fc(Mat34 *out, float t, float ry, float rx)
     Mat34 m;
     f_09f92c(&m, Euler(EAngle(ax), EAngle(ay), EAngle(0.0f), 4));
     *out = m;
+}
+
+/* @draft 0x081944 us _ZN7CamCtrl6CCamTV8f_081944Ev
+   Remaining difference: FP registers only: retail's speed lands in f4 (the register the
+   cruise frames' float just freed), here f5, and the slow-down branch swaps f0 and f1.
+   WHAT IT DOES: Runs the shot's eased move once its start time comes round (time wrapped
+   by twice the period at 736, or at once in the timed mode at 740): counts the move's
+   frame up by 5 to its end, starts the value from the look's base, and adds this frame's
+   share of the distance: ramping up over the speed-up frames, full while at speed, and
+   ramping down over the slow-down frames. */
+void CCamTV::f_081944()
+{
+    TVMove *m = &shot->move;
+    TVLook *lk = &shot->look;
+    if (m->cruise == 0)
+        return;
+    float d = D_241450 - m->start;
+    while (d < 0.0f)
+        d += m736 * 2.0f;
+    if ((m740 != 0 && m->start <= D_241450) || d <= m736) {
+        if (m724 == 0 && m->keep == 0)
+            m728 = lk->m24;
+        int total = m->cruise + m->accel + m->decel;
+        if (m724 < total) {
+            m724 += 5;
+            if (total < m724)
+                m724 = total;
+        }
+        int t = m724;
+        float sp = (m->target - lk->m24) /
+                   (((float)(m->accel + m->decel) * 0.5f + (float)m->cruise) / D_1d5da0);
+        if (t < m->accel)
+            m728 += sp * ((float)t / (float)m->accel);
+        else if (t < m->accel + m->cruise)
+            m728 += sp;
+        else
+            m728 += sp * (1.0f - (float)(t - m->accel - m->cruise) / (float)m->decel);
+    }
 }
 
 /* @implements 0x081938 us _ZN7CamCtrl6CCamTV8f_081938Ev
@@ -470,6 +603,11 @@ extern float D_24144c;
 struct Ramp;
 float f_082588(Ramp *r, float x);
 extern "C" float *f_0a8fa8(float *out, void *c, const float *d);
+struct Tune;
+extern Tune D_241458;
+extern Tune D_241468;
+/* The zoom ramp over distance. */
+extern Ramp D_1d3a6c;
 /* The camera's height above the car. */
 extern float D_1d3a64;
 void f_09b394(CamCtrl::Angle a, float *x, float *y);
@@ -553,6 +691,95 @@ void CCamTV::f_0804bc()
     }
 }
 
+/* @draft 0x081610 us _ZN7CamCtrl6CCamTV8f_081610Ev
+   Remaining difference: global-alloc puts the ramp value in f20 and 1.0/150 in f21/f22
+   in retail (here 1.0, 150, ramp), and retail's two zero returns share one block that the
+   frame-count tests fall into; here the zero is set before the first test.
+   WHAT IT DOES: Steps the shot's timing from the frame count at 448: the eased progress
+   over 600 frames (kept at 712), the span left after the two offsets, the previous zoom
+   saved; eases the value at 512 toward the distance ramp (near or far set by 40000) over
+   the first 150 frames, and returns the zoom: easing in over the first 150 frames, out
+   until 750, scaled by the distance ramp (0 before the start and after 750). */
+float CCamTV::f_081610()
+{
+    m712 = (float)m448 / 600.0f;
+    if (m712 < 0.0f)
+        m712 = 0.0f;
+    else if (1.0f < m712)
+        m712 = 1.0f;
+    m712 = f_0f4290(m712);
+    float k = 1.0f - (m592 + m596);
+    m708 = m720;
+    m704 = 0;
+    if (m448 <= 0)
+        return 0.0f;
+    float d = m656;
+    float a = f_082588(40000.0f < d ? (Ramp *)&D_241458 : (Ramp *)&D_241468, d);
+    float x = (float)m448 / 150.0f;
+    if (1.0f < x)
+        x = 1.0f;
+    float e = f_0f4290(x) * k;
+    m512 = a * e + m512 * (1.0f - e);
+    int c = m448;
+    float n = (float)c;
+    float f;
+    if (c < 150)
+        f = f_0f4290(n / 150.0f) * k;
+    else if (c < 750)
+        f = (1.0f - f_0f4290((n - 150.0f) / 600.0f)) * k;
+    else
+        return 0.0f;
+    return f * f_082588(&D_1d3a6c, m656);
+}
+
+/* @draft 0x080660 us _ZN7CamCtrl6CCamTV8f_080660Ev
+   Remaining difference: only the direction blend into 624 is scheduled differently
+   (retail adds x straight after copying it and shares the 1.0 %hi between the zero
+   direction and the scaled vector's w); the rest matches.
+   WHAT IT DOES: Runs the shot's look blend: while the look is on and its time has come
+   round, first counts down the hold at 616 and then the blend at 612 by 5 frames; the
+   eased share left (kept at 592) mixes the look direction at 576 with the camera's
+   own direction (normalised, or straight ahead when it has no length) into 624, and
+   sets the look angle at 728 and blends half the look's value into 512. */
+void CCamTV::f_080660()
+{
+    TVLook *lk = &shot->look;
+    if (m612 != 0) {
+        float d = D_241450 - lk->start;
+        while (d < 0.0f)
+            d += m736 * 2.0f;
+        if ((m740 != 0 && lk->start <= D_241450) || d <= m736) {
+            if (0.0f < (float)m616) {
+                m616 -= 5;
+            } else {
+                m612 -= 5;
+                if (m612 < 0)
+                    m612 = 0;
+            }
+        }
+        m592 = f_0f4290((float)m612 / (float)lk->on);
+        Vec4 dir = m624;
+        float len = f_0a65c4(&dir);
+        if (len <= 0.0f) {
+            dir.x = 0.0f;
+            dir.y = 0.0f;
+            dir.z = 0.0f;
+            dir.w = 1.0f;
+        } else {
+            dir.x /= len;
+            dir.y /= len;
+            dir.z /= len;
+        }
+        float t = m592;
+        m624 = t * m576;
+        m624 += (1.0f - t) * dir;
+        m728 = m592 * lk->m24;
+        m512 = lk->m12 * 0.5f * m592 + m512 * (1.0f - m592);
+    } else {
+        m592 = 0.0f;
+    }
+}
+
 /* @implements 0x0817d0 us _ZN7CamCtrl6CCamTV8f_0817d0Ev
    WHAT IT DOES: Debug display (compiled out). */
 void CCamTV::f_0817d0()
@@ -589,6 +816,70 @@ extern TVRace *D_2407fc;
 void f_0823f0(int n, CamCtrl::TVView *v);
 
 namespace CamCtrl {
+
+/* A lens step: below the field of view key, the view's distance scale. */
+struct LensStep {
+    float key;
+    float val;
+};
+
+}
+
+extern "C" float f_0cd3cc(float);
+extern CamCtrl::LensStep D_1d3a7c[6];
+
+namespace CamCtrl {
+
+/* @implements 0x07f8cc us _ZN7CamCtrl6CCamTV8f_07f8ccEv
+   WHAT IT DOES: Puts the camera's state on its view: half the field of view and its zoom,
+   the shot position, the aim, the course position (moved along the course), the lens and
+   tracking values, and the followed distance (the car's own position when the shot's is
+   negative); during a lap, the view's distance scale looked up from twice the field of
+   view in the lens steps (interpolated between steps), times 1000. */
+void CCamTV::f_07f8cc()
+{
+    TVView *v = (TVView *)param.v[0];
+    v->fov = m512 * 0.5f;
+    v->zoom = 1.0f / f_0cd3cc(v->fov);
+    TVView *w = (TVView *)param.v[0];
+    w->px = shotX;
+    w->py = shotY;
+    w->pz = shotZ;
+    w->m608 = m496;
+    w->m612 = m500;
+    w->m616 = m504;
+    m516 = D_23c820.Areas()->f_0e26dc(m516);
+    TVView *u = (TVView *)param.v[0];
+    u->m704 = m516;
+    u->m688 = m480;
+    u->m692 = m484;
+    u->m696 = m488;
+    u->m572 = m544;
+    u->m716 = m556;
+    u->m708 = m528;
+    u->m740 = shot->m276;
+    u->m712 = m520;
+    u->m744 = shot->m288 < 0.0f ? ((TVOwner *)param.v[2])->car.pos : m532;
+    u->m736 = m524;
+    u->m664 = m548;
+    if (D_241454 != 0) {
+        float x = u->fov * 2.0f;
+        float r = D_1d3a7c[5].val;
+        LensStep *e = D_1d3a7c;
+        for (int i = 0; i < 6; i++, e++) {
+            if (e->key < x) {
+                if (i == 0) {
+                    r = e->val;
+                } else {
+                    float t = (x - e->key) / (e[-1].key - e->key);
+                    r = e[-1].val * t + e->val * (1.0f - t);
+                }
+                break;
+            }
+        }
+        u->m488 = r * 1000.0f;
+    }
+}
 
 /* @draft 0x07f834 us _ZN7CamCtrl6CCamTV8f_07f834EPi
    REMAINING DIFFERENCE: only the FP registers of the far distance (retail f0 for the
