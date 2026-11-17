@@ -141,12 +141,12 @@ public:
 
         f_04c668(g, f_101f54(i), 1.0f, 1.0f, 1.0f, t);
     }
-    /* Sets one sprite's colour. */
-    void Tint(int i, float r, float gr, float b, float a)
+    /* Sets one sprite's brightness, fully opaque. */
+    void Tint(int i, float v)
     {
         Group *g = group;
 
-        f_04c668(g, f_101f54(i), r, gr, b, a);
+        f_04c668(g, f_101f54(i), v, v, v, 1.0f);
     }
     /* Picks one sprite's cell. */
     void Cell(int i, int cell)
@@ -242,6 +242,38 @@ public:
 
 using namespace Fj;
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+/* @draft 0x107edc us C2DMeterBase8f_107edc
+   WHAT IT DOES: Shows a meter lamp lit or dark: places the sprite at the lamp's rectangle
+   for that state and picks the matching cell from the strip of two. */
+void C2DMeterBase::f_107edc(int s, int on)
+{
+    Corner c[4];
+    float x = D_1d5fe8[type].r[2 + on].x;
+    float y = D_1d5fe8[type].r[2 + on].y;
+    float w = D_1d5fe8[type].r[2 + on].w;
+    float h = D_1d5fe8[type].r[2 + on].h;
+    float u0, v0;
+
+    c[0].x = c[2].x = x;
+    c[0].y = c[1].y = y;
+    c[1].x = c[3].x = x + w;
+    c[2].y = c[3].y = y + h;
+    u0 = w * on;
+    v0 = 0;
+    c[0].u = c[2].u = u0;
+    c[0].v = c[1].v = v0;
+    c[1].u = c[3].u = u0 + w;
+    c[2].v = c[3].v = h + v0;
+    {
+        Group *g = group;
+
+        f_04bf6c(g, f_101f54(s), c);
+    }
+}
+
 /* @implements 0x107fb0 us C2DMeterBase8f_107fb0
    WHAT IT DOES: Shows a digit (the last decimal digit of n) in a meter sprite: places the
    sprite at the digit's rectangle and picks the digit's cell from the strip of ten. */
@@ -262,6 +294,49 @@ void C2DMeterBase::f_107fb0(int s, int n)
         Group *g = group;
 
         f_04bf6c(g, f_101f54(s), c);
+    }
+}
+
+/* @draft 0x1080d8 us C2DMeterBase8f_1080d8
+   WHAT IT DOES: Shows a three-digit number (n below 1000) in three meter sprites from s on,
+   the digits step apart from the readout's corner, each taking its 16-pixel cell from the
+   strip of ten. */
+void C2DMeterBase::f_1080d8(int s, int n, float step)
+{
+    int d[3];
+    Corner c[4];
+    int i;
+
+    n %= 1000;
+    d[0] = n / 100;
+    d[1] = n % 100 / 10;
+    d[2] = n % 10;
+    for (i = 0; i < 3; i++) {
+        float x = D_1d5fe8[type].r[1].x + i * step;
+        float y = D_1d5fe8[type].r[1].y;
+        float v = d[i] * 16.0f;
+
+        c[0].x = x;
+        c[0].y = y;
+        c[0].u = 0;
+        c[0].v = v;
+        c[1].x = x + 16.0f;
+        c[1].y = y;
+        c[1].u = 16.0f;
+        c[1].v = v;
+        c[2].x = x;
+        c[2].y = y + 16.0f;
+        c[2].u = 0;
+        c[2].v = v + 16.0f;
+        c[3].x = x + 16.0f;
+        c[3].y = y + 16.0f;
+        c[3].u = 16.0f;
+        c[3].v = v + 16.0f;
+        {
+            Group *g = group;
+
+            f_04bf6c(g, f_101f54(s + i), c);
+        }
     }
 }
 
@@ -313,6 +388,120 @@ int C2DAnalogMeter::f_101b1c(Group *g, Race *r)
 int C2DAnalogMeter::Draw()
 {
     return 1;
+}
+
+/* @draft 0x1084b8 us C2DAnalogMeter8f_101b54
+   WHAT IT DOES: Updates the analog meter each frame once the start animation runs: turns the
+   rev needle over its dial range by the engine speed above 1000 rpm (half speed below 1000
+   on type 2 dials), turns the boost needle on dials that have one, picks the lamp cell, shows
+   the road speed (km/h, or mph when the game says so) and the gear, and blinks the shift lamp
+   at the redline (dim below it). */
+int C2DAnalogMeter::f_101b54()
+{
+    Corner c[4];
+
+    if (!C2DDecorationBase::f_101b54())
+        return 0;
+    {
+        float lo = D_1d5fe8[type].r[12].w;
+        float hi = D_1d5fe8[type].r[12].h;
+
+        if (D_1d5fe8[type].flag >= 0) {
+            float rpm = D_2407fc->rpm - 1000.0f;
+            float a;
+
+            if (D_1d5fe8[type].flag == 2 && rpm < 0)
+                rpm *= 0.5f;
+            a = lo + 1.0f / (D_2407fc->maxRpm - 1000.0f) * (hi - lo) * rpm;
+            if (a < 0)
+                a += 360.0f;
+            a *= 0.017453292f;
+            f_1088ec(c, &D_1d5fe8[type].r[11], a);
+            {
+                Group *g = group;
+
+                f_04bf6c(g, f_101f54(6), c);
+            }
+            if (D_1d5fe8[type].flag == 1) {
+                float t = (D_2407fc->boost + 1.0f) * 0.33333334f;
+                float m;
+
+                lo = D_1d5fe8[type].r[14].w;
+                hi = D_1d5fe8[type].r[14].h;
+                m = MAX(t, 0.0f);
+                t = MIN(m, 1.0f);
+                a = t * (hi - lo) + lo;
+                if (a < 0)
+                    a += 360.0f;
+                a *= 0.017453292f;
+                f_1088ec(c, &D_1d5fe8[type].r[13], a);
+                {
+                    Group *g = group;
+
+                    f_04bf6c(g, f_101f54(2), c);
+                }
+            }
+        }
+    }
+    if (D_2407fc->player->lamp)
+        Cell(0, 34);
+    else
+        Cell(0, 35);
+    {
+        float k = 0.216f;
+
+        if (f_0937f0())
+            k *= 0.6213712f;
+        f_1080d8(7, (int)(D_2407fc->speed * k), 10.0f);
+    }
+    f_107fb0(4, D_2407fc->gear);
+    if (D_2407fc->rpm >= D_2407fc->redline) {
+        int lit = (race->clock / 50 & 8) == 0;
+        float b = lit ? 1.0f : 0.1f;
+        float v = b;
+
+        if (!m28) {
+            if (b == 0.1f)
+                v = 1.0f;
+            else
+                m28 = 1;
+        }
+        Tint(3, v);
+    } else {
+        Tint(3, 0.1f);
+        m28 = 0;
+    }
+    return 0;
+}
+
+/* @draft 0x1088ec us C2DAnalogMeter8f_1088ec
+   WHAT IT DOES: Builds a needle's corners: the needle rectangle r[0] placed about its pivot
+   (r[1]'s corner), turned by the angle a (radians) and moved to the pivot. */
+void C2DAnalogMeter::f_1088ec(Corner *c, const Rect *r, float a)
+{
+    float s, co;
+    int i;
+
+    a *= 0.63661975f;
+    c[0].x = c[2].x = -r[1].x;
+    c[1].x = c[3].x = r[0].w - r[1].x;
+    c[0].y = c[1].y = -r[1].y;
+    c[2].y = c[3].y = r[0].h - r[1].y;
+    c[0].u = c[2].u = 0;
+    c[1].u = c[3].u = r[0].w;
+    c[0].v = c[1].v = 0;
+    c[2].v = c[3].v = r[0].h;
+    s = VSin(a);
+    co = VCos(a);
+    for (i = 0; i < 4; i++) {
+        float x = c[i].x;
+        float y = c[i].y;
+
+        c[i].x = x * co - y * s;
+        c[i].y = x * s + y * co;
+        c[i].x += r[0].x;
+        c[i].y += r[0].y;
+    }
 }
 
 /* @implements 0x1089ec us C2DAnalogMeter8f_101f74
