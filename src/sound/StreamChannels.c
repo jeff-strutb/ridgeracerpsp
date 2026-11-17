@@ -269,7 +269,7 @@ int f_1116e0(int ch)
     return badch(ch) ? 0x8000000a : 0;
 }
 
-/* @draft 0x111718 us f_111718
+/* @implements 0x111718 us f_111718
    WHAT IT DOES: Stores value v (in -128..128) into channel ch's m172; errors otherwise. */
 int f_111718(int ch, int v)
 {
@@ -277,7 +277,7 @@ int f_111718(int ch, int v)
     if (badch(ch)) {
         r = 0x8000000a;
     } else if ((unsigned)(v + 128) >= 257) {
-        r = 0x8000000a;
+        r = 0x80000000;
     } else {
         D_291980[ch].m172 = v;
         r = 0;
@@ -325,18 +325,16 @@ int f_111868(int ch, int a1)
     return 0;
 }
 
-/* @draft 0x111900 us f_111900
+/* @implements 0x111900 us f_111900
    WHAT IT DOES: Returns a scaled duration for a 1-state channel from channel 0's m56 word; 0 for a short one. */
 int f_111900(int ch, int a1)
 {
     int r = 0x8000000c;
-    if (D_291980[ch].state < 2)
-        return r;
-    if (D_291980[0].m56 <= 0)
-        return r;
-    r = 0;
-    if (a1 < 17)
-        return r;
-    r = (int)((float)(a1 / 16 * 28) / (float)D_291980[0].m56 * D_1b2e8c);
+
+    if (D_291980[ch].state >= 2 && D_291980[0].m56 > 0) {
+        r = 0;
+        if (a1 >= 17)
+            r = (int)((float)(a1 / 16 * 28) / (float)D_291980[0].m56 * D_1b2e8c);
+    }
     return r;
 }
