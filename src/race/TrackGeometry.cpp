@@ -948,7 +948,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
     float Ax[16], Ay[16], Bx[16], By[16], Cx[16], Cy[16];
     PVec v448, v464, v480;
     Vec2 pts[128];
-    int bestEdge, bestVert, result, hitAny, side;
+    unsigned int bestEdge;
+    int bestVert, result, hitAny, side;
     float best, bestLen2, ang, xlo, xhi, yhi, ylo, rad, zero, ang2, xi;
     short i, k;
     unsigned short cnt;
