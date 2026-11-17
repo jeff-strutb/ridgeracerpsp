@@ -304,6 +304,12 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 - **A division by a variable set to a constant** (`div` by a register holding `li 32`, with the `break 7` check, not shifts): the divisor assigned to a local first (`int w = 32; pos / w`). Seen on 0x02e400 and 0x02e704, both still drafts.
 - **Vertex pointer steps kept in one register** (`addiu v0,v0,5` between writes): the returned pointer stepped in place (`Vtx *q = f(); Vtx *v = q; q->...; q++;`). A float's bits loaded with `lw` after the preceding stores: `*(unsigned int *)&f` (a union lets the load move early). A constant spilled across a call: a `volatile` local. All three on parts of f_032c20, which is still a draft.
 
+- **Call-argument addresses of a temporary hoisted into saved registers** (`addiu s2,sp,2120` before a loop, `move a0,s2` inside): reach the temporary through a pointer local (`Angle t; Angle *p = &t; p->a = v; f(p);`). An addressable non-BLKmode local is a register turned into ADDRESSOF (stmt.c `expand_decl`), and an ADDRESSOF argument costs exactly `COSTS_N_INSNS (1)`, so calls.c `precompute_register_parameters` never copies it to a pseudo; it is set straight into `a0` and loop.c never sees a movable. A pointer local is a pseudo, cse1 hands it to the call, loop.c hoists it. Declaring the temporary in the caller's block (a macro) changes nothing. f_0b2f18 (TrackGeometry), 325 words at once; still a draft.
+- **An inner loop that reloads a pointer's fields at each use through a copy (`move a0,v0` before the loop), bottom-tested**: re-form the pointer as the loop body's first statement (`float *ep = &pts[jj].x;`). With one pointer, gcse load-PREs the reads against the same loads before the loop (latch reloads, `beqzl` exit, `j` back). Works only where cse1 starts a new extended block at the loop body; in f_0b2f18's sweep loop cse1 merges it back (open). f_0b2f18 count loop.
+- **Copies of a count before a loop and one inside it (`move a1,v1; move t0,v1`; `move a1,t0` in the body)**: read `o->n` in both the loop test and the modulus (`(k + 1) % o->n`), not a local `n`. gcse replaces the redundant in-loop loads with copies of the reaching register. f_0b2f18.
+- **FP equality tests against 0.0 get no branch prediction** (50/50: no opcode heuristic for CCmode compares with 0), so bb-reorder follows the RTL fallthrough: the then-arm of `if (a == 0.0f) x = A; else if (b == 0.0f) ...` stays inline and the rest goes out of line. f_0b2f18 (xi selection).
+- **A search loop with `slt`, a strength-reduced pointer walk and `andi` on the stored index, one count test**: an `int` counter, `(unsigned short)` at the store, no separate `if (n != 0)` guard. An `unsigned short` counter gives `sltu`, re-indexing and a doubled entry test. f_0b2f18.
+
 ## Open residue (not understood; do not guess)
 
 - **f_0922a0.** Solved 2026-11-16: see the symptom table (ternary into a result variable).
@@ -341,6 +347,10 @@ Newlib is statically linked (`ratio`, `_mprec_log10` at 0x12f1c4 to 0x12f2xx), s
 ## Searching statement orders
 
 When only the order of independent statements is open, compile every permutation of the block as separate functions in ONE scratch file and compare the `.s` output, rather than one scorer run (about 10 s) per order. Record the winning order as a tie-break, not a rule. `mips` and `shared` are predefined macros under the PSP driver and cannot be identifiers.
+
+## Compiler source
+
+`references/gcc-3.3.3/gcc/` holds the GCC 3.3.3 sources most often needed to settle a pass decision (local, gitignored): `calls.c`, `cse.c` (incl. `rtx_cost`), `expr.c`, `function.c` (ADDRESSOF), `loop.c`, `rtlanal.c`, `stmt.c` (`expand_decl`, `preserve_subexpressions_p`), `config/mips/mips.h`. Other files: `https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-3.3.3/gcc/<file>`; add them to the same folder. Read the source before reasoning about a pass from memory. At `-O2`, `preserve_subexpressions_p` is always true (`flag_expensive_optimizations`).
 
 ## Tools
 
