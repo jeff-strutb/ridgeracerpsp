@@ -200,11 +200,11 @@ void CCamCarCheck::f_07f5e8()
             spin = 1;
     }
     CPad *pad = &D_1d8910;
-    int dl = pad->m62 - pad->m60;
     int dy = pad->m54 - pad->m52;
     int dp = pad->m56 - pad->m58;
     int dr = pad->m28 - pad->m32;
     int dd = pad->m64 - pad->m66;
+    int dl = pad->m62 - pad->m60;
     if (dl > 80)
         lens += (float)(dl - 80) * 1e-5f;
     else if (dl < -80)
