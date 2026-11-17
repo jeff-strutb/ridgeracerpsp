@@ -96,6 +96,8 @@ public:
     void f_0e3a9c(float x, float y, float z);
     float f_0e3b30();
     float f_0e3b3c(float a, float b);
+    void f_0e3bb0(int i, float x, float z, float *px, float *py, float *pz, float *nx, float *ny,
+                  float *nz, float *ux, float *uy, float *uz, float *head);
 
     RoadPoint *road;
     Danmen *danmen;
@@ -251,7 +253,8 @@ int CourseAreas::f_0e23d0(float x, float z)
 /* @draft 0x0e2448 us CourseAreas8f_0e2448
    WHAT IT DOES: Returns the road point nearest a position among those from a to b (going
    round the ring), or -1.
-   DIFFERS: 10/68 words differ, first at +0x8c (not yet worked). */
+   Remaining difference: 4/68 words, the same load order residue as f_0e2558 (z read before
+   x gives retail's FPRs; sched2 keeps x's load first where retail issues z's). */
 int CourseAreas::f_0e2448(int a, int b, float x, float z)
 {
     float min = -1.0f;
@@ -263,8 +266,8 @@ int CourseAreas::f_0e2448(int a, int b, float x, float z)
         b += n;
     for (i = a; i <= b; i++) {
         j = f_0e2690(i);
-        dx = road[j].x - x;
         dz = road[j].z - z;
+        dx = road[j].x - x;
         if (min < 0.0f || dx * dx + dz * dz < min) {
             min = dx * dx + dz * dz;
             best = j;
@@ -276,9 +279,11 @@ int CourseAreas::f_0e2448(int a, int b, float x, float z)
 /* @draft 0x0e2558 us CourseAreas8f_0e2558
    WHAT IT DOES: Returns the road point nearest a position within 50 points of a, skipping
    those before b; a when none qualifies.
-   Remaining difference: 10/78 words, FPR choice only: retail loads road[j].z into $f1 and x
-   into $f0 and squares dx into $f2, dz into $f1; here z takes $f0. The two skip tests are
-   separate continues (a single || is or-ed into one branch). Not yet diagnosed in the dumps. */
+   Remaining difference: 4/78 words, the order of the two point loads and subtractions (sched2).
+   The skip tests are separate continues (a single || is or-ed into one branch). z is read
+   before x so that the x load is the base register's last use: sched1's register-weight
+   tie-break then issues it first and local-alloc gives x $f0, as in retail. Retail's final
+   order is z load, x load, z sub, x sub; here sched2 keeps sched1's x-first order. */
 int CourseAreas::f_0e2558(int a, int b, float x, float z)
 {
     float min = -1.0f;
@@ -292,8 +297,8 @@ int CourseAreas::f_0e2558(int a, int b, float x, float z)
             continue;
         if (j < b)
             continue;
-        dx = road[j].x - x;
         dz = road[j].z - z;
+        dx = road[j].x - x;
         if (min < 0.0f || dx * dx + dz * dz < min) {
             min = dx * dx + dz * dz;
             best = j;
@@ -702,4 +707,146 @@ float CourseAreas::f_0e3b3c(float a, float b)
             a -= len;
     }
     return a;
+}
+
+/* The polygon list a segment is walked against (src/race/TrackGeometry.cpp). */
+struct HitList {
+    char m[272];
+};
+
+/* The map manager's block: the sector lookup object sits at +12144. */
+struct MapBlock {
+    char pad[12144];
+    char m12144[16];
+    void *Sectors() { return m12144; }
+};
+extern MapBlock D_23c820;
+
+extern "C" {
+int f_0d5f78(void *d, int v);
+int f_0b1bc0(HitList *h, int n, float x, float z);
+int f_0b2a00(HitList *h, const Vec4 *a, const Vec4 *b, Vec4 *out, Vec4 *outn);
+void f_09b394(Angle a, float *x, float *y);
+}
+
+/* @draft 0x0e3bb0 us CourseAreas8f_0e3bb0
+   WHAT IT DOES: Places a point on the course from road point i towards (x, z): walks from the
+   road centre to the point in steps of at most 1000 units against the sector's wall list and
+   stops at the first wall hit (pushed back by the wall's offset), then takes the ground height
+   and normal there (*px, *py, *pz and *nx, *ny, *nz), turns an up vector by the wall and normal
+   headings when a wall was hit (*ux, *uy, *uz), and stores the road heading interpolated at the
+   point's distance in *head.
+   Remaining difference: 304/322 words; first transcription, frame layout as retail. Retail checks
+   the sqrtf result for NaN and calls sqrtf (the -fmath-errno expansion), which this file's
+   -fno-math-errno cannot produce; that call is also why retail keeps the 0.0 (c.y) and 1.0 in
+   saved $f22/$f23. Scored without the flag this draft is 177/322 (size 1280 vs 1288), but
+   f_0e229c then gains the check (its argument is not provably non-negative as written). */
+void CourseAreas::f_0e3bb0(int i, float x, float z, float *px, float *py, float *pz, float *nx,
+                           float *ny, float *nz, float *ux, float *uy, float *uz, float *head)
+{
+    HitList h;
+    Vec4 c;
+    Vec4 p;
+    Vec4 d;
+    Vec4 q;
+    Vec4 r;
+    Vec4 s;
+    Vec4 e;
+    Vec4 v;
+    float side;
+    float pos;
+    Angle t1;
+    Angle t2;
+    Angle t3;
+    Angle w;
+    int sect = f_0d5f78(D_23c820.Sectors(), i);
+    int k;
+    int hit;
+
+    f_0e1ff8((float)i, &c.x, &c.y, &c.z);
+    c.y = 0.0f;
+    p.x = x;
+    p.y = 0.0f;
+    p.z = z;
+    p.w = 1.0f;
+    d.x = x - c.x;
+    d.y = 0.0f;
+    d.z = z - c.z;
+    d.w = 1.0f;
+    float l2 = d.x * d.x + d.y * d.y + d.z * d.z;
+    int n = (int)sqrtf(l2) / 1000 + 1;
+    q = c;
+    r.w = 0.0f;
+    r.x = 0.0f;
+    r.y = 0.0f;
+    r.z = 0.0f;
+    d.x /= n;
+    d.y /= n;
+    d.z /= n;
+    hit = 0;
+    for (k = 0; k < n; k++) {
+        e.x = q.x + d.x;
+        e.y = q.y + d.y;
+        e.z = q.z + d.z;
+        e.w = 1.0f;
+        f_0b1bc0(&h, sect, e.x, e.z);
+        hit = f_0b2a00(&h, &e, &q, &r, &s);
+        if (hit) {
+            *px = e.x + r.x;
+            *pz = e.z + r.z;
+            break;
+        }
+        q.x += d.x;
+        q.y += d.y;
+        q.z += d.z;
+    }
+    if (!hit) {
+        f_0b1bc0(&h, sect, p.x, p.z);
+        hit = f_0b2a00(&h, &p, &q, &r, &s);
+        if (hit) {
+            *px = p.x + r.x;
+            *pz = p.z + r.z;
+        } else {
+            *px = p.x;
+            *pz = p.z;
+        }
+    }
+    p.x = *px;
+    p.z = *pz;
+    p.y = 0.0f;
+    p.w = 1.0f;
+    f_0e2f9c(f_0e2448(i - 50, i + 50, p.x, p.z), &side, &pos, p.x, p.z);
+    p.y = f_0e2334(side, pos);
+    p.y = f_0e2a54(&e, p.x, p.y, p.z);
+    *py = p.y;
+    *nx = e.x;
+    *ny = e.y;
+    *nz = e.z;
+    if (hit) {
+        float a = f_09a86c(s.x, s.z);
+        t1.a = -a;
+        f_099b98(&t1);
+        f_09b394(t1, &e.z, &e.x);
+        t2.a = f_09a86c(e.z, e.y);
+        v.x = 0.0f;
+        v.y = 0.0f;
+        v.z = 1.0f;
+        v.w = 1.0f;
+        f_099b98(&t2);
+        f_09b394(t2, &v.y, &v.z);
+        t3.a = a;
+        f_099b98(&t3);
+        f_09b394(t3, &v.z, &v.x);
+        *ux = v.x;
+        *uy = v.y;
+        *uz = v.z;
+    }
+    k = (int)pos;
+    float a = f_0e2260(k);
+    float b = f_0e2260(f_0e2690(k + 1));
+    w.a = b - a;
+    f_099b98(&w);
+    w.a = w.a * (a - (int)a);
+    f_099b98(&w);
+    *head = a + w.a;
 }
