@@ -38,23 +38,19 @@ void f_0e79c8(unsigned int color)
     *q = (color >> 24) | 0x58000000;
 }
 
-/* @draft 0x0e7a10 us f_0e7a10
+/* @implements 0x0e7a10 us f_0e7a10
    WHAT IT DOES: Appends one word of the texture-enable command: the flag (1 when on, 0
-   when off) is or-ed into the command tag 0x1e000000. The cursor advances by one word. */
+   when off) is or-ed into the command tag 0x1e000000. The cursor advances by one word.
+   Each arm stores through and advances the global itself (block-local pseudos), which puts
+   the cursor in v0 and the tag in v1 as in retail; a shared cursor local allocated them
+   the other way round. */
 void f_0e7a10(int on)
 {
-    unsigned int *q;
-
     if (on) {
-        q = D_27ebcc;
-        *q = 0x1e000001;
-        q++;
+        *D_27ebcc++ = 0x1e000001;
     } else {
-        q = D_27ebcc;
-        *q = 0x1e000000;
-        q++;
+        *D_27ebcc++ = 0x1e000000;
     }
-    D_27ebcc = q;
 }
 
 /* @implements 0x0e7a40 us f_0e7a40

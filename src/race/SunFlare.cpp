@@ -105,7 +105,10 @@ static __inline__ void Copy(Vec4 *d, const Vec4 *s)
    near the top of video memory.
    Remaining difference (15 words, scheduling only): retail shifts the colour's two high bytes
    before loading the alpha byte, and its colour bytes land in v0, v1, a0 (here a0, v0, v1);
-   the stores and every other instruction agree. */
+   the stores and every other instruction agree. lreg: the colour pseudos chain (215, 217,
+   221 -> the inlined parameter 214) all land in a0, the alpha load is moved above the shifts
+   by sched2. Tried the colour computed inside SetSprite from the LightSetup pointer (no
+   parameter pseudo): colour registers unchanged, width/height became lhu, 17 words; reverted. */
 void f_0ffb1c(void)
 {
     MapMgr *mm;

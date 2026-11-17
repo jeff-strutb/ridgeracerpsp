@@ -91,11 +91,12 @@ int CReader::f_114dd4(const char *name)
     return -1;
 }
 
-/* @draft 0x114e00 us f_114e00
+/* @implements 0x114e00 us f_114e00
    WHAT IT DOES: Returns value i of row name as a string in the reader's buffer, or with i -1
-   everything after the '=' to the end of the line; 0 if there is no such row. 
-   DRAFT: 28 words differ: retail keeps i in s1 (reused for the buffer pointer) and the reader
-   in s0, and copies the rest of the line through a0/a2; here those registers are swapped. */
+   everything after the '=' to the end of the line; 0 if there is no such row.
+   One shared "return buf" after the if/else: the buffer pointer becomes one global pseudo
+   (s1) set in both arms. With a return in each arm the call arm's buffer pointer was
+   block-local, local-alloc gave it s0, and that pushed the reader to s1. */
 char *CReader::f_114e00(const char *name, int i)
 {
     TextRow *r = f_114fe0(name);
@@ -111,9 +112,9 @@ char *CReader::f_114e00(const char *name, int i)
         while (*s != '\r' && *s != '\n')
             *d++ = *s++;
         *d = 0;
-        return buf;
+    } else {
+        f_115180(r->line, i + 2, buf);
     }
-    f_115180(r->line, i + 2, buf);
     return buf;
 }
 
@@ -179,7 +180,14 @@ void CReader::f_115060()
    Returns 0 (also for a blank line), 1 if the name is already a row, 2 without the '='.
    A 129th row ends the program. 
    DRAFT: 33 words differ: retail keeps the buffer pointer in s1 and the row in s2 (swapped
-   here) and places the value-count loop out of line after the return-2 jump. */
+   here) and places the value-count loop out of line after the return-2 jump.
+   2026-11-16 cycle: greg allocates r (185) before b (184): r's refs are loop-weighted by the
+   r->n loads/stores in the count loop, which retail also does every iteration, so the
+   priority flip is not from those. Retail branches beqzl (likely) into the loop with
+   r->n = 0 in the slot and jumps to the return-2 block, i.e. the b[1] == 0 edge is the
+   predicted one and the loop block sits after it; here bnez to return 2 falls into the loop.
+   f_125b5c is already noreturn. No source change: the RTL fact that flips the prediction
+   (and probably both differences) is not yet identified. */
 int CReader::f_115068(const char *line)
 {
     char *b = buf;
@@ -210,7 +218,12 @@ int CReader::f_115068(const char *line)
    WHAT IT DOES: Copies the n-th field of a line (fields split by tabs, spaces and commas) to
    out; returns 1 if the line has that field, 0 at the end of the line or a '/' comment. 
    DRAFT: the loops and tests match; the two "return 0" blocks stay separate in retail (here
-   cross-jumped) and the end-of-line test's setup is scheduled differently. */
+   cross-jumped) and the end-of-line test's setup is scheduled differently.
+   2026-11-16 cycle: all 24 words follow from the merge: retail ends the loop with jr ra /
+   move v0,zero (delay filled), then return 1, the eol test, and a second jr ra / move v0,zero
+   at +0x114 that the eol and '/' branches target (their bnez slot stays nop); here both reach
+   one move v0,zero / jr ra / nop. Not yet found which RTL difference stops retail's
+   post-reload crossjump; no source change made (needs the jump/bbro dumps first). */
 int CReader::f_115180(const char *s, int n, char *out)
 {
     int i;

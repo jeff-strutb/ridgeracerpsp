@@ -21,12 +21,16 @@ extern char *D_245ecc;
 #define FIELD(t, o, off) (*(t *)((char *)(o) + (off)))
 
 /* @draft 0x0fd3fc us f_0fd3fc
-   REMAINING DIFFERENCE: the operations, constants and branch structure match, and the size is
-   exact, but the registers differ: retail copies the car pointer to a2 at the top and loads the
-   input bits into a0, and it reuses a1 for the mode and for the second read of +9704. Ours keeps
-   the car in a0 and the input bits in a1, and the rodata lui of the first constant is placed
-   before the pace field load. Moving the pace store, a copied car pointer local and read-modify-
-   write field updates were tried and each made it worse.
+   REMAINING DIFFERENCE (2 words): the last two stores (+7692 and +10132) are issued in the
+   other order than retail (retail: +7692, then +10132 in the jr delay slot). Next lever, not
+   yet tried: sched2 issues the last independent store first, so put the +10132 store before
+   the +7692 store in the source.
+   2026-11-16 cycle (26 -> 2 words): one 'bits' variable for both input-bit updates made it a
+   global pseudo live across the catch-up block, where local-alloc had put (count - 1) in a0;
+   that hard-reg conflict pushed bits to a1 and pulled the count to a0. A separate local 'set'
+   for the second update keeps it block-local, so the count is a1 and bits a0 as in retail.
+   Earlier: moving the pace store, a copied car pointer local and read-modify-write field
+   updates were tried and each made it worse.
    WHAT IT DOES: One pace step for a computer driven car (the car pointer). It returns at once
    while the enable word (+9720) is zero. Otherwise it clears bit 16 of the input bits (+7692) and
    decays the pace value (+10124) by 0.995. It takes the car's distance in 1/100 units (+472) and
@@ -47,7 +51,7 @@ void f_0fd3fc(char *car)
     Phys *mp;
     char *drv;
     float x, y, f3, f4, dI, dF;
-    unsigned bits;
+    unsigned bits, set;
     int mode, a1;
 
     p = (Phys *)(car + 5792);
@@ -110,12 +114,12 @@ void f_0fd3fc(char *car)
         return;
     if (dI < 0.0f && dF < 2.0f && -2.0f < dF)
         return;
-    bits = FIELD(unsigned, car, 7692) | 0x10000;
+    set = FIELD(unsigned, car, 7692) | 0x10000;
     FIELD(int, car, 9704) = a1 - 1;
     FIELD(float, car, 10128) = 15.0f;
     D_245ec8 = 1;
     FIELD(float, car, 10124) = 0.0f;
-    FIELD(unsigned, car, 7692) = bits;
+    FIELD(unsigned, car, 7692) = set;
     FIELD(int, car, 10132) = 1;
 }
 

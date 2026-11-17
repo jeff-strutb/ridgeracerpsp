@@ -258,7 +258,11 @@ void CCamScenery::Reset()
    distance of 3500, marks the previous camera's view and takes the point's view setting.
    Remaining difference: allocation of the map manager's area pointer. Retail builds it in the
    sway pointer's saved register (its high half in the sway step call's slot) and the view in
-   s1; here it gets s1 and the view s0. The code is otherwise the same. */
+   s1; here it gets s1 and the view s0. The code is otherwise the same.
+   2026-11-16: retail's lui s0 sits in the f_0f411c jal slot after move a0,s0, so the area
+   pointer's high half is set before that call in retail's RTL and shares s0 with &sway.
+   Tried the areas line above sway.f_0f411c(50.0f): 57 words (the whole pointer is live
+   across the call and takes a new saved register); reverted. */
 void CCamScenery::f_07f5e0(int *arg)
 {
     SView *v = View();

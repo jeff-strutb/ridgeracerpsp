@@ -109,7 +109,11 @@ public:
    entry (none without a pack), marks it loaded and fixes up its file pointer; then fixes up
    every group's pointers and offset list.
    DIFFERS: `this` and the loop counter take each other's saved registers (s4/s5), and the
-   object loop's field fix-up load is scheduled ahead of the loaded flag store. */
+   object loop's field fix-up load is scheduled ahead of the loaded flag store.
+   2026-11-16 cycle: ours allocates `this` before i (this s4, i s5), retail i first; the
+   header stores also issue in a different order (retail +8, +28, +12; here +8, +12, +28).
+   Splitting i into one counter per loop would lower its priority (fewer refs over the same
+   live length), so it is not the lever; no source change made, cause not yet pinned. */
 void CourseEvents::Setup(EventHeader *h, void *pack)
 {
     int i;
