@@ -173,13 +173,25 @@ struct TVShot {
     TVGlide glide;
     /* The shot's turn of the aim. */
     TVTurn turn;
-    char p200[40];
+    /* The sway's and the shake's strengths, and the aim's three turn angles. */
+    float sway[3];
+    float shake[4];
+    float ang[3];
     float m240;
-    char p244[32];
+    float m244;
+    /* Where the look point comes from: the shot position, the followed object or m252. */
+    int lookFrom;
+    Vec3 m252;
+    float m264;
+    int m268;
+    float m272;
     int m276;
-    char p280[8];
+    char p280[4];
+    int m284;
     float m288;
-    char p292[20];
+    char p292[12];
+    int m304;
+    char p308[4];
 };
 
 /* The course collision areas of the map manager. */
@@ -188,6 +200,7 @@ struct CourseAreas {
     float f_0e26dc(float pos);
     int f_0e2448(int a, int b, float x, float z);
     void f_0e2d10(float *x, float *y, float *z, float fx, float fz);
+    void f_0e2f9c(int n, float *side, float *pos, float x, float z);
     int m0;
     int m4;
     int length;
@@ -292,7 +305,9 @@ public:
     void f_0817d8();
     void f_080f04();
     Vec4 f_0803e4();
-    Vec4 &ShotPos() { return *(Vec4 *)&shotX; }
+    Vec4 &ShotPos() { return shotPos; }
+    Vec4 &LookPos() { return look; }
+    Vec4 &LookRot() { return aim; }
 
     int m28;
     TVShot *shot;
@@ -305,12 +320,9 @@ public:
     float swayX, swayY;
     int m448;
     char p452[12];
-    float shotX, shotY, shotZ;
-    char p476[4];
-    float m480, m484, m488;
-    char p492[4];
-    float m496, m500, m504;
-    char p508[4];
+    Vec4 shotPos;
+    Vec4 look;
+    Vec4 aim;
     float m512;
     float m516;
     float m520;
@@ -405,9 +417,9 @@ void CCamTV::Set(const CamParam *cp)
         areas->f_0e2d10(&s->pos.x, &tmp, &s->pos.z, s->pos.x, s->pos.z);
         shot->fixed = 0;
     } else {
-        shotX = s->pos.x;
-        shotY = s->pos.y;
-        shotZ = s->pos.z;
+        shotPos.x = s->pos.x;
+        shotPos.y = s->pos.y;
+        shotPos.z = s->pos.z;
     }
     s = shot;
     if (s->glide.retarget != 0) {
@@ -439,7 +451,7 @@ void CCamTV::Set(const CamParam *cp)
     m752 = 0;
     a = areas->f_0e2690(pos - 1000);
     b = areas->f_0e2690(pos + 1000);
-    m532 = (float)areas->f_0e2448(a, b, shotX, shotZ);
+    m532 = (float)areas->f_0e2448(a, b, shotPos.x, shotPos.z);
 }
 
 /* @implements 0x07f818 us _ZN7CamCtrl6CCamTV5ResetEv
@@ -722,7 +734,8 @@ Vec4 CCamTV::f_0803e4()
 
 /* @draft 0x0804bc us _ZN7CamCtrl6CCamTV8f_0804bcEv
    Remaining difference: retail loads D_1d3a64 before the position copy (here after it,
-   held by the copy's float stores; declaring it const did not move it) and orders the
+   held by the copy's float stores; declaring it const did not move it; 40 -> 47 words when
+   the shot position became a Vec4 member, a sched1 change only) and orders the
    unit vector's stores x, z, y, w and the final copy's registers differently.
    WHAT IT DOES: Aims the camera: the followed object's position less the shot position
    (the height raised by 350, the car's and the shot's heights, then halved) and its
@@ -731,11 +744,11 @@ Vec4 CCamTV::f_0803e4()
 void CCamTV::f_0804bc()
 {
     m624 = *((TVOwner *)param.v[2])->Pos();
-    m624.x = m624.x - shotX;
+    m624.x = m624.x - shotPos.x;
     m624.y = (m624.y + (D_1d3a64 + car->m12 + shot->m240)) * 0.5f;
     Vec4 *d = &m624;
-    d->y = d->y - shotY;
-    d->z = d->z - shotZ;
+    d->y = d->y - shotPos.y;
+    d->z = d->z - shotPos.z;
     m656 = f_0a65c4(d);
     TVLook *lk = &shot->look;
     m612 = lk->on;
@@ -754,9 +767,10 @@ void CCamTV::f_0804bc()
 }
 
 /* @draft 0x081610 us _ZN7CamCtrl6CCamTV8f_081610Ev
-   Remaining difference: global-alloc puts the ramp value in f20 and 1.0/150 in f21/f22
-   in retail (here 1.0, 150, ramp), and retail's two zero returns share one block that the
-   frame-count tests fall into; here the zero is set before the first test.
+   Remaining difference (39 words, 440 vs 448 bytes; block layout now matches since the
+   zero is one return at the end): retail computes each f_0f4290 argument in its operand's
+   register and then moves it to f12 (x in f0; n / 150 and (n - 150) / 600 in n's f20), which
+   points to n being updated in place (n -= 150; n /= 600) and x kept apart from its clamp.
    WHAT IT DOES: Steps the shot's timing from the frame count at 448: the eased progress
    over 600 frames (kept at 712), the span left after the two offsets, the previous zoom
    saved; eases the value at 512 toward the distance ramp (near or far set by 40000) over
@@ -773,25 +787,22 @@ float CCamTV::f_081610()
     float k = 1.0f - (m592 + m596);
     m708 = m720;
     m704 = 0;
-    if (m448 <= 0)
-        return 0.0f;
-    float d = m656;
-    float a = f_082588(40000.0f < d ? (Ramp *)&D_241458 : (Ramp *)&D_241468, d);
-    float x = (float)m448 / 150.0f;
-    if (1.0f < x)
-        x = 1.0f;
-    float e = f_0f4290(x) * k;
-    m512 = a * e + m512 * (1.0f - e);
-    int c = m448;
-    float n = (float)c;
-    float f;
-    if (c < 150)
-        f = f_0f4290(n / 150.0f) * k;
-    else if (c < 750)
-        f = (1.0f - f_0f4290((n - 150.0f) / 600.0f)) * k;
-    else
-        return 0.0f;
-    return f * f_082588(&D_1d3a6c, m656);
+    if (0 < m448) {
+        float d = m656;
+        float a = f_082588(40000.0f < d ? (Ramp *)&D_241458 : (Ramp *)&D_241468, d);
+        float x = (float)m448 / 150.0f;
+        if (1.0f < x)
+            x = 1.0f;
+        float e = f_0f4290(x) * k;
+        m512 = a * e + m512 * (1.0f - e);
+        int c = m448;
+        float n = (float)c;
+        if (c < 150)
+            return f_0f4290(n / 150.0f) * k * f_082588(&D_1d3a6c, m656);
+        if (c < 750)
+            return (1.0f - f_0f4290((n - 150.0f) / 600.0f)) * k * f_082588(&D_1d3a6c, m656);
+    }
+    return 0.0f;
 }
 
 /* @draft 0x080660 us _ZN7CamCtrl6CCamTV8f_080660Ev
@@ -993,9 +1004,8 @@ void CCamTV::f_080b50()
    Remaining difference (21 words, same size): the turn frames value is in f4 in retail
    (f2 here, FP register choice only), and the final add into the shot position loads the
    aim's y and z before storing x in retail, while here the position's y and z are loaded
-   first. The position is reached through ShotPos(), a cast of shotX to a Vec4; a real
-   Vec4 member at 464 is the likely difference (not yet changed: other functions use
-   shotX/Y/Z).
+   first. Checked 2026-11-16: the position is now a real Vec4 member (shotPos, proven by
+   f_07fa84) and the code is unchanged, so the member form is not the cause.
    WHAT IT DOES: Runs the shot's aim turn: while its start time has come round (time wrapped
    by twice the period at 736, or at once in the timed mode at 740) counts the turn frame
    at 700 up by 5 to its end. Takes the two angles' speeds (each angle's distance over the
@@ -1066,7 +1076,7 @@ void CCamTV::f_080f90()
         dir = f_09c720(((TVOwner *)param.v[2])->State(), &dir);
     else if (fx == 3)
         dir = f_09c720(&m768, &dir);
-    ShotPos() += dir;
+    shotPos += dir;
 }
 
 /* @implements 0x0817d0 us _ZN7CamCtrl6CCamTV8f_0817d0Ev
@@ -1098,7 +1108,9 @@ void CCamTV::f_080f04()
 extern float D_23ff60;
 /* The race in progress (its course position at 44). */
 struct TVRace {
-    char p0[44];
+    char p0[20];
+    int m20;
+    char p24[20];
     float m44;
 };
 extern TVRace *D_2407fc;
@@ -1131,18 +1143,18 @@ void CCamTV::f_07f8cc()
     v->fov = m512 * 0.5f;
     v->zoom = 1.0f / f_0cd3cc(v->fov);
     TVView *w = (TVView *)param.v[0];
-    w->px = shotX;
-    w->py = shotY;
-    w->pz = shotZ;
-    w->m608 = m496;
-    w->m612 = m500;
-    w->m616 = m504;
+    w->px = shotPos.x;
+    w->py = shotPos.y;
+    w->pz = shotPos.z;
+    w->m608 = aim.x;
+    w->m612 = aim.y;
+    w->m616 = aim.z;
     m516 = D_23c820.Areas()->f_0e26dc(m516);
     TVView *u = (TVView *)param.v[0];
     u->m704 = m516;
-    u->m688 = m480;
-    u->m692 = m484;
-    u->m696 = m488;
+    u->m688 = look.x;
+    u->m692 = look.y;
+    u->m696 = look.z;
     u->m572 = m544;
     u->m716 = m556;
     u->m708 = m528;
@@ -1168,6 +1180,192 @@ void CCamTV::f_07f8cc()
         }
         u->m488 = r * 1000.0f;
     }
+}
+
+}
+
+/* The half turn (pi). */
+extern float D_2456b4;
+extern "C" {
+void f_0a6bf4(CamCtrl::Vec4 *out, CamCtrl::Mat34 *m, CamCtrl::Vec4 *v);
+CamCtrl::Euler f_0825dc(CamCtrl::Vec4 v);
+CamCtrl::Mat34 *f_0a6aec(CamCtrl::Mat34 *d, const CamCtrl::Mat34 *a, const CamCtrl::Mat34 *b);
+void f_0a4160(CamCtrl::Vec4 *o, const CamCtrl::Mat34 *m, int order);
+}
+
+namespace CamCtrl {
+
+/* @draft 0x07fa84 us _ZN7CamCtrl6CCamTV8f_07fa84Ev
+   Remaining difference (2,148 vs 2,156 bytes; structure and stack layout match): global-alloc
+   swaps s0/s1 (retail s0 = the new shot, s1 = the constant 1); sched order of the 272 load,
+   of the aim height sum and of the shot position loads in both car-relative blocks (retail
+   loads z first, and the second block's test is a beql taking that load). Retail stores the
+   shot position, the look point and the view angles straight from this (lw/sw at 464, 480,
+   496), so these are real Vec4 members (a cast through shotX put the address in a register).
+   WHAT IT DOES: Steps the camera once a frame. When the shot to show changes it takes the
+   new shot (placing a fixed mode's shot first), puts its position on the course or carries
+   it by the car's matrix, puts its glide target on the course and restarts every part of
+   the camera. It then takes the shot position (carried by the car's matrix for a
+   car-relative shot), the course position (counting the laps it wraps past), finds the
+   shot's course area, runs the glide and the turn, aims at the followed object (raised by
+   the camera height, the car's and the shot's heights), adds the look-ahead offset, takes
+   the distance and the lens from the shot's ramp, runs the zoom, the shake strength, the
+   look blend and the timing; turns the aim by the sway and the shake (blended between the
+   shot's strengths and fixed ones by the zoom) and the shot's three angles into the view
+   angles, and sets the lens, the look point and the remaining shot values. */
+void CCamTV::f_07fa84()
+{
+    TVShot *s = f_0802fc();
+    m548 = 0;
+    if (s != shot) {
+        m548 = 1;
+        if (m752 != 0)
+            f_081b10();
+        shot = s;
+        if (s->fixed == 1) {
+            float tmp;
+            D_23c820.Areas()->f_0e2d10(&s->pos.x, &tmp, &s->pos.z, s->pos.x, s->pos.z);
+            shot->fixed = 0;
+        } else if (s->fixed == 2) {
+            Vec4 p;
+            p.x = s->pos.x;
+            p.y = s->pos.y;
+            p.z = s->pos.z;
+            p.w = 1.0f;
+            Car::Mat43p m = ((Car::CCarBufferPSP *)param.v[2])->f_0ec724();
+            Vec4 q;
+            f_0a6d4c(&q, &m, &p);
+            shotPos = q;
+        }
+        TVGlide *g = &shot->glide;
+        if (g->retarget != 0) {
+            float tmp;
+            D_23c820.Areas()->f_0e2d10(&g->tgt.x, &tmp, &g->tgt.z, g->tgt.x, g->tgt.z);
+            g->retarget = 0;
+        }
+        m524 = 0;
+        m520 = shot->m272;
+        m540 = shot->m284;
+        m560 = shot->m304;
+        f_080f04();
+        f_080f90();
+        f_0804bc();
+        m640 = m624;
+        f_080b48();
+        f_081938();
+        m716 = 0;
+        f_0803dc();
+    }
+    if (shot->fixed == 2) {
+        Vec4 p;
+        p.x = shot->pos.x;
+        p.y = shot->pos.y;
+        p.z = shot->pos.z;
+        p.w = 1.0f;
+        Car::Mat43p m = ((Car::CCarBufferPSP *)param.v[2])->f_0ec724();
+        Vec4 q;
+        f_0a6d4c(&q, &m, &p);
+        shotPos = q;
+    } else {
+        shotPos.x = shot->pos.x;
+        shotPos.y = shot->pos.y;
+        shotPos.z = shot->pos.z;
+    }
+    float prev = m516;
+    if (shot->m244 == 0.0f)
+        m516 = ((TVOwner *)param.v[2])->car.pos;
+    else
+        m516 = shot->m244;
+    float d = m516 - prev;
+    int n;
+    if (d < -D_2456b4)
+        n = 1;
+    else if (D_2456b4 < d)
+        n = -1;
+    else
+        n = 0;
+    m544 += n;
+    if (D_2407fc->m20 != 0) {
+        CourseAreas *areas = D_23c820.Areas();
+        if (m548 == 1) {
+            int pos = (int)car->pos;
+            int a = areas->f_0e2690(pos - 1000);
+            int b = areas->f_0e2690(pos + 1000);
+            m532 = (float)areas->f_0e2448(a, b, shotPos.x, shotPos.z);
+        } else {
+            float side;
+            areas->f_0e2f9c((int)m532, &side, &m532, shotPos.x, shotPos.z);
+        }
+    }
+    f_080b50();
+    f_080f90();
+    m624 = *((TVOwner *)param.v[2])->Pos();
+    m624.x = m624.x - shotPos.x;
+    m624.y = D_1d3a64 + car->m12 + shot->m240 * (1.0f - m712);
+    Vec4 *dir = &m624;
+    dir->y = dir->y - shotPos.y;
+    dir->z = dir->z - shotPos.z;
+    Vec4 v = f_0803e4();
+    m624.x = m624.x + v.x;
+    dir->y = dir->y + v.y;
+    dir->z = dir->z + v.z;
+    m656 = f_0a65c4(dir);
+    m512 = f_082588((Ramp *)((char *)shot + 24), m656) * 0.5f;
+    f_0808d0();
+    f_08138c();
+    m640 = m624;
+    f_080660();
+    float z = f_081610();
+    float a, c;
+    if (1.0f < z) {
+        a = 0.0f;
+        c = 1.0f;
+    } else {
+        a = 1.0f - z;
+        c = z;
+    }
+    v = m624;
+    Mat34 sw;
+    f_0817fc(&sw, shot->sway[0] * a + c * 2.6f, shot->sway[1] * a + z * 0.8f,
+             shot->sway[2] * a + z * 0.5f);
+    Vec4 r;
+    f_0a6bf4(&r, &sw, &v);
+    v = r;
+    Mat34 sh;
+    f_08140c(&sh, shot->shake[0] * a + c * 3.0f, shot->shake[1] * a + z * 2.4f,
+             shot->shake[2] * a + z * 1.4f, shot->shake[3] * a + z * 3.0f);
+    f_0a6bf4(&r, &sh, &v);
+    v = r;
+    Euler e = f_0825dc(v);
+    Mat34 m;
+    f_09f92c(&m, e);
+    Mat34 t;
+    f_09f92c(&t, Euler(EAngle(shot->ang[0]), EAngle(shot->ang[1]), EAngle(shot->ang[2] + m728), 4));
+    Mat34 mt;
+    f_0a6aec(&mt, &m, &t);
+    m = mt;
+    Vec4 out;
+    f_0a4160(&out, &m, 4);
+    aim = out;
+    m528 = m512 + shot->m264;
+    switch (shot->lookFrom) {
+    case 0:
+        look = shotPos;
+        break;
+    case 1:
+        look = *((TVOwner *)param.v[2])->Pos();
+        break;
+    case 2:
+        look.x = shot->m252.x;
+        look.y = shot->m252.y;
+        look.z = shot->m252.z;
+        break;
+    }
+    m556 = shot->m268;
+    if (m556 != 0)
+        *(Angle *)&aim.z = Rad(0.0f).a;
+    f_0817d0();
+    f_0817d8();
 }
 
 /* @draft 0x07f834 us _ZN7CamCtrl6CCamTV8f_07f834EPi
