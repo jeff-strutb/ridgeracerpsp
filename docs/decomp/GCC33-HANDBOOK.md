@@ -156,6 +156,7 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 | Mipmap command words as induction registers stepped by 0x1000000 | `((0xa0 + lv) << 24)`; `(lv << 24) + 0xa0000000` shares the shift and nothing is reduced | f_0235ac |
 | `bnezl`/`sll` in power-of-two and log2 helpers | `static inline` helpers with `break` | 0x023a20 |
 | Two independent loop-entry moves in the wrong order | read the field into a local before the copy (`char *f = lookup(...); memcpy(dst, f, n);`). sched1/sched2 tie and keep insn order, and loop hoisting follows the order in the body | f_00ca54 |
+| Independent stores after a load (e.g. zeroing three fields while a float constant loads): retail's first store is not the first written | sched2 fills the load's latency with the **last** ready store in source order, then takes the rest in source order. Put retail's first-emitted store last in the source and the others in retail's order | f_0b9098 |
 | A 2D slot index with the -1 applied after the add | `int k = x - 1; int slot = c * 7 + k;`, before the arithmetic that follows | f_00c540 |
 | A remainder in a saved register that also holds its quotient | `secs % 60`, not `secs - secs/60*60` | f_00c540 |
 | A table entry's address formed right after a call, its load deferred past later calls | `const char **fmt = &T[f()]; ... sprintf(..., *fmt, ...)` | f_00c540 |
