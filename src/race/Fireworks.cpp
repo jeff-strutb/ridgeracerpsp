@@ -273,9 +273,16 @@ void f_0e4a9c(Fireworks *m)
 }
 
 /* @draft 0x0e428c us f_0e428c
-   DRAFT: same size and nearly the same schedule; the 740 store is placed before the 130.0
-   store here and after it in retail (16 words). The two flags are set by one chained
-   assignment, which is what puts the constant 1 in $a3 at the top as retail does.
+   DRAFT: same size; 7 words differ, all in the flag/zero stores before the first
+   f_0e5394 call. The two flags are set by one chained assignment, which is what puts the
+   constant 1 in $a3 at the top as retail does.
+   Cycle 2026-11-16: the 740 store came before the 130.0 store because sched1 emitted li 740
+   (and li 4) ahead of the 270.0 constant's lui/lwc1, so after reload v0 reuse fixed that
+   order in sched2. Writing m4 = 270.0f before m12 = 740 puts the 270.0 load first: 16 -> 7
+   words. Remaining difference: retail stores m84, visible, frozen, lowest, m56, useTable,
+   fadeRate, then infoIndex in the call's delay slot; here useTable goes first (leftmost of the
+   chained assignment) and m56 lands in the delay slot. Untried lever: the chain written as
+   visible = useTable = 1 (handbook: leftmost element first, the rest right to left).
    WHAT IT DOES: Sets the fireworks up: the spark texture of the event's object, the settings,
    the quad, all sixteen shells ready to burst, the curve tables and the quad again. */
 void f_0e428c(Fireworks *m, Data *data)
@@ -285,9 +292,9 @@ void f_0e428c(Fireworks *m, Data *data)
     m->shell[0].info = data->m8->m4->m16->info;
     m->cfg.m8 = 1200.0f;
     m->cfg.tableLen = 130.0f;
+    m->cfg.m4 = 270.0f;
     m->cfg.m12 = 740;
     m->cfg.cols = 28;
-    m->cfg.m4 = 270.0f;
     m->cfg.rings = 4;
     m->cfg.m24 = 400.0f;
     m->cfg.m28 = 25.0f;

@@ -572,7 +572,15 @@ void CRidgeNetcar::f_0c21b0()
    capped at 2.
    DIFFERS: retail keeps the physics record in a3 (reused for the constant 3) and the done
    flag in a1 (here a1 and t0), multiplies the falling factor straight into f4, and stores the
-   hold time's zero floor from f4 (here sw zero). */
+   hold time's zero floor from f4 (here sw zero).
+   Cycle 2026-11-16 (-da dumps) on the sw zero: GCSE cprop replaces add (pseudo 183) with
+   0.0 in all three stores of it inside the switch (insns 53 and 195, m1836; 134, m10056);
+   cse2 then turns 53 and 195 back into reg 183 because their blocks lie on a CSE path from
+   the entry block where 183 = 0.0 is known, but not 134: case 2's block is also entered by
+   case 1's fall-through, so CSE cannot follow into it. Retail keeps f4 there, so in retail
+   either cprop did not reach 134 (add killed on some path into case 2) or cse2 knew 183 = 0
+   in case 2's block. No source shape found that does either without changing other code;
+   no change made. */
 void CRidgeNetcar::f_0c21b8()
 {
     Phys *p = &phys;

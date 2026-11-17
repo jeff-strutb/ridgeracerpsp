@@ -281,7 +281,17 @@ int f_111b18(int unused, const char *name, int a2, int a3)
 /* @draft 0x111be0 us f_111be0
    WHAT IT DOES: Sets up the two stream voices ch and ch + 1 (left and right, panned -64 and
    +64 from the stream's pan) from the disc stream's header: rate, format bytes, volume and
-   pan, then starts them on their SAS voices with full pitch. */
+   pan, then starts them on their SAS voices with full pitch.
+   DRAFT: 16 words differ in two places. (1) Register choice: retail holds the D_291980.m64
+   byte (lreg pseudo 206, insn 63, copied to a0 for f_10dfcc) in v1 and base + pan (pseudo
+   220, insn 91, stored to m70) in a2; here they are v0 and v1, and sched2 then orders the
+   m11/m12/m13/m15/m10 byte stores and the 1.0f load differently. Named cause (cycle
+   2026-11-16, lreg dump): local-alloc gives 206 the first free register, v0, because base
+   (pseudo 191, v0) dies at the m40 store (insn 57) before 206 is born; 206 cannot load earlier
+   since its QImode load depends on the m42/m40 stores (char aliases them). Retail must have
+   had v0 busy across 206's life; no source shape found that does that, so no change made.
+   (2) +0x18c: retail loads the l halfword (84(sp)) before the sb s5,0(s0) store, here after
+   it (sched2 order at the f_10d274 call). */
 void f_111be0(int ch)
 {
     float mix[20];

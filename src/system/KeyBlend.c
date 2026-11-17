@@ -45,7 +45,14 @@ struct Cursor {
 
 /* @draft 0x0e14d8 us f_0e14d8
    WHAT IT DOES: Blends every key of a multi-set pose into the output: for each key it derives a cumulative weight for each set after the first, and lerps the running result toward that set's key by it.
-   DRAFT: 17 words differ, all in the lerp block's instruction schedule: retail stores the third source angle and sets up the call argument before the six second-key float loads, and loads the second key's first angle ahead of the six subtracts. */
+   DRAFT: 17 words differ, all in the lerp block's instruction schedule: retail stores the third source angle and sets up the call argument before the six second-key float loads, and loads the second key's first angle ahead of the six subtracts.
+   Cycle 2026-11-16 (sched2 -fsched-verbose=4): the whole difference is one pick at t=15 of the
+   lerp block. Ready are the from[2] store (insn 212) and c->f[0] load (insn 214); 214 wins on
+   priority: load-sub-mul-add-store (3+4+4+4 = 15 to the call) against the v0 chain of angle
+   stores, whose anti dependences cost 1 (about 12). In retail 212 is issued first, and the
+   addiu a0 (insn 287, ready since the last a-> load) then fills the store's busy memory slot.
+   Retail therefore has the angle-copy chain at least as long as the float chain, or a shorter
+   float chain; no source shape found that changes either priority, so no change made. */
 void f_0e14d8(struct Blend *b, struct Key *out)
 {
     int i, j;
@@ -107,7 +114,7 @@ void f_0e14d8(struct Blend *b, struct Key *out)
 
 /* @draft 0x0e17d8 us f_0e17d8
    WHAT IT DOES: Blends one key of a multi-set pose into the output: derives a cumulative weight for each set after the first, and lerps the running result toward that set's key by it, as the all-keys routine does for each key.
-   DRAFT: same 17-word schedule difference as f_0e14d8 in the lerp block (third source angle store and call argument set up come before the second key's float loads in retail). */
+   DRAFT: same 17-word schedule difference as f_0e14d8 in the lerp block (third source angle store and call argument set up come before the second key's float loads in retail). Same cause as recorded there (sched2 priority of the c->f[0] load over the from[2] store at one pick, cycle 2026-11-16); no change made. */
 void f_0e17d8(struct Blend *b, struct Key *out, int i)
 {
     int j;

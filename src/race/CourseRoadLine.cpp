@@ -471,7 +471,14 @@ extern "C" void f_0fb3f0(MapOwner *o, int mode)
    step 28 with the sum or difference of the two bounds and writes the result and a flag to the
    out pair; otherwise it zeroes the out pair.
    Remaining difference: register choice only; retail gives s to s1 and out to s0, here the
-   other way round (global allocation order of the two parameters). */
+   other way round (global allocation order of the two parameters).
+   Cycle 2026-11-16 (lreg stats): o = pseudo 181 (4 refs, 59 insns), s = 182 (5 refs, 59 insns),
+   out = 183 (5 refs, 55 insns). global.c takes them by floor_log2(refs) * REG_FREQ / live
+   length, so s, whose refs are in the entry and post-call blocks, outranks out, whose refs are
+   split between the zeroing and the result blocks; s gets s0, out s1, o s2. Retail needs
+   out's frequency-weighted priority above s's; with equal ref counts and out already the
+   shorter range, only block frequencies (branch prediction of the range test) can move it.
+   No source change made; next lever to analyse is the shape of the range test. */
 extern "C" void f_0fb534(char *o, char *s, char *out)
 {
     char *recs = *(char **)(o + 10116);
