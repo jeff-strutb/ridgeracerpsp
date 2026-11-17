@@ -1858,22 +1858,25 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
         if (ee->z == ee->x && ee->w == ee->y)
             ee = o->m8[bestEdge + 1];
         float zz = 0.0f;
-        out7[0] = ee->z - ee->x;
+        float ox = ee->z - ee->x, oz = ee->w - ee->y;
+        out7[0] = ox;
         out7[1] = zz;
-        out7[2] = ee->w - ee->y;
+        out7[2] = oz;
         out7[3] = 1.0f;
         float inv = 1.0f / __builtin_sqrtf(out7[0] * out7[0] + zz + out7[2] * out7[2]);
         out7[0] = out7[0] * inv;
         out7[2] = out7[2] * inv;
         out7[1] = out7[1] * inv;
+        float ax = ee->x, ay = ee->y;
         outA[3] = 1.0f;
-        outA[0] = ee->x;
-        outA[2] = ee->y;
+        outA[0] = ax;
+        outA[2] = ay;
         outA[1] = zz;
+        float bw = ee->w, bz = ee->z;
         outB[3] = 1.0f;
-        outB[0] = ee->z;
+        outB[0] = bz;
         outB[1] = zz;
-        outB[2] = ee->w;
+        outB[2] = bw;
     }
     return result;
 }
