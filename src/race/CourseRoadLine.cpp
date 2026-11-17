@@ -327,7 +327,8 @@ extern "C" float f_0fafe8(void *unused, const Box *a, const Box *b, int flag)
         r = b->m72 - a->m104;
     else
         r = a->m72 - b->m104;
-    return r + 0.5f;
+    r += 0.5f;
+    return r;
 }
 
 /* @draft 0x0fb01c us f_0fb01c
@@ -357,11 +358,11 @@ extern "C" float f_0fb01c(MapOwner *o, int k, float x)
     return r;
 }
 
-/* @draft 0x0fb194 us f_0fb194
+/* @implements 0x0fb194 us f_0fb194
    WHAT IT DOES: Looks up the road line's two short values for a point (one picked by the sign
    of x), and returns x over their scaled value, or the sign of x when that value is not
-   positive. Not yet byte-exact. */
-extern "C" float f_0fb194(float x, int i)
+   positive. */
+extern "C" float f_0fb194(void *self, int i, float x)
 {
     short a, b;
     char *base = D_23c820;
@@ -370,10 +371,12 @@ extern "C" float f_0fb194(float x, int i)
 
     f_0e3a74(base + 12240, i, &a, &b);
     v = x >= 0.0f ? b : a;
-    d = (float)v * 0.001f - 2.0f;
+    d = (float)v;
+    d *= 0.001f;
+    d -= 2.0f;
     if (d > 0.0f)
         return x / d;
-    return x < 0.0f ? -1.0f : 1.0f;
+    return x >= 0.0f ? 1.0f : -1.0f;
 }
 
 /* @draft 0x0fb240 us f_0fb240
@@ -395,10 +398,10 @@ extern "C" float f_0fb240(MapOwner *o, int k, float x)
     return rec0 * 1.024f + d * x;
 }
 
-/* @draft 0x0fb364 us f_0fb364
+/* @implements 0x0fb364 us f_0fb364
    WHAT IT DOES: Looks up the same road line pair as f_0fb194 and returns x times a scaled
-   value of it, or zero when that value is negative. Not yet byte-exact. */
-extern "C" float f_0fb364(float x, int i)
+   value of it, or zero when that value is negative. */
+extern "C" float f_0fb364(void *self, int i, float x)
 {
     short a, b;
     char *base = D_23c820;
@@ -407,9 +410,13 @@ extern "C" float f_0fb364(float x, int i)
 
     f_0e3a74(base + 12240, i, &a, &b);
     v = x >= 0.0f ? b : a;
-    d = (float)v * 0.001f - 2.0f;
-    float r = 0.0f;
-    if (!(d < 0.0f))
+    d = (float)v;
+    d *= 0.001f;
+    d -= 2.0f;
+    float r;
+    if (d < 0.0f)
+        r = 0.0f;
+    else
         r = x * d;
     return r;
 }
