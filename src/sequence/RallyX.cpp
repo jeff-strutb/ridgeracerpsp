@@ -411,7 +411,7 @@ void f_02e6ac(void)
         D_27ec75 = hidden;
         D_27ec74 = 0;
         Stage *list = D_1d5910;
-        if (!hidden)
+        if (!D_27ec75)
             list = D_1d55ac;
         D_1d5a7c = list;
         D_27ec74 = 4;

@@ -155,7 +155,11 @@ extern "C" void f_0bc240(Obj *o, int a1) {
    first, steps the segment index up or down according to the mode and the table bounds, clamps
    the index to the table, and writes the resulting position (word 10) and its scaled value
    (word 11).
-   Remaining difference: 192/205 words differ, first at +0x18; size 820 vs 820; bad refs: +0x32c: refers to 0xbc4c8, retail 0xbc5d0 (first transcription, not yet iterated). */
+   Remaining difference (123/205): the mode test now falls through to the mode != 0 arm as in
+   retail (the two `goto clamp`s had made the bp pass predict that arm unlikely). Retail keeps
+   idx out of saved registers (a1, reloaded from o->w[4] after each f_0bbc1c call) and keeps
+   old*4 in s3 for c[20 + old]; ending each call block with `idx = o->w[4].i;` gets the a1 idx
+   but grows the function to 840 B (199 words), so it was not kept. */
 extern "C" void f_0bc3e0(Obj *o, float a, float b) {
     int old = o->w[4].i;
     Curve *c = (Curve *)o->w[0].p;
@@ -178,9 +182,7 @@ extern "C" void f_0bc3e0(Obj *o, float a, float b) {
                 if (mode == 3) o->w[2].i = 0;
             }
         }
-        goto clamp;
-    }
-    if (!(0.0f < o->w[5].f)) goto clamp;
+    } else if (0.0f < o->w[5].f) {
     if (0.01f < o->w[9].f) {
         if (c->w[36 + old].f <= x) {
             idx = old + 1;
@@ -213,7 +215,7 @@ extern "C" void f_0bc3e0(Obj *o, float a, float b) {
             }
         }
     }
-clamp:
+    }
     {
         int hi = c->w[30].i - 1;
         if (hi < idx) {

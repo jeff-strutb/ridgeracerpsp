@@ -242,7 +242,9 @@ extern "C" void f_0b6b2c(void *c)
    +1092, and two values scaled by 3.125 at +7816+96 and +7816+88.
    Remaining difference: retail forms the course areas address in two steps (D_23c820, then
    +12240) and loads +8 from it; combine folds this build's single-use address into the load
-   (lw 12248), so everything after +0x48 is shifted by two words. */
+   (lw 12248), so everything after +0x48 is shifted by two words. The expand RTL is already
+   high/lo_sum of D_23c820 then a separate plus 12240; the fold happens later (see f_0b86ac for
+   the Areas() accessor tried). */
 extern "C" void f_0b6b48(void *cp)
 {
     char *c = (char *)cp;
@@ -490,7 +492,10 @@ extern "C" void f_0b6a1c(void *p)
    by 3.125 at +7816+96 and +7816+88, and passes the speeds to the sub-objects at +8064
    (f_0bc954) and +7996 (f_0bd234).
    Remaining difference: the same as f_0b6b48: retail forms the course areas address in two
-   steps (D_23c820, then +12240) and loads +8 from it; this build folds it into lw 12248. */
+   steps (D_23c820, then +12240) and loads +8 from it; this build folds it into lw 12248.
+   Tried: an inline MapMgr::Areas() returning m12240 (the accessor CamTable uses, whose retail
+   call site f_08249c has the same la + addiu 12240 pair): no change, since there the address
+   is a call argument, while here combine still folds the +8 load into one lw. */
 extern "C" void f_0b86ac(void *cp)
 {
     char *c = (char *)cp;
@@ -979,7 +984,7 @@ extern "C" void f_0bb154(void *cp)
    the first argument: case 0 sets +9912 and +9916 to 2, case 2 runs f_0b9e0c and clears
    +9912 when the word is 2, case 4 sets +9912 to 1; then stores the word at +7948.
    Retail's jump table (D_1ac944) has 7 entries, so cases 1, 3, 5 and 6 are listed empty; the old word lives in a2 itself; sched2 reverses independent stores, so the first arm's stores are written 9912, 9916, 7948.
-   Remaining difference: one word: the table index shift reads s1 in retail and a1 here (postreload replaces s1 by the equal a1 here; something in retail kills that equivalence); the scorer also flags the .rodata word after the table (alignment neighbour). */
+   Remaining difference: one word: the table index shift reads s1 in retail and a1 here. Postreload leaves both uses as s1; the a1 comes from copyprop_hardreg_forward (cprop_registers), which carries s1 == a1 from block 0 into the bounds-check block and on into the dispatch block (each has one predecessor laid out before it). Retail's dispatch block did not inherit that value, so in retail it must have had a second predecessor or an earlier-laid-out source. The .rodata word after the table: retail has f_0b94b0's "DriftType" strings at 0x1ac900, before the table at 0x1ac944, then the floats; here f_0b94b0 is defined after this function, so its strings land after the table. That is source order in this file, not this function. */
 extern "C" void f_0b9d28(void *cp, int a1, int a2)
 {
     char *c = (char *)cp;

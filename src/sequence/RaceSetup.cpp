@@ -841,7 +841,10 @@ static inline int Colour555(unsigned int c)
    Remaining difference: in the rival loop retail reloads the session's address inside the
    loop, indexes cars[k] as (base + 8k) + 20 and keeps a second copy of the loop counter; this
    build hoists base + 20 out of the loop. The block order and stack slots after the loop
-   follow from that (293 of 394 words). */
+   follow from that (293 of 394 words). An inline Session::Car(k) returning cars[k % count]
+   gives retail's (base + 8k) + 20 addressing (1568 B, but 321 words: the counter copy is
+   still missing); moving the whole if/else into an inline RaceSetup::SetRival(k) did not
+   bring the copy back (358 words). */
 void f_0156d4()
 {
     int i;

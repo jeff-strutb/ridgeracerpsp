@@ -411,7 +411,8 @@ void CDjLog::f_08dd5c()
 /* @draft 0x08de54 us f_08de54
    WHAT IT DOES: Puts a message into the first free line; warns when all are in use.
    Draft: the counter, the line pointer and the constant 8 get retail's registers; retail
-   copies the line pointer (move v1,s1) before stepping it and saves ra last. */
+   copies the line pointer (move v1,s1) before stepping it and saves ra last. A `char *line`
+   local for D_1d47ac[i] compiles identically. */
 void CDjLog::f_08de54(const char *s)
 {
     for (int i = 0; i != 8; i++) {

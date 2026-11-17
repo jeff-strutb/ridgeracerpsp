@@ -641,20 +641,25 @@ unsigned short f_0b07d4(PolySet *p, const Vec4 *v, const Rec **recp)
    WHAT IT DOES: Tests whether a point lies inside one triangle (or quad) of the set and returns
    1 when it does: the point must be inside the cell's box and on the inner side of every edge
    within one unit of the edge's length.
-   Remaining difference: size 448 vs 464; 95/116 words differ from +0x0 (the vertex copy and the edge loop are scheduled differently). */
+   The point-minus-vertex difference lives in a third Vec4 (retail's frame is 144, its x and z
+   stored at sp+80/88), the vertex table pointer is read inside the copy loop (hoisted to the
+   preheader) and the box tests put the point's coordinate first.
+   Remaining difference: 13 words in the edge loop: retail loads vert[i].z after the store of
+   w.x (and v->z before it); here sched1 hoists vert[i].z above the store. Reaching vert[i]
+   through const Vec4 *a = &vert[i] changes nothing. */
 int f_0b0910(PolySet *p, const Vec4 *v, const unsigned short *id)
 {
     const Cell *c = (const Cell *)(PF(const char *, p, 64) + 24 * (unsigned int)*id);
-    const float *vt = PF(const float *, p, 72);
     Vec4 vert[4];
     Vec4 edge;
+    Vec4 w;
     int n, i, k;
 
-    if (c->maxx < v->x)
+    if (v->x > c->maxx)
         return 0;
     if (v->x < c->minx)
         return 0;
-    if (c->maxz < v->z)
+    if (v->z > c->maxz)
         return 0;
     if (v->z < c->minz)
         return 0;
@@ -662,19 +667,20 @@ int f_0b0910(PolySet *p, const Vec4 *v, const unsigned short *id)
     n = (c->next == 0xffff) ? 3 : 4;
     for (k = 0; k < n; k++) {
         unsigned short idx = ((const unsigned short *)c)[k];
+        const float *vt = PF(const float *, p, 72);
         ((float *)&vert[k])[0] = vt[3 * idx + 0];
         ((float *)&vert[k])[1] = vt[3 * idx + 1];
         ((float *)&vert[k])[2] = vt[3 * idx + 2];
     }
     for (i = 0; i < n; i++) {
         int j = (i + 1) % n;
-        float len, dx, dz, d;
+        float len, d;
         f_0a5e88(&edge, &vert[j], &vert[i]);
         edge.y = 0.0f;
         len = f_0a65c4(&edge);
-        dx = v->x - vert[i].x;
-        dz = v->z - vert[i].z;
-        d = (edge.z * dx - edge.x * dz) / len;
+        w.x = v->x - vert[i].x;
+        w.z = v->z - vert[i].z;
+        d = (edge.z * w.x - edge.x * w.z) / len;
         if (1.0f < d)
             return 0;
     }

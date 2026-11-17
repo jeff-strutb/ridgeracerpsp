@@ -115,7 +115,9 @@ public:
    WHAT IT DOES: Starts the leaves: room for n of them, the four corners of the leaf quad (a
    flat square on the ground plane, its far edge in front) and the leaf texture.
    Remaining difference: retail keeps the texture record in a0 (move a0,v0) and stores it after
-   setting the zero result; here it is stored from v0 first (retail is 2 words longer). */
+   setting the zero result; here it is stored from v0 first (retail is 1 word longer). The sched1
+   dump issues the store right after its lui and only then v0 = 0; retail's sched1 must have put
+   v0 = 0 first (its pseudo then conflicts with v0 and takes a0). Cause not found. */
 int CLeaves::f_035ef0(int n)
 {
     Leaf *b = (Leaf *)f_125c4c(64, n * sizeof(Leaf));

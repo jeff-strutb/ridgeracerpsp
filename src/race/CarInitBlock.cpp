@@ -129,8 +129,11 @@ extern "C" void f_0bc88c(void) {}
 /* @draft 0x0bc894 us f_0bc894
    WHAT IT DOES: clears the four units and the first two tail words, then normalises three
    zero angles and stores them into the block's tail, with a zero word at the end.
-   Remaining difference: 42 of 48 words differ; the routine is 180 bytes against retail 192 (the tail store order and count are not yet right). */
+   Remaining difference (11/48, same size): the tail pointer t (s1) is formed before the
+   memsets as retail does; only the order of the three word copies at the end differs (retail
+   loads q[1], q[2], q[0] and stores q[0], q[1], q[2]). */
 extern "C" void f_0bc894(CarBlock *b) {
+    W *t = &b->tail[3];
     memset(&b->u[0], 0, 368);
     memset(&b->u[1], 0, 368);
     memset(&b->u[2], 0, 368);
@@ -146,10 +149,10 @@ extern "C" void f_0bc894(CarBlock *b) {
     f_099b98(&q[1].f);
     q[2].f = z;
     f_099b98(&q[2].f);
-    b->tail[6].i = 0;
-    b->tail[3].i = q[0].i;
-    b->tail[4].i = q[1].i;
-    b->tail[5].i = q[2].i;
+    t[3].i = 0;
+    t[0].i = q[0].i;
+    t[1].i = q[1].i;
+    t[2].i = q[2].i;
 }
 
 /* @implements 0x0bd064 us f_0bd064

@@ -286,7 +286,10 @@ void CRace2DNormal::v5()
    gives it to the D_240768 buffer address (21 rematerialised as li a1,21); the rest follows
    from that, plus the loop's closing store order (retail 556, 44, 1068). The type tests are
    right-nested so fold does not turn them into and-ed set-on-compare values; the 256-byte
-   work array only reproduces retail's frame (the name buffer at sp+256). */
+   work array only reproduces retail's frame (the name buffer at sp+256). The lreg/greg dumps
+   show buf (5 refs, 290 insns) and the hoisted 21 (4 refs, 282 insns) competing for the last
+   saved register; 3.3's priority weights refs by block frequency, so the 21's uses sit in
+   hotter blocks here than in retail's source (counts and structure otherwise agree). */
 int CRace2DNormal::f_089cd4(int arg)
 {
     char work[256];

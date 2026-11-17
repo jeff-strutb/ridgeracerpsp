@@ -502,7 +502,10 @@ static inline void PutQuad(QuadVtx *v, float u, float w, const Vec4 *c)
 /* @draft 0x033e40 us f_033e40
    WHAT IT DOES: Draws a car's backfire flash at each exhaust pipe: a camera facing quad
    showing the animation frame (nine frames on a three by three sheet), faded with distance. 
-   Remaining: same size as retail; byte store order of the packed vertices and register use differ. */
+   Remaining difference (224/336, 1320 vs 1344 B): the distance words are now float/int
+   unions held in registers (mfc1, no 16-byte array on the stack), which fixed the 160-byte
+   frame; the packed vertices' byte stores are scheduled in another order and retail spills
+   more. Retail stores the zero z/w words of c[] before x/y. */
 extern "C" unsigned int *f_033e40(CarFxMgr *m, CarFx *e, View *view, unsigned int *dl)
 {
     Vec4 c[4];
@@ -530,19 +533,18 @@ extern "C" unsigned int *f_033e40(CarFxMgr *m, CarFx *e, View *view, unsigned in
     *dl++ = ((unsigned int)(e->fade * 255.0f) & 0xff) | 0x58000000;
     for (k = 0; k < e->car->info->npipes; k++) {
         Vec4 *p = &e->pipe[k];
-        float d[3];
-        unsigned int *t = (unsigned int *)d;
+        union { float f; unsigned int u; } dx, dy, dz;
         int f, q, r;
         float u, v0;
         QuadVtx *v;
 
-        d[0] = p->x - view->pos.x;
-        d[1] = p->y - view->pos.y;
-        d[2] = p->z - view->pos.z;
+        dx.f = p->x - view->pos.x;
+        dy.f = p->y - view->pos.y;
+        dz.f = p->z - view->pos.z;
         *dl++ = 0x3a000009;
-        *dl++ = ((t[0] >> 8) & 0xffffff) | 0x3b000000;
-        *dl++ = ((t[1] >> 8) & 0xffffff) | 0x3b000000;
-        *dl++ = ((t[2] >> 8) & 0xffffff) | 0x3b000000;
+        *dl++ = ((dx.u >> 8) & 0xffffff) | 0x3b000000;
+        *dl++ = ((dy.u >> 8) & 0xffffff) | 0x3b000000;
+        *dl++ = ((dz.u >> 8) & 0xffffff) | 0x3b000000;
         f = e->backfire;
         q = f / 3;
         r = f - q * 3;
