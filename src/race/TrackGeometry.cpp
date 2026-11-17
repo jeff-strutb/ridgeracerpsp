@@ -1330,10 +1330,9 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                                 bestVert = (unsigned short)k;
                                 bestLen2 = Cy[k];
                             }
-                            if (o->m4->n > 0) {
-                                int n = o->m4->n;
-                                k = 0;
-                                do {
+                            int n = o->m4->n;
+                            for (k = 0; k < n; k++) {
+                                {
                                     short k1 = (k + 1) % n;
                                     short lo, hi;
                                     float y;
@@ -1351,7 +1350,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                                             y = Cy[lo] - Cx[lo] * ((Cy[k1] - Cy[k]) / (Cx[k1] - Cx[k]));
                                         }
                                         if (y <= bestLen2)
-                                            goto s_next;
+                                            continue;
                                         bestEdge = (unsigned short)i;
                                         bestVert = (unsigned short)k;
                                         bestLen2 = y;
@@ -1362,14 +1361,12 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                                             y = Cy[lo] + (V1856.x - Cx[lo]) * ((Cy[k1] - Cy[k]) / (Cx[k1] - Cx[k]));
                                         }
                                         if (y <= bestLen2)
-                                            goto s_next;
+                                            continue;
                                         bestEdge = (unsigned short)i;
                                         bestVert = (unsigned short)k;
                                         bestLen2 = y;
                                     }
-                                s_next:
-                                    k = k + 1;
-                                } while (k < n);
+                                }
                             }
                             if (bestLen2 != 0.0f) {
                                 result = 3;
