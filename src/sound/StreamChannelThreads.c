@@ -390,6 +390,275 @@ void f_111f18(int unused, int flag)
     }
 }
 
+/* The disc stream's header (read at offset 0, 2048 bytes). */
+struct StreamHeader {
+    char m0[8];
+    int m8;
+    unsigned char m12;
+    char m13[3];
+    int m16;
+    int m20;
+    int m24;
+    int m28;
+    unsigned short m32;
+    char m34[2];
+    unsigned short m36;
+    char m38[2];
+    int m40;
+    char m44[4];
+    unsigned short m48;
+    char m50[1998];
+};
+
+extern struct StreamHeader D_281ed0;
+extern int D_281698;
+
+int sceIoPollAsync(int fd, long long *res);
+void sceKernelDcacheWritebackAll(void);
+int f_10f608(int ch);
+void f_110d24(int ch);
+void f_1128c8(int part);
+int f_11afdc(int ch, int a, int b, int c);
+void f_111be0(int ch);
+
+/* @draft 0x111f98 us f_111f98
+   WHAT IT DOES: The disc stream's reader step. A stopping stream (state 5) stops voices 29 and
+   30 and closes the file once its last async call is done; a stream whose voice 29 has ended is
+   closed. From phase 8 on it tracks the play position (D_281698 samples, 28 per 16-byte block,
+   in a 0xc000-byte ring), sets both voices' volume, starts the next 0x20000-byte async read
+   (clipped near the end of the data) and polls it. Then the phase switch: open, seek to the
+   start offset, read and copy the 2048-byte header, read the first 0x40000 bytes (or seek to a
+   resume position), set up and start the voices, and in phase 8 refill the voice ring as the
+   position crosses 0x4000 and 0x8000. Returns 0, or 0x80000000 when the header read is short.
+   Remaining difference: 7 words, the order of the header field loads after the division
+   (retail: +48 third, then +20 +32 +36 +12 +24 +28 +40; here +20 third, then +48 +12 +24 +28
+   +32 +36 +40). sched2 ranks these equal-priority loads by dependent count, then by luid;
+   the +20 load gets a third dependent here (its register a2 is reused by the m132 load), so it
+   is taken before +48. No arrangement found gives +48 that rank; direct global accesses and a
+   header pointer local (the latter adds alias dependences in sched2) were both analysed. */
+int f_111f98(int ch)
+{
+    long long res = 0;
+    int pos, old, bs, off;
+    int size;
+
+    if (D_291980.m16 == 0)
+        return 0;
+    if (D_291980.m16 == 5 && D_291980.m100 != 10) {
+        f_10f608(29);
+        f_10f608(30);
+        f_110d24(29);
+        f_110d24(30);
+        if (D_291980.m128 < 3) {
+            if ((D_291980.m100 >= 1 && D_291980.m100 <= 5) || D_291980.m116 > 0) {
+                D_291980.m100 = 10;
+            } else {
+                D_291980.m100 = 0;
+                D_291980.m16 = 0;
+                D_291980.m128 = 0;
+                sceIoClose(D_291980.m104);
+                return 0;
+            }
+        } else {
+            D_291980.m100 = 0;
+            D_291980.m16 = 0;
+            return 0;
+        }
+    }
+    if (D_291980.m100 == 10) {
+        if (sceIoPollAsync(D_291980.m104, &res) == 0) {
+            D_291980.m100 = 0;
+            D_291980.m16 = 0;
+            D_291980.m128 = 0;
+            sceIoClose(D_291980.m104);
+        }
+        return 0;
+    }
+    if (D_291980.m116 == -1 && f_10d160(0, 29)->m0 == 0) {
+        D_291980.m16 = 0;
+        D_291980.m100 = 0;
+        sceIoClose(D_291980.m104);
+        return 0;
+    }
+    old = 0;
+    pos = 0;
+    bs = D_291980.m48;
+    if (D_291980.m100 >= 8) {
+        if (D_291980.m16 != 4) {
+            old = D_291980.m96;
+            pos = D_291980.m96 = D_281698 / 28 * 16 % 0xc000;
+            D_291980.m32 += (pos - old + 0xc000) % 0xc000;
+        }
+        f_10d160(0, 29)->m52 = D_291980.m176;
+        f_10d160(0, 30)->m52 = D_291980.m176;
+        if (D_291980.m124 >= 0x20000 / D_291980.m44 && D_291980.m116 == 0) {
+            D_291980.m124 = 0;
+            off = 0;
+            if (D_291980.m92)
+                off = 0x20000;
+            if (D_291980.m52 - D_291980.m88 >= 0x10000 && D_291980.m52 - D_291980.m88 < 0x20000
+                && D_291980.m152 == -1) {
+                D_291980.m152 = D_291980.m120 - D_291980.m88 * D_291980.m44 / (bs * 2) * bs * 2 - 0x20000;
+                if ((unsigned int)D_291980.m152 > 0x20000)
+                    D_291980.m152 = 0x20000;
+                sceIoReadAsync(D_291980.m104, D_291980.m192 + off, D_291980.m152);
+                D_291980.m116 = 2;
+            } else {
+                sceIoReadAsync(D_291980.m104, D_291980.m192 + off, 0x20000);
+                D_291980.m116 = 1;
+                D_291980.m92 ^= 1;
+            }
+        }
+        if (D_291980.m116 == 1) {
+            if (sceIoPollAsync(D_291980.m104, &res) == 0) {
+                sceKernelDcacheWritebackAll();
+                D_291980.m116 = 0;
+            }
+        } else if (D_291980.m116 == 2) {
+            if (sceIoPollAsync(D_291980.m104, &res) == 0) {
+                int seek = (D_291980.m60 + 27) / 28 * 16 / bs * bs * D_291980.m44;
+                sceKernelDcacheWritebackAll();
+                if (D_291980.m60 == -1) {
+                    D_291980.m116 = -1;
+                } else {
+                    sceIoLseekAsync(D_291980.m104, D_291980.m108 + seek + 2048, 0);
+                    D_291980.m116 = 3;
+                }
+            }
+        } else if (D_291980.m116 == 3) {
+            if (sceIoPollAsync(D_291980.m104, &res) == 0) {
+                int o = 0;
+                if (D_291980.m92)
+                    o = 0x20000;
+                if (D_291980.m152 == 0x20000) {
+                    D_291980.m116 = 0;
+                } else {
+                    sceIoReadAsync(D_291980.m104, D_291980.m192 + o + D_291980.m152,
+                                   0x20000 - D_291980.m152);
+                    D_291980.m116 = 1;
+                }
+                D_291980.m92 ^= 1;
+            }
+        }
+    }
+    switch (D_291980.m100) {
+    case 1:
+        if (sceIoPollAsync(D_291980.m104, &res) != 0)
+            return 0;
+        if (D_291980.m108 > 0) {
+            sceIoLseekAsync(D_291980.m104, D_291980.m108, 0);
+            D_291980.m100 = 3;
+        } else {
+            sceIoReadAsync(D_291980.m104, &D_281ed0, 2048);
+            D_291980.m100 = 2;
+        }
+        break;
+    case 2:
+        if (sceIoPollAsync(D_291980.m104, &res) != 0)
+            return 0;
+        if (res < 2048)
+            return 0x80000000;
+        sceKernelDcacheWritebackAll();
+        size = D_281ed0.m8;
+        D_291980.m44 = D_281ed0.m12;
+        D_291980.m48 = D_281ed0.m16;
+        D_291980.m52 = size;
+        D_291980.m60 = D_281ed0.m20;
+        D_291980.m56 = D_281ed0.m24;
+        D_291980.m72 = D_281ed0.m28;
+        D_291980.m64 = D_281ed0.m32;
+        D_291980.m66 = D_281ed0.m36;
+        D_291980.m68 = D_281ed0.m40;
+        D_291980.m76 = D_281ed0.m48;
+        D_291980.m120 = (size + 2047) / D_291980.m48 * D_291980.m48 * 2;
+        if (D_291980.m132 == 0 || size < D_291980.m132 + 0x40000) {
+            D_291980.m132 = 0;
+            if (size < 0x40000)
+                sceIoReadAsync(D_291980.m104, D_291980.m192, size);
+            else
+                sceIoReadAsync(D_291980.m104, D_291980.m192, 0x40000);
+            D_291980.m100 = 5;
+        } else {
+            sceIoLseekAsync(D_291980.m104, D_291980.m132 * 2, 1);
+            D_291980.m100 = 4;
+            D_291980.m32 = D_291980.m88 = D_291980.m132;
+        }
+        break;
+    case 3:
+        if (sceIoPollAsync(D_291980.m104, &res) == 0) {
+            sceIoReadAsync(D_291980.m104, &D_281ed0, 2048);
+            D_291980.m100 = 2;
+        }
+        break;
+    case 4:
+        if (sceIoPollAsync(D_291980.m104, &res) != 0)
+            return 0;
+        sceIoReadAsync(D_291980.m104, D_291980.m192, 0x40000);
+        D_291980.m100 = 5;
+        break;
+    case 5:
+        if (sceIoPollAsync(D_291980.m104, &res) != 0)
+            return 0;
+        sceKernelDcacheWritebackAll();
+        if (D_291980.m16 == 4 || D_291980.m112 == 1) {
+            D_291980.m100 = 6;
+        } else {
+            D_291980.m16 = 2;
+            D_291980.m100 = 7;
+        }
+        /* fall through */
+    case 6:
+        if (D_291980.m16 != 3)
+            break;
+        D_291980.m100 = 7;
+        /* fall through */
+    case 7:
+        f_111be0(29);
+        if (D_291980.m52 < 0xc000) {
+            int r = f_112b70(D_291980.m44, 0, D_291980.m52, 0, D_291980.m48);
+            D_291980.m124 = r;
+            D_291980.m88 += r;
+            D_291980.m84 = r;
+            f_11afdc(29, (int)D_291980.m184, D_291980.m52, 1);
+            f_11afdc(30, (int)D_291980.m188, D_291980.m52, 1);
+            D_291980.m184[D_291980.m52 / 16 * 16 - 15] = 3;
+            D_291980.m188[D_291980.m52 / 16 * 16 - 15] = 3;
+        } else {
+            int r = f_112b70(D_291980.m44, 0, 0xc000, 0, D_291980.m48);
+            D_291980.m124 = r;
+            D_291980.m88 += r;
+            D_291980.m84 = r;
+            f_11afdc(29, (int)D_291980.m184, 0xc000, 1);
+            f_11afdc(30, (int)D_291980.m188, 0xc000, 1);
+            D_291980.m184[0xbff1] = 3;
+            D_291980.m188[0xbff1] = 3;
+        }
+        D_281698 = 0;
+        D_291980.m16 = 3;
+        D_291980.m100 = 8;
+        break;
+    case 8:
+        if (pos < old) {
+            f_1128c8(1);
+            D_291980.m124 += 0x4000;
+        } else if ((pos >= 0x4000) & (old < 0x4000)) {
+            if (D_291980.m136 == 0) {
+                D_291980.m136 = 1;
+                return 0;
+            }
+            f_1128c8(2);
+            D_291980.m124 += 0x4000;
+            D_291980.m184[0xbff1] = 3;
+            D_291980.m188[0xbff1] = 3;
+        } else if ((pos >= 0x8000) & (old < 0x8000)) {
+            f_1128c8(0);
+            D_291980.m124 += 0x4000;
+        }
+        break;
+    }
+    return 0;
+}
+
 /* @draft 0x1128c8 us f_1128c8
    WHAT IT DOES: Moves the next 16 KB of the read buffer k into the voice ring (0x112aa8).
    When the file's data runs out first, copies what is left and either marks the end of both
