@@ -1220,14 +1220,12 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                             bestEdge = (unsigned short)i;
                             bestLen2 = xi;
                             if (side != 0) {
-                                if (o->m0 != 0) {
-                                    unsigned short a;
-                                    for (a = 0; a < o->m0; a++) {
-                                        PlaneRec *q = o->m8[a];
-                                        if (vv->x == q->x) {
-                                            if (vv->y == q->y)
-                                                bestEdge = a;
-                                        }
+                                int a;
+                                for (a = 0; a < o->m0; a++) {
+                                    PlaneRec *q = o->m8[a];
+                                    if (vv->x == q->x) {
+                                        if (vv->y == q->y)
+                                            bestEdge = (unsigned short)a;
                                     }
                                 }
                             }
