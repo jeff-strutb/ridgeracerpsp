@@ -6,6 +6,8 @@
 
 #include <string.h>
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 struct VolState {
     float m0;
     float m4;
@@ -140,7 +142,7 @@ void f_10d274(int ch);
 int f_11b1a8(int ch, int a, int b);
 int f_11af28(int ch, int l, int r, int sl, int sr);
 int f_11af8c(int ch, int pitch);
-int f_112b70(signed char nch, int pos, int n, int dst, int blk);
+int f_112b70(int nch, int pos, int n, int dst, int blk);
 void *f_125c4c(int align, int size);
 int f_112c98(int args, void *argp);
 int f_113050(int args, void *argp);
@@ -392,6 +394,32 @@ int f_112aa8(int a0, int a1, int a2)
     return res;
 }
 
+/* @implements 0x112b70 us f_112b70
+   WHAT IT DOES: Copies n bytes of interleaved stream data starting at byte pos of the read
+   buffer into the voice buffers at dst, one block of blk bytes per channel at a time (the
+   second channel's block follows the first's when nch is 2); returns the bytes copied. */
+int f_112b70(int nch, int pos, int n, int dst, int blk)
+{
+    int done = 0;
+
+    while (n > 0) {
+        int k = MIN(n, blk);
+        int q = pos / blk;
+        int off = pos - q * blk;
+        int base = q * blk * nch;
+
+        if (blk < off + k)
+            k = blk - off;
+        memcpy(D_291980.m184 + dst + done, D_291980.m192 + base + off, k);
+        n -= k;
+        pos += k;
+        if (nch == 2)
+            memcpy(D_291980.m188 + dst + done, D_291980.m192 + blk + base + off, k);
+        done += k;
+    }
+    return done;
+}
+
 /* @draft 0x1131dc us f_1131dc
    WHAT IT DOES: Sets up the two ATRAC3 channels: their buffer sizes n0 and n1, every field
    cleared (full volume, no file), each one's data buffer (n + 2 bytes, none when n is not
@@ -399,7 +427,8 @@ int f_112aa8(int a0, int a1, int a2)
    thread (0x113050).
    Remaining difference: the thread handles' stores reuse the table's high half from the entry
    block in a saved register (s3, 16 more bytes of frame); retail rebuilds it with lui after the
-   loops. Statement order matches retail. */
+   loops. GCSE's PRE finds the end block's high half redundant with the entry's (reg 225);
+   retail's must not reach it. Statement order matches retail. */
 int f_1131dc(int n0, int n1)
 {
     struct StreamChan *c;
