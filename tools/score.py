@@ -586,9 +586,13 @@ class Grader:
         self.tree = tree or Tree()
         self.retail = retail or Retail()
         self.libsyms = load_libsyms()
+        import libsyms
+        self.libsyms2 = libsyms.load()
+        self.use_libsyms = True
         self.items = {}            # (unit rel, sec, start) -> (retail base, reason or None)
         self.conflicts = set()     # item keys two references placed at different addresses
         self.used, self.used_items = set(), set()
+        self.collect, self.pending = None, []
 
     # -- compiled target of one relocation
     def resolve(self, u, sym, addend):
@@ -628,6 +632,9 @@ class Grader:
                 cands.append((na, 'name'))
         if not cands and name in self.libsyms and len(self.libsyms[name]) == 1:
             cands.append((next(iter(self.libsyms[name])), 'library symbol'))
+        if (not cands and self.use_libsyms and sym.shndx == SHN_UNDEF
+                and name in self.libsyms2):
+            cands.append((self.libsyms2[name], 'libsyms'))
         if not cands and sym.shndx == SHN_UNDEF:
             stubs = self.retail.stub_nid.get(nid_of(name), [])
             if len(stubs) == 1:
@@ -652,6 +659,13 @@ class Grader:
             return 'retail target unknown (LO16 high half not recovered)'
         t = self.resolve(u, rel.sym, rel.addend)
         if t.kind == 'none':
+            if (self.collect is not None and rel.sym.shndx == SHN_UNDEF
+                    and rel.sym.name in self.collect):
+                # Collection mode (tools/analysis/libsyms.py): record where retail points
+                # this reference instead of failing it.  Such a function is PENDING, never
+                # EXACT.
+                self.pending.append((rel.sym.name, rtarget - rel.addend, rel.type))
+                return None
             return 'unprovable: ' + t.how
         if t.kind == 'addr':
             self.used.add(t.how.split('(')[-1].split(' ')[0].rstrip(')')
@@ -725,6 +739,7 @@ class Grader:
     # -- one function
     def grade(self, u, tag):
         self.used, self.used_items = set(), set()
+        self.pending = []
         res = {'addr': tag.addr, 'name': tag.name, 'kind': tag.kind, 'file': u.rel,
                'line': tag.line, 'real': u.real}
         f = self.retail.funcs.get(tag.addr)
@@ -784,6 +799,9 @@ class Grader:
         res['refs'] = out
         res['rules'] = sorted(self.used)
         res['items'] = sorted(self.used_items)
+        if self.pending:
+            return dict(res, verdict='PENDING', pending=list(self.pending),
+                        detail='otherwise EXACT; %d references collected' % len(self.pending))
         return dict(res, verdict='EXACT', detail='%d words, %d relocations' % (n, len(out)))
 
     def finalize(self, results):
