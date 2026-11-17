@@ -301,7 +301,12 @@ void CCamEye3::Reset()
    WHAT IT DOES: Sets the camera up behind the car: its offset from the car (raised by the
    car's two heights and pushed back), the eye at the car plus that offset, the offset's
    length and angle, the car's position, and the remaining state cleared, with a lens angle
-   of a quarter turn. */
+   of a quarter turn.
+   Cycle 2026-11-16 (diff only, no edit): Zero() stores float 0s, yet retail reloads ofs.x/y/z
+   for the length after the m800 clear (stores kept in x, w, y, z order) while here cse reuses the
+   early ofs.x load ($f4) across them and sched2 reorders the clears: retail could not prove m800 and
+   ofs disjoint. Same symptom as CarBuffer 0x0ed314/0x0ecc4c; which MEM attribute differs is not
+   settled, nothing tried. */
 void CCamEye3::f_0c4c20()
 {
     E3Car *c = Car();
@@ -519,7 +524,10 @@ void CCamEye3::f_07f5e0(int *arg)
    of the point looked at (frame 64), and its third angle store is dead; here they get
    separate slots and a fourth saved register.
    WHAT IT DOES: Puts the camera on its view: the eye and the point looked at, a 55 degree
-   lens and its scale, the car's setting, speed and position, and the lens span. */
+   lens and its scale, the car's setting, speed and position, and the lens span.
+   Cycle 2026-11-16: retail's At() copy (16 bytes, sp+16) lands on the Rot temporary's slot
+   (s0 = sp+16), which is why r[2]'s store is dead; here the TARGET_EXPR slots both live to the end
+   of the body. Tried { Rot(0, 0, 0); } in its own block to free its slot early: identical, reverted. */
 void CCamEye3::f_07f5e8()
 {
     Vec4 eye;

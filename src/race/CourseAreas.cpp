@@ -112,7 +112,10 @@ public:
    sets, and publishes the ring lengths as the angle wrapping periods.
    Remaining difference: 21/55 words, scheduling only: the run-off half period is a plain
    signed shift (sra with no sign fix-up), so it is m >> 1. Retail stores n before runOff and
-   computes n / 2 (in t4) before moving this to s0; not yet diagnosed in the dumps. */
+   computes n / 2 (in t4) before moving this to s0; not yet diagnosed in the dumps.
+   Cycle 2026-11-16 (lreg/greg): sched1 runs; ours ends runOff's (t0) life early so local-alloc
+   reuses t0 for the n/2 temps; retail's n/2 lands in t4, i.e. t0-t3 (runOff, runOffSize, both polys)
+   were all still live then. Tried int h = n / 2; at the top: CSE folds it, output identical. */
 void CourseAreas::f_0e1eec(RoadPoint *road, unsigned int roadSize, Danmen *danmen, void *runOff,
                            unsigned int runOffSize, void *roadPoly, void *runOffPoly)
 {
@@ -154,7 +157,11 @@ void CourseAreas::f_0e1ff0()
    Remaining difference: 65/84 words. The three results are now built in place and stored
    together at the end, as retail does. Before the second wrap call retail copies i into t0
    (move t0,v0; addiu t0,t0,1) and keeps d in $f21, y in $f20; here i + 1 is formed in v0 and
-   d takes $f20, which shifts every FPR after it. Not yet diagnosed in the dumps. */
+   d takes $f20, which shifts every FPR after it. Not yet diagnosed in the dumps.
+   Cycle 2026-11-16: retail is 336 bytes (one more insn: move t0,v0, so i's pseudo is not tied
+   to v0; retail keeps v0 for the section halfword and p in v1 where this puts p in a2). FPR order
+   reads as global-alloc priority (y beat d for $f20 in retail). Tried a separate t = d - (float)i
+   for the fraction: identical output (the copy is coalesced), reverted. */
 void CourseAreas::f_0e1ff8(float d, float *px, float *py, float *pz)
 {
     int i = f_0e2690((int)d);
@@ -178,7 +185,11 @@ void CourseAreas::f_0e1ff8(float d, float *px, float *py, float *pz)
    WHAT IT DOES: Returns the road heading at a distance, interpolated the short way round.
    Remaining difference: 51/70 words; retail is one instruction longer: after the wrap call it
    copies the result (move a1,v0) and builds the element address from the copy, and it loads
-   road at the very top. An inline heading helper taking (road, i) (tried once) is worse (63). */
+   road at the very top. An inline heading helper taking (road, i) (tried once) is worse (63).
+   Cycle 2026-11-16 (greg): here the call-result pseudo is tied to v0 and j*3 goes sll v1,v0,1;
+   addu v1,v1,v0. Retail's shape (move a1,v0; sll v0,v0,1; addu v0,v0,a1) means two pseudos held j
+   (one shifted in v0, a copy in a1). Tried int j = f_0e2690(i + 1); as a named local: identical
+   output, reverted. Same move-copy appears in 0x0e1ff8 (move t0,v0). */
 float CourseAreas::f_0e2148(float d)
 {
     int i = (int)d;
@@ -354,7 +365,10 @@ float CourseAreas::f_0e26dc(float d)
    WHAT IT DOES: Returns the bounding rectangle of the road line.
    Remaining difference: 29/43 words. Retail puts the field in $f0 and the bound in $f1 for
    every test and uses plain beqz (no beqzl) for the i == 0 shortcuts; here the field takes $f1.
-   Spelling the tests as `*minX > p->x` compiles identically (tried once). */
+   Spelling the tests as `*minX > p->x` compiles identically (tried once).
+   Cycle 2026-11-16: ours loads p->x once before the i == 0 branch, so that pseudo spans blocks,
+   goes to greg and gets $f1 after the local bound; retail reloads in each block (local $f0). Tried
+   if (i == 0) store; else if (cmp) store; for all four: 47/49 words, 196 bytes (no cross-jump), reverted. */
 void CourseAreas::f_0e274c(float *minX, float *maxX, float *minZ, float *maxZ)
 {
     int i;
@@ -395,10 +409,16 @@ float CourseAreas::f_0e27f8(float x, float z)
    f_0b0d98 call (j with move a1,s3 in the slot), so both arms' copy-outs of the returned
    vector were identical RTL after reload; here the two copies are scheduled differently and
    stay separate. Retail also keeps n in s0 and the road set in s1. Pointer locals for the two
-   sets (tried once) change nothing that matters (49 words). */
+   sets (tried once) change nothing that matters (49 words).
+   2026-11-16: one PolySet *p switched in the if and a single f_0b0d98(p, ...) after the join
+   (the shape 0x0e29b8 also wants): 30/54 words, 204 vs 216 bytes, n in s0 and road in s1 as in
+   retail. Remaining difference: retail computes this+112 into s3 in the prologue and its
+   run-off arm ends j back to the jal with move a1,s3 in the slot; here s3 = this and the arm
+   does addiu s1,s3,112 (p reuses s1), and the copy-out stores are scheduled differently. */
 float CourseAreas::f_0e286c(float x, float z, Vec4 *n)
 {
     unsigned short id;
+    PolySet *p;
     Vec4 v;
     float h;
 
@@ -406,13 +426,13 @@ float CourseAreas::f_0e286c(float x, float z, Vec4 *n)
     v.z = z;
     v.w = 1.0f;
     v.y = 0.0f;
-    id = f_0af9c4(&roadPoly, &v, &h);
+    p = &roadPoly;
+    id = f_0af9c4(p, &v, &h);
     if (id == 0xffff) {
-        id = f_0af9c4(&runOffPoly, &v, &h);
-        *n = f_0b0d98(&runOffPoly, &v, &id);
-    } else {
-        *n = f_0b0d98(&roadPoly, &v, &id);
+        p = &runOffPoly;
+        id = f_0af9c4(p, &v, &h);
     }
+    *n = f_0b0d98(p, &v, &id);
     return h;
 }
 
@@ -435,29 +455,14 @@ float CourseAreas::f_0e2944(float x, float y, float z)
 /* @draft 0x0e29b8 us CourseAreas8f_0e29b8
    WHAT IT DOES: Finds the ground height below a point in space; returns 0 when there is no
    ground there.
-   Remaining difference: 28/40 words. Retail loads li s1,0xffff before the first call and
-   compares both results against s1; here the first result goes to s1 and, on the path where it
-   equals 0xffff, cse reuses it as the constant for the second test. A local holding 0xffff
-   (handbook row 309) compiles identically. */
+   Was 28/40 words with the && form (first result went to s1 and cse reused it as the constant
+   for the second test; a local holding 0xffff compiled identically). 2026-11-16: one id local
+   tested after the join (id = road; if (id == 0xffff) id = runOff; if (id == 0xffff) return 0)
+   gives retail's li 0xffff hoisted before the first call: 7/39 words, retail size.
+   Remaining difference: out is s1 and 0xffff s2 (retail s2 / s1), and the second test's tail
+   is bne to the store block + j to the epilogue where retail has beq + j back with the lwc1
+   in the j slot. */
 int CourseAreas::f_0e29b8(float *out, float x, float y, float z)
-{
-    Vec4 v;
-    float h;
-
-    v.x = x;
-    v.y = y;
-    v.z = z;
-    v.w = 1.0f;
-    if (f_0b0234(&roadPoly, &v, &h) == 0xffff && f_0b0234(&runOffPoly, &v, &h) == 0xffff)
-        return 0;
-    *out = h;
-    return 1;
-}
-
-/* @draft 0x0e2a54 us CourseAreas8f_0e2a54
-   WHAT IT DOES: Returns the ground height below a point in space and the ground's normal.
-   DIFFERS: 42/62 words differ, first at +0xc (not yet worked). */
-float CourseAreas::f_0e2a54(Vec4 *n, float x, float y, float z)
 {
     unsigned short id;
     Vec4 v;
@@ -468,12 +473,39 @@ float CourseAreas::f_0e2a54(Vec4 *n, float x, float y, float z)
     v.z = z;
     v.w = 1.0f;
     id = f_0b0234(&roadPoly, &v, &h);
-    if (id == 0xffff) {
+    if (id == 0xffff)
         id = f_0b0234(&runOffPoly, &v, &h);
-        *n = f_0b0d98(&runOffPoly, &v, &id);
-    } else {
-        *n = f_0b0d98(&roadPoly, &v, &id);
+    if (id == 0xffff)
+        return 0;
+    *out = h;
+    return 1;
+}
+
+/* @draft 0x0e2a54 us CourseAreas8f_0e2a54
+   WHAT IT DOES: Returns the ground height below a point in space and the ground's normal.
+   Was 42/62 words with a f_0b0d98 call in each arm (248 bytes). 2026-11-16: one PolySet *p
+   switched in the if and one call after the join (as 0x0e286c): 30/54 words, 204 vs 216 bytes.
+   Remaining difference (same as 0x0e286c): retail holds this+112 in s3 from the prologue and the
+   run-off arm jumps back to the jal with move a1,s3 in the slot; here s3 = this and the arm
+   computes addiu s1,s3,112; the copy-out stores are scheduled differently. */
+float CourseAreas::f_0e2a54(Vec4 *n, float x, float y, float z)
+{
+    unsigned short id;
+    PolySet *p;
+    Vec4 v;
+    float h;
+
+    v.x = x;
+    v.y = y;
+    v.z = z;
+    v.w = 1.0f;
+    p = &roadPoly;
+    id = f_0b0234(p, &v, &h);
+    if (id == 0xffff) {
+        p = &runOffPoly;
+        id = f_0b0234(p, &v, &h);
     }
+    *n = f_0b0d98(p, &v, &id);
     return h;
 }
 
@@ -668,7 +700,10 @@ void CourseAreas::f_0e3a74(int i, unsigned short *a, unsigned short *b)
    Remaining difference: 15/37 words. Retail builds &roadPoly (s0), &v (s1) and &runOffPoly
    (s2) in the prologue and cross-jumps the run-off arm into the shared f_0af5e8 call (j with
    move a0,s2 in the slot). Two pointer locals with a call in each arm (tried once) get the
-   prologue pointers but neither the cross-jump nor that register order (36 words). */
+   prologue pointers but neither the cross-jump nor that register order (36 words).
+   Tried (2026-11-16): a second pointer local q = &runOffPoly at the top, p = q in the if: this+112
+   goes to s2 in the prologue and the cross-jump appears, but via a 'move v0,a0' copy and with
+   &v in s0 / &roadPoly in s1 (retail s1 / s0): 31 words, reverted. */
 void CourseAreas::f_0e3a9c(float x, float y, float z)
 {
     unsigned short id;

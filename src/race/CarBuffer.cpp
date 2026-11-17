@@ -460,7 +460,11 @@ void CCarBufferPSP::f_0ecc18(const char *c)
    wheels at (+-1000, 300, +-1000) with zero angles, and the wheel matrices from the current
    view matrix and the identity.
    DRAFT: same stores, but the schedule differs from the start (retail builds the
-   orientation's stack temporary first and keeps the stores near field order); 4 bytes short. */
+   orientation's stack temporary first and keeps the stores near field order); 4 bytes short.
+   Cycle 2026-11-16 (diff only, no edit): same class as 0x0ed314: retail keeps int and float
+   stores near field order (stack temp zeroed first, then copied out), here sched2 moves the s8-based
+   int clears freely past the pointer-based float stores. Both drafts point at one alias fact that
+   retail lacks (TBAA/component disambiguation of the inlined stores); not settled, nothing tried. */
 void CCarBufferPSP::f_0ecc4c()
 {
     CarName n;
@@ -597,7 +601,12 @@ void CCarBufferPSP::f_0ecc4c()
    velocities and the other motion values cleared, reads its effect type from the database and
    sets up its wheel effects.
    DRAFT: same stores; the argument loads take other registers and the vectors' x
-   stores and the integer clears are scheduled later than retail's. */
+   stores and the integer clears are scheduled later than retail's.
+   Cycle 2026-11-16 (diff only, no edit): retail's stores run in source order, each Set as
+   x (via s0+off), w, y, z (via a this+off pointer), with the int sets (m76, m1752, m124...) between
+   them; here sched2 is free to move every s0-based store (all x's and the int clears) to the end, so
+   it sees them as independent of the pointer-based ones where retail does not. Not settled: which
+   alias fact (MEM attrs of the inlined Vec4::Set stores) differs; no source change tried. */
 void CCarBufferPSP::f_0ed314(int type, int a, CarName n, int b, Quat q, Vec4 p)
 {
     m80 = type;
