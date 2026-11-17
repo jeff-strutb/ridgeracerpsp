@@ -53,6 +53,7 @@ struct Mat33 {
     Mat33 &f_09e458(Angle a);
     Mat33 &f_09e478(Angle a);
     Mat33 &f_09e498(Angle a);
+    float At(int i, int j) const { return m[i][j]; }
 };
 
 /* @implements 0x09d038 us _ZN5Mat33C2Ev
@@ -213,13 +214,13 @@ Mat33 &Mat33::f_09df00()
     return *this;
 }
 
-/* @draft 0x09e4b8 us f_09e4b8
-   WHAT IT DOES: Returns the transposed matrix.
-   Remaining difference: retail loads the eighth element (into f19) last, after the other
-   register arguments; this source loads it second, right after the stacked ninth. */
+/* @implements 0x09e4b8 us f_09e4b8
+   WHAT IT DOES: Returns the transposed matrix. The elements are read through the inline At(),
+   whose inlined bodies evaluate the register arguments before the stack one. */
 Mat33 Mat33::f_09e4b8() const
 {
-    return Mat33(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2]);
+    return Mat33(At(0, 0), At(0, 1), At(0, 2), At(1, 0), At(1, 1), At(1, 2), At(2, 0), At(2, 1),
+                 At(2, 2));
 }
 
 /* @implements 0x09e508 us f_09e508

@@ -74,7 +74,10 @@ Vec4 *f_0281d8(Vec4 *d, const Vec4 *a)
    WHAT IT DOES: Builds the matrix of a rotation by an angle about an axis (a unit vector).
    Remaining difference: two instruction pairs in the multiply block are swapped (retail
    computes s*z before s*x and stores the m[1][0] difference before the m[2][1] one); the
-   register use is otherwise identical. */
+   register use is otherwise identical. sched1 issues s*x first because, last in source, it
+   kills s (REG_DEAD weight). Declaring sx, sy, sz (s*z last) fixes both pairs, but then
+   local-alloc gives xy - sz $f12 and xz + sy $f4 (retail the reverse); that drops sched2's
+   anti dependence 131 -> s*y, so s*y loses its tie with y*y*t: 6 words, reverted. */
 Matrix *f_02822c(Matrix *m, const float *axis, float angle)
 {
     VMatrix *r = (VMatrix *)m;

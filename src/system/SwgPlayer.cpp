@@ -3754,7 +3754,7 @@ struct SwgFC06a7b8 {
     SwgFM m;
     SwgFC06a7b8() {
     unsigned *n = (unsigned *)f_05db08(16);
-    n[0] = (unsigned)&D_1a4270;
+    *(void **)n = &D_1a4270;
     n[2] = D_1a4d40;
     n[3] = D_1a4d44;
     n[1] = 0;
@@ -5384,7 +5384,7 @@ void f_0529a4(char *s){
 
 /* @draft 0x04ec74 us f_04ec74
    WHAT IT DOES: releases a tree of nodes: recurses on the child, decrements the refcount of each node's payload under interrupt suspend, and frees the node.
-   Tree release. Remaining difference: register assignment only (10 of 45 words): retail keeps the context in s4, the count in s2, the block in s3. */
+   Tree release. Remaining difference: blezl -> blez fixed by calling f_04e4b4 through its throw() alias (dbr liveness, handbook row 59); left: register assignment (retail a in s4, c in s2, blk in s3) and the two -4(s0) loads in the other order (retail loads c first). */
 unsigned sceKernelCpuSuspendIntr(void); void sceKernelCpuResumeIntr(unsigned);
 void f_04eee8(void*, void*);
 void f_04ec74(void *a, int *n) {
@@ -5399,7 +5399,7 @@ void f_04ec74(void *a, int *n) {
     k[-1] = k[-1] - 1;
     sceKernelCpuResumeIntr(i);
     if (c <= 0) { f_04eee8(blk, &e); }
-    f_04e4b4(n);
+    f_04e4b4_nt3b(n);
     n = (int*)nx;
   }
 }
@@ -5643,18 +5643,19 @@ void f_04bef8(char *s) {
 }
 
 /* @draft 0x04c0a8 us f_04c0a8
-   WHAT IT DOES: if index a1 is valid, either clears the entry's flag byte (a4 or a5 not positive) or stores a2..a5 into the entry and sets the flag byte. */
+   WHAT IT DOES: if index a1 is valid, either clears the entry's flag byte (a4 or a5 not positive) or stores a2..a5 into the entry and sets the flag byte.
+   Remaining difference: store order fixed (field order 137..152, sched2 takes the last first); left: the or'd flag in a0 and e in v1 where retail has flag v1, e a0 (allocation). */
 void f_04c0a8(char *s, int a1, int a2, int a3, int a4, int a5) {
     if (*(int *)(s + 32) >= a1) {
         char *e = *(char **)(s + 36) + a1 * 172;
         if (a4 <= 0 || a5 <= 0) {
             *(char *)(e + 137) = 0;
         } else {
-            *(int *)(e + 152) = a5;
             *(char *)(e + 137) = 1;
             *(int *)(e + 140) = a2;
             *(int *)(e + 144) = a3;
             *(int *)(e + 148) = a4;
+            *(int *)(e + 152) = a5;
         }
     }
 }

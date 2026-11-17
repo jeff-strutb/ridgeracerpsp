@@ -75,6 +75,7 @@ struct Mat34 {
     Mat34 &f_0a08e4(Angle a);
     Mat34 &f_0a0904(Angle a);
     Mat34 &f_0a0924(Angle a);
+    float At(int i, int j) const { return m[i][j]; }
 };
 
 /* @implements 0x09f344 us _ZN5Mat34C2Ev
@@ -269,13 +270,13 @@ Mat34 &Mat34::f_0a039c()
     return *this;
 }
 
-/* @draft 0x0a0944 us f_0a0944
-   WHAT IT DOES: Returns the transposed matrix.
-   Remaining difference: as for the 3x3 matrix's f_09e4b8, retail loads the eighth element
-   last; this source loads it second. */
+/* @implements 0x0a0944 us f_0a0944
+   WHAT IT DOES: Returns the transposed matrix. The elements are read through the inline At(),
+   whose inlined bodies evaluate the register arguments before the stack one. */
 Mat34 Mat34::f_0a0944() const
 {
-    return Mat34(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2]);
+    return Mat34(At(0, 0), At(0, 1), At(0, 2), At(1, 0), At(1, 1), At(1, 2), At(2, 0), At(2, 1),
+                 At(2, 2));
 }
 
 /* @implements 0x0a0994 us f_0a0994

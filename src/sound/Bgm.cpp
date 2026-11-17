@@ -330,7 +330,9 @@ int CBgm::f_096728(int n)
    WHAT IT DOES: Says whether the current race plays the Pac-Man music: race type 5 with the
    first computer car's "BgmPackman" flag set.
    DRAFT: ten words: retail keeps the field size in s1 and the race record's address in s2
-   (its lui of the size in v1); here the allocator swaps the two and uses v0. */
+   (its lui of the size in v1); here the allocator swaps the two and uses v0.
+   Remaining difference: greg (nmG) ranks the record address (pseudo 184, 3 refs over 58 insns) above the
+   size (202, 3 refs over 74 insns, 3 calls); retail's order needs the size live shorter or the address longer. */
 int CBgm::f_0967c4()
 {
     bool r;

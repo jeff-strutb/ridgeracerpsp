@@ -61,7 +61,11 @@ extern Work *D_2456d0;
 /* @draft 0x0bc714 us f_0bc714
    WHAT IT DOES: sets up the car block: runs the unit set-up on each of the four units, then
    zeroes three tail words and fills them with three normalised angles.
-   Remaining difference: word 4 of 46 differs at +0x90: the last load uses v1 where retail uses v0. */
+   Remaining difference: word 4 of 46 differs at +0x90: the last load uses v1 where retail uses v0
+   (then sched2 lifts lw ra above the two stores). The lreg dump shows why: the first two loads
+   are REG_EQUIV copies that update_equiv_regs moved next to their stores (new pseudos, v0);
+   the last load (r2) instead carries a REG_EQUIV to its store destination t[2], is not moved,
+   and local-alloc gives it v1. Not yet tried: a source shape that makes r2 like r0/r1. */
 extern "C" void f_0bc714(CarBlock *b) {
     Unit *s = b->u;
     for (int n = 3; n != -1; n--) {
@@ -88,7 +92,8 @@ extern "C" void f_0bc714(CarBlock *b) {
 
 /* @draft 0x0bc7cc us f_0bc7cc
    WHAT IT DOES: the same block set-up as f_0bc714, kept as a separate copy in retail.
-   Remaining difference: same source as f_0bc714, same single register difference. */
+   Remaining difference: same source as f_0bc714, same single register difference (see its
+   note: the last load's REG_EQUIV is to the store destination, so local-alloc picks v1). */
 extern "C" void f_0bc7cc(CarBlock *b) {
     Unit *s = b->u;
     for (int n = 3; n != -1; n--) {
@@ -154,7 +159,8 @@ extern "C" void f_0bd064(void) {}
 /* @draft 0x0bd06c us f_0bd06c
    WHAT IT DOES: sets up one unit: clears its three-word groups and fills them with
    normalised angles from the unit's set-up values.
-   Remaining difference: 4 of 84 words differ, first at +0x12c (the last tail store block). */
+   Remaining difference: 4 of 84 words differ, first at +0x12c (the last tail store block):
+   the same v1-for-v0 last load as f_0bc714 (REG_EQUIV to the destination n[2]; see there). */
 extern "C" void f_0bd06c(Unit *u) {
     W t[9];
     W *s = &u->w[12];

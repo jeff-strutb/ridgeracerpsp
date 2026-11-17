@@ -315,7 +315,8 @@ void CCodec::f_044230(Chan c)
    WHAT IT DOES: Ors bits into the byte at channel ch's write position; once the byte holds n of
    8 bits it moves to the next byte, taking a new block at a block's end (flagging overflow when
    none is free), clears it and counts it.
-   Remaining difference: register choice only (the block number from the free list in a1, the byte offset in a1 and the buffer in v1). */
+   Remaining difference: register choice only (the block number from the free list in a1, the byte offset in a1 and the buffer in v1).
+   lreg (nmG): local-alloc ties pos->offset (qty A, 4 refs over 4 insns) and data->p (qty B, 5 refs over 9 insns); A's higher priority takes v1, B gets a1, the byte t0; retail needs B ahead of A. */
 void CCodec::f_044294(int ch, int bits, int n)
 {
     unsigned char *p = &data[chan[ch].wr.pos + (chan[ch].wr.blk << 8)];
