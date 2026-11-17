@@ -93,6 +93,20 @@ MIPS (HI16 with the next LO16 against the same symbol). They resolve by these ru
    maps to one retail address per run; two addresses make every function that relied on it
    BADREF.
 
+8. **The method-name rule** (rule `method-name`, the owner's ruling): a C++ method that no tag
+   in the file or any real file claims, and that no real file defines a body for, resolves to
+   the address in its own name (`f_XXXXXX`) when that is a `funcs.csv` start. Each site's
+   retail target must equal it exactly. If any site of the same symbol in the run points
+   elsewhere, every function using that symbol is BADREF. It applies to data references
+   (vtable slots) by the same test. A tagged method keeps its tag's address. One limit
+   follows: a single-file `score.py` run sees only that file's sites, so the image gate's
+   whole-tree run is the one that decides.
+
+   A function that reuses an object data item already checked in the run also inherits what
+   checking it recorded: the rules used, method-name symbols and collected references. Before
+   this, a vtable slot's method-name site counted only for the first function that reached
+   the vtable.
+
 Rules 4 (`library`) and 6 (`import`) go beyond the brief's list and are not yet ruled on.
 Rule 5 (`libsyms`) is the owner's ruling. `score.py --json` lists the rules each EXACT function
 used (`rules`), so the functions that depend on each can be counted and set aside.
@@ -230,6 +244,24 @@ the proven pair at 0x0d3b38: the address join misses it, and the value join give
 also checks that no target the address join recovered changes. Recovered LO16s go from 2,674
 to 2,799 of 2,908, with none changed. (`docs/DENOMINATOR.md` still quotes 2,674.)
 
+The last 109 had three shapes, each now handled by a rule with a known answer in the self-test:
+- **Register copies.** `move s2,s1` (0x0010b8) and `move v1,s2` (0x0d37bc) carry a high half
+  into another register; a write used to drop it. `move rd,rs` now gives rd exactly rs's value.
+  Known answer: 0x001120 = 0x1b8bfc (the pair at 0x0010f8).
+- **Landing pads.** The LO16 sat in exception landing-pad code, which was never analysed. A pad
+  is entered only by the unwinder from a call whose return address minus one is in one of its
+  LSDA call-site ranges, with the callee-saved registers s0–s8 as they were after that call's
+  delay slot. A pad's state is the meet of those, s0–s8 only. Known answer: 0x005e6c =
+  0x1dd6b0 (the pair at 0x005dcc).
+- **Calls that never return.** A call to `_Unwind_Resume` was treated as falling through into
+  the next landing pad, emptying its state (0x075224). By the GCC source, `_Unwind_Resume`
+  ends in `abort()` or `__builtin_eh_return` and never returns. `hilo.py` finds it as the one
+  retail function equal to the reference copy (0x166df8), without going through libsyms, which
+  depends on `hilo.py`. Known answer: 0x0752cc = 0x1a6490 (the pair at 0x075268).
+
+All 2,908 are now recovered. None of the 2,674 or 2,799 recovered before changed, and the
+paired check now covers all 13,177 proven LO16s and agrees on each.
+
 ## sbs.py: the working diff
 
 Prints the grader's verdict, then the frame size and saved-register set (retail and compiled),
@@ -315,6 +347,14 @@ caught 7 pre-commit with a non-EXACT @implements staged (src/sequence/FadeColour
          src/sequence/FadeColourState.c:35: @implements 0x0e9e08 f_0e9e08 is BADREF: word 0
          R_MIPS_HI16: compiled D_1d5a80 (name) -> 0x1d5a84, retail -> 0x1d5a80
 caught commit-msg with an attribution trailer: exit 1
+(added later)
+caught 10 untagged method renamed to the next function (src/sound/SoundPack.cpp 0x114a4c)
+       score BADREF: word 4 R_MIPS_26: compiled _ZN9CPackFile8f_115834EPv (method-name)
+       -> 0x115834, retail -> 0x115800 | image RED: 9 functions placed, 10 @implements ...
+caught 11 one site of an untagged method points elsewhere (src/race/PlayerInputProxy.cpp)
+       0x038604 BADREF: ... f_044c3c (method-name) -> 0x044c3c, retail -> 0x044a28
+       | 0x037d6c BADREF: method-name rule: another site of _ZN5Codec8f_044c3cEi points at
+         0x044a28, not its name address 0x044c3c | 0x0386a8 BADREF: (the same)
 caught tags: missing WHAT IT DOES and an address tagged twice
 faults GREEN 12.12 s 10/10 caught; src/ and config/ unchanged
 ```
@@ -376,6 +416,16 @@ address tagged twice`.
   that no tag claims (`docs/UNTAGGED.md`), and LO16s whose high half `hilo.py` still does not
   recover. Each makes its function BADREF, so the image gate is red. `score.py --tree` lists
   them with the first failing reference.
+- **What is left after these rules is all source structure** (listed by `image.py --list`):
+  the swapped `__gedf2`/`__ltdf2` comparisons; the class hierarchy that RTTI shows (retail
+  `Car::CRidgeCar : Car::CCarBufferPSP`, `RRP::CRidgeComcar : Car::CRidgeCar` only,
+  `RRP::CRidgeNetcar : RRP::CRidgeComcar`, `RRP::CRidgeMycar : Car::CRidgeCar`); `CCamTV`
+  methods that should override `CCamProto`'s slots 6–9; `Select::CBaseMenu`'s base-object
+  constructor, which is retail 0x06c540, written in MenuMovie.cpp as `f_06c540`; the
+  `Select::CStartMenu::CSub` vtable (retail 0x1a62b0), which no file emits because its key
+  function `CSub::s2` has no body; and CarManager.cpp's stand-in base classes `f_0e69a0` and
+  `f_0e69c8`, whose constructor and destructor calls retail makes to `CDispName`'s tagged C1
+  and D1 (0x0e69a0, 0x0e69c8). Each needs a change under `src/`.
 - **The `_ge_df`/`_lt_df` frame.** Why the reference objects have a 112-byte frame where stock
   1.3.1 gives 96 with the makefile flags is not known.
 - **Whether rules 4 and 6 (libfuncs.csv symbols, import NIDs) are accepted** as proof of a
