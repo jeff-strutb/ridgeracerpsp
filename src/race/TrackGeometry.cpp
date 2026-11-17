@@ -1404,7 +1404,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                                         bestEdge = (unsigned short)i;
                                         bestVert = (unsigned short)k;
                                         bestLen2 = y;
-                                    } else if (Cx[lo] <= V1856.x && V1856.x <= Cx[hi]) {
+                                    }
+                                    if (Cx[lo] <= V1856.x && V1856.x <= Cx[hi]) {
                                         if (Cx[hi] - Cx[lo] < 9.999999747378752e-05f) {
                                             y = Cy[k] < Cy[k1] ? Cy[k] : Cy[k1];
                                         } else {
