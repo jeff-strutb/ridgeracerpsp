@@ -951,11 +951,11 @@ void CSequence::f_004410()
     m25028 = &CSequence::f_003db4;
 }
 
-/* @draft 0x004484 us f_004484
+/* @implements 0x004484 us f_004484
    WHAT IT DOES: Enters the time attack (sequence 4), like f_004198 but with only the result
-   effects scenes, and continues in f_004630.
-   Remaining difference: the m156[0] test; retail uses beqz with the slot filled from the
-   fall-through (addiu a1), this build beqzl filled from the target (one word longer). */
+   effects scenes, and continues in f_004630. The m156[0] word is tested through a pointer
+   local: the pointer heuristic outweighs the call heuristic, so dbr fills the beqz slot from
+   the fall-through as retail does. */
 void CSequence::f_004484()
 {
     Param saved[14];
@@ -966,7 +966,8 @@ void CSequence::f_004484()
         f_003150(i, Param(0));
     }
     if (m144 == 4) {
-        if (m156[0].a)
+        void *q = (void *)m156[0].a;
+        if (q)
             f_005470(&m24572[5]);
     } else {
         if (m144 == 5)

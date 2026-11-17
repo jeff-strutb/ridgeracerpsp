@@ -1110,7 +1110,10 @@ int CDjDetect::f_091634()
    final lap) for 180 frames, returns 1 (2 on the final lap); otherwise 0.
    Remaining difference: retail reloads D_2407fc for the second lap test and keeps the result
    in a0; here the pointer and the constant 1 stay in registers from the limit choice (an
-   if/else or ternary limit gives retail's reload but loads both limits in separate blocks). */
+   if/else or ternary limit gives retail's reload but loads both limits in separate blocks).
+   RTL: the second load already goes in pass 09 (cse following the jumps through the skipped
+   lim block and the two early returns); retail shares only the HIGH (lui a1 in both arms),
+   so its cse path breaks before the lap test and gcse then keeps the load. */
 int CDjDetect::f_09196c()
 {
     if (!f_0903e4()) {
@@ -1304,7 +1307,8 @@ int CDjDetect::f_091bf0()
    on 20 of every 100 frames below level 3, and 2 from level 3 up; otherwise 0. The 100 held
    in a local is what cse substitutes for the remainder's multiplier (retail's li s1,100).
    Remaining difference: the result lives in a1, not v0: sched1 hoists the level-1.5 return-0
-   set above the constant's lui, which local-alloc's update_equiv_regs then puts in v0. */
+   set above the constant's lui, which local-alloc's update_equiv_regs then puts in v0.
+   A result variable for the last two arms (r = ... ? 2 : 0; return r;) is worse (224 B). */
 int CDjDetect::f_091d9c()
 {
     int n = 100;

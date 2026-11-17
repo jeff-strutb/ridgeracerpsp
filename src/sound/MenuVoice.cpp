@@ -5,7 +5,7 @@
 int f_01c260(void);
 int f_0f65a4(void);
 int f_0f67c0(int bank, int set, int voice, float vol);
-void f_0f6864(int bank);
+int f_0f6864(int bank);
 
 extern int D_242c5c;
 
@@ -90,10 +90,9 @@ int CMenuVoice::f_0929b4(int ev)
     return r;
 }
 
-/* @draft 0x092a38 us f_092a38
-   WHAT IT DOES: Stops the menu voices.
-   Draft: retail loads the bank handle after the prologue, in the call's delay slot; this
-   source hoists it above the frame setup. */
+/* @implements 0x092a38 us f_092a38
+   WHAT IT DOES: Stops the menu voices. f_0f6864 returns int (retail's li v0,1), which keeps
+   the bank handle load in the call's delay slot. */
 void CMenuVoice::f_092a38()
 {
     f_0f6864(D_242c5c);

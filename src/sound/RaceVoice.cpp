@@ -7,7 +7,7 @@ int f_01c260(void);
 int f_0f65a4(void);
 int f_0f67c0(int bank, int set, int voice, float vol);
 void f_0f6864(int bank, int h);
-void f_0f6894(int bank, int h);
+int f_0f6894(int bank, int h);
 int f_0f6954(int bank, int h);
 
 extern int D_242c74;
@@ -117,10 +117,9 @@ void CRaceVoice::f_092e18()
     last = 81;
 }
 
-/* @draft 0x092e94 us f_092e94
-   WHAT IT DOES: Passes a voice handle to the bank.
-   Draft: retail loads the bank after the prologue, in the call's delay slot (as in the menu
-   voice player's stop). */
+/* @implements 0x092e94 us f_092e94
+   WHAT IT DOES: Passes a voice handle to the bank. f_0f6894 returns int (retail's li v0,1),
+   which keeps the bank load in the call's delay slot. */
 void CRaceVoice::f_092e94(int h)
 {
     f_0f6894(D_242c74, h);

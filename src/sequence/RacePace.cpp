@@ -433,7 +433,9 @@ int f_040e44(RandOwner *o, int *vals, int *pn)
    WHAT IT DOES: for every car (0xffff): mode 1 makes the per car record and the pace
    database, mode 0 takes the database down.
    Remaining difference: retail tests the make flag again after the record's call (it stays in
-   s0); here the two tests are merged, the second body following the first. */
+   s0); here the two tests are merged, the second body following the first. RTL: pass 03
+   (jump) threads only the false edge; cse (pass 09) follows the fall-through through the call
+   and folds the second make == 0 test from the first jump's recorded condition. */
 void f_040f54(int mode, int car)
 {
     int all = car == 0xffff;

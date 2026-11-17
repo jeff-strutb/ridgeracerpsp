@@ -93,10 +93,10 @@ int CStreamData::f_095854(int pack, void *header)
     return 0;
 }
 
-/* @draft 0x095890 us f_095890
-   WHAT IT DOES: Returns the number of files in a pack, or -1.
-   Remaining difference: retail returns each result straight in v0 with its own epilogue
-   jump; here the results meet in v1 and are moved to v0. */
+/* @implements 0x095890 us f_095890
+   WHAT IT DOES: Returns the number of files in a pack, or -1. The count is returned through
+   its own variable (n = -1 on failure): a separate `return n` arm is hoisted above the test by
+   ce2, which puts the result in v1. */
 int CStreamData::f_095890(int pack)
 {
     if (pack < 0 || pack >= 1) {
@@ -105,10 +105,11 @@ int CStreamData::f_095890(int pack)
     }
     if (D_1a9778[pack]) {
         int n = f_095c04(pack);
-        if (n >= 0)
-            return n;
-        f_093f90("StreamData: GetFileNum Failed! Invalid PackID[%d]\n", pack);
-        return -1;
+        if (n < 0) {
+            f_093f90("StreamData: GetFileNum Failed! Invalid PackID[%d]\n", pack);
+            n = -1;
+        }
+        return n;
     }
     if (!m0) {
         f_093f90("StreamData: GetFileNum Failed! Pack[%d] has not been Registered yet.\n", pack);

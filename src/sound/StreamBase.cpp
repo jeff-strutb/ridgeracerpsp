@@ -268,7 +268,11 @@ int CStreamBase::f_0948a0(int a, int fade)
    it starts it normally. Returns 0, or -1.
    Remaining difference: the error string addresses. Retail computes the pre-load error's
    address at its log block (lui in the bltz slot) and the start error's before its bgez, and
-   uses bltzl for the first failure; here it is the other way round. */
+   uses bltzl for the first failure; here it is the other way round.
+   RTL (ce2): the two ERROR CODE blocks are still separate; after reload crossjumping shares
+   their print call, and here the first one's lui/addiu end up above its bltz (post-reload
+   if-case speculation of the branch target), so no block keeps its own address in front of the
+   shared call. Retail keeps that first block whole (addiu at +0x94 falls into the jal). */
 int CStreamBase::f_094948(int a, int buf)
 {
     int r;
@@ -303,7 +307,8 @@ int CStreamBase::f_094948(int a, int buf)
 /* @draft 0x094a34 us f_094a34
    WHAT IT DOES: Starts the stream with a fade in from a pre-load buffer; without a buffer or
    a buffer size it fades it in normally. Returns 0, or -1.
-   Remaining difference: as for f_094948 (error string address placement and bltzl). */
+   Remaining difference: as for f_094948 (error string address placement and bltzl; see its
+   RTL note on crossjumping and the speculated lui/addiu). */
 int CStreamBase::f_094a34(int a, int fade, int buf)
 {
     int r;

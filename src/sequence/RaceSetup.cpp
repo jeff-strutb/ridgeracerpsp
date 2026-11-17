@@ -240,7 +240,7 @@ struct RaceResult {
 class CRaceRule {
 public:
     virtual ~CRaceRule();
-    virtual void v8();
+    virtual void v8(struct RaceSetup *setup);
     virtual struct RaceResult *v12();
     struct RaceResult *Result()
     {
@@ -993,16 +993,15 @@ void f_015ed8()
     D_1ee47c = f_0396b0(D_24063c[0]);
 }
 
-/* @draft 0x0160bc us f_0160bc
-   WHAT IT DOES: Copies the chosen option into the setup and tells the rules object the race is
-   starting.
-   Remaining difference: retail forms the setup's full address (addiu) and stores at +588;
-   this build folds the offset into the %lo of the store (one word shorter). */
+/* @implements 0x0160bc us f_0160bc
+   WHAT IT DOES: Copies the chosen option into the setup and hands the setup to the rules
+   object (vtable slot +8, the sequences' f_038fd4(SeqArgs *)); the setup's address, used twice,
+   stays in a1 instead of folding into the store's %lo. */
 void f_0160bc()
 {
     CRaceRule *r = D_1ee47c;
     D_1ee1f0.SetMode();
-    r->v8();
+    r->v8(&D_1ee1f0);
 }
 
 /* @draft 0x0160fc us f_0160fc
