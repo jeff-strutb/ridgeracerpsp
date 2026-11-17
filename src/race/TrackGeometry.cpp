@@ -863,7 +863,7 @@ struct Flag {
    gets the final slide along the contact edge (height from the course areas), and the
    remaining outputs get the contact vertex angle, a speed, the edge direction and the edge's
    two end points. Returns 0 (no contact) to 3.
-   DRAFT: complete transcription of every path; size 14,060 vs 14,328 bytes. Proven so far
+   DRAFT: complete transcription of every path; size 14,064 vs 14,328 bytes. Proven so far
    (each matches retail's code at that point): flags is an array of a class with an empty
    constructor (Flag), declared after result = 0 and before Qp, which gives retail's empty
    127-step-32 loop and keeps the frame offsets; every loop indexes the edge points as Vec2
@@ -920,7 +920,10 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
     bestVert = 0xffff;
     result = 0;
     Flag flags[128];
-    Vec2 Qp, Pp, V1808, V1824, V1840, V1856, V1872, V1888, V1904;
+    Vec2 Qp, Pp, V1808;
+    PVec v1824;
+#define V1824 (*(Vec2 *)&v1824)
+    Vec2 V1840, V1856, V1872, V1888, V1904;
     PlaneRec seg;
     Vec2 V1936;
     V4 D, acc;
