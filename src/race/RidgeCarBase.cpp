@@ -22,7 +22,8 @@ void f_0b8884(void *);
 void f_0a74cc(void *);
 void f_09b070(void *out, void *m, int axis);
 void f_0bd234(void *o, float a, float b);
-void f_0a5ea4(void *out, void *m, float f);
+void *f_0a5ea4(void *out, void *m, float f);
+void *f_0a5dc8(void *d, void *b);
 float f_0a65c4(void *v);
 void f_0bc954(void *o, float a, float b, float c, float d, float e, float g, float h);
 void f_0a6d4c(void *out, void *m, void *v);
@@ -70,6 +71,19 @@ union FloatBits {
     int i;
 };
 
+/* A 16-byte vector whose words are copied through integer registers. */
+struct V4w {
+    FloatBits x, y, z, w;
+};
+
+extern void *D_2456d0;
+extern "C" float sqrtf(float);
+extern "C" {
+void f_0a6c18(void *out, void *m, void *v);
+void *f_09ff44(void *m);
+void *f_0a082c(void *m, FloatBits angle, int i, int j);
+}
+
 #define CHR(p, o) (*(signed char *)((char *)(p) + (o)))
 
 /* The base object (its constructor and destructor are in another object file). */
@@ -104,6 +118,33 @@ struct SubC {
     ~SubC() { f_0bc88c(this); }
     char p[1024];
 };
+
+/* An angle wrapped by f_099b98 when it is made from a value (zero by default). */
+struct Angle {
+    FloatBits v;
+    Angle() { v.f = 0.0f; }
+    Angle(float x)
+    {
+        v.f = x;
+        f_099b98(&v.f);
+    }
+};
+
+/* Three angles and a pad word, built from three values. */
+struct Rot3 {
+    Angle a[3];
+    int w;
+    Rot3(float x, float y, float z)
+    {
+        a[0] = Angle(x);
+        a[1] = Angle(y);
+        a[2] = Angle(z);
+        w = 0;
+    }
+};
+
+#define SHT(p, o) (*(short *)((char *)(p) + (o)))
+#define USH(p, o) (*(unsigned short *)((char *)(p) + (o)))
 
 namespace Car {
 
@@ -190,6 +231,112 @@ extern "C" void f_0b6b2c(void *c)
     f_0b71c0(c);
 }
 
+/* @draft 0x0b6b48 us f_0b6b48
+   WHAT IT DOES: Updates the car's course position: stores the truncated course coordinate at
+   +2144 as the record's segment (+428), keeping the old one at +432. When the segment
+   changed, adds the step (wrapped to half the course's segment count either way) times 102
+   to the distance at +472, sets the moved flag at +436, and when the distance moved since +496
+   is 100 or more adds it to the odometer at +492 (capped at 2000000000) and resyncs +496.
+   Then stores the ground speed (the length of x and z of the velocity at +9952) at +496 of
+   the global body record, the full speed at +1096 of the record and that speed times 3.6 at
+   +1092, and two values scaled by 3.125 at +7816+96 and +7816+88.
+   Remaining difference: retail forms the course areas address in two steps (D_23c820, then
+   +12240) and loads +8 from it; combine folds this build's single-use address into the load
+   (lw 12248), so everything after +0x48 is shifted by two words. */
+extern "C" void f_0b6b48(void *cp)
+{
+    char *c = (char *)cp;
+    char *ph = c + 5792;
+    char *q = c + 7816;
+    char *g = (char *)D_2456d0;
+    int old = INT(ph, 428);
+    int k = (int)FLT(c, 2144);
+    INT(ph, 432) = old;
+    INT(ph, 428) = k;
+    INT(ph, 436) = 0;
+    if (old != k) {
+        MapMgr *mp = &D_23c820;
+        char *mm = mp->m12240;
+        int n = INT(mm, 8);
+        int d = k - old;
+        int h = n >> 1;
+        if (h < d)
+            d -= n;
+        if (d < -h)
+            d += n;
+        int nd = INT(ph, 472) + d * 102;
+        int diff = nd - INT(ph, 496);
+        if (diff < 0)
+            diff = -diff;
+        INT(ph, 436) = 1;
+        INT(ph, 472) = nd;
+        if (diff / 100 > 0) {
+            INT(ph, 492) += diff;
+            if (INT(ph, 492) > 1999999999)
+                INT(ph, 492) = 2000000000;
+            INT(ph, 496) = INT(ph, 472);
+        }
+    }
+    V4w s = *(V4w *)(c + 9952);
+    float h = sqrtf(s.x.f * s.x.f + s.z.f * s.z.f);
+    FLT(g, 496) = h;
+    float l = sqrtf(h * h + s.y.f * s.y.f);
+    FLT(ph, 1096) = l;
+    FLT(ph, 1092) = l * 3.6f;
+    FLT(q, 96) = FLT(ph, 232) * 3.125f;
+    FLT(q, 88) = FLT(ph, 1096) * 3.125f;
+}
+
+/* @implements 0x0b71c0 us f_0b71c0
+   WHAT IT DOES: Sets up the car's orientation: copies the vector at +2192 into +6688 (y and z
+   negated, w 1.0), transforms it by the matrix at +6560 into the global body record's +48,
+   takes the heading angle (the negated angle of its z and -y) into +6624 and the pitch angle
+   (of x against the length of y and z, which goes to +560 of the body record) into +6632,
+   both wrapped by f_099b98. Then builds the matrix at +6416 from identity rotated by the two
+   negated angles, and transforms the vectors at +6016 and +6048 by it into +864 and +880 of
+   the physics record. The transform helpers are declared void here: retail's copies after
+   them allocate v0 first, so the calls do not set v0. */
+extern "C" void f_0b71c0(void *cp)
+{
+    char *c = (char *)cp;
+    char *ph = c + 5792;
+    char *g = (char *)D_2456d0;
+    V4w tmp;
+    FloatBits t1;
+    FloatBits t2;
+    FloatBits t3;
+    FloatBits t4;
+    char *v = c + 6688;
+    *(V4w *)(ph + 896) = *(V4w *)(c + 2192);
+    float y = FLT(c, 6692);
+    float z = FLT(c, 6696);
+    FLT(v, 4) = -y;
+    FLT(v, 8) = -z;
+    FLT(v, 12) = 1.0f;
+    f_0a6c18(&tmp, c + 6560, v);
+    *(V4w *)(g + 48) = tmp;
+    t1.f = -f_09a9dc(FLT(g, 56), -FLT(g, 52));
+    f_099b98(&t1.f);
+    *(FloatBits *)(c + 6624) = t1;
+    float len = sqrtf(FLT(g, 52) * FLT(g, 52) + FLT(g, 56) * FLT(g, 56));
+    FLT(g, 560) = len;
+    t2.f = f_09a9dc(FLT(g, 48), len);
+    f_099b98(&t2.f);
+    *(FloatBits *)(c + 6632) = t2;
+    char *m = c + 6416;
+    f_09ff44(m);
+    t3.f = -FLT(c, 6624);
+    f_099b98(&t3.f);
+    f_0a082c(m, t3, 1, 2);
+    t4.f = -FLT(c, 6632);
+    f_099b98(&t4.f);
+    f_0a082c(m, t4, 0, 1);
+    f_0a6bf4(&tmp, m, c + 6016);
+    *(V4w *)(ph + 864) = tmp;
+    f_0a6bf4(&tmp, m, c + 6048);
+    *(V4w *)(ph + 880) = tmp;
+}
+
 /* @implements 0x0b6d1c us f_0b6d1c
    WHAT IT DOES: Passes the car's speed, lateral values and the body's height and the follower
    offset to f_0bc954 at +8064.
@@ -259,6 +406,59 @@ extern "C" void f_0b6e08(void *c)
     f_0b8884(c);
 }
 
+/* @draft 0x0b6e44 us f_0b6e44
+   WHAT IT DOES: Builds the body matrix at +576 of the physics record: the heading angle (the
+   negated angle of the record's +904 and -+900) and the pitch angle (of +896 against the
+   length of +900 and +904) rotate an identity matrix. Then combines the wheel contact
+   halfwords of the sub-object at +8064 into +968 and +970 of the record, and sets +972 when
+   the spec's flag bits ask for a contact that is present, clears +452 and +456, and splits
+   the course coordinate at +2144 into its fraction (+448, scaled into +440, +476 and +484)
+   and stores the lateral coordinate scaled at +444, the progress over a 60th at +1100 and
+   the coordinate times 100 truncated at +480.
+   Remaining difference: the angle and matrix half (+0x28 to +0x120) matches; global-alloc
+   swaps s2/s3 between the car and the +8064 pointer, retail reloads the spec's flag word at
+   the join after the first contact test where this build's gcse keeps it in a register, and
+   the closing float block is scheduled differently (68 of 147 words, size 588 vs 584). */
+extern "C" void f_0b6e44(void *cp)
+{
+    char *c = (char *)cp;
+    char *ph = c + 5792;
+    char *sc = c + 8064;
+    Rot3 r(0.0f, 0.0f, 0.0f);
+    r.a[0] = Angle(-f_09a9dc(FLT(ph, 904), -FLT(ph, 900)));
+    float len = sqrtf(FLT(ph, 900) * FLT(ph, 900) + FLT(ph, 904) * FLT(ph, 904));
+    r.a[2] = Angle(f_09a9dc(FLT(ph, 896), len));
+    char *m = ph + 576;
+    f_09ff44(m);
+    f_0a082c(m, r.a[2].v, 0, 1);
+    f_0a082c(m, r.a[0].v, 1, 2);
+    INT(ph, 972) = 0;
+    char *sp = *(char **)(ph + 1104);
+    SHT(ph, 968) = USH(sc, 128) & USH(sc, 496);
+    SHT(ph, 970) = USH(sc, 864) & USH(sc, 1232);
+    if (INT(sp, 4) & 1) {
+        if (SHT(ph, 970) != 0)
+            INT(ph, 972) = 1;
+    }
+    if (INT(sp, 4) & 2) {
+        if (SHT(ph, 968) != 0)
+            INT(ph, 972) = 1;
+    }
+    INT(ph, 452) = 0;
+    INT(ph, 456) = 0;
+    float x = FLT(c, 2144);
+    float fr = x - (float)(int)x;
+    INT(ph, 488) = INT(ph, 484);
+    FLT(ph, 448) = fr;
+    float f = fr * 1.024f;
+    FLT(ph, 440) = f;
+    FLT(ph, 476) = f;
+    FLT(ph, 444) = FLT(c, 2148) * 1.024f;
+    INT(ph, 484) = INT(ph, 472) + (int)(f * 100.0f);
+    FLT(ph, 1100) = (FLT(c, 2144) - FLT(c, 2256)) / 0.016666668f;
+    INT(ph, 480) = (int)(FLT(c, 2144) * 100.0f);
+}
+
 void operator delete(void *);
 
 extern "C" void f_0b6904(void *p)
@@ -281,6 +481,58 @@ extern "C" void f_0b6a1c(void *p)
     operator delete(p);
 }
 
+/* @draft 0x0b86ac us f_0b86ac
+   WHAT IT DOES: The car's per frame bookkeeping: runs f_0bd880 and f_0b71c0, stores the
+   truncated course coordinate at +2144 as the record's segment (+428, the old one at +432),
+   adds the wrapped segment step times 102 to the distance at +472 when it changed and sets
+   the moved flag at +436. Then stores the ground speed at +496 of the global body record,
+   the full speed at +1096 of the record and that speed times 3.6 at +1092, the values scaled
+   by 3.125 at +7816+96 and +7816+88, and passes the speeds to the sub-objects at +8064
+   (f_0bc954) and +7996 (f_0bd234).
+   Remaining difference: the same as f_0b6b48: retail forms the course areas address in two
+   steps (D_23c820, then +12240) and loads +8 from it; this build folds it into lw 12248. */
+extern "C" void f_0b86ac(void *cp)
+{
+    char *c = (char *)cp;
+    char *ph = c + 5792;
+    char *q = c + 7816;
+    char *sb = c + 7996;
+    char *g = (char *)D_2456d0;
+    f_0bd880(c);
+    f_0b71c0(c);
+    int old = INT(ph, 428);
+    int k = (int)FLT(c, 2144);
+    INT(ph, 432) = old;
+    INT(ph, 428) = k;
+    if (old != k) {
+        MapMgr *mp = &D_23c820;
+        char *mm = mp->m12240;
+        int n = INT(mm, 8);
+        int d = k - old;
+        int h = n >> 1;
+        if (h < d)
+            d -= n;
+        if (d < -h)
+            d += n;
+        INT(ph, 472) += d * 102;
+    }
+    if (INT(ph, 432) != INT(ph, 428))
+        INT(ph, 436) = 1;
+    else
+        INT(ph, 436) = 0;
+    V4w s = *(V4w *)(c + 9952);
+    float h = sqrtf(s.x.f * s.x.f + s.z.f * s.z.f);
+    FLT(g, 496) = h;
+    float l = sqrtf(h * h + s.y.f * s.y.f);
+    FLT(ph, 1096) = l;
+    FLT(ph, 1092) = l * 3.6f;
+    FLT(q, 96) = FLT(ph, 232) * 3.125f;
+    FLT(q, 88) = FLT(ph, 1096) * 3.125f;
+    f_0bc954(c + 8064, FLT(q, 96), FLT(q, 80), FLT(q, 20), FLT(ph, 1136), FLT(ph, 1096),
+             FLT(ph, 1108), FLT(ph, 232));
+    f_0bd234(sb, FLT(ph, 1096), FLT(ph, 1088));
+}
+
 /* @implements 0x0b8d1c us f_0b8d1c
    WHAT IT DOES: An empty function. */
 extern "C" void f_0b8d1c(void *c)
@@ -293,6 +545,48 @@ extern "C" void f_0b8d1c(void *c)
 extern "C" int f_0b99c8(void *c)
 {
     return INT(c, 1952);
+}
+
+/* @implements 0x0b99d0 us f_0b99d0
+   WHAT IT DOES: Moves the car: adds the velocity at +1936 to the position at +144, then adds
+   the velocity scaled by 0.001 (y and z negated, w 1.0) to the physics record's position.
+   Unless the car's state at +80 is 1 with a mode word at +2108 other than 0 or 3, it also
+   adds the vector at +1920 scaled by 0.06 (y and z negated) to the record's +192. Then takes
+   the length of the +1920 vector scaled by 0.06, signed by the float at +1960, and stores it
+   at +10112 when its size is larger than the size of the value there. */
+extern "C" void f_0b99d0(void *cp)
+{
+    char *c = (char *)cp;
+    char *ph = c + 5792;
+    V4w v;
+    V4w t;
+    f_0a5dc8(c + 144, c + 1936);
+    f_0a5ea4(&v, c + 1936, 0.001f);
+    v.y.f = -v.y.f;
+    v.z.f = -v.z.f;
+    v.w.f = 1.0f;
+    f_0a5dc8(ph, &v);
+    if (INT(c, 80) != 1 || INT(c, 2108) == 0 || INT(c, 2108) == 3) {
+        f_0a5ea4(&t, c + 1920, 0.06f);
+        v.y.i = t.y.i;
+        v.z.i = t.z.i;
+        v.x.i = t.x.i;
+        v.y.f = -v.y.f;
+        v.z.f = -v.z.f;
+        v.w.f = 1.0f;
+        f_0a5dc8(ph + 192, &v);
+    }
+    f_0a5ea4(&t, c + 1920, 0.06f);
+    v = t;
+    float f1 = f_0a65c4(&v);
+    if (FLT(c, 1960) < 0.0f)
+        f1 = -f1;
+    float f0 = FLT(c, 10112);
+    if (f0 < 0.0f)
+        f0 = -f0;
+    float f3 = f1 < 0.0f ? -f1 : f1;
+    if (f0 < f3)
+        FLT(c, 10112) = f1;
 }
 
 /* @implements 0x0b9e04 us f_0b9e04
