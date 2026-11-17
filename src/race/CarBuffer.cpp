@@ -34,6 +34,7 @@ extern "C" int f_036a3c(CTable *t, char *rec, int *index, int count);
 extern CTable D_240740;
 extern unsigned char D_24063c[];
 extern const int D_1a2120;
+extern const int D_1a211c[];   /* the database's field sizes by type (D_1a2120 is [1]) */
 extern char D_240768[];
 extern char D_1dd6b0[];
 
@@ -702,16 +703,14 @@ void CCarBufferPSP::f_0ed58c()
     }
 }
 
-/* @draft 0x0ed938 us _ZN3Car13CCarBufferPSP8f_0ed938Ev
+/* @implements 0x0ed938 us _ZN3Car13CCarBufferPSP8f_0ed938Ev
    WHAT IT DOES: Builds the car model from the loaded model and colour table in the colour of
    the car's grade, and when the car has a colour and a light level sets the palette from the
-   colour's three bytes and the model's light levels.
-   DRAFT: the copy size is loaded through v0 after the lookup result's move; retail loads
-   it through v1 first. */
+   colour's three bytes and the model's light levels. */
 void CCarBufferPSP::f_0ed938()
 {
     char *f = f_0368e8(&D_240740, "Grade", name.rec, 0, 0);
-    memcpy(D_24063c, f, D_1a2120);
+    memcpy(D_24063c, f, D_1a211c[1]);
     model.f_01dbc4(mdl, 1, clut, rec_byte() % 3);
     if (colour >= 0 && light >= 0) {
         f_026bc8(model.res, colour & 0xff, (colour >> 8) & 0xff, (colour >> 16) & 0xff);
