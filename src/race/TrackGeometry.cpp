@@ -921,7 +921,11 @@ struct Flag {
    store on MIPS), so its register lives two luids and loop.c finds it worth hoisting (retail's
    li s5,1 / s2 / s4 before each cull loop). Folded straight into the store it lives one luid
    and the movable test (threshold ~64 against 91 insns) rejects it.
-   Open: frame 2416 against 2400 (two more spill slots than retail), global register choice.
+   The second look reads o->m8[i] into a local before adding the side offset: the address insns
+   then feed the load directly (lifetime 2), so loop.c leaves i*4 and o + i*4 in the k loop as
+   retail does; with the side arithmetic between them they were hoisted, strength-reduced in
+   the outer loop and spilled (frame 2416). Frame now 2400 as retail.
+   Open: global register choice.
    Retail also reads a stale vector in the slide's second box (V1808 is the leftover of the
    last cull iteration); that is kept here as in retail. */
 extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, float *out4,
@@ -1194,7 +1198,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                         if (!(f_0b1b28_call(&V464, &V480, (const Vec2 *)&ep[2]) > 0.0f))
                             side = 0;
                         {
-                            Vec2 *vv = (Vec2 *)((char *)o->m8[i] + 8 * (side ^ 1));
+                            PlaneRec *eg = o->m8[i];
+                            Vec2 *vv = (Vec2 *)((char *)eg + 8 * (side ^ 1));
                             side = side ^ 1;
                             V448.x = vv[1].x - vv[0].x;
                             V448.y = vv[1].y - vv[0].y;
