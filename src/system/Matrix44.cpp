@@ -93,24 +93,28 @@ Mat44 &Mat44::f_09b8b8()
 /* @draft 0x09b908 us f_09b908
    WHAT IT DOES: Inverts the matrix in place by Gauss-Jordan elimination on the diagonal
    (no pivot search) and returns it.
-   Remaining difference: retail recomputes the pivot's address as ((4k + k) << 2) from two
-   counters each pass; this source strength-reduces it into one pointer. */
+   The pivot index is r + k from two counters (k, and r = 4k stepped by 4): a sum of two bivs is
+   no giv, so it is recomputed each use as retail does (same size now).
+   Remaining difference: 19 words: retail also addresses column k through r (addu t4,a0; move
+   t5,t4) where this source computes k << 2 separately. */
 Mat44 &Mat44::f_09b908()
 {
-    for (int k = 0; k < 4; k++) {
-        float p = m[k][k];
+    float *f = &m[0][0];
+    int k, r;
+    for (k = 0, r = 0; k < 4; k++, r += 4) {
+        float p = f[r + k];
         for (int i = 0; i < 4; i++)
-            m[i][k] /= p;
-        m[k][k] = 1.0f / p;
+            f[i * 4 + k] /= p;
+        f[r + k] = 1.0f / p;
         for (int j = 0; j < 4; j++) {
             if (j == k)
                 continue;
-            float f = m[k][j];
+            float g = f[r + j];
             for (int i = 0; i < 4; i++) {
                 if (i == k)
-                    m[k][j] = -f / p;
+                    f[r + j] = -g / p;
                 else
-                    m[i][j] -= m[i][k] * f;
+                    f[i * 4 + j] -= f[i * 4 + k] * g;
             }
         }
     }
@@ -119,26 +123,27 @@ Mat44 &Mat44::f_09b908()
 
 /* @draft 0x09b9f4 us f_09b9f4
    WHAT IT DOES: Returns the determinant: eliminates a copy of the matrix the same way as the
-   inverse and multiplies the pivots. Same remaining difference as the inverse. */
+   inverse and multiplies the pivots. Same two-counter pivot index and same remaining difference as the inverse. */
 float Mat44::f_09b9f4() const
 {
     Mat44 t = *this;
     float d = 1.0f;
-    for (int k = 0; k < 4; k++) {
-        float p = t.m[k][k];
+    int k, r;
+    for (k = 0, r = 0; k < 4; k++, r += 4) {
+        float p = t.m[0][r + k];
         d *= p;
         for (int i = 0; i < 4; i++)
-            t.m[i][k] /= p;
-        t.m[k][k] = 1.0f / p;
+            t.m[0][i * 4 + k] /= p;
+        t.m[0][r + k] = 1.0f / p;
         for (int j = 0; j < 4; j++) {
             if (j == k)
                 continue;
-            float f = t.m[k][j];
+            float g = t.m[0][r + j];
             for (int i = 0; i < 4; i++) {
                 if (i == k)
-                    t.m[k][j] = -f / p;
+                    t.m[0][r + j] = -g / p;
                 else
-                    t.m[i][j] -= t.m[i][k] * f;
+                    t.m[0][i * 4 + j] -= t.m[0][i * 4 + k] * g;
             }
         }
     }
@@ -149,7 +154,11 @@ float Mat44::f_09b9f4() const
    WHAT IT DOES: Sets the matrix to the product b * a (row-major, column vectors) and returns
    it, one column per pass.
    Remaining difference: retail keeps a's row addresses as separate counters 16, 32, 48 (+4
-   per pass) added to a's base; this source steps one pointer into a (flat indexing tried). */
+   per pass) added to a's base; this source steps one pointer into a (flat indexing tried).
+   Loop dump: here the i << 2 givs are rejected ("giv ... not worth while, 0 vs 70": benefit 4
+   minus the add cost 4), so nothing is strength-reduced; retail's givs must carry more benefit
+   (an index computed in more insns). a.m[0][i + 4], a float* p[i + 4] and int j1 = i + 4
+   locals all fold back to the same code. */
 Mat44 &Mat44::f_09bb28(const Mat44 &a, const Mat44 &b)
 {
     for (int i = 0; i < 4; i++) {

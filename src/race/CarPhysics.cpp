@@ -94,8 +94,7 @@ void f_0addbc(CarPhys *p);
 void f_0aea0c(CarPhys *p);
 void f_0aea84(CarPhys *p);
 void f_0ae9f8(CarPhys *p);
-void f_0a6fac(void);
-void f_0a6fac_p(CarPhys *p) __asm__("f_0a6fac");
+void f_0a6fac(CarPhys *p);
 void f_0a6f88(CarPhys *p);
 void *f_099b98(void *p);
 float f_0af380(const float *a, const float *b);
@@ -106,7 +105,6 @@ int f_0af5e8(void *t, const short *key);
 
 /* The state of the car's MapMgr sub-object used by the two track lookups. */
 extern char D_23c820[];
-extern char D_245430[];
 extern int D_2456a0;
 extern "C" {
 void f_0aa3f8(CarPhys *p);
@@ -138,7 +136,7 @@ extern "C" void f_0a6fa4(void)
 
 /* @implements 0x0a6fac us f_0a6fac
    WHAT IT DOES: An empty function. */
-extern "C" void f_0a6fac(void)
+extern "C" void f_0a6fac(CarPhys *p)
 {
 }
 
@@ -566,23 +564,12 @@ extern "C" void f_0ab43c(CarPhys *p, int i)
     ((int *)((char *)p + 376))[i] = p->m188;
 }
 
-/* @draft 0x0af2cc us f_0af2cc
-   WHAT IT DOES: Calls one of two routines on the global car record D_245430: f_0a6f88 when the first argument is 1 and the second is 0xffff, and f_0a6fac when the first is 0 and the second is 0xffff.
-   Remaining difference: retail keeps the second call inline (beqz to the epilogue); here GCC's call heuristic (70%) moves it out of line like the first. Not a goto, an inverted early return, a bool, or a pointer local. */
-extern "C" void f_0af2cc(int a, int b)
-{
-    int s = b == 0xffff;
-    if (s && a == 1)
-        f_0a6f88((CarPhys *)D_245430);
-    if (s && a == 0)
-        f_0a6fac_p((CarPhys *)D_245430);
-}
 
 extern float D_2456b0;
 
 /* @draft 0x0a737c us f_0a737c
    WHAT IT DOES: Sets up the car physics state from four float arguments: the position and height, with the mode and index fields reset and the stored copies cleared.
-   Remaining difference: store order (first run). */
+   Remaining difference: retail holds p+64 in v1 (addiu v1,s0,64) and stores 76, 68, 72 through it (12/4/8(v1)) while 64 itself goes through s0: the 68..76 writes come from an inline helper on the +64 sub-object (handbook row 2), whose x store is not v1-based; which helper is not yet known. */
 extern "C" void f_0a737c(CarPhys *p, float x, float y, float z, float w)
 {
     f_0a6fb4(p);
@@ -1727,8 +1714,14 @@ void f_0aeacc(CarPhys *p, CarPhys *w);
 /* A scratch copy of the physics state, built and torn down by the object's own routines. */
 struct CarPhysWork : CarPhys {
     CarPhysWork() { f_0a6f88(this); }
-    ~CarPhysWork() { f_0a6fac_p(this); }
+    ~CarPhysWork() { f_0a6fac(this); }
 };
+
+/* The file's global scratch physics record, built at startup and torn down at exit. */
+CarPhysWork D_245430;
+
+/* @implements 0x0af2cc us __static_initialization_and_destruction_0
+   WHAT IT DOES: At startup, builds the global physics record D_245430 (f_0a6f88); at shutdown, tears it down (f_0a6fac). */
 
 
 /* @draft 0x0a74cc us f_0a74cc

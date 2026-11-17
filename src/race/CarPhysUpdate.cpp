@@ -372,32 +372,31 @@ extern "C" void f_0be86c(void *p)
    first) it works out a slip value from the record's two travel values, passes the scaled
    slip to f_0fa7f0 with its sign taken from the scaled value, and stores the sum of the two
    results back into the record.
-   Remaining difference: transcribed from the listing; the retail prologue also saves f22,
-   which the listing never uses, and the call and store order are not yet matched. */
+   The else arm reads +300 (not +296); each arm stores +324 itself (cross-jumping merges the
+   tails, so the join reloads +324 as retail does); 0.3 is a literal (hoisted into f21).
+   Remaining difference: retail also saves f22, which no instruction uses (a pseudo given f22
+   whose uses were removed after allocation; not found), and holds +296 in f1, +320 in f0. */
 extern "C" void f_0bdbdc(char *car)
 {
     char *s0 = car + 8064;
     int s1 = 3;
     do {
         float x = FR(s0, 320);
-        float q = x / D_1acc5c;
-        float d = FR(s0, 288) - FR(s0, 308);
-        float e = -(FR(s0, 292) * d);
-        FR(s0, 348) = e;
+        float q = x / 0.3f;
+        FR(s0, 348) = -(FR(s0, 292) * (FR(s0, 288) - FR(s0, 308)));
         if (0.0f < x) {
             f_0fa7f0(q);
+            FR(s0, 324) = FR(s0, 296) * FR(s0, 320);
         } else {
             f_0fa7f0(-q);
+            FR(s0, 324) = FR(s0, 300) * FR(s0, 320);
         }
-        float t = FR(s0, 296) * x;
-        s1--;
-        FR(s0, 324) = t;
         int v = WR(s0, 128);
-        FR(s0, 352) = e;
-        float u = e + t;
-        FR(s0, 348) = u;
+        s1--;
+        FR(s0, 352) = FR(s0, 348);
+        FR(s0, 348) = FR(s0, 348) + FR(s0, 324);
         if (v != 0) {
-            FR(s0, 116) = u;
+            FR(s0, 116) = FR(s0, 348);
         }
         s0 += 368;
     } while (s1 >= 0);

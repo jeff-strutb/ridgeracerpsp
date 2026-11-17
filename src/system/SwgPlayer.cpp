@@ -3972,7 +3972,7 @@ extern "C" void f_066f04(void *unused, unsigned *src) {
     }
 }
 /* @draft 0x0659fc us f_0659fc
-   Remaining difference: the retail loop keeps the cursor in v0 across iterations and only spills it around the call; this volatile cursor reloads it at the loop head and the prologue order differs.
+   Remaining difference: the retail loop keeps the cursor in v0 across iterations and only spills it around the call; this volatile cursor reloads it at the loop head and the prologue order differs. Retail's sw a0,0(sp) in the prologue's slot looks like an address-taken `first` (frame 32: 0..15 locals); a one-word struct cursor with an inline inc() is put back in a register by addressof (88 vs 96, all in s-regs), so the address must escape some way addressof cannot undo.
    WHAT IT DOES: calls f_05df24 on every 8-byte element from first up to last, passing the arg each time, and returns last. */
 extern "C" void *f_0659fc(void *first, void *last, void *arg) {
     void *volatile cur = first;
@@ -6189,10 +6189,12 @@ int f_06264c(void *o)
     return f_129590(r, 0, 0);
 }
 
-/* @draft 0x065060 us f_065060
-   WHAT IT DOES: allocates a string buffer for a capacity (rounded to the allocator size classes, calling f_1312d4 on overflow) and returns it. */
+/* @implements 0x065060 us f_065060
+   WHAT IT DOES: allocates a string buffer for a capacity (rounded to the allocator size classes, calling f_1312d4 on overflow) and returns it.
+   The empty-destructor guard gives retail's 32-byte frame and _Unwind_Resume pad; the header is written capacity, refcount, length (sched2 swaps the last two). */
 void *f_065060(unsigned cap)
 {
+    swgB::GuardE g;
     if (cap > 0x3ffffffc)
         f_1312d4(D_1a3370);
     unsigned adj = cap + 29;
@@ -6203,8 +6205,8 @@ void *f_065060(unsigned cap)
     }
     int *p = (int *)f_04dfa0(cap + 13);
     p[1] = cap;
-    p[0] = 0;
     p[2] = 0;
+    p[0] = 0;
     return p;
 }
 
@@ -6492,17 +6494,21 @@ struct E44 {
     void *vt; int w1, w2, w3, w4; int b, c; int d1, d2, d3, d4;
 };
 /* @draft 0x061da4 us f_061da4
-   WHAT IT DOES: uninitialized copy: copy-constructs 44-byte records (vtable D_1a4868 plus fields) from [first, last) into dest and returns the end of dest. */
+   WHAT IT DOES: uninitialized copy: copy-constructs 44-byte records (vtable D_1a4868 plus fields) from [first, last) into dest and returns the end of dest.
+   Remaining difference (30/35): retail loads every field before any store (now reproduced by reading into locals first); still differs in store order (retail: c, w1..w4, b, d1..d4, vt last), the dest+16 base computed after the loads, and register numbering. */
 void *f_061da4(char *first, char *last, char *dest)
 {
     for (; first != last; first += 44, dest += 44) {
         if (dest) {
             E44 *s = (E44 *)first, *d = (E44 *)dest;
             Sub44 *ss = (Sub44 *)&s->w4, *ds = (Sub44 *)&d->w4;
+            int c = ss->c, b = ss->b;
+            int w1 = s->w1, w2 = s->w2, w3 = s->w3, w4 = s->w4;
+            int d1 = s->d1, d2 = s->d2, d3 = s->d3, d4 = s->d4;
             d->vt = D_1a4868;
-            ds->c = ss->c; ds->b = ss->b;
-            d->w1 = s->w1; d->w2 = s->w2; d->w3 = s->w3; d->w4 = s->w4;
-            d->d1 = s->d1; d->d2 = s->d2; d->d3 = s->d3; d->d4 = s->d4;
+            ds->c = c; ds->b = b;
+            d->w1 = w1; d->w2 = w2; d->w3 = w3; d->w4 = w4;
+            d->d1 = d1; d->d2 = d2; d->d3 = d3; d->d4 = d4;
         }
     }
     return dest;
@@ -6844,8 +6850,8 @@ void f_069ea0(int *l, int **k) {
 
 char *f_05f0b8(void *, void *);
 /* @draft 0x068808 us f_068808
-   WHAT IT DOES: returns a reference-counted handle copied from the entry the player's object at +40 holds for the key (virtual slot 9 of the +44 object, field +20): looked up through f_05f0b8 when the key is non-zero, otherwise the default handle at +280; the count is incremented. Remaining difference: the loads are after the join instead of in each branch (21 of 36 words). */
-H f_068808(char *self, char *o) {
+   WHAT IT DOES: returns a reference-counted handle copied from the entry the player's object at +40 holds for the key (virtual slot 9 of the +44 object, field +20): looked up through f_05f0b8 when the key is non-zero, otherwise the default handle at +280; the count is incremented. Retail has no self argument (the object is in a1). Remaining difference: the loads are after the join instead of in each branch. A separate `return *(H *)...` per arm gives retail's per-arm loads and cross-jumped stores (22/36) but with the arms swapped: the call arm goes out of line; source order of the arms and a pointer-typed key both leave that layout unchanged, so the decider is not prediction. */
+H f_068808(char *o) {
     void *v = *(void **)(o + 44);
     char *w = ((char *(*)(void *))((void **)*(void **)v)[9])(v);
     int k = *(int *)(w + 20);
@@ -7659,7 +7665,8 @@ void f_064c6c(void *);
 struct NodeIt4 { char *n; int pad[3]; };
 
 /* @draft 0x0617f4 us f_0617f4
-   WHAT IT DOES: unique insert into the tree: walks down comparing the key, finds the insertion parent, checks the predecessor for an equal key and either inserts through f_065348 (returning the node and 1) or returns the existing node and 0. */
+   WHAT IT DOES: unique insert into the tree: walks down comparing the key, finds the insertion parent, checks the predecessor for an equal key and either inserts through f_065348 (returning the node and 1) or returns the existing node and 0.
+   Remaining difference: global-alloc order only (s0/s1 and s2/s3 swapped). greg allocates y(10 refs) before x(7) and key before out (key's loop use raises its freq); retail gives x s0, y s1, out s2, key s3, so in retail x outranks y and out outranks key. */
 struct InsRes4 { char *it; unsigned char ok; };
 InsRes4 *f_0617f4(InsRes4 *out, char *t, unsigned *key) {
     char *x;
@@ -7696,7 +7703,8 @@ ins:
     return out;
 }
 /* @draft 0x061910 us f_061910
-   WHAT IT DOES: unique insert into the tree (twin of f_0617f4, inserting through f_0654a0): finds the insertion parent, checks the predecessor for an equal key and either inserts (returning the node and 1) or returns the existing node and 0. */
+   WHAT IT DOES: unique insert into the tree (twin of f_0617f4, inserting through f_0654a0): finds the insertion parent, checks the predecessor for an equal key and either inserts (returning the node and 1) or returns the existing node and 0.
+   Remaining difference: global-alloc order only (s0/s1 and s2/s3 swapped). greg allocates y(10 refs) before x(7) and key before out (key's loop use raises its freq); retail gives x s0, y s1, out s2, key s3, so in retail x outranks y and out outranks key. */
 InsRes4 *f_061910(InsRes4 *out, char *t, unsigned *key) {
     char *x;
     char *y = *(char **)(t + 4);
@@ -8094,19 +8102,20 @@ void f_04ca04(char *s, int a1, float sx, float sy, float dx, float dy) {
 }
 
 /* @draft 0x04c668 us f_04c668
-   WHAT IT DOES: converts the four floats (r,g,b,a) times a constant to unsigned bytes, packs them into one 32-bit color and stores it into the five vertex color slots of entry a1. */
+   WHAT IT DOES: converts the four floats (r,g,b,a) times a constant to unsigned bytes, packs them into one 32-bit color and stores it into the five vertex color slots of entry a1.
+   Remaining difference (36/84, register numbering only): the entry pointer is now computed in place in s (retail's lw a0,36(a0); addu a0,a0,v0). Retail keeps the partial colour in a1 and every cv() result in v1, and the last `| cv(a) << 24` goes to a fresh register (v0) that the five stores use in source order: next cycle, write that last OR into a new variable. */
 void f_04c668(char *s, int a1, float r, float g, float b, float a) {
     if (*(int *)(s + 32) >= a1) {
-    char *e = *(char **)(s + 36) + a1 * 172;
+    s = *(char **)(s + 36) + a1 * 172;
     unsigned c = cv(r) & 0xff;
     c |= (cv(g) & 0xff) << 8;
     c |= (cv(b) & 0xff) << 16;
     c |= cv(a) << 24;
-    *(unsigned *)(e + 4) = c;
-    *(unsigned *)(e + 88) = c;
-    *(unsigned *)(e + 64) = c;
-    *(unsigned *)(e + 44) = c;
-    *(unsigned *)(e + 24) = c;
+    *(unsigned *)(s + 4) = c;
+    *(unsigned *)(s + 88) = c;
+    *(unsigned *)(s + 64) = c;
+    *(unsigned *)(s + 44) = c;
+    *(unsigned *)(s + 24) = c;
     }
 }
 
@@ -8402,7 +8411,7 @@ void f_052cf4(char *s, int v){
 
 /* @draft 0x04f35c us f_04f35c
    WHAT IT DOES: looks up a key in the map: returns a copy (refcount bumped) of the found handle, or a null handle when absent.
-   Remaining difference: stack slot of the end iterator and prologue order (18 of 51 words). */
+   Remaining difference: stack slot of the end iterator and prologue order (18 of 51 words). Retail has no landing pad; declaring f_05dbf4/f_05dddc throw() removes ours (and the sp+48 store) but then sched1 does interblock motion (sched-rgn treats only functions with EH handlers as non-regular) and hoists the f_05dddc arg setup and t+8 above the first branch: 40/51, 184 vs 204, reverted. Retail neither has a pad nor hoisted: the cause is elsewhere. */
 R *f_04f35c(R *out, char *t, void *k) {
   R r;
   f_05dbf4(&r, t, k);
@@ -8558,7 +8567,7 @@ struct It2 {
     bool operator!=(const It2 &o) const { return p != o.p; }
 };
 void *memcpy(void *, const void *, unsigned);
-char *f_065060(unsigned, void *);
+char *f_065060(unsigned, void *) throw();
 void f_1310e8(const char *);
 extern char D_1a3234[];
 extern char D_291400[];
@@ -8572,7 +8581,8 @@ void f_04ed28(void *);
 void f_04e4b4(void *);
 /* @draft 0x061cc8 us f_061cc8
    WHAT IT DOES: builds a string rep from a char range [b,e): for an empty range shares the static empty rep (bumping its count under interrupt suspend); otherwise throws on a null begin, allocates a rep, copies the characters, stores the length and terminates it.
-   Remaining difference: register allocation of the saved registers (35/55 words) */
+   f_065060 is declared throw() here: its call then no longer ends a block, so n, r and d are block-local and local-alloc gives retail's registers (35 -> 6 words).
+   Remaining difference (6/55): retail returns through one shared `move v0,s0` (the empty path does addiu s0,s0,12 and jumps there); one `d` variable for both arms gives that join but makes d global and reorders global-alloc (23/55), so not kept. */
 char *f_061cc8(char *b, char *e, void *a, int x) throw() {
     Tmp16 t;
     if (b == e) {
@@ -8595,7 +8605,8 @@ char *f_061cc8(char *b, char *e, void *a, int x) throw() {
 }
 /* @draft 0x061620 us f_061620
    WHAT IT DOES: twin of f_061cc8: builds a string rep from a char range [b,e): for an empty range shares the static empty rep (bumping its count under interrupt suspend); otherwise throws on a null begin, allocates a rep, copies the characters, stores the length and terminates it.
-   Remaining difference: register allocation of the saved registers (35/55 words) */
+   f_065060 is declared throw() here: its call then no longer ends a block, so n, r and d are block-local and local-alloc gives retail's registers (35 -> 6 words).
+   Remaining difference (6/55): retail returns through one shared `move v0,s0` (the empty path does addiu s0,s0,12 and jumps there); one `d` variable for both arms gives that join but makes d global and reorders global-alloc (23/55), so not kept. */
 char *f_061620(char *b, char *e, void *a, int x) throw() {
     Tmp16 t;
     if (b == e) {
@@ -12146,11 +12157,12 @@ int f_047248(char *ctx, int w, int ox, int key, int key2, int *tab, float sx, fl
 }
 
 /* @draft 0x04c4c8 us f_04c4c8
-   WHAT IT DOES: rotates the four corner points of entry a1 about the point (cx,cy) offset by the entry's first corner, using the vector unit's sine and cosine of the angle, writes the rotated corners into the entry's vertex slots, and stores the scaled min x at +80 and max x plus one at +84. */
+   WHAT IT DOES: rotates the four corner points of entry a1 about the point (cx,cy) offset by the entry's first corner, using the vector unit's sine and cosine of the angle, writes the rotated corners into the entry's vertex slots, and stores the scaled min x at +80 and max x plus one at +84.
+   The entry pointer is computed in place in s (retail's addu a0,a0,v0): 41 -> 25 words. Remaining difference (25/104): sched1 issues the D_1a2b50 load and the ang multiply before the two corner loads and cx/cy adds (retail: after, so the 172 constant is in v0 not v1), and the min/max block's float registers. */
 void f_04c4c8(char *s, int a1, float cx, float cy, float ang) {
     if (Y<int>(s, 32) >= a1) {
-        char *e = Y<char *>(s, 36) + a1 * 172;
-        float *f = (float *)e;
+        s = Y<char *>(s, 36) + a1 * 172;
+        float *f = (float *)s;
         cx = cx + f[23];
         cy = cy + f[27];
         ang = ang * D_1a2b50;
@@ -12164,21 +12176,22 @@ void f_04c4c8(char *s, int a1, float cx, float cy, float ang) {
         if (f[7] < lo) lo = f[7];
         if (f[12] < lo) lo = f[12];
         if (f[17] < lo) lo = f[17];
-        *(int *)(e + 80) = (int)(lo * D_1a2b54);
+        *(int *)(s + 80) = (int)(lo * D_1a2b54);
         float hi = f[2];
         if (hi < f[7]) hi = f[7];
         if (hi < f[12]) hi = f[12];
         if (hi < f[17]) hi = f[17];
-        *(int *)(e + 84) = (int)((hi + D_1a2b58) * D_1a2b54);
+        *(int *)(s + 84) = (int)((hi + D_1a2b58) * D_1a2b54);
     }
 }
 
 /* @draft 0x04cb48 us f_04cb48
-   WHAT IT DOES: scales the corner offsets of entry a1 by (sx,sy) about the point (cx,cy), rotates them with the vector unit's sine and cosine of the angle, writes four rotated vertices at +8/+12, +28/+32, +68/+72 and +48/+52, and stores the scaled min x at +80 and max x plus one at +84. */
+   WHAT IT DOES: scales the corner offsets of entry a1 by (sx,sy) about the point (cx,cy), rotates them with the vector unit's sine and cosine of the angle, writes four rotated vertices at +8/+12, +28/+32, +68/+72 and +48/+52, and stores the scaled min x at +80 and max x plus one at +84. 
+   The entry pointer is computed in place in s (retail's addu a0,a0,v0): 79 -> 74 words. Remaining: FP register numbering and the order of the corner-offset arithmetic before the first VCos. */
 void f_04cb48(char *s, int a1, float cx, float cy, float ang, float sx, float sy) {
     if (Y<int>(s, 32) >= a1) {
-        char *e = Y<char *>(s, 36) + a1 * 172;
-        float *f = (float *)e;
+        s = Y<char *>(s, 36) + a1 * 172;
+        float *f = (float *)s;
         float u0 = -(cx * sx), v0 = -(cy * sy);
         float x0 = f[23], y0 = f[27];
         float u1 = (f[24] - x0) * sx + u0;
@@ -12202,21 +12215,22 @@ void f_04cb48(char *s, int a1, float cx, float cy, float ang, float sx, float sy
         if (x10 < lo) lo = x10;
         if (x01 < lo) lo = x01;
         if (x11 < lo) lo = x11;
-        *(int *)(e + 80) = (int)(lo * D_1a2b80);
+        *(int *)(s + 80) = (int)(lo * D_1a2b80);
         float hi = x00;
         if (hi < x10) hi = x10;
         if (hi < x01) hi = x01;
         if (hi < x11) hi = x11;
-        *(int *)(e + 84) = (int)((hi + D_1a2b84) * D_1a2b80);
+        *(int *)(s + 84) = (int)((hi + D_1a2b84) * D_1a2b80);
     }
 }
 
 /* @draft 0x04ce2c us f_04ce2c
-   WHAT IT DOES: like f_04cb48 but the rotation centre is the translation point (tx+cx, ty+cy) rather than the entry corner; scales the corner offsets of entry a1 by (sx,sy) about the point (cx,cy), rotates them with the vector unit's sine and cosine of the angle, writes four rotated vertices at +8/+12, +28/+32, +68/+72 and +48/+52, and stores the scaled min x at +80 and max x plus one at +84. */
+   WHAT IT DOES: like f_04cb48 but the rotation centre is the translation point (tx+cx, ty+cy) rather than the entry corner; scales the corner offsets of entry a1 by (sx,sy) about the point (cx,cy), rotates them with the vector unit's sine and cosine of the angle, writes four rotated vertices at +8/+12, +28/+32, +68/+72 and +48/+52, and stores the scaled min x at +80 and max x plus one at +84. 
+   The entry pointer is computed in place in s (retail's addu a0,a0,v0): 91 -> 86 words. Remaining: FP register numbering and the order of the corner-offset arithmetic before the first VCos. */
 void f_04ce2c(char *s, int a1, float cx, float cy, float ang, float sx, float sy, float tx, float ty) {
     if (Y<int>(s, 32) >= a1) {
-        char *e = Y<char *>(s, 36) + a1 * 172;
-        float *f = (float *)e;
+        s = Y<char *>(s, 36) + a1 * 172;
+        float *f = (float *)s;
         float u0 = -(cx * sx), v0 = -(cy * sy);
         float x0 = f[23], y0 = f[27];
         float u1 = (f[24] - x0) * sx + u0;
@@ -12240,12 +12254,12 @@ void f_04ce2c(char *s, int a1, float cx, float cy, float ang, float sx, float sy
         if (x10 < lo) lo = x10;
         if (x01 < lo) lo = x01;
         if (x11 < lo) lo = x11;
-        *(int *)(e + 80) = (int)(lo * D_1a2b8c);
+        *(int *)(s + 80) = (int)(lo * D_1a2b8c);
         float hi = x00;
         if (hi < x10) hi = x10;
         if (hi < x01) hi = x01;
         if (hi < x11) hi = x11;
-        *(int *)(e + 84) = (int)((hi + D_1a2b90) * D_1a2b8c);
+        *(int *)(s + 84) = (int)((hi + D_1a2b90) * D_1a2b8c);
     }
 }
 
@@ -12742,8 +12756,8 @@ struct Ia { char *n; int pad[3]; };
 struct Ib { char *n; int pad[7]; };
 /* @draft 0x04f248 us f_04f248
    WHAT IT DOES: asks the object (virtual slot 13) for a counted handle for the key; if it is non-null returns a copy. Otherwise looks the key up in the map at +24; when the entry is missing or its payload state is 2 it returns an empty handle, else stores the third argument at +44, clears +48 and returns the result of virtual slot 43 with 0.
-   Remaining difference: saved-register assignment (22 of 69 words). */
-Hr f_04f248(Vo *self, int unused, int val, void *key) {
+   Retail has no unused second argument (val in a2, key in a3). Remaining difference: saved-register assignment (20 of 69 words): retail m=s0, key=s1, self=s3 (ours key=s0, self=s1, m=s3), and it.n/nd in a3 (ours v1). */
+Hr f_04f248(Vo *self, int val, void *key) {
   Hr t = self->s13(key);
   if (t.p) return Hr(t);
   Ia it; Ib end;

@@ -846,7 +846,7 @@ void f_09d9c8(Vec4 *o, const Mat33 *m, const Vec4 *a);
 
 /* @draft 0x09eb40 us f_09eb40
    WHAT IT DOES: Sets d[j][i] to the sum over k of a[k][i] * b[j][k] for two 3x3 matrices (a transposed times b transposed), one column per pass.
-   Remaining difference: retail keeps an up-counting loop with separate address registers for the second and third source rows and reloads a's three elements for every result row (no common subexpression across the stores). Tried (m210c): byte-offset and float-index forms, manual offset counters written as int + (int)a (matches the addu operand order, but gets a recomputed sll/addu for the first row), local copies; none matched. */
+   Remaining difference: retail keeps an up-counting loop with separate address registers for the second and third source rows and reloads a's three elements for every result row (no common subexpression across the stores). Tried (m210c): byte-offset and float-index forms, manual offset counters written as int + (int)a (matches the addu operand order, but gets a recomputed sll/addu for the first row), local copies; none matched; an inline accessor At(a, k, i) for a's reads gives identical code (the tree inliner substitutes the constant row). */
 Mat33 *f_09eb40(Mat33 *d, const Mat33 *a, const Mat33 *b)
 {
     int i = 0;
@@ -1314,7 +1314,7 @@ Quat2 c_qinv(const Quat2 *q) __asm__("f_09c54c");
 
 /* @draft 0x09c720 us f_09c720
    WHAT IT DOES: Rotates the vector b by the quaternion q: multiplies q by (b, 1), then by the inverse of q, and returns the vector part with w = 1.
-   Remaining difference: retail keeps its locals in four slots (the argument copy and the final vector copy share one) and this source uses five. */
+   Remaining difference: retail keeps its locals in four slots (the argument copy and the final vector copy share one) and this source uses five; retail also holds &t1 (sp+32) and &inv (sp+48) in s2/s1 and q in s3 (frame 112). Pointer locals for t1 and inv set before the first call (with *pi = c_qinv(q)) give 276 bytes: worse. */
 Quat2 f_09c720(const Quat2 *q, const Vec3b *b)
 {
     Quat2 t1;

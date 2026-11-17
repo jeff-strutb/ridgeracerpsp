@@ -913,25 +913,26 @@ extern "C" float f_0bb40c(void *cp, float *v)
    at +64 (each 16 bytes): each is a matrix row transformed by f_0a6d4c, with y and z negated,
    w set to 1.0, then scaled by f_0a5e1c to length 1000. Then calls f_0be874 on the list at
    D_245ec0 and returns the word at +1888; returns 0 otherwise.
-   Remaining difference: retail sets r = 0 (move a1,zero) before the state test and keeps it in a1; GCC sinks it into the else path, so the size is 232 against 236. */
+   The record base b is set before the test and each row is b + n * 16 (loop makes the moved copy s0 = a0); the row's three words are stored through the float union (handbook row 160).
+   Remaining difference: 8 words, same size: retail stores and negates +136 before +132 (lw 8(sp) first); here +132 goes first, and writing the 136 negation first only mirrors the registers. */
 extern "C" int f_0b9b8c(void *cp)
 {
     char *c = (char *)cp;
     int r = 0;
+    char *b = c + 5792;
     if (INT(c, 128) != 1) {
-        char *p = c + 5792;
         float one = 1.0f;
         for (int n = 0; n < 4; n++) {
+            char *p = b + n * 16;
             int o[3];
             f_0a6d4c(o, c + 6560, p + 64);
-            INT(p, 136) = o[2];
-            INT(p, 132) = o[1];
-            INT(p, 128) = o[0];
+            ((FloatBits *)(p + 136))->i = o[2];
+            ((FloatBits *)(p + 132))->i = o[1];
+            ((FloatBits *)(p + 128))->i = o[0];
             FLT(p, 132) = -FLT(p, 132);
             FLT(p, 136) = -FLT(p, 136);
             FLT(p, 140) = one;
             f_0a5e1c(p + 128, 1000.0f);
-            p += 16;
         }
         f_0be874(D_245ec0, c);
         r = INT(c, 1888);
@@ -977,47 +978,52 @@ extern "C" void f_0bb154(void *cp)
    and +9912 and the old word at +9916. Otherwise stores the old word at +9916 and switches on
    the first argument: case 0 sets +9912 and +9916 to 2, case 2 runs f_0b9e0c and clears
    +9912 when the word is 2, case 4 sets +9912 to 1; then stores the word at +7948.
-   Remaining difference: the register assignment (retail keeps the record pointer in s0, this build in s1); 40 of 55 words differ, size 212 against 220. */
+   Retail's jump table (D_1ac944) has 7 entries, so cases 1, 3, 5 and 6 are listed empty; the old word lives in a2 itself; sched2 reverses independent stores, so the first arm's stores are written 9912, 9916, 7948.
+   Remaining difference: one word: the table index shift reads s1 in retail and a1 here (postreload replaces s1 by the equal a1 here; something in retail kills that equivalence); the scorer also flags the .rodata word after the table (alignment neighbour). */
 extern "C" void f_0b9d28(void *cp, int a1, int a2)
 {
     char *c = (char *)cp;
     if (a2 == 0) {
-        int m = INT(c, 9912);
-        if (a1 == 0 && m == 2) {
+        a2 = INT(c, 9912);
+        if (a2 == 2 && a1 == 0) {
             f_0b9e0c(c);
-            m = INT(c, 9912);
+            a2 = INT(c, 9912);
         }
-        INT(c, 7948) = a1;
-        INT(c, 9916) = m;
         INT(c, 9912) = a1;
+        INT(c, 9916) = a2;
+        INT(c, 7948) = a1;
         return;
     }
-    int m = INT(c, 9912);
-    INT(c, 9916) = m;
+    a2 = INT(c, 9912);
+    INT(c, 9916) = a2;
     switch (a1) {
     case 0:
-        INT(c, 9912) = 2;
-        INT(c, 9916) = 2;
-        m = 2;
+        INT(c, 9912) = INT(c, 9916) = 2;
+        a2 = 2;
+        break;
+    case 1:
+    case 3:
+    case 5:
+    case 6:
         break;
     case 2:
-        if (m == 2) {
+        if (a2 == 2) {
             f_0b9e0c(c);
-            m = 0;
+            a2 = 0;
             INT(c, 9912) = 0;
         }
         break;
     case 4:
         INT(c, 9912) = 1;
-        m = 1;
+        a2 = 1;
         break;
     default:
         break;
     }
-    INT(c, 7948) = m;
+    INT(c, 7948) = a2;
 }
 
-/* @draft 0x0bb220 us f_0bb220
+/* @implements 0x0bb220 us f_0bb220
    WHAT IT DOES: Takes the spec record (the second argument). Stores 1.0 divided by its word at
    +12 at +9888 and stores the word at +12 at +1060 of the physics record. Then runs four
    records of 368 bytes from +8336 (each takes its +16 word into +36 and +40, adds the spec's
@@ -1026,12 +1032,13 @@ extern "C" void f_0b9d28(void *cp, int a1, int a2)
    f_0bb40c on +7816 with the spec's +28, stores the spec's +208 record at +8048, scales its
    +212 word by 1/3.6 when its +236 word is 0 (then sets that word to 1), and sets +9892 to
    1.0 divided by the word at +16 of that record.
-   Remaining difference: size 292 against 304 and the prologue register order differs (70 of 76 words differ). */
+   The word at +8048 is reached through the sub-object at +7996 (address taken before the call). */
 extern "C" void f_0bb220(void *cp, void *spec)
 {
     char *c = (char *)cp;
     char *s = (char *)spec;
     char *ph = c + 5792;
+    char *o = c + 7996;
     float inv = 1.0f / FLT(s, 12);
     FLT(ph, 1060) = FLT(s, 12);
     *(void **)(ph + 1104) = spec;
@@ -1048,17 +1055,17 @@ extern "C" void f_0bb220(void *cp, void *spec)
         p += 368;
     }
     float t = FLT(ph, 1060) * 9.8f;
-    FLT(ph, 1080) = t;
     FLT(ph, 1072) = t;
+    FLT(ph, 1080) = t;
     f_0bb40c(c + 7816, (float *)(s + 28));
     char *a = s + 208;
-    *(void **)(c + 8048) = a;
+    *(void **)(o + 52) = a;
     if (INT(a, 28) == 0) {
         INT(a, 28) = 1;
         FLT(a, 4) = FLT(a, 4) * 0.2777779996f;
     }
     INT(ph, 1272) = 0;
-    char *q = *(char **)(c + 8048);
+    char *q = *(char **)(o + 52);
     FLT(c, 9892) = 1.0f / FLT(q, 16);
 }
 
@@ -1110,7 +1117,7 @@ extern "C" void f_0b708c(void *cp)
    direction in the physics record (+960, +964), then, against the road direction at the
    course position, sets the two flags at +468 and +464 when the car points more than a quarter
    turn away from the road, and stores the lateral offset term at +1024.
-   Remaining difference: retail copies the first abs() result into a second register ($f2) before the negate; here it is negated in place (45 of 89 words, size 352 vs 356). */
+   Remaining difference: retail copies the first abs() result into a second register ($f2) before the negate; here it is negated in place (45 of 89 words, size 352 vs 356). 'b = a; if (a < 0) b = -a;' gives the same code as the ternary (copy coalesced); the copy needs a second live value, perhaps an inline helper's parameter. */
 extern "C" void f_0b8884(void *cp)
 {
     char *c = (char *)cp;
@@ -1256,13 +1263,15 @@ extern "C" void f_0b89e8(void *cp)
    car has a record key (+92) it finds that record, then copies the "DriftType", "Grade",
    "NitroFreq", "NitroTrigger" and "CorneringLossRatio" fields into +9696, +9700, +9704, +9708
    and +9724 of the car.
-   Remaining difference: retail keeps the record pointer in a stack slot stored once (sw v0,0(sp)) with the no-key arm out of line and a different saved register order; this build is 416 bytes against 404 (50 of 104 words). */
+   The key is tested as a pointer local (the pointer heuristic beats the call heuristic), which puts the no-key arm out of line as retail does (416 -> 412 bytes).
+   Remaining difference: sched1 hoists &D_240740 and the 0 argument above the key test into s2; retail materialises lui s3 on both arms (the no-key arm's delay slot) and does all six saved-register stores first. */
 extern "C" void f_0b94b0(void *cp)
 {
     char *c = (char *)cp;
     char *volatile rec;
-    if (INT(c, 92) != 0)
-        rec = f_036984(&D_240740, *(char **)(c + 92), 0, D_240740.index, D_240740.count);
+    char *key = *(char **)(c + 92);
+    if (key != 0)
+        rec = f_036984(&D_240740, key, 0, D_240740.index, D_240740.count);
     else
         rec = 0;
     int n = D_1a211c[1];
