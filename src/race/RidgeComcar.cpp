@@ -733,9 +733,11 @@ void CRidgeComcar::f_0c1438()
    heading, velocity and course heading (a quarter turn on, wrapped into -pi..pi, plus the
    pending steer), rebuilds the body matrix from the angles and the position, and derives the
    per-second velocity and the speed.
-   DIFFERS: register choice for the course line lookup (retail loads the table into v1 and
-   the scaled index into v0, here swapped) and retail loads the heading before the quarter
-   turn constant. */
+   DIFFERS: 2 words: retail loads the heading before the quarter turn constant (after the
+   constant's lui); here the constant loads first. Reading the heading into a float local
+   first gives the same code, so the insn order going into sched2 is not what decides it.
+   (Indexing m10116[sec] directly, not through an element pointer, gives retail's offset-first
+   addu for the course line lookup.) */
 void CRidgeComcar::f_0c145c(float a, float b, float c)
 {
     CourseAreas *ar = D_23c820.Areas();
@@ -754,9 +756,8 @@ void CRidgeComcar::f_0c145c(float a, float b, float c)
     float dist = m2144 + step;
     dist = ar->f_0e26dc(dist);
     int sec = (int)dist;
-    CourseLine *e = &m10116[sec];
-    float x = e->f;
-    float h = (float)-e->h * 9.58738e-05f;
+    float x = m10116[sec].f;
+    float h = (float)-m10116[sec].h * 9.58738e-05f;
     p->m432 = p->m428;
     p->m428 = sec;
     m2136 = h;
