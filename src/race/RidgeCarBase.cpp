@@ -533,6 +533,193 @@ extern "C" void f_0b86ac(void *cp)
     f_0bd234(sb, FLT(ph, 1096), FLT(ph, 1088));
 }
 
+/* The car's name in the database and its index. */
+struct CarName {
+    char *rec;
+    int index;
+};
+
+/* An orientation quaternion. */
+struct Quat {
+    float v[4];
+    Quat(float x, float y, float z, float w)
+    {
+        v[0] = x;
+        v[1] = y;
+        v[2] = z;
+        v[3] = w;
+    }
+};
+
+/* A position. */
+struct Vec4 {
+    float x, y, z, w;
+    Vec4(float a, float b, float c, float d)
+    {
+        x = a;
+        y = b;
+        z = c;
+        w = d;
+    }
+};
+
+extern "C" {
+void *memset(void *d, int v, unsigned int n) throw();
+void f_0ecc4c(void *c);
+void f_0ed314(void *c, int type, int a, CarName n, int b, Quat q, Vec4 p);
+void f_0bb350(void *p);
+void f_0bd1dc(void *p);
+void f_0bc894(void *p);
+float f_0e26dc(void *m, float d);
+void f_0b94b0(void *c);
+void f_0b9e04(void *c, int v);
+}
+
+/* Zeroes a 16-byte vector field. */
+static inline void zero4(char *v)
+{
+    FLT(v, 0) = 0.0f;
+    FLT(v, 4) = 0.0f;
+    FLT(v, 8) = 0.0f;
+    FLT(v, 12) = 0.0f;
+}
+
+/* Zeroes a 16-byte block of words (int typed, so its stores stay ordered with the car's other
+   word stores). */
+static inline void zero4i(char *v)
+{
+    INT(v, 0) = 0;
+    INT(v, 4) = 0;
+    INT(v, 8) = 0;
+    INT(v, 12) = 0;
+}
+
+/* @implements 0x0b8d24 us f_0b8d24
+   WHAT IT DOES: Sets the race car up for a race: runs the car buffer's reset (f_0ecc4c) and
+   set up (f_0ed314, with an identity orientation and a zero position), stores the type and the
+   database name, clears the physics record, sets the not-type-bit-0 flag at +6208, resets
+   the sub-objects at +7816, +7996 and +8064, clears the block at +7696, takes the road point
+   of the start distance from the course areas into +9572 with the second float at +9576 and
+   the last word at +9580, clears the course zone tables (the zone factor at +9668 is 1.0),
+   reads the drift values from the database (f_0b94b0), clears the vectors and matrices from
+   +9728 to +9840 and the step values, and sets the timing constants (1/60 and 60) and the
+   1.0 scales from +9920 to +10040, clearing the rest up to +10112. */
+extern "C" void f_0b8d24(void *cp, int type, int a, CarName n, int b, int last, float d, float f)
+{
+    char *c = (char *)cp;
+    f_0ecc4c(c);
+    CarName nm = n;
+    f_0ed314(c, type, a, nm, b, Quat(0.0f, 0.0f, 0.0f, 1.0f), Vec4(0.0f, 0.0f, 0.0f, 0.0f));
+    INT(c, 80) = type;
+    *(CarName *)(c + 92) = n;
+    memset(c + 5792, 0, 1888);
+    INT(c, 6208) = !(type & 1);
+    f_0bb350(c + 7816);
+    f_0bd1dc(c + 7996);
+    f_0bc894(c + 8064);
+    memset(c + 7696, 0, 80);
+    INT(c, 7776) = 0;
+    INT(c, 7780) = 0;
+    INT(c, 7784) = 0;
+    INT(c, 7788) = 0;
+    INT(c, 7792) = 0;
+    INT(c, 7796) = 0;
+    INT(c, 7800) = 0;
+    INT(c, 7804) = 0;
+    INT(c, 7808) = 0;
+    INT(c, 7812) = 0;
+    MapMgr *mp = &D_23c820;
+    FLT(c, 9572) = f_0e26dc(mp->m12240, d);
+    FLT(c, 9576) = f;
+    INT(c, 9580) = last;
+    INT(c, 9584) = 0;
+    INT(c, 9588) = 0;
+    for (int i = 0; i < 4; i++) {
+        INT(c, 9592 + i * 4) = 0;
+        INT(c, 9608 + i * 4) = 0;
+        INT(c, 9624 + i * 4) = 0;
+    }
+    INT(c, 9640) = 0;
+    for (int i = 0; i < 2; i++) {
+        INT(c, 9644 + i * 4) = 0;
+        INT(c, 9652 + i * 4) = 0;
+        INT(c, 9660 + i * 4) = 0;
+    }
+    FLT(c, 9668) = 1.0f;
+    INT(c, 9672) = 0;
+    for (int i = 0; i < 2; i++) {
+        INT(c, 9676 + i * 4) = 0;
+        INT(c, 9684 + i * 4) = 0;
+    }
+    INT(c, 9692) = 0;
+    INT(c, 9696) = 0;
+    INT(c, 9700) = 0;
+    INT(c, 9704) = 0;
+    INT(c, 9708) = 0;
+    INT(c, 9712) = 0;
+    INT(c, 9716) = 0;
+    INT(c, 9720) = 0;
+    INT(c, 9724) = 0;
+    f_0b94b0(c);
+    zero4i(c + 9728);
+    INT(c, 9776) = 0;
+    INT(c, 9744) = 0;
+    INT(c, 9748) = 0;
+    INT(c, 9752) = 0;
+    INT(c, 9756) = 0;
+    INT(c, 9760) = 0;
+    INT(c, 9764) = 0;
+    INT(c, 9768) = 0;
+    INT(c, 9772) = 0;
+    f_09ff44(c + 9792);
+    f_09ff44(c + 9840);
+    INT(c, 9888) = 0;
+    INT(c, 9892) = 0;
+    INT(c, 9896) = 0;
+    INT(c, 9900) = 0;
+    f_0b9e04(c, 0);
+    INT(c, 9908) = 0;
+    INT(c, 9912) = 0;
+    INT(c, 9916) = 0;
+    FLT(c, 9920) = 1.0f;
+    FLT(c, 9924) = 1.0f;
+    FLT(c, 9928) = 1.0f;
+    FLT(c, 9932) = 1.0f;
+    FLT(c, 9936) = 0.016666668f;
+    FLT(c, 9940) = 59.999996f;
+    FLT(c, 9944) = 0.016666668f;
+    FLT(c, 9948) = 0.0f;
+    zero4(c + 9952);
+    zero4(c + 9968);
+    zero4(c + 9984);
+    zero4(c + 10000);
+    FLT(c, 10016) = 1.0f;
+    FLT(c, 10020) = 1.0f;
+    FLT(c, 10024) = 1.0f;
+    FLT(c, 10028) = 1.0f;
+    FLT(c, 10032) = 1.0f;
+    FLT(c, 10036) = 1.0f;
+    FLT(c, 10040) = 1.0f;
+    INT(c, 10044) = 0;
+    INT(c, 10048) = 0;
+    INT(c, 10052) = 0;
+    INT(c, 10056) = 0;
+    INT(c, 10060) = 0;
+    INT(c, 10064) = 0;
+    INT(c, 10068) = 0;
+    INT(c, 10072) = 0;
+    INT(c, 10076) = 0;
+    INT(c, 10080) = 0;
+    INT(c, 10084) = 0;
+    INT(c, 10088) = 0;
+    INT(c, 10092) = 0;
+    INT(c, 10096) = 0;
+    INT(c, 10100) = 0;
+    INT(c, 10104) = 0;
+    INT(c, 10108) = 0;
+    INT(c, 10112) = 0;
+}
+
 /* @implements 0x0b8d1c us f_0b8d1c
    WHAT IT DOES: An empty function. */
 extern "C" void f_0b8d1c(void *c)
@@ -955,6 +1142,115 @@ extern "C" void f_0b8884(void *cp)
     FLT(ph, 1024) = -FLT(c, 2140) * 0.0010000000474974513f - FLT(ph, 4);
 }
 
+extern "C" {
+unsigned int f_0c2a60(void);
+float f_0e3b3c(void *m, float a, float b);
+}
+
+/* @implements 0x0b89e8 us f_0b89e8
+   WHAT IT DOES: The course zone checks. While no zone is held (+1036 of the record is 0) the
+   grip factor at +9900 is 1.0, and at 27.78 or more with the spin flag (+468) clear the car's
+   course and lateral coordinates are tested against the zone table at +9592: an entry the car
+   is inside holds the zone (its index at +9588, the segment at +1040, its factor at +9900).
+   A held zone is released when the car is more than 10.0 from its segment. Then the factor at
+   +9668 is 1.5 or the value of the table at +9644 the car is inside, and unless the word at
+   +9672 is 255 (which sets +2112 to 1) the table at +9676 decides a hit: the countdown at
+   +9692 is started from a random value (negative on a hit), counted towards zero, and the
+   flag at +2112 is toggled when it runs out. */
+extern "C" void f_0b89e8(void *cp)
+{
+    char *c = (char *)cp;
+    char *ph = c + 5792;
+    MapMgr *mp = &D_23c820;
+    char *areas = mp->m12240;
+    if (SHT(ph, 1036) == 0) {
+        FLT(c, 9900) = 1.0f;
+        if (FLT(ph, 1096) >= 27.78f && SHT(ph, 468) == 0) {
+            int a = (int)FLT(c, 2144);
+            int b = (int)FLT(c, 2256);
+            for (int i = 0; i < INT(c, 9584); i++) {
+                if (a < INT(c, 9592 + i * 4))
+                    break;
+                if (b < INT(c, 9608 + i * 4)) {
+                    INT(c, 9588) = i;
+                    SHT(ph, 1036) = 1;
+                    INT(ph, 1040) = INT(ph, 428);
+                    FLT(c, 9900) = FLT(c, 9624 + i * 4);
+                }
+            }
+        }
+    }
+    if (SHT(ph, 1036) == 1) {
+        int seg = f_0e2690(areas, INT(ph, 1040));
+        float d = f_0e3b3c(areas, FLT(c, 2144), (float)seg);
+        if (d < 0.0f)
+            d = -d;
+        if (10.0f < d)
+            SHT(ph, 1036) = 0;
+    }
+    FLT(c, 9668) = 1.5f;
+    int x = (int)FLT(c, 2144);
+    int z = (int)FLT(c, 2256);
+    int n = INT(c, 9640);
+    for (int i = 0; i < n; i++) {
+        if (x < INT(c, 9644 + i * 4))
+            break;
+        if (z < INT(c, 9652 + i * 4))
+            FLT(c, 9668) = FLT(c, 9660 + i * 4);
+    }
+    if (INT(c, 9672) == 255) {
+        INT(c, 2112) = 1;
+        return;
+    }
+    int hit = 0;
+    int flip = 0;
+    int hx = (int)FLT(c, 2144);
+    int hz = (int)FLT(c, 2256);
+    for (int i = 0; i < INT(c, 9672); i++) {
+        if (hx < INT(c, 9676 + i * 4))
+            break;
+        if (hz < INT(c, 9684 + i * 4))
+            hit = 1;
+    }
+    int k = INT(c, 9692);
+    if (k == 0) {
+        if (hit == 0) {
+            if (INT(c, 2112) == 1) {
+                k = f_0c2a60() % 10;
+                k = INT(c, 9692) = k + 1;
+            }
+        } else if (INT(c, 2112) == 0) {
+            k = f_0c2a60() % 10;
+            k = INT(c, 9692) = ~k;
+        }
+    }
+    if (k != 0) {
+        if (k > 0) {
+            if (hit == 1) {
+                INT(c, 9692) = 0;
+            } else {
+                INT(c, 9692) = k - 1;
+                if (k - 1 <= 0) {
+                    flip = 1;
+                    INT(c, 9692) = 0;
+                }
+            }
+        } else {
+            if (hit == 0) {
+                INT(c, 9692) = 0;
+            } else {
+                INT(c, 9692) = k + 1;
+                if (k + 1 >= 0) {
+                    INT(c, 9692) = 0;
+                    flip = 1;
+                }
+            }
+        }
+    }
+    if (flip == 1)
+        INT(c, 2112) = 1 - INT(c, 2112);
+}
+
 /* @draft 0x0b94b0 us f_0b94b0
    WHAT IT DOES: Reads the car's drift and nitro tuning values from the game database: when the
    car has a record key (+92) it finds that record, then copies the "DriftType", "Grade",
@@ -980,4 +1276,96 @@ extern "C" void f_0b94b0(void *cp)
     INT(c, 9708) = D_24063c[0];
     memcpy(D_24063c, f_0368e8(&D_240740, "CorneringLossRatio", rec, 0, 0), D_1a211c[4]);
     FLT(c, 9724) = *(float *)D_24063c;
+}
+
+/* Three angles and an order word (a wheel's Euler angles). */
+struct Euler {
+    Angle a[3];
+    int w;
+    void Set(Angle x, Angle y, Angle z)
+    {
+        a[0] = x;
+        a[1] = y;
+        a[2] = z;
+        w = 0;
+    }
+};
+
+/* A float vector. */
+struct V4f {
+    float x, y, z, w;
+};
+
+/* A 4x4 matrix and the 3x4 rotation part. */
+struct M44 {
+    float m[4][4];
+};
+struct M34 {
+    float m[3][4];
+};
+
+extern "C" void f_0a28c4(void *m, float s);
+extern "C" void f_09fd1c(void *m, const void *q);
+
+/* A point moved by the car's body offset at +9728, w set to 1.0. */
+static inline void BodyOffset(V4f &r, char *c, const V4f &p)
+{
+    r.x = p.x + FLT(c, 9728);
+    r.y = p.y + FLT(c, 9732);
+    r.z = p.z + FLT(c, 9736);
+    r.w = 1.0f;
+}
+
+/* @draft 0x0b9644 us f_0b9644
+   WHAT IT DOES: Places the body and the wheels: each wheel offset's height (+260 + 16 i) is
+   the front (+9744) or rear (+9748) ride height plus the wheel's own (+9752 + 4 i), also kept
+   at +452 + 16 i. Sets the front and rear wheel angles at +384 and +400 (steering from the
+   records at +8112 and +8480, spin +9768) and the single angles at +416, +432, +516 and +532.
+   Builds the body matrix from the orientation quaternion (+208) and the offset position,
+   keeps it at +1152 (4x3) and +576 (4x4), then moves each wheel to its offset position (less
+   the ride height) transformed by the body matrix, keeping the previous positions at +2000.
+   Remaining difference: sched2 order only (12 of 225 words, same size and registers): the
+   body offset add loads p.y/p.x before +9728/+9732 in retail (here after), and in the loop
+   the +256 load and the x/z stores of the offset vector are one slot apart. */
+extern "C" void f_0b9644(void *cp)
+{
+    char *c = (char *)cp;
+    M44 mat;
+    V4f v;
+    M34 t;
+    Euler *fr = (Euler *)(c + 384);
+    Euler *rr = (Euler *)(c + 400);
+    FLT(c, 260) = FLT(c, 9744) + FLT(c, 9752);
+    FLT(c, 276) = FLT(c, 9744) + FLT(c, 9756);
+    FLT(c, 292) = FLT(c, 9748) + FLT(c, 9760);
+    FLT(c, 308) = FLT(c, 9748) + FLT(c, 9764);
+    FLT(c, 452) = FLT(c, 260);
+    FLT(c, 468) = FLT(c, 276);
+    FLT(c, 484) = FLT(c, 292);
+    FLT(c, 500) = FLT(c, 308);
+    Angle sf(-FLT(c, 8112));
+    fr->Set(sf, Angle(FLT(c, 9768)), Angle(0.0f));
+    Angle sr(-FLT(c, 8480));
+    rr->Set(sr, Angle(FLT(c, 9768)), Angle(0.0f));
+    *(Angle *)(c + 416) = Angle(-FLT(c, 8848));
+    *(Angle *)(c + 432) = Angle(-FLT(c, 9216));
+    *(Angle *)(c + 516) = Angle(FLT(c, 9768));
+    *(Angle *)(c + 532) = Angle(FLT(c, 9768));
+    f_0a28c4(&mat, 1.0f);
+    BodyOffset(v, c, *(V4f *)(c + 144));
+    *(V4f *)mat.m[3] = v;
+    f_09fd1c(&t, c + 208);
+    *(M34 *)mat.m = t;
+    *(M44 *)(c + 1152) = mat;
+    f_0b9098((float *)(c + 576), (float *)&mat);
+#define wp ((V4f *)(c + 320))
+    for (int i = 0; i < 4; i++) {
+        ((V4f *)(c + 2000))[i] = wp[i];
+        BodyOffset(v, c, ((V4f *)(c + 256))[i]);
+        wp[i] = v;
+        wp[i].y = wp[i].y - (i < 2 ? FLT(c, 9744) : FLT(c, 9748));
+        f_0a6d4c(&v, &mat, &wp[i]);
+        wp[i] = v;
+    }
+#undef wp
 }
