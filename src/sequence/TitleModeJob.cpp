@@ -349,18 +349,16 @@ void Sequence::CTitleModeJob::f_00725c()
     f_01ad04(&D_23ba90, 1);
 }
 
-/* @draft 0x0072b0 us f_0072b0
+/* @implements 0x0072b0 us f_0072b0
    WHAT IT DOES: State 3: when the memory stick check has finished, decides what the title
    tells the player: nothing special (0) when the check reports its first result; a stick
    that could not be read (1, also forgetting the insertion); otherwise, with no stick it
    opens the message dialog instead (event 4), and with less than 700 KB free it warns (2).
    It then starts the title layer with that notice, marks the game state and notifies the
    screen (event 3).
-   Remaining difference (9 words, all in the shared tail): global allocation gives the
-   D_233f70 base s3 and the notice's address s1 (retail: s1 and s3, the notice ranked lower),
-   and the D_233f70.m14808 store then lands in the notice constructor's delay slot instead of
-   before it. A pointer local for D_233f70, bool fields and out of line constructors do not
-   change it. */
+   The sub-object's pointer is read into a pointer-typed local before the test, so GCC's pointer
+   heuristic predicts the call; the lower frequency after it lets the D_233f70 base outrank
+   the notice's address in global allocation (s1 versus s3), as in retail. */
 void Sequence::CTitleModeJob::f_0072b0()
 {
     if (!f_01ae50(&D_23ba90))
@@ -388,7 +386,8 @@ void Sequence::CTitleModeJob::f_0072b0()
     CLayer *l = D_2301b0.layer;
     LayerSub *sub = &l->m4;
     l->m453 = 1;
-    if (sub->p)
+    void *q = sub->p;
+    if (q)
         sub->f_04b290();
     D_233f70.m14808 = 1;
     ScreenMsg n;
