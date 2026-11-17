@@ -244,7 +244,9 @@ void CDjSection::f_08f8e4()
    Remaining difference: retail places the previous-section fix-up (m16 - 1 when m4 is 0) out of
    line with a jump back; here bb-reorder keeps it inline (both if spellings, and the assign-
    then-fix-up form, compile alike), shifting the state 0 tail; state 1's float registers
-   (section start in $f2, the 60.0 load after the division) are a local-alloc tie. */
+   (section start in $f2, the 60.0 load after the division) are a local-alloc tie. Retail's
+   shape is k = m4 (v0); if (!k) k = m16 (out of line); prev = k - 1 (a1, the addiu in the join);
+   written so (int k = m4; if (k == 0) k = m16;) k ties to a1 and dbr makes it beqzl inline (-8 B). */
 int CDjSection::f_08f988()
 {
     CCar *p = D_2407fc->player;

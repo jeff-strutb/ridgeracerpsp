@@ -386,7 +386,10 @@ struct CCourseObj {
    each one whose object exists: a free voice starts the sound at the object (the fireworks
    at a fixed spot), louder for the fireworks, unless the system is busy; a playing one is
    moved with the object, or stopped while the system is busy. When the object is gone a
-   free voice is stopped. Each step is shown on screen. */
+   free voice is stopped. Each step is shown on screen.
+   Remaining difference (49 of 259 words; the not-busy arm first puts f_08f47c on the
+   fall-through as retail): the pos/vel copy loads interleave with the stores in retail; the
+   f_08f360 calls move $f14 before a2/a3; the KeyOff message arms load lui t1/lui t0 per arm. */
 void CDjCheck::f_08ea3c()
 {
     for (int i = 0; i < 4; i++) {
@@ -426,15 +429,15 @@ void CDjCheck::f_08ea3c()
                     f_02db68(D_24517c, 0x800000, 1, 10, 0xffffff, "Cessna Sound KeyOn");
                 }
             } else {
-                if (D_1d88a0->m11 || D_1d88a0->m12) {
-                    f_08f530(&ambient[i]);
-                } else {
+                if (!D_1d88a0->m11 && !D_1d88a0->m12) {
                     if (i == 2) {
                         pos.x = 630200.0f;
                         pos.y = 172600.0f;
                         pos.z = 1040600.0f;
                     }
                     f_08f47c(pos, vel, &ambient[i]);
+                } else {
+                    f_08f530(&ambient[i]);
                 }
                 if (i == 0) {
                     f_02db68(D_24517c, 0x800000, 1, 11, 0xffffff, "Heli Sound is On the Air");

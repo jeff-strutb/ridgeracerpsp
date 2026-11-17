@@ -579,10 +579,8 @@ int f_096918(char *);
         int cls_ = D_24063c[0] - 1;                                                      \
         int idx_ = CourseIndex(ChosenCourse(D_1dd7c4));                                  \
         int n_ = cls_ * 24 + idx_;                                                       \
-        int lap_ = m1820[n_];                                                            \
-        int rec_ = m476[n_];                                                             \
-        D_1ee1a4 = rec_;                                                          \
-        D_1ee1a8 = lap_;                                                       \
+        D_1ee1a8 = m1820[n_];                                                            \
+        D_1ee1a4 = m476[n_];                                                             \
         f_018af8(&D_2301b0);                                                             \
         queue.Push(12);                                                                  \
     } while (0)
@@ -1690,7 +1688,9 @@ void Sequence::CWirelessBattleModeJob::f_010b44()
    Remaining difference: retail keeps the session's address in s3 and this in s2 (here s4 and
    s3); in the course pick retail's chosen course record sits at 16(sp) and its copy at 48(sp)
    (here 0 and 32), and retail stores the two course records through separate lui of
-   D_1ee198+16 and +12 where this build forms one base register; 1612 bytes against 1592. */
+   D_1ee198+16 and +12 where this build forms one base register; 1612 bytes against 1592.
+   PICK_COURSE now stores D_1ee1a8 (m1820) before D_1ee1a4 (m476) as retail; the f_036a3c call
+   before it keeps a nop slot where retail has lw a3,8(a0). */
 void Sequence::CWirelessBattleModeJob::f_010b4c()
 {
     if (D_241810.m4 == 1) {

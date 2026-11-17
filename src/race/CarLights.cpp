@@ -39,7 +39,7 @@ struct LightTable {
     int m4[3];
     LightStep step[8];
     float bright[6];
-    unsigned char done[6];
+    signed char done[6];
     signed char phase;
 };
 
@@ -75,7 +75,10 @@ static inline void PutColour(unsigned char *d, unsigned int c)
    the car is hidden) and by which way it faces (front lamps when facing the viewer, rear lamps
    when facing away), and the matrix is kept. Returns the end of the GE list.
    Draft: the control flow follows retail; this source needs one more saved register (s7)
-   for the lamp loop, which shifts the allocation throughout. */
+   for the lamp loop, which shifts the allocation throughout. done[] is signed char (retail
+   tests it with lb). Retail steps one pointer to the lamp (s0 = lamps+4, += 36); here loop.c
+   keeps an offset register as well (addu t0,s5). Holding t->lamps in a local makes it worse
+   (s8 used, lamps in a saved register). */
 unsigned int *f_026ffc(LightTable *t, const Mat *m, signed char visible, unsigned int *p)
 {
     LightStep *s;

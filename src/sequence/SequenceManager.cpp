@@ -880,7 +880,9 @@ void CSequence::f_004160()
    parameters and continues in f_0043c8.
    Remaining difference: retail reloads saved[0].a for the second test and does not thread
    the two tests together; this build threads them and shares the constants 2 and 24 in
-   s1/s4. With -fno-thread-jumps only the reload remains. */
+   s1/s4. With -fno-thread-jumps only the reload remains. Retail's reload means saved[0] is
+   not CSE'd across the first block's calls; a `const Param &sv = saved[0]` test changes
+   nothing (same 136 words). */
 void CSequence::f_004198()
 {
     Param saved[14];

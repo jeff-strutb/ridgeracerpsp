@@ -277,7 +277,10 @@ CSequenceTimeAttack::~CSequenceTimeAttack()
    Draft: the calls and the race job's argument block follow retail; the stack slots of the
    course lookups differ (retail keeps the last lookup's result at +16 and its copy at +32, this
    source the reverse, and retail's lookup of the course row lands at +160), and the two
-   string and table bases swap s3 and s4. */
+   string and table bases swap s3 and s4. The m600 -> m56 loop copies the three fields (a
+   plain struct copy forces &a->m600[k] and &r.m56[k] into registers, +1 word); retail keeps
+   each word's load next to its store, here the three loads come first; r.m40's load of m572
+   comes last here, first in retail. */
 void CSequenceTimeAttack::f_038fd4(SeqArgs *a)
 {
     f_03913c(a);
@@ -303,8 +306,11 @@ void CSequenceTimeAttack::f_038fd4(SeqArgs *a)
     r.m32 = a->m584;
     r.m44 = a->m588;
     r.m48 = a->m592;
-    for (int k = 0; k < 3; k++)
-        r.m56[k] = a->m600[k];
+    for (int k = 0; k < 3; k++) {
+        r.m56[k].x = a->m600[k].x;
+        r.m56[k].y = a->m600[k].y;
+        r.m56[k].z = a->m600[k].z;
+    }
     r.m52 = f_07df70(m52);
     r.m40 = a->m572;
     r.m96 = a->m640;

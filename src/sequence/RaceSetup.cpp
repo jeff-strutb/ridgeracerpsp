@@ -718,8 +718,11 @@ inline void RaceSetup::SetOptions()
 
     m588 = D_1ee1a4;
     m592 = D_1ee1a8;
-    for (j = 0; j < 3; j++)
-        opt[j] = D_1ee1ac[j];
+    for (j = 0; j < 3; j++) {
+        opt[j].a = D_1ee1ac[j].a;
+        opt[j].b = D_1ee1ac[j].b;
+        opt[j].c = D_1ee1ac[j].c;
+    }
     m596 = D_1ee1ec;
 }
 
@@ -735,8 +738,8 @@ static inline bool IsMode(int mode)
    second car (unless the sequence is a two player one) and every rival, reads the laps and
    the rivals' level of the sequence, and fills in each player's car (from its selection
    number), colour and options. Then it resets the sequence manager.
-   Remaining difference: register and giv choices. Retail copies the three options with the
-   setup's base register and offsets 600 to 608 (this build hoists base+600), keeps no register
+   Remaining difference: register and giv choices. The options copy now matches (SetOptions
+   copies the three fields; a struct copy hoists base+600, 237 -> 227 words). Retail keeps no register
    for the setup's address after the copy, strength reduces the car loop from &car[0], and
    spills the player counter to the stack; this build indexes the cars and keeps the counter in
    a register (237 of 308 words). */
@@ -900,7 +903,10 @@ void f_0156d4()
    marks the local player ready when the message came.
    Remaining difference: retail keeps &entry[0] in a saved register computed from the link's
    address at entry and a register holding 6 for the state tests and store; this build folds
-   the entry address into constants (103 of 119 words, 24 bytes shorter). */
+   the entry address into constants (103 of 119 words, 24 bytes shorter). cse's related-value
+   lookup bases m4 (-164) on e's constant because e's sym+168 is seen first; retail bases e on
+   &D_241810 (v0+168). A `Link *l = &D_241810` local holds the whole address in s2 for the
+   function (lbu+seb for m93, 444 B): not it. */
 int f_015ce4()
 {
     int i;
@@ -1404,9 +1410,10 @@ void f_016fd4()
    WHAT IT DOES: Builds the sequence manager's view of a wireless race from the setup: sends the
    setup's choices to the session, gives every player's car as a rival slot, and sets the
    course, the sequence and both players' cars.
-   Remaining difference: retail passes each rival slot to f_003150 as a plain copy through a
-   strength reduced pointer and keeps the hand-back copy of the sequence in its own stack slot;
-   here the slot is converted to the call's pair type (indexed loop, shared temporary slot). */
+   Remaining difference: the rival loop and frame now match (slot passed as *(Pair *)&rival[i],
+   a plain copy). Retail passes &course (sp+48) to f_0030d0 directly and keeps the f_0030d0..
+   f_0030c8 stores in its order; here course is copied to the sp+16 argument slot first (its
+   Name -> Pair conversion), 75 of 158 words. */
 void f_0170a8()
 {
     int i;
@@ -1417,7 +1424,7 @@ void f_0170a8()
     D_240900.f_03fe80(mode, seq, D_1ee1f0.m288[0], D_1ee1f0.m296[0]);
     n = D_240900.count;
     for (i = 0; i < n; i++)
-        D_1dd6b0.f_003150(i, D_1ee1f0.rival[i]);
+        D_1dd6b0.f_003150(i, *(Pair *)&D_1ee1f0.rival[i]);
     Name seq2 = D_2407d0.Find((const char *)D_1ee1f0.seq.a);
     void *rec = D_2407d0.Get("SequenceNumber", (const char *)seq2.a, 0);
     memcpy(D_24063c, rec, D_1a211c[1]);
@@ -1441,7 +1448,11 @@ void f_0170a8()
    record times of the saved race into the second player of the current setup. Returns 0 or a
    negative code.
    Remaining difference: register allocation and scheduling throughout; the control flow and
-   calls are the same (1108 against 1148 bytes). */
+   calls are the same (1108 against 1148 bytes). Two structural causes seen: retail's frame is
+   16 bytes larger with len at sp+3780, the f_00317c Pair copy at 3792 and magic at 3808 (here
+   the Pair copy 3776, magic 3792, idx 3796, len 3800: the addressof slots come in another
+   order); and bb-reorder puts the car/rival Row lookups out of line here while retail keeps
+   them inline and puts the closing setup stores out of line. */
 int f_01730c(unsigned char *data, unsigned int size)
 {
     int status = 0;

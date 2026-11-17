@@ -129,7 +129,9 @@ int f_02452c(unsigned int area, int id)
 /* @draft 0x02463c us f_02463c
    WHAT IT DOES: Removes a texture id from an area's part of the id array, moving the later
    areas down by one.
-   Remaining: retail keeps the index in a1 (id moved to t0) and computes next as a copy; three instructions short. */
+   Remaining: retail keeps the index in a1 (id moved to t0) and computes next as a copy; three instructions short.
+   The third: retail's start-- loop stores before its bnez and fills both branch slots with
+   g++ from the loop top (retargeted), where ours puts the stores in the slots. */
 void f_02463c(unsigned int area, int id)
 {
     struct Slot *p = D_23c780;

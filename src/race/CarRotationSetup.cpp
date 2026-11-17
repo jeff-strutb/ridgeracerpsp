@@ -31,10 +31,13 @@ extern float D_1acc98;
    WHAT IT DOES: normalises the first three components of two vectors, takes the angle of
    the first one against the second's and writes a 4 word result (the two angles and a
    third value, negated, and a zero word).
-   Remaining difference: not yet compared against retail. */
+   Remaining difference: locals cut to retail's 144 bytes (t1/t0 then land at 144/148
+    as in retail). Retail saves only f20/f21: it rereads the vector components from the
+    stack copies at each use (lwc1 16/20/24(sp) after the out clears), where this source
+    holds ax..bz in f22-f28 across the sqrt calls (frame 224 vs 192). */
 extern "C" void f_0bf3b4(const void *pa, const void *pb, void *out)
 {
-    char sp[192];
+    char sp[144];
     char *m = sp + 32;
     WR(sp, 0) = WR(pa, 0);
     WR(sp, 4) = WR(pa, 4);
@@ -91,10 +94,11 @@ static inline void copy16(char *d, const char *s)
    WHAT IT DOES: takes an input vector and a second vector, applies two matrix transforms
    chosen by the magnitudes of the second vector's components (through f_0a6bf4 and
    f_0bf3b4), rebuilds a matrix from the negated input and writes the resulting four words.
-   Remaining difference: not yet compared against retail. */
+   Remaining difference: locals cut to retail's 240 bytes. Retail saves only
+   f20/f21 (frame 304); this source keeps the |q| components in f22-f24 as well (320). */
 extern "C" void f_0bf604(const void *pa, void *out, const void *pq)
 {
-    char sp[304];
+    char sp[240];
     char *s0 = sp + 32;
     char *s3 = sp + 80;
     char *s5 = sp + 128;

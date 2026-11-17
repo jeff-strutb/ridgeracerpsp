@@ -147,17 +147,21 @@ void CCamShake::Reset2()
 }
 
 /* @draft 0x082bfc us _ZN9CCamShake7Update2Ev
-   REMAINING DIFFERENCE: the hit test's block layout and scheduling differ throughout; retail
-   rereads the hit as a float after clearing it as an int (so the kick sees zero).
+   REMAINING DIFFERENCE: car read once into a local (retail never reloads it after the int
+   clear) took this to the retail size and 25 words. Left: after the kick retail tests the
+   stored 0.5 (mov.s $f1,$f4) where ours reloads hitTime, and the 1.111112 constant and the
+   kick fraction share $f12 in retail. Retail rereads the hit as a float after clearing it
+   as an int (so the kick sees zero).
    WHAT IT DOES: The hit spring: a hit harder than 1.11 starts half a second of shake kicked
    sideways in proportion to its strength (the car's hit is cleared once read); while it runs
    the spring is integrated as for landings. */
 void CCamShake::Update2()
 {
-    float v = car->hit.f;
-    car->hit.i = 0;
+    ShakeCar *c = car;
+    float v = c->hit.f;
+    c->hit.i = 0;
     if (1.111112f < v || v < -1.111112f) {
-        float w = car->hit.f;
+        float w = c->hit.f;
         if (hitTime <= w) {
             float a;
             hitPos = w;

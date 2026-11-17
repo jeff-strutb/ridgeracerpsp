@@ -240,21 +240,21 @@ CSequenceRaceNormalCircuit::~CSequenceRaceNormalCircuit()
    Draft: the course records are found through an inline returning the record by value
    (memory temporaries as in retail for the first and last lookups); remaining differences:
    retail keeps the information's course record in its own frame slot (sp+160, frame 208)
-   where this source shares sp+32, the state select uses v1 instead of v0, and the course
-   table's address is kept in a saved register instead of being rebuilt for the last lookup. */
+   where this source shares sp+32, and the course table's address is kept in a saved register
+   (s5) instead of being rebuilt for the last lookup. The state select (if/else stores) now
+   matches; with the first record at function scope the frame is 208 as retail, but c still
+   lands at sp+32 and the last lookup at sp+160 (retail: 160 and 16). */
 void CSequenceRaceNormalCircuit::f_038fd4(SeqArgs *a)
 {
     CSequenceBase::f_03913c(a);
-    int s = 1;
     if (m20)
-        s = 2;
-    state = s;
-    {
-        Rec r = Find(&D_2407a8, f_0368e8(&D_2407d0, "CourseNumber", m4, 0, 0));
-        D_27ecd0 = r;
-        m16 = m16 * 0x19660d + 0x3c6ef35f;
-        f_03a51c(m32, &m4, m16, a->m32);
-    }
+        state = 2;
+    else
+        state = 1;
+    Rec r = Find(&D_2407a8, f_0368e8(&D_2407d0, "CourseNumber", m4, 0, 0));
+    D_27ecd0 = r;
+    m16 = m16 * 0x19660d + 0x3c6ef35f;
+    f_03a51c(m32, &m4, m16, a->m32);
     f_03e3b8_t *info = new f_03e3b8_t;
     {
         InfoParams p;

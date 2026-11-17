@@ -1590,7 +1590,9 @@ void Sequence::CSingleRaceModeJob::f_00bbb8()
    Remaining difference: the screen's choice is kept in s0 and the constant 2 in s2 (retail:
    choice in v1, 2 in s0, shared with D_1d1108 = 2 and the D_1d110c switch), which shifts the
    rest of the allocation; 1288 bytes against 1276. Cases 3 and 4 of the first switch are
-   separate (retail tests them one by one). */
+   separate (retail tests them one by one). Cause: in case 2 cse replaces the inner switch's
+   constant 2 with the choice register (known equal on that edge), so the choice lives across
+   f_1521c8 in s0; retail uses its constant-2 register there (and for D_1d1108 = 2). */
 void Sequence::CSingleRaceModeJob::f_00bbc0()
 {
     switch (D_2301b0.layer->v10(3)) {

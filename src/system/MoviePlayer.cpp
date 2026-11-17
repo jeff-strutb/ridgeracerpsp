@@ -305,7 +305,9 @@ CMovieHardSub::~CMovieHardSub()
    entry count. An unknown word prints an error and returns 1; otherwise returns 0.
    Remaining difference: retail reads the third number's digits with lbu and keeps the byte
    in a register (seb at the compare and at the add, as for the word copy loop); every
-   spelling tried gives lb, which shifts the register choice of all three numbers. */
+   spelling tried gives lb, which shifts the register choice of all three numbers.
+   `while ((ch = *p) != '\n')` compiles identically (lb). Retail's `move a1,v1` is a QImode
+   register copy, so its char lives in an unpromoted temporary, not a promoted local. */
 int CMovieHardSub::Load()
 {
     char line[128];
@@ -479,7 +481,9 @@ int f_08a9c0(void)
    WHAT IT DOES: The same constructor (complete object version).
    Remaining difference (both versions): register allocation and block order of the failure
    paths (retail keeps several globals' high halves in saved registers and stores the error
-   code from one shared tail); the call sequence is the same. */
+   code from one shared tail); the call sequence is the same. Retail stores file.fd = -1
+   between ringData and mpegData (sw v0,104 after the global stores); here the CMovieFile
+   constructor's store stays first, ahead of the int global stores it may alias. */
 CMoviePlayer::CMoviePlayer(const char *name, int sound)
 {
     displayThread = 0;
@@ -836,12 +840,16 @@ int f_08be98(void *data, int packets, void *param)
    WHAT IT DOES: Draws the subtitles whose time span holds the player's frame count: the
    message (one line lower when it has a single line) with its shadow offsets for modes 1
    and 2, after a debug print of the alpha. Returns 0.
-   Remaining difference: retail counts the entries down in s2 with a pointer step and keeps
-   1.0 in f20; the loop and register choice here differ. */
+   Remaining difference: count read once into a local lets loop.c reverse the counter as
+   retail does (548 -> 544 of 536 bytes). Left: this and the counter swap s1/s2, and
+   retail's first span test branches to the latch (bnezl) with the second test in line,
+   where ours places the latch after the first test and the second test out of line; two
+   separate `continue` statements compile identically to the `||`. */
 int CMovieHardSub::Draw()
 {
     int frame = D_242b90->frames;
-    for (int i = 0; i < count; i++) {
+    int n = count;
+    for (int i = 0; i < n; i++) {
         if (frame < start[i] || end[i] < frame)
             continue;
         int lines = 2;

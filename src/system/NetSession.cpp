@@ -1313,6 +1313,9 @@ int CNetSession::f_087318(int m, Rec *r, Entry *e)
 
 /* @draft 0x08748c us f_08748c
    REMAINING DIFFERENCE: block layout of the failure paths and the host or client branch differ.
+   The mode == 0 arm (it calls sceNetGetLocalEtherAddr) is moved out of line here, as the
+   call heuristic predicts a guarded call unlikely; retail keeps it in line and moves the
+   mode != 0 arm (sb zero,94 / li a0,2) to the end.
    WHAT IT DOES: Starts matching: opens the socket, creates the semaphore, initialises the
    matching library and creates and starts the context (host or client); the host then
    listens (state 8), a client looks for hosts (state 2). A failure ends the session. */
@@ -1690,6 +1693,9 @@ int CNetSession::f_087ee8()
 
 /* @draft 0x087f34 us f_087f34
    REMAINING DIFFERENCE: the state tests and the ad hoc state checks are laid out differently.
+   Retail returns through a0 (move a0,v0 after each call, move v0,a0 at the exit) and keeps
+   &D_241e98 in s2 for the first look; one result variable assigned on every path (r = 1 /
+   r = f()) compiles byte-identically to the returns, so that is not the cause.
    WHAT IT DOES: The session's frame: follows ad hoc networking (ending the session on a
    failure), takes every packet received, then runs the state's step. */
 int CNetSession::f_087f34()

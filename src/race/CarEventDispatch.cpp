@@ -247,10 +247,13 @@ extern "C" void f_0be874(void *a0, char *self)
    builds a rotation from the second vector's negated components. Two matrix transforms
    (f_0a082c) are applied to a matrix that is copied to the frame, and the transformed result is
    left in the frame.
-   Remaining difference: not yet compared against retail. */
+   Remaining difference: the frame is now retail's 224 bytes (locals 192).
+    Retail stores the final row through s2+48 (sw 48(s2), then 4/8/12(a0) with a0 = s2+48)
+    and keeps those stores; here they are frame-relative and flow deletes them as dead (484
+    vs 548 bytes), so in retail the row is not a plain local of this frame as GCC sees it. */
 extern "C" void f_0bef6c(void *a0, void *a1, void *a2, void *a3)
 {
-    char sp[224];
+    char sp[192];
     char *s0 = sp;
     char *s1 = sp + 16;
     char *s2 = sp + 32;
@@ -307,10 +310,11 @@ extern "C" void f_0bef6c(void *a0, void *a1, void *a2, void *a3)
     WR(sp, 116) = WR(sp, 100);
     WR(sp, 124) = WR(sp, 108);
     WR(sp, 120) = WR(sp, 104);
-    WR(sp, 80) = WR(sp, 96);
-    WR(sp, 84) = WR(sp, 116);
-    WR(sp, 88) = WR(sp, 120);
-    WR(sp, 92) = WR(sp, 124);
+    char *row = s2 + 48;
+    WR(row, 0) = WR(sp, 96);
+    WR(row, 4) = WR(sp, 116);
+    WR(row, 8) = WR(sp, 120);
+    WR(row, 12) = WR(sp, 124);
 }
 
 /* @draft 0x0bf190 us f_0bf190

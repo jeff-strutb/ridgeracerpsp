@@ -332,7 +332,10 @@ inline int Colour555(unsigned int c)
    count less one), the host's id and name, then for every player in use (entries 1 to 7) the
    car whose select number matches, both of its colours as 24 bit colours, its id, the name
    index of that id and the player's name; the unused slots are cleared.
-   DRAFT: first transcription. */
+   DRAFT: first transcription. Retail places the used-entry body out of line (handbook row:
+   `if (!e->used) continue;` then the block gives exactly retail's loop layout, but i is then
+   spilled to sp+24 where retail keeps it in s8 and other temporaries shift: 241 words, 1000 B,
+   so not kept). */
 void RaceCars::f_0408b8(NetName n)
 {
     Rec z;

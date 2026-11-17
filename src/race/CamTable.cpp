@@ -176,7 +176,9 @@ struct Vec4 {
 /* @draft 0x0825dc us f_0825dc
    REMAINING DIFFERENCE: retail holds &v.z in a third saved register from after the first
    wrap call and schedules the result stores later (320 against 308 bytes); the call
-   sequence and the by-value copy of the direction match.
+   sequence and the by-value copy of the direction match. Here z = &p->z folds to sp+8 at
+   the call (a frame address, rematerialised); retail's z = s1+8 is built from p's register,
+   so in retail z is not a frame-address equivalence.
    WHAT IT DOES: The rotation (order 4) that turns the forward axis to the direction v: the
    yaw from its x and z, then the pitch from its height after undoing the yaw. */
 Rot f_0825dc(Vec4 v)
