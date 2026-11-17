@@ -399,7 +399,9 @@ void CRidgeMycar::f_0bff90()
    pseudo after gcse: either no gcse cprop in this TU (flags) or a non-const set of add on a
    path into case 2, which retail's code has no room for. Volatile m10056 is ruled out
    (retail compares the subtracted value without a reload). No source change made; the
-   -fno-gcse hypothesis needs a whole-TU check and an owner decision. */
+   -fno-gcse hypothesis needs a whole-TU check and an owner decision. Whole-file check (2026-11-16): scoring with -fno-gcse loses exact functions
+   (Mycar 14 -> 13/19, Netcar 36 -> 34/39, Comcar unchanged), so "gcse did not run" is ruled
+   out for these files. */
 void CRidgeMycar::f_0bff98()
 {
     Phys *p = &phys;
