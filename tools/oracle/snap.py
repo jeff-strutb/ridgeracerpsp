@@ -18,13 +18,17 @@ Both runs start from one machine state, so the comparison does not depend on how
 loaded snapshot reproduces a straight run, only on rrbox being deterministic (checked by `check`).
 
     python3 tools/oracle/snap.py make SCRIPT [--every N]       snapshots and index (once per script)
-    python3 tools/oracle/snap.py test ADDR... [--window N] [--script SCRIPT] [--whole] [--keep]
+    python3 tools/oracle/snap.py test ADDR... [--window N|end] [--script S1,S2] [--whole] [--keep]
 
 `test` replaces only the named function's code (retail everywhere else), so what it reports is that
-function's behaviour, and records it in config/us/t3_live.csv (evidence snap:SCRIPT@FROM-TO; a
+function's behaviour, in every script that calls it (PASS only if all pass; coverage is the union),
+and records it in config/us/t3_live.csv (evidence snap:SCRIPT@FROM-TO; a
 DIFFERS too, so no older PASS outlives it). --whole patches every placed draft, as the M1 image
 does, and records nothing.
     python3 tools/oracle/snap.py check SCRIPT FRAME            determinism and empty-patch identity
+
+A script with a '# base NAME' line plays NAME's inputs up to some frame: `make` reuses NAME's
+snapshots before that frame and plays only from the last of them.
 
 Snapshots live in build/oracle/snapshots/<script>-<key>/ (key: retail image, script, rrbox binary):
 frame_NNNNN.state / .meta / .memstick/, index.json (watched function -> first frame), trace.
@@ -73,6 +77,25 @@ def watch_files(d):
     return w, wr, wc
 
 
+def inputs(script):
+    """{frame: line} of a script's input lines (comments and the frame count left out)."""
+    out = {}
+    for line in open(script):
+        t = line.split()
+        if t and not line.startswith('#'):
+            out[int(t[0])] = ' '.join(t[1:])
+    return out
+
+
+def base_of(script):
+    """The script named on a '# base NAME' line: this script plays the same inputs up to some
+    frame, so that script's snapshots before it are this script's too."""
+    for line in open(script):
+        if line.startswith('# base '):
+            return script_path(line.split()[2])
+    return None
+
+
 def make(script, every):
     script = script_path(script)
     d = snapdir(script)
@@ -81,12 +104,39 @@ def make(script, every):
         return d
     os.makedirs(d, exist_ok=True)
     frames = a7.frames_of(script)
-    saves = list(range(every, frames, every))
     _, wr, _ = watch_files(d)
     calls, trace = os.path.join(d, 'full.calls'), os.path.join(d, 'trace')
-    a5.run(a7.RETAIL, script, trace, wr, calls, extra=[f'--rr-save-at={",".join(map(str, saves))}:{d}'])
-    # index: the frame each watched function is first entered in (frame f ends at tick[f])
-    ticks = [int(line.split()[1]) for line in open(trace) if line.strip()]
+    base, start, kept = base_of(script), None, {}
+    if base:
+        bd = make(base, every)
+        bix = json.load(open(os.path.join(bd, 'index.json')))
+        ri, si = inputs(base), inputs(script)
+        # the first frame whose held buttons differ: a snapshot at the end of an earlier frame
+        # is the same machine in both scripts
+        div = min([f for f in set(ri) | set(si) if ri.get(f) != si.get(f)] or [frames])
+        earlier = [f for f in bix['saves'] if f < div]
+        if not earlier:
+            raise SystemExit(f'snap: {os.path.basename(script)} differs from its base before its first snapshot')
+        start = earlier[-1]
+        for f in earlier:
+            src = os.path.join(bd, f'frame_{f:05d}')
+            dst = os.path.join(d, f'frame_{f:05d}')
+            for ext in ('.state', '.meta'):
+                if not os.path.exists(dst + ext):
+                    os.link(src + ext, dst + ext)
+            if not os.path.exists(dst + '.memstick'):
+                shutil.copytree(src + '.memstick', dst + '.memstick')
+        kept = {k: v for k, v in bix['first'].items() if v <= start}
+    saves = [f for f in range(every, frames, every) if start is None or f > start]
+    extra = [f'--rr-save-at={",".join(map(str, saves))}:{d}'] if saves else []
+    if start is not None:
+        snap = os.path.join(d, f'frame_{start:05d}')
+        a5.run(a7.RETAIL, script, trace, wr, calls, extra=extra + [f'--rr-start={snap}'], memstick=snap + '.memstick')
+    else:
+        a5.run(a7.RETAIL, script, trace, wr, calls, extra=extra)
+    # index: the frame each watched function is first entered in (frame f ends at its trace tick)
+    tr = [line.split() for line in open(trace) if line.strip()]
+    ticks, fnums = [int(t[1]) for t in tr], [int(t[0]) for t in tr]
     first = {}
     with open(calls, 'rb') as f:
         for line in f:
@@ -95,15 +145,19 @@ def make(script, every):
                 if t[1] not in first:
                     first[t[1]] = int(t[-1][3:])
     import bisect
-    index = {k.decode(): bisect.bisect_left(ticks, tk) for k, tk in first.items()}
+    index = {k.decode(): fnums[min(bisect.bisect_left(ticks, tk), len(fnums) - 1)] for k, tk in first.items()}
+    index.update(kept)  # first called before the run's start: the base script's frame
     os.remove(calls)
     if os.path.exists(calls + '.cov'):
         os.remove(calls + '.cov')
-    missing = [f for f in saves if not os.path.exists(os.path.join(d, f'frame_{f:05d}.meta'))]
+    allsaves = sorted(int(f[6:11]) for f in os.listdir(d) if f.startswith('frame_') and f.endswith('.meta'))
+    missing = [f for f in saves if f not in allsaves]
     if missing:
         raise SystemExit(f'snap: snapshots missing for frames {missing[:5]}...')
-    json.dump({'every': every, 'saves': saves, 'first': index}, open(os.path.join(d, 'index.json'), 'w'))
-    print(f'snap: {len(saves)} snapshots, {len(index)} functions indexed -> {os.path.relpath(d, ROOT)}')
+    json.dump({'every': every, 'saves': allsaves, 'first': index, 'base': os.path.basename(base) if base else None,
+               'start': start}, open(os.path.join(d, 'index.json'), 'w'))
+    print(f'snap: {len(allsaves)} snapshots ({len(saves)} new' + (f', from {os.path.basename(base)} frame {start}' if base else '')
+          + f'), {len(index)} functions indexed -> {os.path.relpath(d, ROOT)}')
     return d
 
 
@@ -219,21 +273,21 @@ def verdicts(w, rcalls, ccalls, only=None):
     return out
 
 
-def pick(addr, script=None):
-    """(script, snapshot frame, first-call frame) for the earliest first call of `addr`."""
-    best = None
-    for s in ([script_path(script)] if script else sorted(os.path.join(SCRIPTS, f) for f in os.listdir(SCRIPTS))):
+def picks(addr, scripts=None):
+    """[(script, snapshot frame, first-call frame)]: for each script with snapshots (or each named
+    one) whose run calls `addr`, the last snapshot before its first call."""
+    out = []
+    names = [script_path(x) for x in scripts] if scripts else sorted(os.path.join(SCRIPTS, f) for f in os.listdir(SCRIPTS))
+    for s in names:
         idx = os.path.join(snapdir(s), 'index.json')
         if not os.path.exists(idx):
             continue
         ix = json.load(open(idx))
         f = ix['first'].get(f'{addr:06x}')
-        if f is None:
-            continue
-        snaps = [x for x in ix['saves'] if x < f]
-        if snaps and (best is None or f - snaps[-1] < best[2] - best[1]):
-            best = (s, snaps[-1], f)
-    return best
+        snaps = [x for x in ix['saves'] if f is not None and x < f]
+        if snaps:
+            out.append((s, snaps[-1], f))
+    return out
 
 
 def only(patch, addrs):
@@ -255,7 +309,9 @@ def only(patch, addrs):
     return out, sum(len(x.split()[1]) // 8 for x in lines)
 
 
-def test(addrs, window, script, whole=False, keep=False):
+def test(addrs, window, scripts, whole=False, keep=False):
+    """Test each function in every script that calls it (or the named ones). The verdict is PASS
+    only if every script passes; coverage is the union of the words executed in all of them."""
     w = a5.watched()
     full = patch_file()
     for addr in addrs:
@@ -263,45 +319,53 @@ def test(addrs, window, script, whole=False, keep=False):
         if words == 0:
             print(f'0x{addr:06x}: not placed in the M1 image (or identical to retail): nothing to test')
             continue
-        p = pick(addr, script)
-        if p is None:
+        runs = picks(addr, scripts)
+        if not runs:
             print(f'0x{addr:06x}: no snapshot before its first call (run `snap.py make SCRIPT` for a script that calls it)')
             continue
-        s, frame, first = p
-        end = first + window
-        rt, rc = from_snapshot(s, frame, end)
-        ct, cc = from_snapshot(s, frame, end, patch, (rt, rc))
-        bad, n = first_diff(rt, ct)
-        v = verdicts(w, rc, cc)
         kind, name = w[addr][0], w[addr][1]
-        name_s = os.path.splitext(os.path.basename(s))[0]
-        print(f'0x{addr:06x} {name} ({kind}): {name_s} from snapshot {frame}, first called in frame {first}, '
-              f'compared to frame {end}')
-        print(f'  RAM: ' + ('identical on every frame' if bad is None else f'first differs at frame {bad}'))
-        print(f'  calls: {v[addr][0]} {v[addr][1]}')
-        cov = next((x.split() for x in open(cc + '.cov') if x.startswith(f'{addr:06x} ')), None) if os.path.exists(cc + '.cov') else None
-        if cov:
-            print(f'  coverage: {cov[2]}/{cov[1]} instructions executed')
-        if not whole and cov:
+        print(f'0x{addr:06x} {name} ({kind})')
+        verdict, calls, executed, total, evidence = 'PASS', 0, set(), None, []
+        for s, frame, first in runs:
+            end = a7.frames_of(s) - 1 if window == 'end' else min(first + int(window), a7.frames_of(s) - 1)
+            rt, rc = from_snapshot(s, frame, end)
+            ct, cc = from_snapshot(s, frame, end, patch, (rt, rc))
+            bad, n = first_diff(rt, ct)
+            v = verdicts(w, rc, cc)
+            name_s = os.path.splitext(os.path.basename(s))[0]
+            ok = v[addr][0] == 'PASS' and bad is None
+            cov = next((x.split() for x in open(cc + '.cov') if x.startswith(f'{addr:06x} ')), None) if os.path.exists(cc + '.cov') else None
+            line = (f'  {name_s} from snapshot {frame} (first call {first}) to {end}: {v[addr][0]} {v[addr][1]}; RAM '
+                    + ('identical' if bad is None else f'differs from frame {bad}'))
+            if cov:
+                total = int(cov[1])
+                miss = {int(x, 16) for x in cov[3:]}
+                executed |= {addr + 4 * k for k in range(total)} - miss
+                line += f'; {cov[2]}/{cov[1]} executed'
+            print(line)
+            others = sorted((a for a, x in v.items() if x[0] == 'DIFFERS' and a != addr))
+            if others:
+                print(f'    other functions differing: ' + ', '.join(f'0x{a:06x}' for a in others[:12]) + (' ...' if len(others) > 12 else ''))
+            if not ok:
+                verdict = 'DIFFERS'
+            calls += int(v[addr][1].split()[0]) if v[addr][0] == 'PASS' else 0
+            evidence.append(f'{name_s}@{frame}-{end}')
+            if not keep:
+                for f in (rc, cc):
+                    os.remove(f)  # call logs run to GBs; traces and coverage are kept
+        cov_s = f'{len(executed)}/{total}' if total else '0/0'
+        print(f'  overall: {verdict}, {calls} calls, {cov_s} instructions executed over {len(runs)} script(s)')
+        if not whole and total:
             # the ledger row (a5.write_ledger): this function alone was replaced, so the verdict is
             # its own; a DIFFERS is recorded too, so an older PASS cannot outlive it
-            verdict = v[addr][0] if bad is None or v[addr][0] != 'PASS' else 'DIFFERS'
-            calls = int(v[addr][1].split()[0]) if verdict == 'PASS' else 0
             src = a5.source_of(addr, name)
             rows = a5.read_ledger()
             rows[f'0x{addr:06x}'] = dict(zip(a5.LEDGER_FIELDS, (
-                f'0x{addr:06x}', name, kind, verdict, calls, f'{cov[2]}/{cov[1]}', os.path.relpath(src, ROOT),
+                f'0x{addr:06x}', name, kind, verdict, calls if verdict == 'PASS' else 0, cov_s, os.path.relpath(src, ROOT),
                 hashlib.sha256(open(src, 'rb').read()).hexdigest()[:16], __import__('datetime').date.today().isoformat(),
-                f'snap:{name_s}@{frame}-{end}')))
+                'snap:' + '+'.join(evidence))))
             a5.write_ledger(rows)
             print(f'  ledger: {verdict} recorded (config/us/t3_live.csv)')
-        if not keep:
-            for f in (rc, cc):
-                os.remove(f)  # call logs run to GBs; traces and coverage are kept
-        others = sorted((a for a, x in v.items() if x[0] == 'DIFFERS' and a != addr))
-        if others:
-            print(f'  other functions differing in this window: ' + ', '.join(f'0x{a:06x}' for a in others[:12])
-                  + (' ...' if len(others) > 12 else ''))
 
 
 def check(script, frame):
@@ -332,8 +396,9 @@ def main():
     if args[0] == 'make':
         make(args[1], int(opt('--every', 250)))
     elif args[0] == 'test':
-        test([int(a, 16) for a in args[1:] if a != opt('--window', None) and a != opt('--script', None)],
-             int(opt('--window', 120)), opt('--script', None), '--whole' in sys.argv, '--keep' in sys.argv)
+        sc = opt('--script', None)
+        test([int(a, 16) for a in args[1:] if a != opt('--window', None) and a != sc],
+             opt('--window', '120'), sc.split(',') if sc else None, '--whole' in sys.argv, '--keep' in sys.argv)
     elif args[0] == 'check':
         check(args[1], int(args[2]))
     else:

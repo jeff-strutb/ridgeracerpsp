@@ -504,7 +504,7 @@ def main():
         src = source_of(a, name)
         sha = hashlib.sha256(open(src, 'rb').read()).hexdigest()[:16]
         prev = old.get(f'0x{a:06x}')
-        if prev and prev.get('evidence', '').startswith('snap:') and prev['source_sha'] == sha:
+        if prev and prev.get('evidence', '').startswith(('snap:', 'lock:')) and prev['source_sha'] == sha:
             # a snapshot test of this source (tools/oracle/snap.py) replaced only this function's
             # code; a replay from power-on also runs every other draft, so its row stands
             rows[prev['addr']] = prev
