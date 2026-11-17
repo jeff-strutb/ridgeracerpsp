@@ -125,10 +125,17 @@ struct DCar {
     DBody *m7680;
 };
 
+/* The screen set up. */
+struct DScreen {
+    char p0[12];
+    int m12, m16, m20;
+    float m24, m28, m32, m36, m40, m44;
+};
+
 /* The view the cameras drive. */
 struct DView {
-    float m0, m4, m8;
-    char p12[468];
+    DPos eye;
+    char p16[464];
     float m480;    /* lens angle */
     float m484;
     float m488;    /* far distance */
@@ -147,13 +154,18 @@ struct DView {
     int m668;
     int m672;
     char p676[12];
-    float m688, m692, m696;
-    char p700[4];
+    DPos m688;     /* the eye, kept */
     float m704;
     float m708;
     char p712[32];
     float m744;
 };
+
+}
+
+extern CamCtrl::DScreen D_23fefc;
+
+namespace CamCtrl {
 
 class CCamDammy : public CCamProto {
 public:
@@ -170,6 +182,10 @@ public:
     virtual ~CCamDammyEye1() {}
     virtual void f_07f5e0(int *arg);
     virtual void f_07f5e8();
+
+    DView *View() { return (DView *)param.v[0]; }
+    DView *Prev() { return (DView *)param.v[1]; }
+    DCar *Car() { return (DCar *)param.v[2]; }
 };
 
 class CCamDammyEye3 : public CCamProto {
@@ -228,6 +244,101 @@ void CCamDammyEye1::f_07f5e0(int *arg)
     v->m664 = 1;
 }
 
+/* @draft 0x0f3634 us _ZN7CamCtrl13CCamDammyEye18f_07f5e8Ev
+   WHAT IT DOES: Puts the camera on its view: the eye is a point 0.9 of the car's height up
+   and 100 back (turned with the car's orientation) and the look angles come from the car's
+   orientation turned a fixed angle about one axis; a 55 degree lens halved and its scale,
+   and the car's setting, speed and the eye position are copied. If a previous view exists,
+   it is set up as the mirror of this one (turned half a turn, eye raised by the screen's
+   offset) with the screen's lens, aspect, far distance and clip rectangle. */
+void CCamDammyEye1::f_07f5e8()
+{
+    Vec4 eye;
+    Vec4 ofs(0.0f, Car()->m7680->m448 * 0.9f, -100.0f, 1.0f);
+    Vec4 p(ofs.x, ofs.y + 0.0f, ofs.z, ofs.w);
+    Vec4 t;
+    f_09c720(&t, &Car()->q, &p);
+    eye = t;
+    eye.x += Car()->pos.x;
+    eye.y += Car()->pos.y;
+    eye.z += Car()->pos.z;
+    Rot rot(0, 0, 0);
+    M34 m;
+    f_09ff44(&m);
+    Angle a1;
+    a1.f = 0.017444444f;
+    f_099b98(&a1);
+    f_0a082c(&m, a1, 1, 2);
+    Angle a2;
+    a2.f = 0;
+    f_099b98(&a2);
+    f_0a082c(&m, a2, 2, 0);
+    m = Mul(FromQuat(Car()->q), m);
+    Vec4 out;
+    f_0a4160(&out, &m, 4);
+    *(Vec4 *)&rot = out;
+    DView *v = View();
+    v->m608 = rot.r[0].a;
+    v->m612 = rot.r[1].a.f;
+    v->m616 = rot.r[2].a.f;
+    v->eye.x = eye.x;
+    v->eye.y = eye.y;
+    v->eye.z = eye.z;
+    float half = 0.5f;
+    float lens = 0.9599311f;
+    float l = lens * half;
+    v->m480 = l;
+    v->m496 = 1.0f / f_0cd3cc(l);
+    DCar *c = Car();
+    DView *w = View();
+    int prev = param.v[1];
+    w->m572 = c->m2212;
+    w->m704 = c->m2144;
+    w->m688.x = eye.x;
+    w->m688.y = eye.y;
+    w->m688.z = eye.z;
+    w->m708 = lens;
+    w->m744 = c->m2144;
+    if (prev) {
+        DView *q = (DView *)prev;
+        DScreen *g = &D_23fefc;
+        q->m612 = w->m612 + 3.14159f;
+        q->m616 = -w->m616;
+        q->m608.f = w->m608.f + g->m24 / 180.0f * 3.14159f;
+        DPos a = w->eye;
+        DPos b = w->eye;
+        b.y += g->m40 * 1000.0f;
+        DPos d = w->eye;
+        q->eye.x = a.x;
+        q->eye.y = b.y;
+        q->eye.z = d.z;
+        q->m480 = l;
+        q->m496 = 1.0f / f_0cd3cc(l);
+        q = Prev();
+        q->m572 = Car()->m2212;
+        q->m704 = Car()->m2144;
+        q->m744 = Car()->m2144;
+        d = q->eye;
+        q->m688 = d;
+        q->m484 = (float)g->m12 / (float)g->m16 * g->m44;
+        q->m488 = g->m28 * 1000.0f;
+        q->m492 = g->m32 * 1000.0f;
+        float l2 = g->m36 / 180.0f * 3.14159f * half;
+        q->m480 = l2;
+        float s = 1.0f / f_0cd3cc(l2);
+        DView *r = Prev();
+        r->m504 = -g->m12 * r->m500;
+        r->m512 = 2048;
+        r->m516 = g->m20 + g->m16 / 2 + 1912;
+        r->m508 = g->m16;
+        q->m496 = s;
+        r->m532 = (float)(g->m16 / 2 + 5);
+        r->m520 = (float)-g->m12 * half;
+        r->m524 = (float)g->m16 * half;
+        r->m528 = (float)(g->m12 / 2 + 5);
+    }
+}
+
 /* @implements 0x0f3b88 us _ZN7CamCtrl13CCamDammyEye38f_07f5e0EPi
    WHAT IT DOES: Starts the camera: puts lens setting 1 on the view, sets its flags and
    marks the previous camera's view. */
@@ -281,9 +392,9 @@ void CCamDammyEye3::f_07f5e8()
     v->m608 = rot.r[0].a;
     v->m612 = rot.r[1].a.f;
     v->m616 = rot.r[2].a.f;
-    v->m0 = eye.x;
-    v->m4 = eye.y;
-    v->m8 = eye.z;
+    v->eye.x = eye.x;
+    v->eye.y = eye.y;
+    v->eye.z = eye.z;
     float lens = 0.9599311f;
     v->m480 = lens * 0.5f;
     v->m496 = 1.0f / f_0cd3cc(v->m480);
@@ -291,9 +402,9 @@ void CCamDammyEye3::f_07f5e8()
     DView *w = View();
     w->m572 = c->m2212;
     w->m704 = c->m2144;
-    w->m688 = eye.x;
-    w->m692 = eye.y;
-    w->m696 = eye.z;
+    w->m688.x = eye.x;
+    w->m688.y = eye.y;
+    w->m688.z = eye.z;
     w->m708 = lens;
     w->m744 = c->m2144;
 }
