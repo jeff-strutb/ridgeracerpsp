@@ -579,7 +579,14 @@ int C2DDigitalMeter::Draw()
    WHAT IT DOES: Updates the digital meter each frame once the start animation runs: fills
    the rev bar by the engine speed over its top speed (clamped to 0..1), picks the lamp cell
    and the bar's strip with it, shows the road speed (km/h, or mph when the game says so) and
-   the gear, and blinks the shift lamp at the redline (dim below it). */
+   the gear, and blinks the shift lamp at the redline (dim below it).
+   Remaining difference (8 words, register choice in the clamp): retail has the product v in
+   $f12, the MAX result m in $f2 and the MIN's 1.0 in $f0; here v is in $f2, m in $f12 and
+   1.0 in $f2. Diagnosed 2026-11-16 (greg dump, no source change made): global-alloc takes m
+   (pseudo 199, preferences $f2 and $f12, the latter through t's copy into $f12 for f_108f64)
+   first and gives it $f12, then v (186, preference $f2) gets $f2. Retail's assignment is the
+   mirror image, so retail's v carries the $f12 preference instead (source shape not yet
+   identified; Pac-Man's `v = MAX(v, 0)` form gives a bc1fl, not retail's two moves). */
 int C2DDigitalMeter::f_101b54()
 {
     float t;
@@ -690,7 +697,13 @@ int C2DPacmanMeter::Draw()
    WHAT IT DOES: Updates the Pac-Man meter each frame once the start animation runs: raises
    its two rev markers by the engine speed over its top speed (clamped to 0..1, up to 75
    pixels), shows the road speed (km/h, or mph when the game says so) and the gear, and
-   blinks the shift lamp at the redline (dim below it). */
+   blinks the shift lamp at the redline (dim below it).
+   Remaining difference (6 words, register choice): the first marker call's table row
+   (type * 244 + D_1d5fe8: pseudos 212, 213, 215) is in a2 in retail, a1 here. Diagnosed
+   2026-11-16 (sched1/greg dumps, no source change made): sched1 issues the x load into $f12
+   (insn 118, the row's last use) ahead of `a1 = f_101f54 result` (insn 117), so the row no
+   longer overlaps a1 and local-alloc gives it a1. In retail a1 was still live over the row
+   at allocation. The second call (x + 82, no direct $f12 load) matches with the row in v1. */
 int C2DPacmanMeter::f_101b54()
 {
     float t;

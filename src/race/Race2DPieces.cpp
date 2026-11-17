@@ -743,7 +743,12 @@ int C2DCourseMapWbattle::Draw()
    or plus 11). Returns 0.
    Remaining difference (24 words): register choice in the first loop (retail: this s2, group
    s1, counter s0) and the order of the marker call's argument loads. Separate loop variables
-   for the two loops took it from 44 to 24. */
+   for the two loops took it from 44 to 24. Diagnosed 2026-11-16 (lreg/greg dumps, no source
+   change made): the inlined Show's `g` (pseudo 193) lives only in the loop body's block, so
+   local-alloc gives it s0 before global-alloc sees the counter i (183), which then takes s1;
+   retail has the counter in s0 and g in s1, so in retail g is not block-local (or the counter
+   is allocated first). In the marker calls the D_2407fc pseudo gets a0 here, v0 in retail,
+   and the m100 load goes straight to a2 (retail loads it to v1/v0, then addiu a2). */
 int C2DCourseMapWbattle::f_101b54()
 {
     float m[2];
@@ -1298,8 +1303,12 @@ int C2DRaceInfo::f_101b54()
 /* @draft 0x104620 us C2DRaceInfo8f_104620
    WHAT IT DOES: Places comment kind's sprite centred on the screen (240, 136): its size from
    the table row, its texture rectangle the strip row kind (28 pixels a row, 200 wide).
-   Remaining difference (24 words): the order of the sixteen corner stores (retail x1, y1,
-   u0, v0, u1, v1, x0, y0 first) and the table row in a2 rather than v1. */
+   Remaining difference (8 words, the head only): retail loads the 0.5 constant (its HI in
+   v1) ahead of the two table reads, so the table row goes to a2; ours reads the table first
+   with the row in v1. Store order solved 2026-11-16 (24 -> 8 words): sched1 ranks a store
+   whose value dies first (INSN_REG_WEIGHT), the rest by luid, and `a = b = v` stores b first;
+   retail's order gives the statements x, y, x+w, y+h, u 0, v0, u 200, v1 with x and y written
+   c[0].x = c[2].x and c[0].y = c[1].y. */
 void C2DRaceInfo::f_104620(int kind)
 {
     Corner c[4];
@@ -1310,12 +1319,12 @@ void C2DRaceInfo::f_104620(int kind)
     float v0 = kind * 28;
     float v1 = kind * 28 + 28;
 
-    c[2].x = c[0].x = x;
-    c[1].y = c[0].y = y;
-    c[0].u = c[2].u = 0.0f;
-    c[0].v = c[1].v = v0;
+    c[0].x = c[2].x = x;
+    c[0].y = c[1].y = y;
     c[1].x = c[3].x = x + w;
     c[2].y = c[3].y = y + h;
+    c[0].u = c[2].u = 0.0f;
+    c[0].v = c[1].v = v0;
     c[1].u = c[3].u = 200.0f;
     c[2].v = c[3].v = v1;
     {
@@ -1984,7 +1993,12 @@ void C2DInfoWin::f_10636c(int slot, int value, float *p, int flag)
    WHAT IT DOES: Sets the all-time records table up: its six rows cleared (all but the third
    shown), its nine number sprites placed, and its state reset.
    Remaining difference (7 words, scheduling): retail stores 248, 240, 260, 244, 252, 256,
-   268, 264; here the second -1 store (256) is pulled up after the byte store. */
+   268, 264; here the second -1 store (256) is pulled up after the byte store.
+   Diagnosed 2026-11-16 (sched1 dump, no source change made): sched1's rank_for_schedule
+   prefers the stores at which a register dies (INSN_REG_WEIGHT -1): insn 170 (m256, last use
+   of the -1 pseudo) and insn 178 (m260[1], last use of `this`) go first, the rest follow in
+   source order; sched2 keeps it. Retail is plain source order, so in retail neither store
+   ends a register's life ahead of the others (source shape not yet identified). */
 int C2DAllTime::f_101b1c(Group *g, Race *r)
 {
     int base;
