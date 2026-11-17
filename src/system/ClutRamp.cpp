@@ -34,13 +34,11 @@ struct RampVert {
     short pad;
 };
 
-/* @draft 0x0cb3f4 us f_0cb3f4
-   DRAFT: 8 of 165 words differ, size 660 as retail. One cycle: reading the palette address
-   into fb before the EDRAM call puts the load in the call's delay slot and fb in s0 as
-   retail (163 -> 8 words) -- kept. Remaining difference: the vertex cursor's copy of the
-   buffer (move a1,v0) comes right after the call here, ahead of the zero-trip test; retail
-   makes it in the loop preheader after li t3,1 (the cursor is set up inside the loop's
-   entry, not with the other counters).
+/* @implements 0x0cb3f4 us f_0cb3f4
+   The vertices are written as v[nv] and v[nv + 1]: loop.c strength-reduces that address into
+   its own pointer, whose initial copy of the buffer it places in the preheader after the
+   hoisted invariants, as retail does. A separate cursor (w = v; w += 2) puts the copy right
+   after the call instead.
    WHAT IT DOES: Writes, at p, the commands that draw the ramp into texture t's palette: no
    depth writes, no blending, no texturing, 32 bit pixels into the palette as a 256 wide
    target; then one line per point from the previous end to its own, in its first colour,
@@ -62,39 +60,36 @@ extern "C" unsigned int *f_0cb3f4(const RampPoint *pts, int limit, const RampTex
     while (pts[n].x != -1)
         n++;
     RampVert *v = (RampVert *)f_021b38((n + 1) * 2 * sizeof(RampVert));
-    RampVert *w = v;
     int done = 0;
     int nv = 0;
     int x = 0;
     for (int i = 0; i < n; i++) {
         if (!done) {
-            w[0].color = pts[i].c0;
-            w[0].x = x;
-            w[0].y = 0;
-            w[0].z = 0;
-            w[1].color = pts[i].c0;
+            v[nv].color = pts[i].c0;
+            v[nv].x = x;
+            v[nv].y = 0;
+            v[nv].z = 0;
+            v[nv + 1].color = pts[i].c0;
             if (pts[i].x > limit) {
                 x = limit;
                 done = 1;
             } else
                 x = pts[i].x;
-            w[1].x = x;
-            w[1].y = 0;
-            w[1].z = 0;
-            w += 2;
+            v[nv + 1].x = x;
+            v[nv + 1].y = 0;
+            v[nv + 1].z = 0;
             nv += 2;
         }
         if (done == 1) {
-            w[0].color = pts[i].c1;
-            w[0].x = x;
-            w[0].y = 0;
-            w[0].z = 0;
-            w[1].color = pts[i].c1;
+            v[nv].color = pts[i].c1;
+            v[nv].x = x;
+            v[nv].y = 0;
+            v[nv].z = 0;
+            v[nv + 1].color = pts[i].c1;
             x = pts[i].x;
-            w[1].x = x;
-            w[1].y = 0;
-            w[1].z = 0;
-            w += 2;
+            v[nv + 1].x = x;
+            v[nv + 1].y = 0;
+            v[nv + 1].z = 0;
             nv += 2;
         }
     }
