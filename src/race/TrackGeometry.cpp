@@ -885,6 +885,14 @@ struct Flag {
    with base addressing (addiu t2,sp,496); a per-use ep gives offset addressing (496(a0)), so ep
    is a pointer variable and the re-forming is reload rematerialising it under pressure. Retail
    also spills hitAny (2284) where this keeps it in s6.
+   One-cycle diagnosis, count-loop inner k loop (retail 0x2434..0x24d0, the -5 word step): retail
+   reads ep[0]/ep[1] in the loop through a copy of the pre-loop pointer (move a0,v0) and resets
+   the divisor from a second copy of n each pass (move a1,t0), so the loop is bottom-tested;
+   here gcse load-PREs ep[0]/ep[1] against the pre-loop ex/ey loads (same pseudo s0), which
+   forces the beqzl exit, the latch reloads and the j back. Re-forming ep inside the k loop
+   (float *ep = &pts[jj0].x as the body's first statement) compiles identically: gcse merges
+   the address back into the outer pseudo. Not yet found: what keeps retail's in-loop pointer
+   a distinct pseudo.
    Open: the second look's xi selection. Retail keeps xi = V464.x inline and puts both other
    cases out of line; the != form here and an == else-if chain (tried once) both differ.
    Layout aids with no counterpart in the original: the two unused angle locals (retail leaves
