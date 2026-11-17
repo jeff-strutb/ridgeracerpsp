@@ -201,7 +201,8 @@ void CCamOnBoard::Reset()
    its scale) and a far distance of 300, numbers the view's setting after the point, clears
    the zoom and marks the previous camera's view.
    Remaining difference: retail loads the far distance constant before the previous view
-   pointer; here the pointer load comes first (two words). */
+   pointer; here the pointer load comes first (two words). Reading the pointer after the
+   m660 store instead keeps it below that store (it may alias) and costs 14 words. */
 void CCamOnBoard::f_07f5e0(int *arg)
 {
     cur = &D_27ecfc[*arg];

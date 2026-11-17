@@ -605,7 +605,15 @@ void CEvent20::Release(EventWork *w)
    store) takes $f1 too. Retail's x $f0, y $f0, z $f1 needs one more insn between x's store
    and y's load in the order local-alloc sees (after sched1 and update_equiv_regs, which moves
    the c = q word loads and the D_2542a0 lui down to their uses), e.g. the D_2542a0 load
-   scheduled after x's store by sched1. Not yet found which source shape does that. */
+   scheduled after x's store by sched1. Not yet found which source shape does that.
+   Confirmed from the -da sched dump: sched1 issues x's load (60) at clock 23, the a2 =
+   D_2542a0 load (99, ready since clock 7, lowest priority as it only feeds the call) at 24 to
+   fill the load delay, x's store (61) at 26, y's load (65) at 29; y's load waits on x's
+   store because the event pointer may alias the stack copy. With 99 between 61 and 65 instead
+   (60 61 99 65), x and y both have two-insn lives that do not touch even widened, so x and y
+   take $f0 and z $f1 (retail); sched2 would then still hoist 99 into the x load delay, giving
+   retail's final order. So retail's 99 was not ready at clock 24 (or 61 was): the lever is
+   whatever delays the D_2542a0 load in sched1. Same in types 4, 16 and 18. */
 float CEvent02::Eval(EventWork *w)
 {
     Event *ev = w->ev;
