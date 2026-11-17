@@ -17,6 +17,9 @@ Function starts are the union of:
              .ctors/.dtors, callback tables), excluding jump-table words
   entry      module_start from .rodata.sceResident
   stub       one 8-byte import stub per function counted in .lib.stub
+  libsym     a function symbol of a reference library object (libarchive.py)
+             whose code section fingerprints at exactly one retail address,
+             when that address is already a start by the evidence above
 
 Jump tables: every `jr rX` (rX != ra) is matched against the shape
 lui/addiu (HI16/LO16 pair -> base) ... addu ... lw rX,0(..) ... jr rX.  The
@@ -179,6 +182,14 @@ def build(p):
     for a, lib in stubs:
         ev[a].add('stub')
         stub_lib[a] = lib
+
+    from libarchive import load_blobs, fingerprint
+    for sig, (hits, bs) in fingerprint(p, load_blobs()).items():
+        if len(hits) == 1 and hits[0] in ev:
+            for b in bs:
+                for off, _size, _name, _bind in b.syms:
+                    if 0 < off < 4 * len(b.words):
+                        ev[hits[0] + off].add('libsym')
 
     starts = sorted(ev)
     for a in starts:
