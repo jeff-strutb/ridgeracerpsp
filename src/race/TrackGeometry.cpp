@@ -948,8 +948,6 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
     float Ax[16], Ay[16], Bx[16], By[16], Cx[16], Cy[16];
     PVec v448, v464, v480;
     Vec2 pts[128];
-#define PJ(i) pts[(short)((i) * 2)]
-#define PK(i) pts[(short)((i) * 2) + 1]
     int bestEdge, bestVert, result, hitAny, side;
     float best, bestLen2, ang, xlo, xhi, yhi, ylo, rad, zero, ang2, xi;
     short i, k;
@@ -1299,10 +1297,12 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
             i = 0;
             do {
                 PlaneRec *e = o->m8[i];
-                PJ(i).x = e->x;
-                PJ(i).y = e->y;
-                PK(i).y = e->w;
-                PK(i).x = e->z;
+                short jj = i * 2;
+                float *ep = &pts[jj].x;
+                ep[0] = e->x;
+                ep[1] = e->y;
+                ep[3] = e->w;
+                ep[2] = e->z;
                 short j = i;
                 i = i + 1;
                 unsigned short out = 1;
