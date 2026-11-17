@@ -32,7 +32,8 @@ WHAT IS COMPARED, per function (retail = the USA BOOT.BIN through refcheck/prx.p
        - a symbol that names an address: the address of the tag that resolves to it (a tag in
          this file, else in any real file); else a plain C name f_XXXXXX or D_XXXXXX, a C++
          free function _Z<n>f_XXXXXX..., or a C++ variable whose innermost name is D_XXXXXX;
-         else a library symbol in config/us/libfuncs.csv (one address); else an import whose
+         else a library symbol in config/us/libfuncs.csv (one address); else an accepted
+         row of config/us/libsyms.csv (tools/analysis/libsyms.py); else an import whose
          SHA-1 NID (first four bytes, little-endian) is the NID of exactly one retail stub.
          A C++ method named f_XXXXXX is not taken as naming its own address (an override is
          often named after the base slot it fills), so a method must be tagged.

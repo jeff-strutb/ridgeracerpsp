@@ -9,6 +9,7 @@ Gates, in order (exit status 1 if any is red):
                no address is tagged twice outside src/control/ (tools/hooks/hookcheck.py).
   attribution  no tracked file, and no commit message on this branch since main, carries
                AI-attribution text (the hooks' patterns).
+  libsyms      config/us/libsyms.csv is what tools/analysis/libsyms.py builds now (--check).
   compiler     the control set (src/control/CONTROL.md, 60 functions): every function's size,
                words and relocation types equal retail's (no DIFFERS, no MISSING), which is
                what pins the compiler.  How many are also EXACT (references proven) is printed.
@@ -24,6 +25,8 @@ Gates, in order (exit status 1 if any is red):
                    made to leave the stale object in place, the freshness check reports it
                  6 a function removed from the placed set              image red (count)
                  7 a non-EXACT @implements staged for commit           pre-commit refuses
+                 8 a library call site pointed at another library function: libsyms refuses
+                   the symbol (tools/analysis/libsyms.py --selftest)
                  + commit-msg refuses an attribution trailer; the tags check flags a missing
                    WHAT IT DOES and an address tagged twice
                Planted copies live under build/plant/; src/ and the git index are not touched
@@ -139,6 +142,12 @@ def g_attribution():
         len(files) - 1, nmsg, len(bad))
 
 
+def g_libsyms():
+    p = subprocess.run([sys.executable, str(ROOT / 'tools' / 'analysis' / 'libsyms.py'),
+                        '--check'], capture_output=True, text=True)
+    return p.returncode == 0, (p.stdout.strip().splitlines() or ['no output'])[-1]
+
+
 def g_compiler():
     tree = score.Tree()
     g = score.Grader(tree)
@@ -174,9 +183,14 @@ def g_image(no_cache):
 
 def g_tiers():
     tiers, cut = progress.compute(STATE['gate'])
-    for name, t in tiers.items():
-        print('    %-20s ' % name + '  '.join('%s %d fn %d B' % (k, v[0], v[1])
-                                              for k, v in t.items() if k != 'placed-by-red-gate'))
+    names = list(tiers)
+    t = tiers[names[0]]
+    print('    proven game: ' + '  '.join('%s %d fn %d B' % (k, v[0], v[1]) for k, v in t.items()
+                                         if k != 'placed-by-red-gate'))
+    u = tiers[names[1]]
+    print('    information only: unknown before %#08x: %d fn, tagged %d, EXACT and placed %d' % (
+        cut, sum(v[0] for k, v in u.items() if k != 'placed-by-red-gate'),
+        u['T2'][0] + u['T4'][0], u['placed-by-red-gate'][0] + u['T4'][0]))
     return True, 'from the image gate (%s)' % ('green' if STATE['gate']['green'] else 'red: T4 is 0')
 
 
@@ -250,6 +264,12 @@ def faults():
                 'image %s: %s' % ('GREEN' if im['green'] else 'RED', '; '.join(im['fails']))))
     # 7: pre-commit with fault 1's copy staged over the real file in a temporary index.
     out.append(hook_fault(copies[1]))
+    # 8: libsyms refuses a symbol with one call site pointed at another library function.
+    p = subprocess.run([sys.executable, str(ROOT / 'tools' / 'analysis' / 'libsyms.py'),
+                        '--selftest'], capture_output=True, text=True)
+    lines = p.stdout.strip().splitlines()
+    out.append(('8 library call site pointed at another library function', p.returncode == 0,
+                ' | '.join(l for l in lines if 'after' in l or 'other rows' in l)[:240]))
     # commit-msg and tag checks.
     with tempfile.NamedTemporaryFile('w', suffix='.msg', delete=False) as fh:
         fh.write('Change something\n\nCo-' + 'Authored-By: Cl' + 'aude <noreply@anthr' +
@@ -315,6 +335,7 @@ def main(argv=None):
         run.gate('reference', g_reference)
         run.gate('tags', g_tags)
         run.gate('attribution', g_attribution)
+        run.gate('libsyms', g_libsyms)
         run.gate('compiler', g_compiler)
         if run.gate('image', lambda: g_image(a.no_cache)) or 'gate' in STATE:
             run.gate('tiers', g_tiers)

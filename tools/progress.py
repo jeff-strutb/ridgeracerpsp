@@ -15,9 +15,10 @@ function of config/us/funcs.csv by its class in config/us/fence.csv:
   T1  not tagged in any real file.
 
 Tags in src/control/batch*.c are not counted (those files are not real translation units).
-Two populations are printed: the proven-game class, and the code classed unknown that lies
-before the first identified library function (the lowest libfuncs.csv fingerprint in .text),
-whose place in the denominator the owner has not ruled on.
+The denominator is proven game only (class game in config/us/fence.csv), by the owner's
+ruling; that table is the headline.  The code classed unknown that lies before the first
+identified library function (the lowest libfuncs.csv fingerprint in .text) is not in the
+denominator; one information line gives its size and how much of it is tagged and placed.
 """
 import argparse
 import csv
@@ -95,17 +96,27 @@ def main(argv=None):
         'GREEN' if gate['green'] else 'RED', gate['placed'], gate['implements']))
     for f in gate['fails']:
         print('  gate FAIL:', f)
-    for name, t in tiers.items():
-        tot_n = sum(v[0] for k, v in t.items() if k != 'placed-by-red-gate')
-        tot_b = sum(v[1] for k, v in t.items() if k != 'placed-by-red-gate')
-        print()
-        print('%-22s %10s %12s' % (name, 'functions', 'bytes'))
-        for k in ('T4', 'T3', 'T2', 'T1'):
-            print('%-22s %10d %12d' % (k, t[k][0], t[k][1]))
-        print('%-22s %10d %12d' % ('total', tot_n, tot_b))
-        if not gate['green']:
-            print('%-22s %10d %12d   (EXACT and byte-identical in the image, not T4 while '
-                  'the gate is red)' % ('  placed, gate red', *t['placed-by-red-gate']))
+    names = list(tiers)
+    t = tiers[names[0]]
+    tot_n = sum(v[0] for k, v in t.items() if k != 'placed-by-red-gate')
+    tot_b = sum(v[1] for k, v in t.items() if k != 'placed-by-red-gate')
+    print()
+    print('PROVEN GAME (the denominator)')
+    print('%-22s %10s %12s %8s' % ('tier', 'functions', 'bytes', 'bytes %'))
+    for k in ('T4', 'T3', 'T2', 'T1'):
+        print('%-22s %10d %12d %7.2f%%' % (k, t[k][0], t[k][1], 100.0 * t[k][1] / tot_b))
+    print('%-22s %10d %12d' % ('total', tot_n, tot_b))
+    if not gate['green']:
+        print('%-22s %10d %12d   (EXACT and byte-identical in the image; not T4 while the '
+              'gate is red)' % ('placed, gate red', *t['placed-by-red-gate']))
+    u = tiers[names[1]]
+    un = sum(v[0] for k, v in u.items() if k != 'placed-by-red-gate')
+    ub = sum(v[1] for k, v in u.items() if k != 'placed-by-red-gate')
+    print()
+    print('information, not in the denominator: unknown code before %#08x: %d functions, '
+          '%d bytes; tagged %d (%d bytes); EXACT and placed %d (%d bytes)' % (
+              cut, un, ub, u['T2'][0] + u['T4'][0], u['T2'][1] + u['T4'][1],
+              u['placed-by-red-gate'][0] + u['T4'][0], u['placed-by-red-gate'][1] + u['T4'][1]))
     print()
     print('T3 is 0: no oracle exists that certifies same behaviour.')
     print('T4 needs a green image gate.' if not gate['green'] else '')

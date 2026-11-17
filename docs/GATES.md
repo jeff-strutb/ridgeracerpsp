@@ -24,6 +24,10 @@ python3 tools/hooks/install.py               # hooks for this worktree only
 | T2 | tagged (`@implements` or `@draft`) in a real file, not T4 | tags |
 | T1 | not tagged in a real file | tags |
 
+The denominator is **proven game only** (class `game` in `config/us/fence.csv`), by the owner's
+ruling. `progress.py` prints that table as its headline. The unknown code before the first
+library fingerprint is not in the denominator; it gets one information line.
+
 Real files are the sources under `src/` outside `src/control/`. The `src/control/batch*.c`
 files repeat addresses of real files and are not translation units; their tags are not
 counted.
@@ -72,10 +76,12 @@ MIPS (HI16 with the next LO16 against the same symbol). They resolve by these ru
    488 tagged methods named `f_XXXXXX`, 205 are tagged at another address (overrides are named
    after the slot they fill), so a method must be tagged.
 4. **A library symbol** listed in `config/us/libfuncs.csv` at one address (a proven fingerprint).
-5. **An import**: an undefined symbol whose SHA-1 NID (the first four bytes of SHA-1 of the
+5. **A proven library symbol** (rule `libsyms`, the owner's ruling): a row of
+   `config/us/libsyms.csv` with `accepted = yes`. See below.
+6. **An import**: an undefined symbol whose SHA-1 NID (the first four bytes of SHA-1 of the
    name, little-endian) is the NID of exactly one retail stub in `.lib.stub`. 131 of the 132
    `sce*` names used in the source hash to a stub NID.
-6. **Object data** (local data, or a global data symbol defined in this object or in another
+7. **Object data** (local data, or a global data symbol defined in this object or in another
    real file's object that names no address): the item holding the target must have
    byte-identical contents at retail's target. The item is the data symbol covering the
    offset; in a mergeable section the constant entry or the string through its NUL; otherwise
@@ -87,10 +93,71 @@ MIPS (HI16 with the next LO16 against the same symbol). They resolve by these ru
    maps to one retail address per run; two addresses make every function that relied on it
    BADREF.
 
-Rules 4 and 5 go beyond the brief's list (named addresses, tags, object data). Both are proofs
-from tool output, not names taken on trust. `score.py --json` lists the rules each EXACT
-function used (`rules`), so the functions that depend on them can be counted and set aside if
-the owner rules them out.
+Rules 4 (`library`) and 6 (`import`) go beyond the brief's list and are not yet ruled on.
+Rule 5 (`libsyms`) is the owner's ruling. `score.py --json` lists the rules each EXACT function
+used (`rules`), so the functions that depend on each can be counted and set aside.
+
+### Proven library symbols (`tools/analysis/libsyms.py`, `config/us/libsyms.csv`)
+
+The owner's rule: the address of a library symbol that `libfuncs.csv` does not identify is
+proven when both of these hold:
+- every reference to it, in functions that are otherwise EXACT, agrees on one retail address;
+- the retail function at that address closely matches the reference library's copy of the symbol.
+
+The first side is collected by `score.py` in a collection mode. In it, references to
+reference-library symbols are recorded instead of failed, and the function is PENDING, never
+EXACT. `libsyms.csv` is not used while collecting.
+
+**What "closely matches" means, from what actually differs.** For the symbols with call sites,
+the retail function was compared word by word (relocated fields masked) with every reference
+copy in psp-gcc 1.3.1 and 1.7.1 (site counts are in `config/us/libsyms.csv`):
+
+| Symbol | Retail against reference |
+|---|---|
+| `_Unwind_Resume`, `operator delete`, `operator delete[]`, `free`, `malloc`, `iprintf`, `__cxa_call_unexpected` | identical to the 1.3.1 copy |
+| `operator new` (`_Znwj`) | one difference: the reference's `li v0,1` + `movz s0,v0,a0` (size 0 becomes 1) is retail's `bnez a0` + `li s0,1`; the other words of that window are the same, reordered by the delay-slot filler |
+| `__gedf2` | one word: the value returned for NaN. Retail 0x164c48 is word for word the reference `__ltdf2` (and `__eqdf2`, `__ledf2`, `__nedf2`, which share its body) |
+| `__ltdf2` | the mirror image: retail 0x164bc0 is the reference `__gedf2`/`__gtdf2` |
+| `__truncdfsf2` | 31 words against 30: the reference's store-flag `sltu`/`or` for the sticky bit is a branch in retail, with another register and one store moved |
+| `__si_class_type_info::__do_dyncast` (a vtable slot) | 40 words against 39: the reference's `movn` is store-flag arithmetic (`sltu`/`negu`/`and`/`addiu`) in retail, and a `bne` becomes `bnel` |
+
+Retail `.text` has no `movz`/`movn` (docs/COMPILER.md), so a reference copy that uses one cannot
+appear in retail unchanged. The rule therefore accepts:
+- **exact**: every word and relocation type equals a reference copy;
+- **cmov**: equal outside one window, inside which the words differ by exactly the idiom
+  `li T,K` + `movz D,T,C` (reference) for `bnez C` + `li D,K` (retail), or `movn`/`beqz`.
+  The branch must skip exactly that `li`, which is not in its delay slot. The window's other
+  words must be the same multiset. `T` must not be read after the `movz` before it is written
+  or a call clobbers it.
+
+It refuses everything else. That includes a retail function that is an exact copy of a
+different reference symbol and not of this one; this is what refuses the `__gedf2`/`__ltdf2`
+pair, which a count of equal words (33 of 34) would have accepted. The store-flag substitutes
+in `__truncdfsf2` and `__do_dyncast` are compiler differences of the same family. They are not
+the branch idiom, though, and nothing here proves them equivalent, so they are refused and
+listed.
+
+**Data.** A library data symbol is accepted on the same two sides. All references agree on one
+address. The retail bytes there have the reference symbol's relocations (same type, same
+offsets) and equal bytes elsewhere. Every relocated slot's retail target closely matches the
+reference's target symbol (code by the code rule, data recursively). The two libsupc++
+typeinfo vtables that class typeinfo points at, `__class_type_info` and
+`__si_class_type_info`, agree at every site. Both are refused all the same, because
+their `__do_dyncast` slot is refused (above). They are listed in the data part of the CSV.
+
+`libsyms.py --selftest` plants one call site of `free` pointing at `malloc`'s address. `free`
+is then refused with 1 disagreeing site, and no other row changes. `libsyms.py --check`
+rebuilds the CSV and compares it; `validate.py` runs both.
+
+## hilo.py's join
+
+`hilo.py` used to join paths on which `lui` last wrote a register. A loop that reloads the same
+high half with a second `lui` therefore lost it: in 0x0d3b2c the back edge's delay slot repeats
+`lui v1,0xa`, so the LO16 at word 12 (0x0d3b5c) was unrecovered. It now joins on the loaded
+value (the same immediate and the same base segment). Its self-test checks 0x0d3b5c against
+the proven pair at 0x0d3b38: the address join misses it, and the value join gives 0x254330. It
+also checks that no target the address join recovered changes. Recovered LO16s go from 2,674
+to 2,799 of 2,908, with none changed. (`docs/DENOMINATOR.md` still quotes 2,674.)
 
 ## sbs.py: the working diff
 
@@ -135,7 +202,8 @@ itself.
 ## validate.py
 
 Runs, with times: `reference` (six MD5s), `tags`, `attribution` (tracked files and this
-branch's commit messages), `compiler` (the 60 control functions: size, words and relocation
+branch's commit messages), `libsyms` (`libsyms.csv` is what `libsyms.py` builds now; it went red
+once, rightly, when the `hilo.py` fix raised the site counts), `compiler` (the 60 control functions: size, words and relocation
 types equal, which is what pins the compiler; EXACT is printed beside it), `image`, `tiers`,
 and `faults`. Red if any gate is red. From a fresh clone after `./setup.sh`: 26 s with no
 compile cache, 12 s cached.
@@ -178,6 +246,9 @@ caught commit-msg with an attribution trailer: exit 1
 caught tags: missing WHAT IT DOES and an address tagged twice
 faults GREEN 12.12 s 10/10 caught; src/ and config/ unchanged
 ```
+
+Added later, with libsyms: fault 8, one call site of `free` pointed at `malloc`, is caught
+by `libsyms.py --selftest` (free refused, 1 disagreeing site, no other row changed).
 
 Fault 1 is `D_1d5a80 = 1` written as `(&D_1d5a80)[1] = 1`: the same instructions with the
 target 4 bytes on. The forced placement puts the faulty function into the image with its
@@ -229,13 +300,12 @@ address tagged twice`.
 
 ## Open questions (not settled by analysis)
 
-- **References that no tool output can resolve.** Library functions that `libfuncs.csv` does not
-  identify (for example `_Unwind_Resume`, `operator new`/`delete`, `malloc`, `free`, `iprintf`,
-  soft-float helpers), the libsupc++ typeinfo vtables that every class typeinfo points at, C++
-  methods that no tag claims, and LO16s whose high half `hilo.py` does not recover. Each makes
-  its function BADREF, so the image gate is red. `score.py --tree` lists them with the first
-  failing reference.
-- **`hilo.py`'s join.** Its data flow joins states by `lui` address, so a loop that reloads the
-  same high half by a second `lui` loses it (for example 0x0d3b2c, word 12). Joining on the
-  value would recover these; that is `hilo.py`'s to change.
-- **Whether rules 4 and 5 (library symbols, import NIDs) are accepted** as proof of a target.
+- **References that no tool output resolves.** Library symbols that `libsyms.py` refuses (the
+  typeinfo vtables, `__truncdfsf2`, the swapped `__gedf2`/`__ltdf2`), C++ methods that no tag
+  claims, and LO16s whose high half `hilo.py` still does not recover. Each makes its function
+  BADREF, so the image gate is red. `score.py --tree` lists them with the first failing
+  reference.
+- **Whether the store-flag substitutes for a conditional move are accepted** as "closely
+  matches" (they decide `__truncdfsf2` and both typeinfo vtables).
+- **Whether rules 4 and 6 (libfuncs.csv symbols, import NIDs) are accepted** as proof of a
+  target.
