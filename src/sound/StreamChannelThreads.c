@@ -34,14 +34,23 @@ struct StreamChan {
 
 struct StreamFile {
     char m0[16];
-    short m16;
+    unsigned short m16;
     char m18[14];
     int m32;
     char m36[8];
     signed char m44;
     char m45[3];
     int m48;
-    char m52[32];
+    int m52;
+    int m56;
+    int m60;
+    unsigned short m64;
+    unsigned short m66;
+    int m68;
+    int m72;
+    unsigned short m76;
+    char m78[2];
+    int m80;
     int m84;
     int m88;
     int m92;
@@ -51,7 +60,7 @@ struct StreamFile {
     int m108;
     int m112;
     int m116;
-    char m120[4];
+    int m120;
     int m124;
     int m128;
     int m132;
@@ -61,6 +70,10 @@ struct StreamFile {
     int m152;
     char m156[20];
     float m176;
+    char m180[4];
+    char *m184;
+    char *m188;
+    char *m192;
 };
 
 struct SasSlot {
@@ -80,6 +93,10 @@ extern struct StreamFile D_291980;
 extern int D_291a0c;
 
 int f_110630(int t, int level);
+int f_111900(int ch, int a1);
+int f_1112b0(int ch, int ms);
+int f_111f98(int ch);
+int sceIoLseekAsync(int fd, long long offset, int whence);
 int f_110f58(int stream, const char *name, int id);
 int f_1117d0(int stream, const char *name, int id, int fade);
 int f_1113e4(int stream, void *info);
@@ -197,6 +214,42 @@ int f_111b18(int unused, const char *name, int a2, int a3)
     D_291980.m136 = 0;
     D_291980.m140 = 0;
     return 0;
+}
+
+/* @implements 0x111e04 us f_111e04
+   WHAT IT DOES: The disc stream's step: in phase 2, once the two positions read by 0x111900
+   are within 2000 of each other, starts the 2000 ms fade (0x1112b0) and moves to phase 3;
+   before phase 3, a stream that is not playing is rewound to its start and its state reset.
+   Then runs the stream's reader step (0x111f98) and returns its result. */
+int f_111e04(void)
+{
+    if (D_291980.m128 == 2) {
+        int a = f_111900(0, D_291980.m52);
+        int b = f_111900(0, D_291980.m32);
+        if (a - b < 2000) {
+            f_1112b0(0, 2000);
+            D_291980.m128++;
+        }
+    }
+    if (D_291980.m128 >= 3 && D_291980.m16 == 0) {
+        sceIoLseekAsync(D_291980.m104, D_291980.m108, 0);
+        D_291980.m100 = 3;
+        D_291980.m16 = 1;
+        D_291980.m152 = -1;
+        D_291980.m176 = 1.0f;
+        D_291980.m112 = 0;
+        D_291980.m84 = 0;
+        D_291980.m96 = 0;
+        D_291980.m88 = 0;
+        D_291980.m92 = 0;
+        D_291980.m116 = 0;
+        D_291980.m124 = 0;
+        D_291980.m128 = 0;
+        D_291980.m32 = 0;
+        D_291980.m136 = 0;
+        D_291980.m132 = 0;
+    }
+    return f_111f98(0);
 }
 
 /* @implements 0x111f18 us f_111f18
