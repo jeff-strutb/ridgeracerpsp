@@ -104,6 +104,7 @@ struct Bar {
 void f_04c130(Group *g, int sprite, Bar *b, int cell);
 void f_04c1c8(Group *g, int sprite, Rgba c);
 void f_04c248(Group *g, int sprite, unsigned char on);
+void f_04c278(Group *g, int sprite, float x, float y);
 void f_04c3c8(Group *g, int sprite, float x, float y);
 void f_04c668(Group *g, int sprite, float r, float gr, float b, float a);
 void f_04d16c(Group *g, int sprite);
@@ -248,6 +249,7 @@ public:
     virtual int Draw();
     virtual int f_101b54();
     virtual void f_101f74(float t);
+    void f_1095fc(float x, float y, float t);
 
     int sprite[5];
 };
@@ -684,6 +686,61 @@ int C2DPacmanMeter::Draw()
     return 1;
 }
 
+/* @draft 0x109134 us C2DPacmanMeter8f_101b54
+   WHAT IT DOES: Updates the Pac-Man meter each frame once the start animation runs: raises
+   its two rev markers by the engine speed over its top speed (clamped to 0..1, up to 75
+   pixels), shows the road speed (km/h, or mph when the game says so) and the gear, and
+   blinks the shift lamp at the redline (dim below it). */
+int C2DPacmanMeter::f_101b54()
+{
+    float t;
+
+    if (!C2DDecorationBase::f_101b54())
+        return 0;
+    {
+        float v = D_2407fc->rpm * (1.0f / D_2407fc->maxRpm);
+
+        v = MAX(v, 0.0f);
+        t = MIN(v, 1.0f);
+    }
+    {
+        Group *g = group;
+
+        f_04c278(g, f_101f54(1), D_1d5fe8[type].r[11].x, D_1d5fe8[type].r[11].y - t * 75.0f);
+    }
+    {
+        Group *g = group;
+
+        f_04c278(g, f_101f54(2), D_1d5fe8[type].r[11].x + 82.0f,
+                 D_1d5fe8[type].r[11].y - t * 75.0f);
+    }
+    {
+        float k = 0.216f;
+
+        if (f_0937f0())
+            k *= 0.6213712f;
+        f_1080d8(6, (int)(D_2407fc->speed * k), 10.0f);
+    }
+    f_107fb0(5, D_2407fc->gear);
+    if (D_2407fc->rpm >= D_2407fc->redline) {
+        int lit = (race->clock / 50 & 8) == 0;
+        float b = lit ? 1.0f : 0.1f;
+        float v = b;
+
+        if (!m28) {
+            if (b == 0.1f)
+                v = 1.0f;
+            else
+                m28 = 1;
+        }
+        Tint(4, v);
+    } else {
+        Tint(4, 0.1f);
+        m28 = 0;
+    }
+    return 0;
+}
+
 /* @implements 0x1093e8 us C2DPacmanMeter8f_101f74
    WHAT IT DOES: Fades the meter's ten sprites in with the start animation. */
 void C2DPacmanMeter::f_101f74(float t)
@@ -710,6 +767,56 @@ int C2DRallyXMeter::f_101b1c(Group *g, Race *r)
 int C2DRallyXMeter::Draw()
 {
     return 1;
+}
+
+/* @draft 0x1094f8 us C2DRallyXMeter8f_101b54
+   WHAT IT DOES: Updates the Rally-X meter each frame once the start animation runs: fills
+   its gauge by the engine speed over its top speed (clamped to 0..1) and shows the road
+   speed (km/h, or mph when the game says so). */
+int C2DRallyXMeter::f_101b54()
+{
+    if (!C2DDecorationBase::f_101b54())
+        return 0;
+    {
+        float v = D_2407fc->rpm * (1.0f / D_2407fc->maxRpm);
+        float m = MAX(v, 0.0f);
+
+        v = MIN(m, 1.0f);
+        f_1095fc(D_1d5fe8[type].r[11].x, D_1d5fe8[type].r[11].y, v);
+    }
+    {
+        float k = 0.216f;
+
+        if (f_0937f0())
+            k *= 0.6213712f;
+        f_1080d8(2, (int)(D_2407fc->speed * k), 16.0f);
+    }
+    return 0;
+}
+
+/* @implements 0x1095fc us C2DRallyXMeter8f_1095fc
+   WHAT IT DOES: Shows the Rally-X gauge at (x, y): a 126 by 32 sprite whose cell slides
+   along its strip by t (0..1, over 315 pixels). */
+void C2DRallyXMeter::f_1095fc(float x, float y, float t)
+{
+    Corner c[4];
+    float u0, v0;
+
+    c[0].x = c[2].x = x;
+    c[0].y = c[1].y = y;
+    c[1].x = c[3].x = x + 126.0f;
+    c[2].y = c[3].y = y + 32.0f;
+    u0 = t * 315.0f;
+    v0 = 0;
+    c[0].u = c[2].u = u0;
+    c[0].v = c[1].v = v0;
+    c[1].u = c[3].u = u0 + 126.0f;
+    c[2].v = c[3].v = 32.0f + v0;
+    {
+        Group *g = group;
+
+        f_04bf6c(g, f_101f54(1), c);
+    }
 }
 
 /* @implements 0x1096a8 us C2DRallyXMeter8f_101f74
