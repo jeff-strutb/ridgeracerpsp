@@ -81,7 +81,11 @@ struct MapMgr {
     int length;         /* +12248: the course's length */
     char m12252[724];
     MapClass m12976;    /* the course's model classes */
-    char m12992[12];
+    int m12992;
+    int m12996;
+    char valid;
+    signed char replay; /* +13001: a replay is running */
+    char m13002[2];
     int frame;          /* +13004 */
     int m13008[3];
     unsigned int seed;  /* +13020 */
@@ -168,7 +172,6 @@ struct EffectMgr {
     int replay;
 };
 extern EffectMgr D_2543a0;
-extern signed char D_23fae9;
 extern "C" int f_0e4d28(EffectMgr *m, int arg, Vec4 *view, float x, float y, float z);
 
 /* A looping sound held by the shared object of type 33 (at +16). */
@@ -247,6 +250,33 @@ struct EvTimer {
     int m36;
 };
 
+/* An animation's parameter block (set up by f_0daf30 in the event data's object file). */
+struct AnimHdr {
+    int m0;
+    unsigned short frames;
+};
+struct AnimBlock {
+    AnimHdr *hdr;
+    int m4[6];
+    float time;         /* +28: the frame shown */
+    int m32;
+};
+
+/* A sampled animation key: translation, scale and rotation (65536 to the turn). */
+struct MotKey {
+    float t[3];
+    float s[3];
+    short r[3];
+    short pad;
+};
+extern "C" void f_0e0778(MotKey *k, AnimBlock *a, int b, int c);
+
+/* An angle of 65536 to the turn in radians. */
+static inline float Rad(int a)
+{
+    return (float)a * 6.2831855f * 1.52587890625e-05f;
+}
+
 /* A pigeon of the flock shared by the jobs of type 17 (128 bytes). */
 struct HatoBird {
     int state;          /* 0: perched, 1: flying, 2: animated */
@@ -254,9 +284,21 @@ struct HatoBird {
     float speed;
     float range;        /* +16 */
     float rate;         /* +20 */
-    int m24[7];
-    int m52;
+    AnimBlock anim;     /* +24 */
+    int m60;
     Matrix m;           /* +64 */
+
+    /* Back to rest at a random offset within its range, with a random speed. */
+    void Scatter()
+    {
+        state = 0;
+        speed = rate * -1.7881393432617188e-06f * D_23c820.Rand();
+        float r = range * 3.0517578125e-05f * D_23c820.Rand();
+        float a = (float)(D_23c820.Rand() * 2) * 6.2831855f * 1.52587890625e-05f * 0.63661975f;
+        x = r * VCos(a);
+        z = r * VSin(a);
+        anim.time = 0;
+    }
 };
 
 /* The shared flock of type 17 (Map::Event::CHatoWork). */
@@ -1307,7 +1349,7 @@ float CEvent32::Eval(EventWork *w)
 int CEvent32::Run(EventWork *w, int arg)
 {
     f_0e767c(D_27eac0, 2, w->ev->pos.x, w->ev->pos.y, w->ev->pos.z);
-    D_2543a0.replay = D_23fae9;
+    D_2543a0.replay = D_23c820.replay;
     return f_0e4d28(&D_2543a0, arg, D_2542a0, w->ev->pos.x, w->ev->pos.y, w->ev->pos.z);
 }
 
@@ -1343,14 +1385,11 @@ void CEvent33::Release(EventWork *w)
     f_0ec35c(&((EvLoop *)w->shared->p)->snd);
 }
 
-/* @draft 0x0d2204 us _ZN8CEvent174Eval
+/* @implements 0x0d2204 us _ZN8CEvent174Eval
    WHAT IT DOES: Takes the shared flock on the job's first frame (building it when this is the
    first taker) and, when the camera has cut, scatters every pigeon to a random offset at rest;
    once the camera passes the event's start distance, sets the perched flock flying. Scores 0.
-   Remaining difference: 4 words at the scatter loop's end. sched2 issues the reload of the
-   sine (a reload insn: the asm result is REG_EQUIV to its stack slot) before the m52 zero
-   store on priority; retail issues the store first and then the count load before the
-   multiply. */
+   The animation time it clears is a float: an int store there orders differently in sched2. */
 float CEvent17::Eval(EventWork *w)
 {
     EvHato *sh = (EvHato *)w->shared->p;
@@ -1369,7 +1408,7 @@ float CEvent17::Eval(EventWork *w)
                 float a = (float)(D_23c820.Rand() * 2) * 6.2831855f * 1.52587890625e-05f * 0.63661975f;
                 b->x = r * VCos(a);
                 b->z = r * VSin(a);
-                b->m52 = 0;
+                b->anim.time = 0;
             }
         }
     }
@@ -1696,7 +1735,7 @@ public:
     virtual void Stop();
     virtual void Reset();
 
-    int anim[9];        /* +12: its animation's parameter block */
+    AnimBlock anim;     /* +12 */
     Vec4 matrix[4];
     int m112[256];
     float m1136;        /* the animation's start time */
@@ -1705,6 +1744,22 @@ public:
     int cam;
 
     void Init();
+
+    /* Steps the animation time by the speed (wrapping when it loops, else holding at the
+       end). */
+    void Step()
+    {
+        m1136 = m1136 + m1140;
+        float last = (float)(anim.hdr->frames - 1);
+        if (last <= m1136 / 60.0f) {
+            float end = last * 60.0f;
+            if (loop)
+                m1136 = m1136 - end;
+            else
+                m1136 = end;
+        }
+        anim.time = m1136 / 60.0f;
+    }
 };
 
 /* The helicopter: a moving model of its own. */
@@ -1781,9 +1836,9 @@ public:
     virtual void Setup(::Event *e);
     virtual void Stop();
 
-    int m12;
-    int *birds;
-    int m20;
+    int count;
+    HatoBird *birds;
+    int cam;
 };
 
 /* The cows: a frame animation run forwards or backwards on cue. */
@@ -1950,8 +2005,8 @@ void CEventJobWorkBase::Reset()
 void CMotWork::Init()
 {
     int id = *f_0dad68(ev, 0xe0, 0);
-    memset(anim, 0, sizeof anim);
-    f_0daf30(anim, f_0d8114(D_23c820.Classes(), id));
+    memset(&anim, 0, sizeof anim);
+    f_0daf30(&anim, f_0d8114(D_23c820.Classes(), id));
     int n = (ev->flags & 0x3800) >> 11;
     if (n < 2)
         m1136 = 0;
@@ -1973,6 +2028,39 @@ void CMotWork::Init()
 void CMotWork::Reset()
 {
     m1136 = 0;
+}
+
+/* @implements 0x0d3ff0 us _ZN3Map5Event9CHeliWork6Update
+   WHAT IT DOES: While any job holds it, turns its four bobbing angles and (outside replays)
+   steps its animation and builds its matrix: the key's translation lifted by a bob of 150,
+   the key's rotation with an extra sway about y, and the key's scale. The replay flag is the
+   map manager's member (+13001): as a scalar global, alias analysis lets sched1 hoist its
+   load above the angle stores. The keys are plain locals (through a pointer parameter they
+   take a saved register). */
+void CHeliWork::Update()
+{
+    if (ref == 0)
+        return;
+    angle = (angle - 7827) & 0xffff;
+    m1156 = (m1156 - 4187) & 0xffff;
+    m1160 = (m1160 + 236) & 0xffff;
+    m1164 = (m1164 + 509) & 0xffff;
+    if (D_23c820.replay)
+        return;
+    MotKey k0, k1;
+    Step();
+    f_0e0778(&k0, &anim, 0, 0);
+    f_0e0778(&k1, &anim, 0, 1);
+    f_028c70();
+    f_02842c();
+    f_0287cc(k0.t[0], k0.t[1] + VSin(Rad(m1164) * 0.63661975f) * 150.0f, k0.t[2]);
+    f_02853c(Rad(k1.r[2]));
+    f_0284fc(Rad(k1.r[1]));
+    f_0284fc(VSin(Rad(m1160) * 0.63661975f) * 0.031459f);
+    f_0284bc(Rad(k1.r[0]));
+    f_02884c(k0.s[0], k0.s[1], k0.s[2]);
+    f_028d94((Matrix *)matrix);
+    f_028ca8();
 }
 
 /* @implements 0x0d4380 us _ZN3Map5Event10CCycleWork4Stop
@@ -2067,6 +2155,30 @@ void CLeafWork::Stop()
    WHAT IT DOES: Nothing per frame. */
 void CLeafWork::Update()
 {
+}
+
+/* @implements 0x0d4afc us _ZN3Map5Event9CHatoWork5Setup
+   WHAT IT DOES: Takes the event and builds its flock: the bird count, rate and range from the
+   event's parameters, each bird's animation from the model class the event names, each
+   scattered at rest; no camera seen yet (rate stored before range: sched2 keeps source
+   order). */
+void CHatoWork::Setup(::Event *e)
+{
+    ev = e;
+    float rate = (float)*f_0dad68(e, 0xe00000, 2);
+    float range = (float)*f_0dad68(e, 0xe00000, 3);
+    count = *f_0dad68(e, 0xe00000, 1);
+    birds = new HatoBird[count];
+    for (int i = 0; i < count; i++) {
+        HatoBird *b = &birds[i];
+        int id = *f_0dad68(e, 0xe0, 0);
+        memset(&b->anim, 0, sizeof b->anim);
+        f_0daf30(&b->anim, f_0d8114(D_23c820.Classes(), id));
+        b->rate = rate;
+        b->range = range;
+        b->Scatter();
+    }
+    cam = -1;
 }
 
 /* @implements 0x0d4d64 us _ZN3Map5Event9CHatoWork4Stop
