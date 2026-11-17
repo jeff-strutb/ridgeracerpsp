@@ -115,11 +115,15 @@ class Obj:
     def resolve(self, name):
         """Tag names are not always the exact symbol (some are unmangled or truncated, and
         _GLOBAL__I_ lacks its suffix). Exact match, else the unique symbol starting with the
-        name, else the unique symbol containing it. Returns (symbol, how) or (None, why)."""
+        name, else the unique symbol containing it. A file's static constructor and destructor
+        (_GLOBAL__I_<sym>, _GLOBAL__D_<sym>) embed another function's name, so they are
+        candidates only when the tag itself names one. Returns (symbol, how) or (None, why)."""
         if name in self.funcs:
             return name, 'exact'
+        pool = [s for s in self.funcs
+                if name.startswith('_GLOBAL__') or not s.startswith('_GLOBAL__')]
         for how, pred in (('prefix', lambda s: s.startswith(name)), ('substring', lambda s: name in s)):
-            c = [s for s in self.funcs if pred(s)]
+            c = [s for s in pool if pred(s)]
             if len(c) == 1:
                 return c[0], how
             if len(c) > 1:
@@ -195,10 +199,10 @@ def boot_path():
     return p
 
 
-def score(retail, src, wanted, ver, flags, use_defaults, selftest, out):
+def score(retail, src, wanted, ver, flags, use_defaults, selftest, out, use_file_flags=True):
     """wanted: list of (addr, name). Returns list of (addr, name, status, detail)."""
     try:
-        r = cc.compile_file(src, ver, flags, use_defaults)
+        r = cc.compile_file(src, ver, flags, use_defaults, use_file_flags=use_file_flags)
     except RuntimeError as e:
         return [(a, n, 'NOCOMPILE', str(e).strip().splitlines()[-1] if str(e).strip() else '')
                 for a, n in wanted], None
@@ -242,6 +246,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--cc', choices=sorted(cc.COMPILERS), default=None)
     ap.add_argument('--no-defaults', action='store_true')
+    ap.add_argument('--no-file-flags', action='store_true', help='ignore @cflags in the files')
     ap.add_argument('--control', help='score the functions listed in this CONTROL.md')
     ap.add_argument('--implements-only', action='store_true')
     ap.add_argument('--selftest', action='store_true')
@@ -268,7 +273,8 @@ def main():
     total = {}
     n = 0
     for src, wanted in jobs:
-        res, r = score(retail, src, wanted, a.cc, flags, not a.no_defaults, a.selftest, sys.stdout)
+        res, r = score(retail, src, wanted, a.cc, flags, not a.no_defaults, a.selftest, sys.stdout,
+                       not a.no_file_flags)
         rel = os.path.relpath(os.path.abspath(src), cc.REPO)
         for addr, name, st, det in res:
             n += 1

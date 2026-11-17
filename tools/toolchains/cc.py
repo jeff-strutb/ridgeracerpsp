@@ -20,7 +20,8 @@ Usage:
     cc.py --close                         stop the shared SSH connection
 
 Flags: the command-line flags, then any `/* @cflags: ... */` in the file, are appended to the
-pinned defaults (docs/COMPILER.md). `--no-defaults` drops the pinned defaults. Outputs go to
+pinned defaults (docs/COMPILER.md). `--no-defaults` drops the pinned defaults and
+`--no-file-flags` ignores the file's @cflags. Outputs go to
 build/cc/<ver>/<path under repo, extension dropped>.{s,o}; both are deleted before anything
 else, so a failed compile never leaves a stale result. Results are cached in build/cc-cache/
 by a hash of the compiler identity, the flags, the source path and bytes, and the bytes of
@@ -70,8 +71,8 @@ for _v in ('1.3.1', '1.7.1'):
                                      driver='tc/%s-nocmov/bin/psp-gcc' % _v)
 
 # Pinned compiler and default flags (docs/COMPILER.md says why).
-DEFAULT_CC = '1.3.1'
-DEFAULT_FLAGS = []
+DEFAULT_CC = '1.3.1-nocmov'
+DEFAULT_FLAGS = ['-O2']
 
 CFLAGS_RE = re.compile(r'/\*\s*@cflags:\s*(.*?)\s*\*/')
 INCLUDE_RE = re.compile(r'^\s*#\s*include\s*([<"])([^>"]+)[>"]', re.M)
@@ -194,7 +195,8 @@ def outputs_for(src_rel, ver):
     return base + '.s', base + '.o'
 
 
-def compile_file(src, ver=None, flags=(), use_defaults=True, use_cache=True, verbose=False):
+def compile_file(src, ver=None, flags=(), use_defaults=True, use_cache=True, verbose=False,
+                 use_file_flags=True):
     """Compile src; return dict(s=path, o=path, flags=[...], cached=bool, seconds=float).
     Raises RuntimeError with the compiler's messages on failure."""
     t0 = time.time()
@@ -212,7 +214,8 @@ def compile_file(src, ver=None, flags=(), use_defaults=True, use_cache=True, ver
     os.makedirs(os.path.dirname(s_out), exist_ok=True)
 
     text = open(src, encoding='latin-1').read()
-    all_flags = (list(DEFAULT_FLAGS) if use_defaults else []) + list(flags) + file_flags(text)
+    all_flags = ((list(DEFAULT_FLAGS) if use_defaults else []) + list(flags) +
+                 (file_flags(text) if use_file_flags else []))
     headers = set()
     local_includes(src, headers)
     files = [src] + sorted(headers)
@@ -293,6 +296,7 @@ def main():
     ap.add_argument('--cc', choices=sorted(COMPILERS), default=None)
     ap.add_argument('--no-cache', action='store_true')
     ap.add_argument('--no-defaults', action='store_true')
+    ap.add_argument('--no-file-flags', action='store_true', help='ignore @cflags in the file')
     ap.add_argument('-v', '--verbose', action='store_true')
     ap.add_argument('src', nargs='?')
     ap.add_argument('flags', nargs=argparse.REMAINDER)
@@ -306,7 +310,8 @@ def main():
     if not a.src:
         ap.error('give a source file')
     try:
-        r = compile_file(a.src, a.cc, a.flags, not a.no_defaults, not a.no_cache, a.verbose)
+        r = compile_file(a.src, a.cc, a.flags, not a.no_defaults, not a.no_cache, a.verbose,
+                         not a.no_file_flags)
     except RuntimeError as e:
         sys.stderr.write(str(e) + '\n')
         sys.exit(1)
