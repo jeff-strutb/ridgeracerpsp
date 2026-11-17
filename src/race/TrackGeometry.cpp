@@ -161,15 +161,15 @@ union Angle {
 
 extern "C" {
 float f_09a9dc(float x, float z);
-void f_099b98(Angle *a);
+Angle *f_099b98(Angle *a);
 void f_09b394(Angle a, float *x, float *y);
 }
 
-/* @draft 0x0b1a78 us f_0b1a78
+/* @implements 0x0b1a78 us f_0b1a78
    WHAT IT DOES: Turns both points by the negated heading of the first point (its angle about
    the origin, wrapped and applied as a rotation to each), then returns whether the second point
    lies at a negative x, or the first's x is less than the second's.
-   Remaining difference: 8 of 44 words differ, from +0x0c: the float arguments are loaded from the first point before the struct copies, and retail stores the copies in the order y, y, x, x. */
+   f_099b98 returns its argument; with that prototype v0 stays live across the call as in retail. */
 int f_0b1a78(const Vec2 *a, const Vec2 *b)
 {
     Vec2 p = *a;

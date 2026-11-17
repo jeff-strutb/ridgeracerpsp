@@ -92,7 +92,7 @@ void f_0ae9f8(CarPhys *p);
 void f_0a6fac(void);
 void f_0a6fac_p(CarPhys *p) __asm__("f_0a6fac");
 void f_0a6f88(CarPhys *p);
-void f_099b98(void *p);
+void *f_099b98(void *p);
 float f_0af380(const float *a, const float *b);
 short f_0aff7c(void *t, const float *v);
 short f_0af788(void *t, const float *v);
@@ -317,9 +317,9 @@ extern "C" void f_0a85b4(CarPhys *p)
     p->m104 = f_0af5e8(s, &p->m92);
 }
 
-/* @draft 0x0a862c us f_0a862c
+/* @implements 0x0a862c us f_0a862c
    WHAT IT DOES: Copies the car's position and height to their stored copies, updates the car's mode flag from its index and runs the matching step.
-   Remaining difference: 2 of 33 words: retail loads m104 into v1 (the 2 for the store goes into v0 in the bltz slot); this loads it into v0. Not the return type, a predicate, a local, a status variable or a goto (all tried). */
+   f_099b98 returns its argument; with that prototype v0 stays live across the call as in retail. */
 extern "C" void f_0a862c(CarPhys *p)
 {
     p->m24 = p->m16;
