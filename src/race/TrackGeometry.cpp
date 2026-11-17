@@ -1768,12 +1768,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
     }
 
     /* The final slide and the contact data. */
-    pA = 0.0f;
-    pB = 0.0f;
-    D.a[0] = 0.0f;
-    D.a[1] = 0.0f;
-    D.a[2] = 0.0f;
-    D.a[3] = 0.0f;
+    D.a[3] = D.a[2] = D.a[1] = D.a[0] = pA = pB = 0.0f;
     if (result == 0)
         return 0;
     {
