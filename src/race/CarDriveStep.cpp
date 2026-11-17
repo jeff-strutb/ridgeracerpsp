@@ -31,7 +31,7 @@ void f_0bbcb0(void *sub, int a, float x, float y);
 void f_0bb840(void *sub, int a, int b, int c);
 void f_0bc240(void *sub, int v);
 void f_0fd6f8(void *car);
-void f_0fd80c(void *car);
+void f_0fd80c(void *car, void *bits);
 float f_0e26dc(void *obj, float x);
 void f_0e2d10(void *obj, float *a, float *b, float *c, float x, float y);
 void f_0a5e1c(void *v, float len);
@@ -143,6 +143,139 @@ extern "C" void f_0fd6f8(void *car)
         WR(d, 36) = 1;
 }
 
+/* @draft 0x0fd80c us f_0fd80c
+   WHAT IT DOES: The drive step of the second drive state. When the flag at +968 is set the
+   angle at +912 is turned toward +1108 (by a rate that depends on whether +1136 and +1108 have
+   opposite signs and on the spec's time step); in a high gear (+1020 above 1) it is also pulled
+   back while the car is nearly straight. The angle is clamped to 3 degrees either way. The
+   ground term at +916 and the sub-block's grip at +24 are set from the slope helper (f_0fe064
+   and f_0c2bd0) and the car's lean, the drive state is dropped to 0 (grip 1.0) whenever the car
+   is slow, straight or not steering, the slip ratio at +10092 is formed from the yaw against the
+   spec's angle and scaled by the speed, and the boost at +10048 is raised with the speed curve
+   at +7800..+7812 (up to 300).
+   Remaining difference: control flow, frame and block order match; FP register allocation
+   differs. In the pull-back block cse1 replaces the add's +912 load with the first load's
+   pseudo, so a copy (mov.s) of the gcse reaching register survives where retail uses f3
+   directly; the slope term and the yaw block schedule their constant loads earlier, which
+   moves the values to other FP registers (80 words). */
+extern "C" void f_0fd80c(void *car, void *bits)
+{
+    char *ph = (char *)car + 5792;
+    char *d = (char *)car + 7092;
+    char *s = (char *)car + 7816;
+    char *s2 = (char *)car + 7996;
+    char *q = *(char **)(s2 + 52);
+    char *p = *(char **)(d + 48);
+    if (HR(ph, 968) != 0) {
+        if (FR(ph, 1136) < 0.0f ? 0.0f < FR(ph, 1108) : FR(ph, 1108) < 0.0f) {
+            if (0.0166666675f < FR(q, 16))
+                FR(ph, 912) = FR(ph, 912) + FR(ph, 1108) * 0.0166666675f * FR(car, 9892) * 0.1f;
+            else
+                FR(ph, 912) = FR(ph, 912) + FR(ph, 1108) * 0.1f;
+        } else {
+            FR(ph, 912) = FR(ph, 912) + FR(ph, 1108) * FR(p, 24) * 0.0166666675f * FR(car, 9892);
+        }
+    }
+    float w;
+    if (WR(ph, 1020) > 1) {
+        w = FR(ph, 912) * 0.0166666675f * FR(p, 36) * FR(s, 36);
+        float a = FR(ph, 1136);
+        if (FR(ph, 1136) < 0.0f)
+            a = -FR(ph, 1136);
+        if (a < 0.785398185f) {
+            if (FR(ph, 912) < 0.0f ? 0.0f < FR(ph, 1136) : FR(ph, 1136) < 0.0f)
+                FR(ph, 912) = FR(ph, 912) + w;
+        }
+    }
+    FR(ph, 912) = FR(ph, 912) < 0.0523598827f ? FR(ph, 912) : 0.0523598827f;
+    FR(ph, 912) = -0.0523598827f < FR(ph, 912) ? FR(ph, 912) : -0.0523598827f;
+    w = f_0c2bd0(f_0fe064(car, 2), FR(ph, 964));
+    if (WR(ph, 1020) != 0) {
+        if (0.0f < FR(p, 36)) {
+            float a = FR(ph, 1136);
+            if (a < 0.0f)
+                a = -a;
+            a = a < 0.785398185f ? a : 0.785398185f;
+            float t = a / 1.57079637f;
+            float k = (1.0f - FR(p, 20)) + t * FR(p, 20);
+            FR(ph, 916) = w * 0.0166666675f * FR(p, 16) * k;
+            FR(s, 24) = (0.5f - t) + 0.2f;
+        } else {
+            float t = (FR(ph, 1088) + 1.0f) * 0.5f;
+            float k = (1.0f - FR(p, 20)) + t * FR(p, 20);
+            FR(ph, 916) = w * 0.0166666675f * FR(p, 16) * k;
+            FR(s, 24) = 1.0f;
+        }
+    } else {
+        WR(ph, 916) = 0;
+    }
+    if (WR(ph, 1140) == 0) {
+        float a = FR(ph, 912);
+        if (a < 0.0f)
+            a = -a;
+        if (a < FR(s2, 24) * 0.1f) {
+            if (1.38889003f < FR(ph, 1096)) {
+                WR(d, 4) = 0;
+                FR(s, 24) = 1.0f;
+            }
+        }
+        float k = (float)*(signed char *)bits;
+        if (k < 0.0f)
+            k = -k;
+        if (k <= 100.0f) {
+            float b = FR(ph, 1136);
+            if (b < 0.0f)
+                b = -b;
+            if (b < FR(s2, 24)) {
+                WR(d, 4) = 0;
+                FR(s, 24) = 1.0f;
+            }
+        }
+        if (FR(ph, 1096) < 27.7800007f) {
+            WR(d, 4) = 0;
+            FR(s, 24) = 1.0f;
+        }
+    }
+    if (FR(ph, 1096) < 2.77778006f) {
+        WR(d, 4) = 0;
+        FR(s, 24) = 1.0f;
+    }
+    float y = FR(ph, 1136);
+    if (y < 0.0f)
+        y = -y;
+    if (1.57079637f <= y)
+        y = 3.14159274f - y;
+    float lim = FR(p, 8) * 3.14159274f / 180.0f;
+    FR(car, 10092) = (y - lim) / lim + 0.4f;
+    float m;
+    if (27.7777996f < FR(ph, 1096))
+        m = 1.0f;
+    else if (FR(ph, 1096) < 13.8888998f)
+        m = 0.0f;
+    else
+        m = FR(ph, 1096) * 0.8f * 0.0359999985f + 0.2f;
+    FR(car, 10092) = FR(car, 10092) * m;
+    FR(car, 10092) = 0.0f < FR(car, 10092) ? FR(car, 10092) : 0.0f;
+    FR(car, 10092) = FR(car, 10092) < 1.0f ? FR(car, 10092) : 1.0f;
+    int st = WR(car, 10044);
+    if (st == 0 || st == 3) {
+        float v = FR(ph, 1096);
+        float g;
+        if (v < FR(car, 7808)) {
+            g = FR(car, 7812);
+        } else if (FR(car, 7804) < v) {
+            g = 1.0f;
+        } else {
+            float t = v - FR(car, 7808);
+            if (!(0.0f < t))
+                t = 0.0f;
+            g = FR(car, 7812) + (1.0f - FR(car, 7812)) * (t * FR(car, 10080));
+        }
+        FR(car, 10048) = FR(car, 10048) + FR(car, 7800) * g;
+        FR(car, 10048) = FR(car, 10048) < 300.0f ? FR(car, 10048) : 300.0f;
+    }
+}
+
 /* @implements 0x0fe8a4 us f_0fe8a4
    WHAT IT DOES: The car's drive step: clears the drive bits when the timer at +9912 is
    negative, runs the sub-step f_0fe674, updates the tyre sub-block with the bits, runs the
@@ -214,7 +347,7 @@ extern "C" void f_0fdee0(void *car, void *bits)
     if (WR(d, 4) == 0)
         f_0fd6f8(car);
     else if (WR(d, 4) == 1)
-        f_0fd80c(car);
+        f_0fd80c(car, bits);
     if (WR(car, 10088) == 1)
         FR(car, 10048) = 300.0f;
 }
