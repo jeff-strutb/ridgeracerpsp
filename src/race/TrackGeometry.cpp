@@ -894,7 +894,7 @@ struct Flag {
    where retail has base addressing. The k loop reads o->m4->n in its test and in the modulus
    (no local n): gcse replaces the fully redundant in-loop loads with copies of the reaching
    register, which are retail's move a1,v1 / move t0,v1 and the in-loop move a1,t0. Still
-   different here: retail re-forms ep after the loop (addu s1,t2,s1);
+   different here: (the block after the k loop re-forms ep, as retail's addu s1,t2,s1);
    after the loop retail computes both V464 differences into $f0/$f1 and copies them to the
    argument registers, where this computes x straight into $f13.
    Open: the second look's xi selection. Retail keeps xi = V464.x inline and puts both other
@@ -1314,6 +1314,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                             break;
                         }
                         if (k < o->m4->n) {
+                            float *ep = &pts[jj0].x;
                             V1904.x = 0.0f;
                             bestLen2 = V1904.x;
                             V1904.y = 0.0f;
