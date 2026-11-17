@@ -1078,6 +1078,54 @@ int C2DPositionTour::Draw()
     return 1;
 }
 
+/* @draft 0x103ea4 us C2DPositionTour8f_101b54
+   WHAT IT DOES: Once the start animation is over, shows the tour position: while the player
+   is behind the lap count of the leader (0x0f6420) the two ring sprites pulse with the clock's
+   low phase and the position blinks; otherwise they are plain white. Returns 0.
+   Remaining difference: retail keeps 0.5 in two saved FPRs (f20 and a copy in f22, used for
+   the add) and 1.0 in f21 in the pulse arm (frame +4 bytes, one more saved FPR); here the
+   copy is folded away (416 bytes against 436). */
+int C2DPositionTour::f_101b54()
+{
+    if (!C2DDecorationBase::f_101b54())
+        return 0;
+    if (Starting())
+        return 0;
+    int blink = 0;
+    RaceInfo *ri = D_2407fc;
+    float b = 0.5f;
+
+    if (ri->position < f_0f6420(race)) {
+        float half = b;
+
+        b = race->clk.lo * b + half;
+        blink = 1;
+        {
+            Group *g = group;
+
+            f_04c668(g, f_101f54(4), b, b, b, 1.0f);
+        }
+        {
+            Group *g = group;
+
+            f_04c668(g, f_101f54(5), b, b, b, 1.0f);
+        }
+    } else {
+        {
+            Group *g = group;
+
+            f_04c668(g, f_101f54(4), 1.0f, 1.0f, 1.0f, 1.0f);
+        }
+        {
+            Group *g = group;
+
+            f_04c668(g, f_101f54(5), 1.0f, 1.0f, 1.0f, 1.0f);
+        }
+    }
+    f_103820(D_2407fc->position + 1, D_2407fc->cars, blink);
+    return 0;
+}
+
 /* @implements 0x104114 us C2DLap4Draw
    WHAT IT DOES: Nothing to draw here; returns 1. */
 int C2DLap::Draw()
