@@ -110,7 +110,7 @@ void f_0823f0(int n, CamCtrl::CView *v);
 float f_0cd3cc(float a);
 CamCtrl::Angle *f_099b98(CamCtrl::Angle *);
 void f_09b394(CamCtrl::Angle a, float *x, float *y);
-void f_09c720(CamCtrl::Vec4 *o, void *m, CamCtrl::Vec4 *v);
+CamCtrl::Vec4 f_09c720(void *m, CamCtrl::Vec4 *v);
 CamCtrl::M34 *f_09ff44(CamCtrl::M34 *m);
 float f_09a9dc(float y, float x);
 CamCtrl::M34 *f_0a082c(CamCtrl::M34 *m, CamCtrl::Angle a, int i, int j);
@@ -246,8 +246,7 @@ void CCamCarCheck::f_07f5e8()
     Vec4 v(0.0f, 0.0f, -dist, 1.0f);
     f_09b394(Rad(pitch).a, &v.y, &v.z);
     f_09b394(Rad(yaw).a, &v.z, &v.x);
-    Vec4 t;
-    f_09c720(&t, &Car()->q, &v);
+    Vec4 t = f_09c720(&Car()->q, &v);
     v = t;
     v.x += Car()->pos.x;
     v.y += Car()->pos.y;
