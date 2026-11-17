@@ -758,12 +758,17 @@ struct MapMgr2 {
 };
 extern MapMgr2 D_23c820;
 
-/* The rotation helper used all over the body: wrap the angle, then rotate (x, y) by it. */
+/* The rotation helper used all over the body: wrap the angle, then rotate (x, y) by it.
+   The angle temporary is reached through a pointer (as an inlined member call's this would
+   be): t itself is a register local turned into ADDRESSOF, which never gets a pseudo as a call
+   argument, but the pointer is a pseudo, so cse1 hands f_099b98 that pointer and loop.c hoists
+   it out of loops (retail's addiu s2,sp,2120 before the outline loop, move a0,s2 inside). */
 static inline void Rot(float ang, float *x, float *y)
 {
     Angle t;
-    t.a = ang;
-    f_099b98(&t);
+    Angle *p = &t;
+    p->a = ang;
+    f_099b98(p);
     f_09b394(t, x, y);
 }
 
@@ -902,12 +907,6 @@ struct Flag {
    keeps xi = V464.x inline with the rest of the chain out of line, as retail does.
    Layout aids with no counterpart in the original: the two unused angle locals (retail leaves
    a hole of two slots after the first outline loop) and the packed scratch array tt.
-   Rot's angle temporary: here it is a register local that ADDRESSOF puts on the stack, so its
-   address is set straight into a0 (addiu a0,sp,2120 inside the loop) and loop.c never sees a
-   movable; retail has the address in a pseudo that loop.c hoists (addiu s3,sp,2120 before the
-   outline loop, move a0,s3 inside). Declaring the temporary in the calling block (a macro Rot)
-   changes nothing: 3.3's expand_decl gives every addressable non-BLKmode local the same
-   register + ADDRESSOF treatment. What gives retail the pseudo is not yet known.
    Retail also reads a stale vector in the slide's second box (V1808 is the leftover of the
    last cull iteration); that is kept here as in retail. */
 extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, float *out4,
