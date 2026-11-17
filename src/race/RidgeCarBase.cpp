@@ -27,7 +27,7 @@ float f_0a65c4(void *v);
 void f_0bc954(void *o, float a, float b, float c, float d, float e, float g, float h);
 void f_0a6d4c(void *out, void *m, void *v);
 void f_0be874(void *list, void *car);
-void f_099b98(float *a);
+float *f_099b98(float *a);
 void f_0a5e1c(void *v, float len);
 
 void f_0e2f9c(void *m, float a, float b, int i, float *o1, float *o2);
@@ -458,14 +458,13 @@ extern "C" int f_0b9b8c(void *cp)
     return r;
 }
 
-/* @draft 0x0bb154 us f_0bb154
+/* @implements 0x0bb154 us f_0bb154
    WHAT IT DOES: Builds a vector from the car's words at +144, +148 and +152 (the last two
    negated, the w component 1.0), normalises it to length 0.001 with f_0a5e1c and stores it in
    the physics record. Then stores the truncated word at +2144 into the record at +428, adds the
    word at +980 of the record to the float at +4 of the record, and writes the result of
-   f_099b98 on the word at +2136 to +20 of the record.
-   Remaining difference: retail reloads the word at +5796 after the three copies and keeps the
-   truncated word in $f2; this build loads +5796 early and uses $f3 (18 of 51 words differ). */
+   f_099b98 on the word at +2136 to +20 of the record. The record words are copied as
+   the float/int union, so the reload of +5796 (the record's second word) stays after them. */
 extern "C" void f_0bb154(void *cp)
 {
     char *c = (char *)cp;
@@ -478,11 +477,11 @@ extern "C" void f_0bb154(void *cp)
     v[2].f = -v[2].f;
     v[3].f = 1.0f;
     f_0a5e1c(v, 0.001f);
-    INT(ph, 0) = v[0].i;
+    ((FloatBits *)ph)[0] = v[0];
     int k = (int)FLT(c, 2144);
-    INT(ph, 12) = v[3].i;
-    INT(ph, 4) = v[1].i;
-    INT(ph, 8) = v[2].i;
+    ((FloatBits *)ph)[3] = v[3];
+    ((FloatBits *)ph)[1] = v[1];
+    ((FloatBits *)ph)[2] = v[2];
     FLT(c, 5796) = FLT(c, 5796) + FLT(c, 6772);
     INT(ph, 428) = k;
     FloatBits t;
