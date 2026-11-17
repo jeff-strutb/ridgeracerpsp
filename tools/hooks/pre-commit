@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+"""Refuse a commit whose staged sources carry an @implements that is not EXACT under
+tools/score.py, a tag without a WHAT IT DOES paragraph, an address tagged twice outside
+src/control/, or AI-attribution text in any added line.  See hookcheck.py."""
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hookcheck  # noqa: E402
+sys.exit(hookcheck.pre_commit())

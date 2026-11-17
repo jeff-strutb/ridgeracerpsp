@@ -160,11 +160,14 @@ def parse_tags(path, text=None):
     return tags, problems
 
 
-def is_real(path):
-    """A real translation unit: a source file under src/ but not under src/control/."""
-    rel = Path(relpath(path))
-    return (len(rel.parts) > 1 and rel.parts[0] == 'src' and rel.parts[1] != 'control'
-            and rel.suffix in SOURCE_SUFFIXES)
+def is_real(path, src=SRC):
+    """A real translation unit: a source file under src (default <repo>/src) but not under
+    its control/ folder."""
+    try:
+        rel = Path(path).resolve().relative_to(Path(src).resolve())
+    except ValueError:
+        return False
+    return len(rel.parts) > 1 and rel.parts[0] != 'control' and rel.suffix in SOURCE_SUFFIXES
 
 
 def source_files(root=SRC):
@@ -480,10 +483,10 @@ def nid_of(name):
 class Unit:
     """One compiled source file: its object, its tags and which symbol each tag claims."""
 
-    def __init__(self, path, res, text):
+    def __init__(self, path, res, text, src=SRC):
         self.path = Path(path)
         self.rel = relpath(path)
-        self.real = is_real(path)
+        self.real = is_real(path, src)
         self.res = res
         self.tags, self.problems = parse_tags(path, text)
         self.obj = None
@@ -548,14 +551,14 @@ class Tree:
             return p, r
         with ThreadPoolExecutor(self.jobs) as ex:
             for p, r in ex.map(job, todo):
-                self.units[p] = Unit(p, r, p.read_text(encoding='latin-1'))
+                self.units[p] = Unit(p, r, p.read_text(encoding='latin-1'), self.src)
                 if isinstance(r, dict):
                     self.times['cached' if r['cached'] else 'compiled'] += 1
         self.times['compile'] += time.time() - t0
 
     def index(self):
         if self._index is None:
-            files = [p for p in source_files(self.src) if is_real(p)]
+            files = [p for p in source_files(self.src) if is_real(p, self.src)]
             self.compile_many(files)
             funcs, data = {}, {}
             for p in files:
