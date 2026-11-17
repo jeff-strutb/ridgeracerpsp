@@ -337,10 +337,10 @@ void CCamDammyEye1::f_07f5e8()
         r->m516 = top;
         r->m508 = h;
         q->m496 = s;
-        r->m532 = (float)(g->m16 / 2 + 5);
         r->m520 = (float)nw * half;
         r->m524 = (float)h * half;
         r->m528 = (float)(g->m12 / 2 + 5);
+        r->m532 = (float)(g->m16 / 2 + 5);
     }
 }
 
