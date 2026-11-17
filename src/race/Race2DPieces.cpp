@@ -145,6 +145,7 @@ extern const Rgba D_1b07bc[];
 extern const Rgba D_1b084c[];
 extern const Rgba D_1b071c[];
 extern const float D_1b063c[][4];
+extern const float D_1b0aa8[][4];   /* the race info comments' texture rectangles */
 
 /* The info window's panel textures: for each of four panel kinds the rectangle (u, v, width,
    height) on the texture. */
@@ -1151,6 +1152,36 @@ int C2DRaceInfo::f_101b1c(Group *g, Race *r)
 int C2DRaceInfo::Draw()
 {
     return 1;
+}
+
+/* @draft 0x104620 us C2DRaceInfo8f_104620
+   WHAT IT DOES: Places comment kind's sprite centred on the screen (240, 136): its size from
+   the table row, its texture rectangle the strip row kind (28 pixels a row, 200 wide).
+   Remaining difference (24 words): the order of the sixteen corner stores (retail x1, y1,
+   u0, v0, u1, v1, x0, y0 first) and the table row in a2 rather than v1. */
+void C2DRaceInfo::f_104620(int kind)
+{
+    Corner c[4];
+    float w = D_1b0aa8[kind][2];
+    float h = D_1b0aa8[kind][3];
+    float x = 240.0f - w * 0.5f;
+    float y = 136.0f - h * 0.5f;
+    float v0 = kind * 28;
+    float v1 = kind * 28 + 28;
+
+    c[2].x = c[0].x = x;
+    c[1].y = c[0].y = y;
+    c[0].u = c[2].u = 0.0f;
+    c[0].v = c[1].v = v0;
+    c[1].x = c[3].x = x + w;
+    c[2].y = c[3].y = y + h;
+    c[1].u = c[3].u = 200.0f;
+    c[2].v = c[3].v = v1;
+    {
+        Group *g = group;
+
+        f_04bf6c(g, f_101f54(0), c);
+    }
 }
 
 /* @implements 0x104714 us C2DRaceInfoStart8f_101b1c
