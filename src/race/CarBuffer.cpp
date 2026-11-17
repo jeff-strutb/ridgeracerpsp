@@ -657,9 +657,12 @@ void CCarBufferPSP::f_0ed568()
    WHAT IT DOES: Loads the car's model, colour table, hit model and dynamics data: for the
    player's and the other cars by the record's car name ("<name>_M"), for a panel car by its
    panel type's numbered entries, and for type 0x4001 the "<record>_S" set with no dynamics.
-   DRAFT: two differences: in the car name case the table and "CarName" saved
-   registers are swapped (s3/s4), and the second dynamics lookup loads its arguments in another
-   order. */
+   DRAFT: 3 words: the panel case's second f_036a3c call ("Dyn%d") loads its arguments a3, a2,
+   a1; retail loads a1, a3, a2 (the first call, "Clut%d", already matches with the same
+   source). In sched2 the three loads have equal priority and the ready-list ranking puts them
+   in a different order at the two sites, so the deciding difference is in the surrounding
+   dependence graph, not the call's own spelling. (The column name held in a const char *
+   local, handbook row 214, fixed the s3/s4 swap.) */
 void CCarBufferPSP::f_0ed58c()
 {
     char *rec = name.rec;
@@ -668,16 +671,18 @@ void CCarBufferPSP::f_0ed58c()
     switch (m80) {
     case 1:
     case 0x1001:
-    case 0x8001:
-        sprintf(D_240768, "%s_M", f_0368e8(&D_240740, "CarName", rec, 0, 0));
+    case 0x8001: {
+        const char *col = "CarName";
+        sprintf(D_240768, "%s_M", f_0368e8(&D_240740, col, rec, 0, 0));
         mdl = f_002acc(f_005a38(D_1dd6b0, D_240768), "Mdl");
         sprintf(D_240768, "%s_M", name.rec);
         clut = f_002acc(f_005a38(D_1dd6b0, D_240768), "Clut");
-        sprintf(D_240768, "%s_M", f_0368e8(&D_240740, "CarName", name.rec, 0, 0));
+        sprintf(D_240768, "%s_M", f_0368e8(&D_240740, col, name.rec, 0, 0));
         hit = f_002acc(f_005a38(D_1dd6b0, D_240768), "Hit");
         sprintf(D_240768, "%s_M", name.rec);
         dyn = f_002acc(f_005a38(D_1dd6b0, D_240768), "Dyn");
         break;
+    }
     case 2:
     case 0x2002:
         memcpy(D_24063c, f_0368e8(&D_240740, "PanelType", rec, 0, 0), D_1a2120);
