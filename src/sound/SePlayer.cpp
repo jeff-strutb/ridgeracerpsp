@@ -14,7 +14,7 @@ void f_10c09c(unsigned short bank, unsigned short snd, short pan, int a, void *h
 void f_10c5a4(void *h);
 int f_10c764(void *h, float vol);
 int f_10c86c(void *h);
-void f_10d37c(unsigned short ch, int *state);
+int f_10d37c(unsigned short ch, int *state);
 }
 extern char D_23bb4c[];
 
@@ -218,9 +218,8 @@ int CSePlayer::f_0f6954(int i)
     return 0;
 }
 
-/* @draft 0x0f69b8 us f_0f69b8
-   WHAT IT DOES: Returns the first sound system channel whose state is not 3.
-   Remaining difference: retail reads the state into v1; here v0 (two words). */
+/* @implements 0x0f69b8 us f_0f69b8
+   WHAT IT DOES: Returns the first sound system channel whose state is not 3. */
 extern "C" int f_0f69b8()
 {
     int state = 0;
