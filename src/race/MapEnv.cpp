@@ -393,7 +393,15 @@ void CMapEnv::Free()
    half once per loop (lui s0 / lui s2 in each pre-header, loop.c's movable), while here
    GCSE's PRE turns every D_24063c high half into one reaching register (set in five
    pre-headers, live across 176 calls) that global-alloc spills, so each use gets its own lui.
-   -fno-gcse is ruled out: it breaks Update and FogAt. */
+   -fno-gcse is ruled out: it breaks Update and FogAt.
+   Diagnosed 2026-11-16 (greg/lreg dumps, gcc 3.3.3 source): the key loop's buffer address is
+   one pseudo (313: &D_24063c, hoisted by loop.c, 10 uses over 296 insns) and bs is another
+   (258: 6 uses over 87 insns). Global alloc ranks by floor_log2(uses) * freq / live length,
+   so bs wins s8 here and the address is rematerialised (lui/addiu per memcpy); retail gives s8
+   to the address and spills bs right after its load (sw a0,112(sp)), so retail's bs pseudo
+   must live longer or be used less. gcse is not skipped (its 50 MB limit is far off). The
+   D_1a211c loads are mem/s without /u: g++ 3.3 does not mark const data RTX_UNCHANGING
+   (lang_hooks.honor_readonly is off), which is why they are never CSE'd across calls. */
 void CMapEnv::Load(void *course, void *lightDb, int flip, int total)
 {
     DB::CDataBase db1;
