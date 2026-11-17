@@ -916,6 +916,11 @@ struct Flag {
    ep reloaded from it); f_0b1b28 is called through a declaration the compiler has not marked
    pure, so &ep[2] is formed in the loop as retail's addiu a2,s4,8 (a pure call's libcall note
    gives the argument a second use, and loop.c then hoists and spills it). Size now matches.
+   The cull loops write their flag through a local holding 1 (unsigned short out = 1): the 1 is
+   then set before the element address, cse cannot fold it into the sh (no nonzero-constant
+   store on MIPS), so its register lives two luids and loop.c finds it worth hoisting (retail's
+   li s5,1 / s2 / s4 before each cull loop). Folded straight into the store it lives one luid
+   and the movable test (threshold ~64 against 91 insns) rejects it.
    Open: frame 2416 against 2400 (two more spill slots than retail), global register choice.
    Retail also reads a stale vector in the slide's second box (V1808 is the leftover of the
    last cull iteration); that is kept here as in retail. */
@@ -1039,7 +1044,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
         Rot(ang, &V1824.x, &V1824.y);
         short j = i;
         i = i + 1;
-        flags[j].v = 1;
+        unsigned short out = 1;
+        flags[j].v = out;
         if (V1808.x < xlo && V1824.x < xlo)
             continue;
         if (xhi < V1808.x && xhi < V1824.x)
@@ -1129,7 +1135,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
             Rot(ang, &V1824.x, &V1824.y);
             short j = i;
             i = i + 1;
-            flags[j].v = 1;
+            unsigned short out = 1;
+            flags[j].v = out;
             if (V1808.x < xlo && V1824.x < xlo)
                 continue;
             if (xhi < V1808.x && xhi < V1824.x)
@@ -1293,7 +1300,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                 PK(i).x = e->z;
                 short j = i;
                 i = i + 1;
-                flags[j].v = 1;
+                unsigned short out = 1;
+                flags[j].v = out;
                 if (e->x < xlo && e->z < xlo)
                     continue;
                 if (xhi < e->x && xhi < e->z)
@@ -1561,7 +1569,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                 pts[jj + 1] = V1824;
                 short j = i;
                 i = i + 1;
-                flags[j].v = 1;
+                unsigned short out = 1;
+                flags[j].v = out;
                 if (V1808.x < zero && V1824.x < zero)
                     continue;
                 if (xhi < V1808.x && xhi < V1824.x)
@@ -1698,7 +1707,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                     Rot(ang, &V1824.x, &V1824.y);
                     short j = i;
                     i = i + 1;
-                    flags[j].v = 1;
+                    unsigned short out = 1;
+                    flags[j].v = out;
                     if (V1808.x < xlo && V1824.x < xlo)
                         continue;
                     if (xhi < V1808.x && xhi < V1824.x)
