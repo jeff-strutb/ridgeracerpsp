@@ -1517,14 +1517,16 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
         } else {
             Shape *s = o->m4;
             int vn = bestVert + 1;
-            V2000.x = s->v[bestVert].x + s->cx;
-            V2000.y = s->v[bestVert].y + s->cz;
+            short nx = (short)(vn % s->n);
+            float ux = s->v[bestVert].x + s->cx, uy = s->v[bestVert].y + s->cz;
+            V2000.x = ux;
+            V2000.y = uy;
             V1840 = V2000;
             V1984 = V2000;
             V448 = V2000;
-            short nx = (short)(vn % s->n);
-            V1840.y = s->v[nx].y + s->cz;
-            V1840.x = s->v[nx].x + s->cx;
+            float wy = s->v[nx].y + s->cz, wx = s->v[nx].x + s->cx;
+            V1840.y = wy;
+            V1840.x = wx;
             V1808 = V1840;
             V1984 = V1840;
             V2000 = V1840;
