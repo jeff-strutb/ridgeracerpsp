@@ -164,6 +164,10 @@ int CQue::f_0f7c44()
    REMAINING DIFFERENCE: retail keeps the result in a3 apart from the walked pointer (v1),
    restoring the zero after the print call; here the two share one register. The result
    variable's lifetime across the print call is not yet matched.
+   Tried 'Node *r = 0;' at the top (no else), keeping 'r = 0;' after the print: 15 -> 22 words.
+   The top zero and the in-loop 'move rX,v1' then match retail's shape, but the after-print
+   'r = 0' is dropped as redundant, so r crosses the call in s0. Retail kept that re-set; what
+   stops the redundancy removal is the open question. Restored.
    WHAT IT DOES: The node at a position of the list; 0 when the queue is empty or the position
    is out of range. */
 Node *CQue::f_0f7c5c(int node)
@@ -187,6 +191,10 @@ Node *CQue::f_0f7c5c(int node)
 
 /* @draft 0x0f7cc4 us f_0f7cc4
    REMAINING DIFFERENCE: the same result register difference as f_0f7c5c.
+   Diagnosis (2026-11-16): retail's 'move a3,zero' comes before the m4 load in block 0, so r
+   is born at entry and conflicts with the incoming i (a2): r takes a3 and i is copied to t0.
+   Here r is born after the tests and shares a2 with p. Same open question as f_0f7c5c (an
+   up-front 'r = 0' loses the after-print re-set); not retried here.
    WHAT IT DOES: Script i's entry of the node at a position of the list, or 0. */
 Ent *CQue::f_0f7cc4(int node, int i)
 {
@@ -209,6 +217,10 @@ Ent *CQue::f_0f7cc4(int node, int i)
 
 /* @draft 0x0f7d40 us f_0f7d40
    REMAINING DIFFERENCE: the same result register difference as f_0f7c5c.
+   Retail sets the -1 into a3 first thing (before the m4 load), so r is initialised up front
+   and lives in a3 (not v1, which holds the walked pointer). Tried 'int r = -1;' at the top
+   with 'return -1;' after the print: 13 -> 19 words (the failure path gets its own epilogue
+   and r still shares v1); restored.
    WHAT IT DOES: The number of scripts of the node at a position of the list, or -1. */
 int CQue::f_0f7d40(int node)
 {
@@ -233,6 +245,10 @@ int CQue::f_0f7d40(int node)
    REMAINING DIFFERENCE: retail indexes ents[i] and recs[i] afresh in each pass (offset register
    first) and assigns the saved registers in another order; here the entry pointer is strength
    reduced.
+   Diagnosis (2026-11-16): loop.c strength-reduces the ents[i] and recs[i] address givs here;
+   retail keeps only the destination item pointer (+20) reduced and rebuilds the other two
+   from i (sll a3,2 / sll a3,3). Retail also binds n to s1, t to s2, ents to s3, b to s4 and
+   recs to s5 (here s2, s1, s5, s3, s4). No source lever identified; no change.
    WHAT IT DOES: Stages a run of n scripts. A run already staged this frame is kept if it is
    more important, or on a coin toss if it is equally important. A run whose table says so
    first drops the queued runs of lower priority. Returns -1 if the run was not staged. */
@@ -302,6 +318,9 @@ void CQue::f_0f7f50()
    REMAINING DIFFERENCE: retail keeps the limit store before the zero result after the first
    print (its call slot stays a nop); here sched2 puts the result first and it lands in the call
    slot.
+   The failure print passes no argument in retail (its jal has no a1 setup; the %d reads the
+   a1 left from the test): 7 -> 2 words. The remaining 2 are the order above (sched1 already
+   has the zero result ahead of the store in .24.greg).
    WHAT IT DOES: Sets the queue length limit (at most 32). */
 int CQue::f_0f7f8c(short max)
 {
@@ -310,7 +329,7 @@ int CQue::f_0f7f8c(short max)
         m0 = max;
         return 0;
     }
-    f_093f90("RadioQue: Set QueMax Failed! Invalid QueMax[%d]\n", max);
+    f_093f90("RadioQue: Set QueMax Failed! Invalid QueMax[%d]\n");
     return -1;
 }
 
@@ -354,6 +373,10 @@ int CQue::f_0f8000()
    REMAINING DIFFERENCE: in the slot scan retail stores the priority before loading the serial
    (they may alias there) and keeps the array base in a3; here the serial load is hoisted above
    the store.
+   Diagnosis (2026-11-16): retail forms sp + i*4 once in a3 and stores pri and ser through it
+   (128(a3), 256(a3)), so sched1 sees a non-frame base it cannot tell apart from p->serial;
+   here each store gets a fresh 'addu vX,a2,sp' (frame base, known not to alias) and the load
+   is hoisted. Untried: a source shape that gives pri/ser one shared i-indexed base pointer.
    WHAT IT DOES: Re-sorts the queue: orders the node slots by priority, then by age (free slots
    last), and relinks the used ones into the circular list in that order, the most important
    first. */

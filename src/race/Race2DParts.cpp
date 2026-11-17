@@ -44,9 +44,9 @@ public:
     virtual int f_101f44();
     virtual void f_101f4c();
     virtual void f_101f54();
-    virtual void f_101b1c(void *group, C2DList *list);
-    virtual void Free() = 0;
-    virtual void f_101b54();
+    virtual int f_101b1c(void *group, C2DList *list);
+    virtual int Free() = 0;
+    virtual int f_101b54();
     virtual void f_101f5c();
     virtual void v9();
     virtual void v10();
@@ -64,137 +64,137 @@ public:
 class C2DCourseMapNormal : public C2DDecorationBase {
 public:
     virtual ~C2DCourseMapNormal();
-    virtual void Free();
+    virtual int Free();
     char m24[52];
 };
 class C2DCourseMapWbattle : public C2DDecorationBase {
 public:
     virtual ~C2DCourseMapWbattle();
-    virtual void Free();
+    virtual int Free();
     char m24[48];
 };
 class C2DTimeLimit : public C2DDecorationBase {
 public:
     virtual ~C2DTimeLimit();
-    virtual void Free();
+    virtual int Free();
     char m24[8];
 };
 class C2DLapTime : public C2DDecorationBase {
 public:
     virtual ~C2DLapTime();
-    virtual void Free();
+    virtual int Free();
     char m24[4];
 };
 class C2DNitro : public C2DDecorationBase {
 public:
     virtual ~C2DNitro();
-    virtual void Free();
+    virtual int Free();
     char m24[48];
 };
 class C2DTotalTime : public C2DDecorationBase {
 public:
     virtual ~C2DTotalTime();
-    virtual void Free();
+    virtual int Free();
     char m24[4];
 };
 class C2DRecordTime : public C2DDecorationBase {
 public:
     virtual ~C2DRecordTime();
-    virtual void Free();
+    virtual int Free();
     char m24[4];
 };
 class C2DPosition : public C2DDecorationBase {
 public:
     virtual ~C2DPosition();
-    virtual void Free();
+    virtual int Free();
     char m24[24];
 };
 class C2DPositionTour : public C2DDecorationBase {
 public:
     virtual ~C2DPositionTour();
-    virtual void Free();
+    virtual int Free();
     char m24[24];
 };
 class C2DLap : public C2DDecorationBase {
 public:
     virtual ~C2DLap();
-    virtual void Free();
+    virtual int Free();
     char m24[24];
 };
 class C2DFlag : public C2DDecorationBase {
 public:
     virtual ~C2DFlag();
-    virtual void Free();
+    virtual int Free();
     char m24[8];
 };
 class C2DRaceInfo : public C2DDecorationBase {
 public:
     virtual ~C2DRaceInfo();
-    virtual void Free();
+    virtual int Free();
     char m24[8];
 };
 class C2DRaceInfoStart : public C2DDecorationBase {
 public:
     virtual ~C2DRaceInfoStart();
-    virtual void Free();
+    virtual int Free();
     char m24[16];
 };
 class C2DRaceInfoFinish : public C2DDecorationBase {
 public:
     virtual ~C2DRaceInfoFinish();
-    virtual void Free();
+    virtual int Free();
     char m24[4];
 };
 class C2DInfoWin : public C2DDecorationBase {
 public:
     virtual ~C2DInfoWin();
-    virtual void Free();
+    virtual int Free();
     char m24[200];
 };
 class C2DAnalogMeter : public C2DDecorationBase {
 public:
     virtual ~C2DAnalogMeter();
-    virtual void Free();
+    virtual int Free();
     char m24[48];
 };
 class C2DDigitalMeter : public C2DDecorationBase {
 public:
     virtual ~C2DDigitalMeter();
-    virtual void Free();
+    virtual int Free();
     char m24[48];
 };
 class C2DPacmanMeter : public C2DDecorationBase {
 public:
     virtual ~C2DPacmanMeter();
-    virtual void Free();
+    virtual int Free();
     char m24[48];
 };
 class C2DRallyXMeter : public C2DDecorationBase {
 public:
     virtual ~C2DRallyXMeter();
-    virtual void Free();
+    virtual int Free();
     char m24[28];
 };
 class C2DBeforeRace : public C2DDecorationBase {
 public:
     virtual ~C2DBeforeRace();
-    virtual void Free();
+    virtual int Free();
     char m24[144];
 };
 class C2DReplay : public C2DDecorationBase {
 public:
     virtual ~C2DReplay();
-    virtual void Free();
+    virtual int Free();
 };
 class C2DAvPlayer : public C2DDecorationBase {
 public:
     virtual ~C2DAvPlayer();
-    virtual void Free();
+    virtual int Free();
 };
 class C2DAllTime : public C2DDecorationBase {
 public:
     virtual ~C2DAllTime();
-    virtual void Free();
+    virtual int Free();
     char m24[248];
 };
 
@@ -422,11 +422,11 @@ int C2DList::f_0f5a14(COwner *o)
     return 1;
 }
 
-/* @draft 0x0f5a34 us _ZN2Fj7C2DList8f_0f5a34Ev
+/* @implements 0x0f5a34 us _ZN2Fj7C2DList8f_0f5a34Ev
    WHAT IT DOES: Frees every piece (its own release, then deletes it) and empties the list.
    Returns 1.
-   Remaining difference: retail loads each piece into v1 (its vtable through v1, the call
-   through v0); here v0 and v1 are swapped. A piece pointer local makes it worse. */
+   Matched by the slot-24 method returning int (Race2DPieces.cpp's Draw returns int): the
+   call then sets v0, so the piece and its vtable go to v1 and the call address to v0. */
 int C2DList::f_0f5a34()
 {
     for (int i = 0; i < 32; i++) {
@@ -440,11 +440,11 @@ int C2DList::f_0f5a34()
     return 1;
 }
 
-/* @draft 0x0f5ac8 us _ZN2Fj7C2DList8f_0f5ac8Ev
+/* @implements 0x0f5ac8 us _ZN2Fj7C2DList8f_0f5ac8Ev
    WHAT IT DOES: Steps the list once a frame unless the game is paused: advances the blink
    and steps every piece. Returns 0.
-   Remaining difference: retail keeps the count in a1 and each piece in v1; here v1 and v0
-   (the draw loop, the same code without the pause test, matches). */
+   Matched by f_101b54 returning int (as in Race2DPieces.cpp): the call's v0 result moves
+   the count to a1 and each piece to v1. */
 int C2DList::f_0f5ac8()
 {
     GameFlags *g = D_1d88a0;
@@ -478,8 +478,10 @@ void C2DList::f_0f5be8()
 /* @draft 0x0f5c08 us _ZN2Fj7C2DList8f_0f5c08Ev
    WHAT IT DOES: Binds every piece to the overlay's sprite group and the list and, during a
    race, starts every piece's animation at time zero.
-   Remaining difference: the registers of the first loop's call setup (piece in v1, the
-   overlay pointer loaded first). */
+   f_101b1c returning int (as in Race2DPieces.cpp) put the piece in v1: 12 -> 8 words.
+   Remaining difference: the first loop's call block. Retail loads owner, the vtable, then
+   owner->m1584 into a1 and the method into v0 (jalr v0, nop slot); here the vtable first,
+   the method into a3 and m1584 in the jalr slot, one word longer. */
 void C2DList::f_0f5c08()
 {
     for (int i = 0; i < count; i++)
@@ -579,7 +581,12 @@ int C2DList::f_0f5ce4(int id)
    is full.
    Remaining difference: allocation; retail sets the -1 result first into t0 and builds the
    slot address in a2 and the new count in a3 (here a3, a2 and v0, the -1 in the branch
-   slot). */
+   slot).
+   Diagnosis (2026-11-16, greg): here the new count (reg 190) is local to its block and takes
+   v0, global order is 185 182 184 189 183 so r (184) gets a2 and the slot (189) a3. Retail's
+   a2 slot / a3 count / t0 r means its count+1 was a global pseudo ranked above r, and r
+   came last; the source shape that makes count+1 cross a block (or r rank lowest) is not
+   yet found. No change made. */
 int C2DList::f_0f62e4(C2DDecorationBase *p)
 {
     int r = -1;
@@ -677,7 +684,11 @@ int C2DList::f_0f6450()
    WHAT IT DOES: Returns 1 when a race is running and it is of kind 1.
    Remaining difference: retail loads the compared kind 1 separately from the result's 1
    (li a0,1 and li v0,1); here one register holds both. The same spelling for kind 2
-   (0x0f6494) is byte-exact. */
+   (0x0f6494) is byte-exact.
+   Diagnosis (2026-11-16): cse1 (.09.cse) replaces the compare's constant pseudo with r (reg
+   183, set to 1 in the same extended block), so one register holds both. Retail's li v0,1
+   sits after the lw, as if the 1 were still a separate value at reload. No source lever
+   found that keeps r out of cse's const_int 1 class; untried: r of another type/mode. */
 int C2DList::f_0f6468()
 {
     int r = 1;

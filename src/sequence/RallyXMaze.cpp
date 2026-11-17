@@ -45,7 +45,13 @@ extern "C" {
 /* @draft 0x0e821c us f_0e821c
    WHAT IT DOES: Gives the slot position of a number n on the 19-slot HUD row: slot 19 is the
    current stage's marker (its start column, row 120); any other slot is laid out as a 10-wide
-   grid of 24-unit cells from row 72. */
+   grid of 24-unit cells from row 72.
+   The remainder is written before the quotient (retail's 'move a0,a1; subu a1,v1,v0': the
+   % expansion's quotient pseudo is then copied for q and its register reused for r):
+   41 -> 27 words.
+   Remaining difference: px's copy (t1, set in the beq slot) and the sign word (t0) swap
+   registers, and the slot-19 path differs: retail indexes as idx*28 + base into v0, loads
+   s->m0 into a0 and sets the 120 first, ending with its own jr ra (one word shorter). */
 void f_0e821c(int n, int *px, int *py)
 {
     int v = n - 1;
@@ -55,8 +61,8 @@ void f_0e821c(int n, int *px, int *py)
         *py = 120;
         return;
     }
-    int q = v / 10;
     int r = v % 10;
+    int q = v / 10;
     *px = 24 * r;
     *py = 24 * q + 72;
 }
@@ -64,20 +70,28 @@ void f_0e821c(int n, int *px, int *py)
 /* @draft 0x0e82c4 us f_0e82c4
    WHAT IT DOES: Lays out a count n in a 12-slot ring: the remainder after dividing by 3
    twelve at a time, then the tens of that remainder, each as a 24-unit step, the first for x
-   and the second for y. */
+   and the second for y.
+   'n %= 12' in place keeps n in a0 as retail does: 18 -> 13 words.
+   Remaining difference: retail moves the tens (a3) to t0 and writes n % 10 into a3
+   ('move t0,a3; subu a3,a0,v0'), and its sign word goes to v0 not v1; here n % 10 goes back
+   into a0. Untried lever (found on f_0e821c, same 'move; subu' pattern): write the remainder
+   before the quotient. */
 void f_0e82c4(int n, int *px, int *py)
 {
-    int t = n % 12;
-    int q = t / 10;
-    int r = t - q * 10;
-    *px = 24 * r;
-    *py = 24 * q;
+    n %= 12;
+    *px = 24 * (n % 10);
+    *py = 24 * (n / 10);
 }
 
 /* @draft 0x0e8344 us f_0e8344
    WHAT IT DOES: The same slot layout as f_0e82c4 with two variants: when flag is set, x is the
    remainder of the tens and y is the tens plus 168; when clear, x is the remainder of the
-   tens of n + 2 and y is the eighths plus 24. */
+   tens of n + 2 and y is the eighths plus 24.
+   Remaining difference: retail copies n to t0 and computes n % 12 in place there (a0 then
+   takes the sign word), keeping px in a1; here px is moved to t5. Tried the in-place form that
+   helped f_0e82c4 ('n %= 12' with 'n % 10', 'n / 10', '(n + 2) % 10', 'n / 8'): 41 -> 42 words
+   and one word longer; restored. Untried lever (found on f_0e821c; retail's flag branch has
+   the same 'move a0,a3; subu a3,t0,v0'): write each remainder before its quotient. */
 void f_0e8344(int n, int *px, int *py, int flag)
 {
     int t = n % 12;
@@ -150,7 +164,11 @@ void f_0e84b0(void)
    WHAT IT DOES: Builds a new maze's cell marks: clears the bit 7 mark of the sixteen start
    cells, then places the round's flags on random free start cells (each flag's cell, column
    and row; the first two get states 2 and 3, the rest 1) and marks their cells, then places
-   the enemy crash marks from the twelve enemy start cells of the stage. */
+   the enemy crash marks from the twelve enemy start cells of the stage.
+   Diagnosis (2026-11-16, first look): 209/209 words, 744 vs 836 bytes. Retail has an 80-byte
+   frame saving s0-s2 (here 64, none), so its loops keep more values live; in the first loop
+   retail addresses the cell as lbu/sb 88(map + c) while here it is 'addiu 80' then 8(...).
+   Not yet traced to a pass; no change. */
 void f_0e84fc(void *map)
 {
     int used[16];

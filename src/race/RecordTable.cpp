@@ -378,7 +378,11 @@ static inline void Diff(AngLerp *l)
    keeps the one with the smaller squared difference.
    Remaining difference: register allocation and schedule only (size equal). This build keeps the
    0x8000 constant in a register from the start and so uses one more temporary (t7), shifting every
-   later choice by one register; retail materialises it with the second triple's loads. */
+   later choice by one register; retail materialises it with the second triple's loads.
+   2026-11-16 cycle (lreg dump): before sched1 the HImode li 0x8000 (reg 224) already sits right after
+   the second triple's loads (12/16/24), retail's place, so sched1 is what lifts it to the top here;
+   retail's li lands in a0 just after a0's last use, so its sched1 left it there. No source lever
+   found for that sched1 choice; no change made. */
 extern "C" void f_0dbf04(AngLerp *a)
 {
     AngLerp l0 = *a;
@@ -402,7 +406,10 @@ extern "C" void f_0dbf04(AngLerp *a)
    Remaining difference: (1) retail stores every third component (s[2], t[2]) through an FPR
    (mtc1 + swc1, 4 places, the 16 missing bytes) and the first two with sw; here all are sw.
    (2) global-alloc gives the key pointer s5 and the three unions s2-s4; retail gives the key s2
-   and the unions s3-s5. The reset block's store order already matches. */
+   and the unions s3-s5. The reset block's store order already matches.
+   2026-11-16 cycle: the four FPR stores are exactly s[2] and t[2] (offsets 20 and 8), in cases 2 and
+   10 too, where retail uses union x in s3 like cases 0/1 (which use sw). So the cause is the third
+   member's store, not which union holds the bytes; no source shape for it found, no change made. */
 extern "C" void f_0df538(Key *k, AnimData *pb, int i, int key)
 {
     Bytes4 x, y, z;
@@ -480,7 +487,11 @@ extern "C" void f_0df538(Key *k, AnimData *pb, int i, int key)
    given key.
    Remaining difference: global-alloc gives the loaded key byte t0 and copies it to a3 for the call;
    retail loads it straight into a3 (the copy preference wins there), which also frees t0 for the
-   header pointer (t1 here) and drops one word. */
+   header pointer (t1 here) and drops one word.
+   2026-11-16 cycle (lreg dump): if-conversion hoists the call's argument moves above the test, so the
+   key byte (pseudo 193, local-alloc t0) is still live in the beq after the a3 copy and cannot be tied
+   to a3. Retail's beq reads a3, so its compare operand was already the a3 copy (193 dead at the copy).
+   No source spelling that makes the test read the copy is known; no change made. */
 extern "C" void f_0dfa88(Key *self, AnimData *pb, int key)
 {
     for (int i = 0; i < pb->hdr->count; i++) {
@@ -520,15 +531,21 @@ struct HKey {
    Remaining difference: the span search loop (8 bytes short, every later word shifted). Retail
    counts i from 1 against n and recomputes j = i - 1 inside the loop and again on the normal exit,
    then tests j == -1; this spelling counts j against n - 1 (blez guard). The arithmetic after the
-   search matches retail's instruction for instruction. */
+   search matches retail's instruction for instruction.
+   2026-11-16 cycle: tried i from 1 with j = i - 1 after the loop: the loop head now matches (li a2,1;
+   slt; beqz), 63 -> 61 words, size still 252, but combine folds j == -1 into i == 0 (beqz a2) and j
+   is only made after the exit. Retail keeps j in its own register made every pass (addiu a3,a2,-1
+   before the step) and remade on the normal exit: loop.c's shape for a second induction variable
+   reduced to a giv of i. Lead (tested on 0x0dfca4, see there): j stepped with i. */
 extern "C" float f_0dfba8(HKey *e, int n, float t)
 {
-    int j;
+    int i, j;
 
-    for (j = 0; j < n - 1; j++) {
-        if (t <= (float)e[j + 1].time)
+    for (i = 1; i < n; i++) {
+        if (t <= (float)e[i].time)
             break;
     }
+    j = i - 1;
     if (j == -1)
         return 0.0f;
     {
@@ -543,14 +560,20 @@ extern "C" float f_0dfba8(HKey *e, int n, float t)
 /* @draft 0x0dfca4 us f_0dfca4
    WHAT IT DOES: The same spline evaluation for an angle key track, returning the result converted from
    radians to a 16-bit angle.
-   Remaining difference: the span search loop, as in 0x0dfba8. */
+   Remaining difference: the span search loop, as in 0x0dfba8.
+   2026-11-16 cycle: j stepped with i (for (i = 1, j = 0; i < n; i++, j++)): 73 -> 68 words, 292 -> 288
+   bytes (retail 284). loop.c keeps j as its own biv (move a3,zero; addiu a3,a3,1 in the branch slot), so
+   retail's j is not a second biv. Retail sets j = i - 1 on both exits (in the loop before the step for
+   the break, after the loop for the normal exit) from the final i, and the j == -1 test survives, so j
+   is assigned in two blocks (one assignment after the loop lets combine fold j == -1 into i == 0, as
+   0x0dfba8's cycle showed). The source shape that sets it on both exits is not found yet. */
 extern "C" short f_0dfca4(HKey *e, int n, float t)
 {
-    int j;
+    int i, j;
     short r = 0;
 
-    for (j = 0; j < n - 1; j++) {
-        if (t <= (float)e[j + 1].time)
+    for (i = 1, j = 0; i < n; i++, j++) {
+        if (t <= (float)e[i].time)
             break;
     }
     if (j != -1) {
@@ -848,7 +871,10 @@ extern "C" void f_0e0724(void *a, AnimData *pb)
    order); retail stores f0 first. (2) The lerp loads the second key's six floats before the
    first's; retail loads out's first (likely the first key read into locals first, as in
    KeyBlend.c). (3) Retail has one shared "set frame, build, return" tail fewer (cross-jumping),
-   which shifts the divider path by a word. */
+   which shifts the divider path by a word.
+   2026-11-16 cycle on (2): out's six floats read into locals before the blend (in out, then tmp
+   order): no change at all (88 words, same load order), so the order is sched1's choice, not
+   expansion order; reverted. Next look belongs in the sched1 dump (priorities of the two load sets). */
 extern "C" void f_0e0778(Key *out, AnimData *pb, int arg, int idx)
 {
     int f0, f1;
@@ -1119,7 +1145,12 @@ extern "C" void f_0e129c(Matrix *a, Key *b, AnimData *c, Matrix *d)
    Remaining difference: frame and every saved register. The second loop pass (rerun) hoists the
    constants -2 (loop test) and 1 (mode test) into saved registers here (insns "life 1, savings 1",
    moved in pass 2, "not desirable" in pass 1), which pushes out and keys onto the stack; retail
-   hoists only -1, so its loop as seen by loop.c's threshold test must be larger. */
+   hoists only -1, so its loop as seen by loop.c's threshold test must be larger.
+   2026-11-16 cycle (loop dump): pass 1 counts 67 real insns, moves -1 and both float constants (5
+   insns) and calls li 1 / li -2 (life 1, savings 1) not desirable; pass 2 counts 62 and moves them. So
+   the threshold is 62..66 and retail's loop must count at least 63..67 real insns after pass 1 (one to
+   five more than here, before combine). Read16 is shared with exact functions and was left alone;
+   no change made. */
 extern "C" void f_0e12c0(Matrix *out, Key *keys, AnimData *pb, int mode, Matrix *base)
 {
     const unsigned char *p;
