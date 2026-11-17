@@ -237,7 +237,13 @@ void CCamOnBoard::f_07f5e0(int *arg)
    Remaining difference: frame, calls and the matrix copy match. Retail loads the mount
    point's x, y, z in order (here z first), adds the car's position to the eye one component
    at a time through the stack (here the three car loads are hoisted), and schedules the
-   view stores at the end differently. */
+   view stores at the end differently.
+   2026-11-16 (sched1 alias): the car loads hoist because eye.x and c->pos.y are both Vec4
+   COMPONENT_REFs with different fields, so nonoverlapping_component_refs_p frees them.
+   Tried reading the car position through 'const float *cp = &c->pos.x' (no component
+   MEM_EXPR): the add order and the mount point's x, y, z load order then match retail, but cp
+   costs an extra addiu v1,a1,144 (52 -> 189 words, +4 bytes); reverted. Retail's unblocked
+   side is therefore more likely the eye (stack, offsets fold) than the car pointer. */
 void CCamOnBoard::f_07f5e8()
 {
     float b = 0.0f;
@@ -324,7 +330,11 @@ CamCtrl::OPoint D_27ecfc[10] = {
 /* @draft 0x0f47c4 us __static_initialization_and_destruction_0
    WHAT IT DOES: Converts the sway speeds and builds the mount point table at start up.
    Remaining difference: same size and stores; the constant loads and stores are scheduled
-   in another order. */
+   in another order.
+   2026-11-16 (sched1/lreg): same insns; retail loads D_1d5da4 (f7) before the reload of the
+   table's first 0.0 (f6), here sched1 issues the table store + reload (insns 79, 91) first so
+   the two FP regs swap and every later product renames. No source change implied by the
+   dump (the reload is CSE's memory equivalent of 0.0 in both); not changed. */
 /* @implements 0x0f4a10 us _GLOBAL__I
    WHAT IT DOES: Runs the above. */
 

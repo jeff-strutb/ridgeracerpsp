@@ -67,11 +67,13 @@ extern int D_1d5588[4];  /* each direction's cell step in x */
 extern int D_1d5598[4];  /* and in y */
 extern Map *D_27ebf0;
 
-/* @draft 0x0e8840 us f_0e8840
+/* @implements 0x0e8840 us f_0e8840
    WHAT IT DOES: Takes the turn asked for once the car is at its cell centre and the next
    cell that way is open, lining the car up on the new axis; a turn back to the same
    direction, or asked while the car is entering a cell, is dropped.
-   DRAFT: block order differs: retail keeps the want = -1 return on the fall-through and the turn path out of line; three spellings tried, all laid out the same way. */
+   DRAFT: block order differs: retail keeps the want = -1 return on the fall-through and the turn path out of line; three spellings tried, all laid out the same way.
+   MATCHED: source stores dir before want (sched1 issues them want, dir), so the turn tail no
+   longer ends in a want = -1 store that crossjump merged with the early returns. */
 void f_0e8840(Car *c)
 {
     if (c->dir == c->want) {
@@ -93,8 +95,8 @@ void f_0e8840(Car *c)
         c->x = c->cx * 384 + 192;
     else
         c->y = c->cy * 384 + 192;
-    c->want = -1;
     c->dir = w;
+    c->want = -1;
 }
 
 /* @implements 0x0e8930 us f_0e8930
@@ -135,11 +137,15 @@ void f_0e89f4(Car *c, int *score)
 /* @draft 0x0e8a24 us f_0e8a24
    WHAT IT DOES: Whether the car may drive into a cell: never a wall or the maze edge, and
    for an enemy not a cell another enemy is in, nor a crash cell.
-   DRAFT: the result register differs: retail sets a3 = 1 on the fall-through after a branchy 17/19 test; four spellings came out as setcc or used an extra copy register. */
+   DRAFT: the result register differs: retail sets a3 = 1 on the fall-through after a branchy 17/19 test; four spellings came out as setcc or used an extra copy register.
+   2026-11-16: retail's a3 is the return-value pseudo itself (no r copy) and its 17/19 test is
+   an or of two seq; direct 'return 0/1' with 'if (k == 19 || k == 17) return 0;' gives both
+   (37 -> 28 words). Remaining difference: ifcvt turns the trailing 'return 0; return 1;'
+   pairs into sltiu/sltu a3 (retail keeps bnez + li a3,1 in the delay slot), and the prologue
+   issues move v0,a1 before sw s0 and a second move a0,v0 after the call. */
 int f_0e8a24(Car *c, int x, int y)
 {
     unsigned char k = f_0e8470(x, y);
-    int r = 0;
 
     if (c->enemy) {
         if ((signed char)k < 0)
@@ -147,21 +153,26 @@ int f_0e8a24(Car *c, int x, int y)
         k &= 0x7f;
         if ((unsigned char)(k - 1) < 16)
             return 0;
-        if (!(k == 19 || k == 17))
-            r = 1;
+        if (k == 19 || k == 17)
+            return 0;
+        return 1;
     } else {
         if ((unsigned char)(k - 1) < 16)
             return 0;
-        if (k != 19)
-            r = 1;
+        if (k == 19)
+            return 0;
+        return 1;
     }
-    return r;
 }
 
 /* @draft 0x0e8ac8 us f_0e8ac8
    WHAT IT DOES: Centres the car across its direction of travel and looks at the cell it is
    driving into: 0 if it may enter it, otherwise that cell's kind.
-   DRAFT: registers and scheduling differ: retail re-zero-extends x and y (andi 0xffff) and holds cx in s1 and cy in s0; three local-type variants tried. */
+   DRAFT: registers and scheduling differ: retail re-zero-extends x and y (andi 0xffff) and holds cx in s1 and cy in s0; three local-type variants tried.
+   2026-11-16: retail calls f_0e8470 on the fall-through after the f_0e8a24 test (bnez to the
+   return-0 tail); here the call is out of line. Tried 'if (!f_0e8a24(..)) return f_0e8470(..);
+   return 0;': output identical (93 words), so the layout is decided after expand (bb-reorder),
+   not by the source's branch sense; reverted. */
 int f_0e8ac8(Car *c)
 {
     unsigned int x = (unsigned short)c->x;
@@ -197,7 +208,13 @@ int f_0e8ac8(Car *c)
 
 /* @draft 0x0e8c58 us f_0e8c58
    WHAT IT DOES: Turns a blocked car: right if that way is open, else left, else back.
-   DRAFT: not tuned yet (68 of 72 words differ, same size). */
+   DRAFT: not tuned yet (68 of 72 words differ, same size).
+   2026-11-16: retail never reloads dir after the call: 7 saved regs, s0 = seh of the first
+   new dir, s4 = seh of the second, each 'sh' stores the unextended %4 result (so the store is
+   'c->dir = expr' and the index is CSE'd from it). Tried one 'short d' for both turns
+   (c->dir = d): body order matches retail but one pseudo serves both turns (6 saved regs, sh of
+   the seh'd value), 68 -> 71 words; reverted. Implied next shape: 'c->dir = (c->dir + 1) % 4;
+   short d = c->dir;' then 'c->dir = (d + 2) % 4; short d2 = c->dir;' and '(d2 + 3) % 4'. */
 void f_0e8c58(Car *c)
 {
     short cx = c->cx;
@@ -232,7 +249,12 @@ int f_0e8d78(Car *c, int x, int y)
    drifts with the steering held, centres itself and turns away from a blocked cell, and
    updates its cell and trail. An enemy marks the cell it is in and spins out on smoke or a
    crash cell.
-   DRAFT: not tuned yet (1344 vs 1372 bytes); the control flow follows retail. */
+   DRAFT: not tuned yet (1344 vs 1372 bytes); the control flow follows retail.
+   2026-11-16: retail keeps the spin >= 71 code on the fall-through (bnezl to the out-of-line
+   spin < 71 return block); writing 'if (c->spin >= 71) {..} else {..; return;}' gives that
+   (328 -> 184 words). Remaining from the top: retail forms the enemy cell address as
+   base + cell + 80 then lbu/sb 8(v1) (here one 88 offset), loads spin with lh a2 (here lhu
+   a1 kept for spin++), and the body is still 28 bytes longer. */
 void f_0e8db0(Car *c)
 {
     short hit;
@@ -240,15 +262,16 @@ void f_0e8db0(Car *c)
     if (c->enemy)
         D_27ebf0->cell[c->cell] &= 0x7f;
     if (c->spin > 0) {
-        if (c->spin < 71) {
+        if (c->spin >= 71) {
+            c->angle = c->dir * 48;
+            if (c->moved)
+                c->spin = 0;
+        } else {
             c->angle += 5;
             c->spin++;
             D_27ebf0->cell[c->cell] |= 0x80;
             return;
         }
-        c->angle = c->dir * 48;
-        if (c->moved)
-            c->spin = 0;
     }
     short a = c->dir * 3;
     if (a == c->angle >> 4) {
@@ -361,7 +384,13 @@ void f_0e8db0(Car *c)
    WHAT IT DOES: Clears the smoke on the edges of the 12 x 12 cells around the car, and
    lays a smoke screen in the cell behind it when it has one left and that cell is empty
    (with its sound effect).
-   DRAFT: not tuned yet (616 vs 600 bytes): the loop guards and the saved-register constants differ. */
+   DRAFT: not tuned yet (616 vs 600 bytes): the loop guards and the saved-register constants differ.
+   2026-11-16: retail's loop counters are int (addiu s0,s0,1, no seh; fixed x/y and x0/y0 stay
+   short/seh'd). Tried 'int i' counters for all four loops: size now 600 = retail, but
+   107 -> 116 words, so reverted. What remains with int counters: retail keeps the cell index
+   as a strength-reduced giv (horizontal: addu a1,s4,s0 before the branch; vertical: s1 =
+   y0*32 + x, addiu s1,s1,32 per step) and holds D_27ebf0's hi in s8/s7; here the index is
+   recomputed from the counter (sll a1,s0,5) and the table word reloaded in the delay slot. */
 void f_0e930c(Car *c)
 {
     short x, y;
@@ -496,7 +525,10 @@ void f_0e9784(Car *t, Car *c)
    WHAT IT DOES: The player's autopilot (demo): steers away from the enemy (towards it
    across x when it is more than ten cells off), buys smoke when the enemy is within three
    cells, and takes the turn chosen.
-   DRAFT: dx and dy swap registers (a3/v1) in both blocks; four orderings tried. */
+   DRAFT: dx and dy swap registers (a3/v1) in both blocks; four orderings tried.
+   2026-11-16 (greg): dy (pseudo 189, allocated first) conflicts with v1 through the block-2
+   cx-load locals, so it takes a3 and dx takes its v1 preference. Tried fresh locals for the
+   block-2 dy/dx (splits the live ranges): 17 -> 23 words, every local moves; reverted. */
 void f_0e9820(Car *c, Car *e)
 {
     int ex = e->cx;
@@ -524,7 +556,14 @@ void f_0e9820(Car *c, Car *e)
    T junction, taking the player's side on an axis where the two lie on opposite sides; and
    it turns aside when the player is just behind it in its own row or column. Then takes the
    turn chosen.
-   DRAFT: registers differ from the first product on, and the two-target choice block is laid out differently; the y*y > x*x spelling that fixed f_0e9bf0 made this one worse. */
+   DRAFT: registers differ from the first product on, and the two-target choice block is laid out differently; the y*y > x*x spelling that fixed f_0e9bf0 made this one worse.
+   2026-11-16 (fold): retail's aside block is all branches (dir tested first, then the
+   delta) with the |dxa| <= 1 test as one range (addiu 1; sltiu 3); here fold_truthop makes
+   'dir == k && dya > 0' a TRUTH_AND of setccs because dya/dxa are simple (non-addressable
+   local decls). Tried grouping '(dxa >= -1 && dxa <= 1)': the range merges as retail, but
+   the setcc ORs stay, 102 -> 118 words; reverted. Implied next shape: use the deltas as
+   non-simple operands (inline 'ax - px' etc. instead of the dxa/dya locals) so the &&/||
+   stay short-circuit. */
 void f_0e98e8(Car *t, int ax0, int ay0, int bx0, int by0, Car *c)
 {
     short ax = ax0;
