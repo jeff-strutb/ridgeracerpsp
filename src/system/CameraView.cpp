@@ -290,7 +290,13 @@ unsigned int *PutViewport(int x, int y, int w, int h, unsigned int *p)
 /* @draft 0x0cc584 us _ZN5CView3Put
    WHAT IT DOES: Writes the viewport, the view matrix's 4x3 part and the projection matrix
    into a display list, and loads the clip planes; returns the next free word.
-   DIFFERS: only the viewport part's FP registers, as in PutViewport. */
+   DIFFERS: only the viewport part's FP registers, as in PutViewport.
+   Cycle 2026-11-16 (lreg dump): the floats are (subreg:SF (reg/v:SI)) user vars via Bits();
+   local-alloc combine_regs ties the negated int (neg:SI, pseudo 196) to sh's floatsisf output
+   (209), so ours converts in place (f1); retail leaves them untied (mtc1 f4, cvt f3,f4), which
+   shifts sh/ox/oy to f3/f2/f1. The other three conversions tie in both. No source shape that
+   stops only that tie is derivable (local orders, int locals and a helper already tried); no
+   change made. */
 unsigned int *CView::Put(unsigned int *p)
 {
     float sw = (float)(w / 2);

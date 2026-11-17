@@ -1084,7 +1084,11 @@ void CEngineSound::f_0c9bd8()
    velocity give the pan (m184) and a volume (m192) that is silent above a speed, full
    below a lower one and a ramp between; a wall hit selects state 1 or 2 by the car's
    flag; prints the three values as debug text.
-   DRAFT: only the register numbering differs (8 of 80 words): retail keeps the car in v1, the position copy source in a1 and the first copied word in a0. */
+   DRAFT: only the register numbering differs (8 of 80 words): retail keeps the car in v1, the position copy source in a1 and the first copied word in a0.
+   Cycle 2026-11-16: ours ties pp to the car's pseudo (a1, car dies at pp); retail keeps car live
+   past pp (h loaded after it). Tried reading h after the struct copy: car and pp split but car
+   lands in a1, the h/cam loads sink below the copy, 16 words; reverted. Untried: keep h first but
+   use car again after the copy (e.g. read m2160 via a second car use). */
 void CEngineSound::f_0c9d2c()
 {
     Pos3 *pp = &car->pos;

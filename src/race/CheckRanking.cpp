@@ -304,7 +304,12 @@ void CCheckRanking::f_0ee178()
    back: each record moves down past the records it is ahead of (records of cars not taking
    part stop the move), then copies the sorted cars into the standing table.
    Remaining difference: retail keeps this in s5 and the moving record pointer in s6 (swapped
-   here), and loads the distance before the guard of the inner loop. */
+   here), and loads the distance before the guard of the inner loop.
+   Cycle 2026-11-16 (lreg/greg dumps): the swap is global-alloc order between pseudo 181 (this,
+   6 refs / 78 insns) and 243 (loop-hoisted copy of &e[i] for e[i].car, 2 refs / 34 insns), both
+   crossing the call; 3.3 ranks by frequency-weighted refs, not printed, so no source lever is
+   derivable from the dumps. The other 4 words are sched1: ours issues the time2/index stack
+   stores before the lap load; retail loads car, lap, then stores, then dist. No change made. */
 void CCheckRanking::f_0ee1d8(int from)
 {
     Entry *e = m_pSortBuffers;
@@ -344,7 +349,11 @@ void CCheckRanking::f_0ee1d8(int from)
 /* @draft 0x0ee3cc us f_0ee3cc
    WHAT IT DOES: The same insertion sort of all the records in the second order, without the
    standing table copy.
-   Remaining difference: the order of the loads of the moved record and of two closing stores. */
+   Remaining difference: the order of the loads of the moved record and of two closing stores.
+   Cycle 2026-11-16: retail loads and stores dist after done/index; declaring dist last (as in
+   f_0ee1d8) fixed the s8 load slot, 10 -> 9 words. Still: sched1 places move s1,s3 and the dist
+   lwc1 earlier than retail, and stores dist before done. Untried: closing stores with done
+   before dist (retail order car, lap, index, time, done, dist, time2). */
 void CCheckRanking::f_0ee3cc()
 {
     Entry *e = m_pSortBuffers;
@@ -355,11 +364,11 @@ void CCheckRanking::f_0ee3cc()
     for (i = m4 - 1; i > 0; i--) {
         CCar *car = e[i - 1].car;
         int lap = e[i - 1].lap;
-        float dist = e[i - 1].dist;
         int time = e[i - 1].time;
         int time2 = e[i - 1].time2;
         int done = e[i - 1].done;
         int index = e[i - 1].index;
+        float dist = e[i - 1].dist;
         for (j = i; j < m4; j++) {
             if (!e[i].car->m76)
                 break;
