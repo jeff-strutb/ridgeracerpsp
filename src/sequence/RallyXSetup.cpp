@@ -59,14 +59,14 @@ void f_0e7768(void *arg)
    WHAT IT DOES: Sets up the screen. The flag word's bits are mapped to nine state bits (1 to
    0x200) which f_02ea2c takes; the display is set up, the first display list commands are
    written through the list cursor, and the result is 1 when both sound flags are set.
-   DRAFT: 14 words differ in two places. (1) Retail copies the f_0e79bc result into a0 first
+   DRAFT: 8 words differ (was 14), part (1) below only. (1) Retail copies the f_0e79bc result into a0 first
    and does both stores and both 4-byte steps on a0 (the last in the f_0216e8 delay slot);
    here the cursor stays in v0 and is moved to a0 at the call. Cycle 2026-11-16 tried the
    in-place step 'p++; f_0216e8(p);' instead of p + 1: identical output (no effect).
    (2) The result: retail keeps it in a0 (move a0,zero in the first branch's delay slot, li a0,1
    as a bnezl likely slot, move v0,a0 at the end), i.e. one result variable set 0 then 1;
-   here two returns give v0 constants. Untried lever for (2): 'int r = 0; if (D_2400c3 &&
-   D_2400c4) r = 1; return r;'. */
+   here two returns give v0 constants. Second pass 2026-11-16 applied 'int r = 0; if (D_2400c3
+   && D_2400c4) r = 1; return r;': (2) now matches exactly (14 -> 8 words). Part (1) remains. */
 int f_0e7858(void)
 {
     int v = D_24518c;
@@ -108,9 +108,13 @@ int f_0e7858(void)
         *p = 0xd5043ddf;
         f_0216e8(p + 1);
     }
-    if (D_2400c3 && D_2400c4)
-        return 1;
-    return 0;
+    {
+        int r = 0;
+
+        if (D_2400c3 && D_2400c4)
+            r = 1;
+        return r;
+    }
 }
 
 /* @implements 0x0e798c us f_0e798c

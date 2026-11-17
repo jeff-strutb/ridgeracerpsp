@@ -321,6 +321,11 @@ void CQue::f_0f7f50()
    The failure print passes no argument in retail (its jal has no a1 setup; the %d reads the
    a1 left from the test): 7 -> 2 words. The remaining 2 are the order above (sched1 already
    has the zero result ahead of the store in .24.greg).
+   Second pass 2026-11-16 (no edit): in .22.sched block 1 the zero set (insn 34, anti dep only
+   on the call) is ready at clock 1 while the m0 store (insn 30) is not ready until clock 10
+   (it waits on the call 26), so it is not a luid tie: sched1 hoists the zero. Both orders keep
+   the jal slot a nop. Matching needs the zero set not ready before the store (e.g. depending
+   on the call or the store); no source shape for that identified.
    WHAT IT DOES: Sets the queue length limit (at most 32). */
 int CQue::f_0f7f8c(short max)
 {

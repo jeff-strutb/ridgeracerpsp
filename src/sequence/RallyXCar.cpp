@@ -214,19 +214,26 @@ int f_0e8ac8(Car *c)
    'c->dir = expr' and the index is CSE'd from it). Tried one 'short d' for both turns
    (c->dir = d): body order matches retail but one pseudo serves both turns (6 saved regs, sh of
    the seh'd value), 68 -> 71 words; reverted. Implied next shape: 'c->dir = (c->dir + 1) % 4;
-   short d = c->dir;' then 'c->dir = (d + 2) % 4; short d2 = c->dir;' and '(d2 + 3) % 4'. */
+   short d = c->dir;' then 'c->dir = (d + 2) % 4; short d2 = c->dir;' and '(d2 + 3) % 4'.
+   Second pass 2026-11-16 applied that shape: 68 -> 34 words (7 saved regs, s0/s4 seh'd dirs,
+   unextended sh, as retail). Remaining: (a) first call's table loads land in a1/a2 via a3
+   (retail a2/a3 via a1, cx add before the addiu s0), (b) after the second call retail
+   branches bnez to the shared epilogue and falls into the third turn; here beqz jumps to an
+   out-of-line third-turn block that loops back (4 words longer). Not yet diagnosed. */
 void f_0e8c58(Car *c)
 {
     short cx = c->cx;
     short cy = c->cy;
 
     c->dir = (c->dir + 1) % 4;
-    if (f_0e8a24(c, cx + D_1d5588[c->dir], cy + D_1d5598[c->dir]))
+    short d = c->dir;
+    if (f_0e8a24(c, cx + D_1d5588[d], cy + D_1d5598[d]))
         return;
-    c->dir = (c->dir + 2) % 4;
-    if (f_0e8a24(c, cx + D_1d5588[c->dir], cy + D_1d5598[c->dir]))
+    c->dir = (d + 2) % 4;
+    short d2 = c->dir;
+    if (f_0e8a24(c, cx + D_1d5588[d2], cy + D_1d5598[d2]))
         return;
-    c->dir = (c->dir + 3) % 4;
+    c->dir = (d2 + 3) % 4;
 }
 
 /* @implements 0x0e8d78 us f_0e8d78
@@ -563,7 +570,10 @@ void f_0e9820(Car *c, Car *e)
    local decls). Tried grouping '(dxa >= -1 && dxa <= 1)': the range merges as retail, but
    the setcc ORs stay, 102 -> 118 words; reverted. Implied next shape: use the deltas as
    non-simple operands (inline 'ax - px' etc. instead of the dxa/dya locals) so the &&/||
-   stay short-circuit. */
+   stay short-circuit. Second pass 2026-11-16 tried exactly that in the aside block: the
+   inner 'dir == 3 && delta > 0' pairs became branches as retail, but '(dir == 0 || dir == 2)'
+   stayed a setcc OR (dir is one short pseudo, t1, so still simple) and the |dxa| <= 1 range no
+   longer merged (two slti), 102 -> 120 words; reverted. */
 void f_0e98e8(Car *t, int ax0, int ay0, int bx0, int by0, Car *c)
 {
     short ax = ax0;

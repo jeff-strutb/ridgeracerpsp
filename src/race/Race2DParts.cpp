@@ -475,18 +475,23 @@ void C2DList::f_0f5be8()
     count = 0;
 }
 
-/* @draft 0x0f5c08 us _ZN2Fj7C2DList8f_0f5c08Ev
+/* @implements 0x0f5c08 us _ZN2Fj7C2DList8f_0f5c08Ev
    WHAT IT DOES: Binds every piece to the overlay's sprite group and the list and, during a
    race, starts every piece's animation at time zero.
    f_101b1c returning int (as in Race2DPieces.cpp) put the piece in v1: 12 -> 8 words.
    Remaining difference: the first loop's call block. Retail loads owner, the vtable, then
    owner->m1584 into a1 and the method into v0 (jalr v0, nop slot); here the vtable first,
-   the method into a3 and m1584 in the jalr slot, one word longer. */
+   the method into a3 and m1584 in the jalr slot, one word longer. Fixed 2026-11-16: m1584
+   read into a local before the call, so it is loaded before the method and owner and method
+   share v0 (the reuse is what keeps retail's jalr slot a nop): byte-exact. */
 void C2DList::f_0f5c08()
 {
     for (int i = 0; i < count; i++)
-        if (piece[i])
-            piece[i]->f_101b1c(owner->m1584, this);
+        if (piece[i]) {
+            void *g = owner->m1584;
+
+            piece[i]->f_101b1c(g, this);
+        }
     if (D_2407fc) {
         for (int i = 0; i < count; i++)
             if (piece[i])

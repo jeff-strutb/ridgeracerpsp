@@ -614,7 +614,14 @@ void CInfoRaceNet::f_0f0aa8(InfoSetup *s)
    12 words, size now 952 as retail.
    Remaining difference: register choice only: retail loads m96 into a2 (here a0) at the
    three reloads after the clock, and the State()->m9 == 8 test uses v0/a0/v1 where here it
-   is a1/v1/v0. Not yet diagnosed (next: the lreg/greg allocation of the m96 pseudo). */
+   is a1/v1/v0. Not yet diagnosed (next: the lreg/greg allocation of the m96 pseudo).
+   Second pass 2026-11-16 (no edit; .23.lreg/.24.greg): m96 is global pseudo 414, conflicting
+   with v0/v1 and with 292 (a3), 328/391 (a1), so greg gives it the first free reg, a0. The
+   &D_241810 base 328 (lo_sum, insn 404) is global because CSE reuses it for Me() + 168
+   (insn 428, block 25); the local m9 byte 331 and constant 8 (332) take v1/v0 first, pushing
+   328 to a1. Retail's base v0 / byte a0 / 8 in v1 / m96 a2 fits 328 being local to the test
+   block (v0 first) so a0 and a1 are taken where m96 lives. No source shape that keeps the base
+   out of the Me() address identified; not tried. */
 int CInfoRaceNet::f_0f10bc()
 {
     if (m72 == 1)
