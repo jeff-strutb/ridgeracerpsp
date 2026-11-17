@@ -85,7 +85,9 @@ struct CCar {
     int m124;
     char m128[2016];
     float m2144;
-    char m2148[3628];
+    char m2148[880];
+    int m3028;
+    char m3032[2744];
     int m5776;
     int m5780;
     char m5784[8];
@@ -832,4 +834,108 @@ void CCarJobCtrlPSP::f_03bbb4()
         f_0ed58c(m32[i]);
         f_0ed938(m32[i]);
     }
+}
+
+extern "C" {
+void f_0b8d24(void *car, int type, int a, CarEntry n, int b, int last, float d, float f);
+void f_0c071c(void *car, int v);
+void f_0ba4a4(void *car);
+void f_0b90ec(void *car, char *rec);
+void f_0b9e04(void *car, int v);
+void f_0c42ac(int n, CCar **list, int nMine, CCar *mine, int nOther, CCar *other);
+}
+extern void *D_2456d0;
+extern char D_2456e0[];
+
+/* The course's row of the course table (rec 0 when the course is not in the database). */
+static inline Row CourseRow(int course)
+{
+    Row r;
+    char *rec = (char *)D_2407d0.f_0368e8("CourseNumber", (char *)course, 0, 0);
+    if (rec)
+        r.rec = f_036984(&D_2407a8, rec, 0, D_2407a8.index, D_2407a8.count);
+    else
+        r.rec = 0;
+    return r;
+}
+
+/* The game's random step. */
+static inline unsigned Rand(int &seed)
+{
+    seed = seed * 0x19660d + 0x3c6ef35f;
+    return seed;
+}
+
+/* @draft 0x03c340 us f_03c340
+   WHAT IT DOES: Builds the cars of a race with no other cars (sequence 2): makes two player's
+   cars and uses one or two of them (two when the list has a second), fills the car tables,
+   reads the start grid offsets of the player's grid slot from the course table, sets each car
+   up at a random point (type 1, the second 0x8001) with its database entry and its two list
+   values, runs the per-car set up routines on the cars and hands the tables to f_0c42ac.
+   Remaining difference: the calls, arguments and stores all match in order, but retail keeps
+   `this` in s2 and the HIGH halves of "CourseNumber", D_2407d0, D_1a211c and D_24063c in s8,
+   s7, s5, s3 (this build holds full addresses), sets m12 with a branch (this build if-converts
+   the ternary to 2 - (x == 0)) and keeps the second car's block in line (here it is moved out
+   of line); 1428 vs 1416 bytes. */
+void CCarJobCtrlPSP::f_03c340(CarList *l)
+{
+    int i;
+    float rz, rx;
+
+    m12 = l->my[1].m0 ? 2 : 1;
+    m20 = (CCarMine *)new CMyCar[2];
+    m16 = 0;
+    m24 = 0;
+    m28 = new CCar *[m12];
+    for (i = 0; i < m12; i++)
+        m28[i] = &m20[i];
+    m32 = new CCar *[m12];
+    for (i = 0; i < m12; i++)
+        m32[i] = &m20[i];
+    {
+        Row r = CourseRow(m0);
+        memcpy(D_24063c, D_2407a8.f_0368e8("GridRzp_0", r.rec, l->m16 * 2, 0), D_1a211c[4]);
+        rz = *(float *)D_24063c;
+    }
+    {
+        Row r = CourseRow(m0);
+        memcpy(D_24063c, D_2407a8.f_0368e8("GridRxp_0", r.rec, l->m16 * 2, 0), D_1a211c[4]);
+        rx = *(float *)D_24063c;
+    }
+    f_0b8d24(m20, 1, 1, l->my[0], (Rand(m36) + Rand(m36)) >> 1, -1, rz, rx);
+    m20->m5776 = l->m256;
+    m20->m5780 = l->m264;
+    if (l->my[1].m0) {
+        f_0b8d24(&m20[1], 0x8001, 1, l->my[1], (Rand(m36) + Rand(m36)) >> 1, -1, rz, rx);
+        m20[1].m5776 = l->m260;
+        m20[1].m5780 = l->m268;
+    }
+    f_03bbb4();
+    f_0c071c(m20, m20->m3028);
+    f_0ba4a4(m20);
+    m20->m7820 = l->m32;
+    m20->m10088 = l->m40;
+    {
+        Row r = CourseRow(m0);
+        f_0b90ec(m20, r.rec);
+    }
+    f_0b9e04(m20, 0);
+    f_0b9d28(m20, m20->m124, 0);
+    D_2456d0 = D_2456e0;
+    m20->v1();
+    if (l->my[1].m0) {
+        f_0c071c(&m20[1], m20[1].m3028);
+        f_0ba4a4(&m20[1]);
+        m20[1].m7820 = l->m36;
+        m20[1].m10088 = l->m44;
+        {
+            Row r = CourseRow(m0);
+            f_0b90ec(&m20[1], r.rec);
+        }
+        f_0b9e04(&m20[1], 0);
+        f_0b9d28(&m20[1], m20[1].m124, 0);
+        m20[1].v1();
+        m20[1].m76 = 0x8001;
+    }
+    f_0c42ac(m12 + m16, m32, m12, m20, m16, m24);
 }

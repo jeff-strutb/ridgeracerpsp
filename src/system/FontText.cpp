@@ -35,6 +35,10 @@ struct TextStyle {
     float sy;
 };
 
+/* The textured rectangle drawer (defined at the end of the file). */
+extern "C" int f_07d574(TextStyle *t, int x0, int y0, int z0, int u0, int v0, int x1, int y1,
+                        int z1, int u1, int v1, int tex, float r, float g, float b, float a);
+
 /* @implements 0x07ac1c us f_07ac1c
    WHAT IT DOES: Resets a text style: first glyph set, unit scales. */
 extern "C" void f_07ac1c(TextStyle *t)
@@ -125,6 +129,169 @@ extern "C" int f_07ac48(TextStyle *t, const char *s, Glyph *out)
     return n;
 }
 
+/* @implements 0x07b018 us f_07b018
+   WHAT IT DOES: Draws an ASCII and Shift-JIS half width (katakana) string in a text style at
+   (x, y) with proportional spacing, tinted by a colour given as four 0 to 1 floats: each
+   mapped character (the f_07bbcc set) is drawn scaled by the style and the pen advances by
+   its scaled width; a space advances 5 and other characters are skipped. Returns 0 when the
+   style has no texture table or the string is empty, otherwise 1. */
+extern "C" int f_07b018(TextStyle *t, int x, int y, int align, const char *s, float r, float g,
+                        float b, float a)
+{
+    int ret = 0;
+    Glyph *gl;
+    unsigned int len;
+    unsigned int i;
+
+    if (t->m0 == 0)
+        return ret;
+    len = strlen(s);
+    i = 0;
+    gl = 0;
+    if (len == 0)
+        return ret;
+next:
+    if (i < len) {
+        unsigned char c = s[i];
+        if ((unsigned char)(c - '0') < 10)
+            gl = &D_1d33a0[c - '0' + t->set];
+        else if ((unsigned char)(c - 'A') < 26)
+            gl = &D_1d33a0[c - 'A' + 10 + t->set];
+        else if ((unsigned char)(c - 'a') < 26)
+            gl = &D_1d33a0[c - 'a' + 36 + t->set];
+        else if ((unsigned char)(c - 0xc0) < 32)
+            gl = &D_1d33a0[c - 0xc0 + 62 + t->set];
+        else if (c == 0x80)
+            gl = &D_1d33a0[94 + t->set];
+        else if (c >= 0xe0)
+            gl = &D_1d33a0[c - 0xe0 + 95 + t->set];
+        else if (c == 0x81)
+            gl = &D_1d33a0[127 + t->set];
+        else if ((unsigned char)(c - '!') < 15)
+            gl = &D_1d33a0[c - '!' + 128 + t->set];
+        else if ((unsigned char)(c - ':') < 7)
+            gl = &D_1d33a0[c - ':' + 143 + t->set];
+        else if ((unsigned char)(c - '[') < 6)
+            gl = &D_1d33a0[c - '[' + 150 + t->set];
+        else if ((unsigned char)(c - '{') < 4)
+            gl = &D_1d33a0[c - '{' + 156 + t->set];
+        else if ((unsigned char)(c - 0xa1) < 3)
+            gl = &D_1d33a0[c - 0xa1 + 160 + t->set];
+        else if (c == 0xa5)
+            gl = &D_1d33a0[163 + t->set];
+        else if (c == 0xb1)
+            gl = &D_1d33a0[164 + t->set];
+        else if (c == 0xb2)
+            gl = &D_1d33a0[165 + t->set];
+        else if (c == 0xb7)
+            gl = &D_1d33a0[166 + t->set];
+        else if (c == 0xbf)
+            gl = &D_1d33a0[167 + t->set];
+        else if (c == 0x82)
+            gl = &D_1d33a0[168 + t->set];
+        else if (c == ' ')
+            x += 5;
+        if (gl) {
+            f_07d574(t, x, y, -1, gl->u, gl->v, x + (int)(gl->width * t->sx),
+                     y + (int)(gl->height * t->sy), -1, gl->u + gl->width, gl->v + gl->height,
+                     ((int *)t->m0)[gl->page], r, g, b, a);
+            x += (int)(gl->width * t->sx);
+            gl = 0;
+        }
+        i++;
+        goto next;
+    }
+    ret = 1;
+    return ret;
+}
+
+/* @draft 0x07b4c8 us f_07b4c8
+   WHAT IT DOES: Draws an ASCII and Shift-JIS half width (katakana) string in a text style at
+   (x, y) on a fixed pitch, tinted by a colour given as four 0 to 1 floats: each mapped
+   character (the f_07bbcc set) is drawn scaled by the style and the pen advances by the
+   scaled pitch, except punctuation ('!' to '/'), which advances by its own scaled width; a
+   space advances half the scaled pitch and other characters are skipped. Alignment 2 ends the
+   text at x and 3 centres it on x (using the scaled pitch times the length). Returns 0 when
+   the style has no texture table or the string is empty, otherwise 1.
+   Remaining difference: as in f_07c344, global-alloc gives the style pointer s0 and the
+   alignment/index s1 (retail the reverse) and the colour floats other saved FPRs; in the
+   alignment blocks the FP temporaries differ, so align 2's tail cross-jumps into align 3's
+   (8 bytes short). The control flow and every address match. */
+extern "C" int f_07b4c8(TextStyle *t, int x, int y, int pitch, int align, const char *s,
+                        float r, float g, float b, float a)
+{
+    int ret = 0;
+    Glyph *gl;
+    unsigned int len;
+    unsigned int i;
+    int adv;
+
+    if (t->m0 == 0)
+        return ret;
+    len = strlen(s);
+    adv = pitch;
+    gl = 0;
+    if (len == 0)
+        return ret;
+    if (align == 2)
+        x -= (int)((float)(pitch * len) * t->sx);
+    else if (align == 3)
+        x -= (int)((float)(int)((float)(pitch * len) * t->sx) * 0.5f);
+    for (i = 0; i < len; i++) {
+        unsigned char c = s[i];
+        if ((unsigned char)(c - '0') < 10)
+            gl = &D_1d33a0[c - '0' + t->set];
+        else if ((unsigned char)(c - 'A') < 26)
+            gl = &D_1d33a0[c - 'A' + 10 + t->set];
+        else if ((unsigned char)(c - 'a') < 26)
+            gl = &D_1d33a0[c - 'a' + 36 + t->set];
+        else if ((unsigned char)(c - 0xc0) < 32)
+            gl = &D_1d33a0[c - 0xc0 + 62 + t->set];
+        else if (c == 0x80)
+            gl = &D_1d33a0[94 + t->set];
+        else if (c >= 0xe0)
+            gl = &D_1d33a0[c - 0xe0 + 95 + t->set];
+        else if (c == 0x81)
+            gl = &D_1d33a0[127 + t->set];
+        else if ((unsigned char)(c - '!') < 15) {
+            gl = &D_1d33a0[c - '!' + 128 + t->set];
+            adv = gl->width;
+        }
+        else if ((unsigned char)(c - ':') < 7)
+            gl = &D_1d33a0[c - ':' + 143 + t->set];
+        else if ((unsigned char)(c - '[') < 6)
+            gl = &D_1d33a0[c - '[' + 150 + t->set];
+        else if ((unsigned char)(c - '{') < 4)
+            gl = &D_1d33a0[c - '{' + 156 + t->set];
+        else if ((unsigned char)(c - 0xa1) < 3)
+            gl = &D_1d33a0[c - 0xa1 + 160 + t->set];
+        else if (c == 0xa5)
+            gl = &D_1d33a0[163 + t->set];
+        else if (c == 0xb1)
+            gl = &D_1d33a0[164 + t->set];
+        else if (c == 0xb2)
+            gl = &D_1d33a0[165 + t->set];
+        else if (c == 0xb7)
+            gl = &D_1d33a0[166 + t->set];
+        else if (c == 0xbf)
+            gl = &D_1d33a0[167 + t->set];
+        else if (c == 0x82)
+            gl = &D_1d33a0[168 + t->set];
+        else if (c == ' ')
+            x += (int)((float)pitch * 0.5f * t->sx);
+        if (gl) {
+            f_07d574(t, x, y, -1, gl->u, gl->v, x + (int)(gl->width * t->sx),
+                     y + (int)(gl->height * t->sy), -1, gl->u + gl->width, gl->v + gl->height,
+                     ((int *)t->m0)[gl->page], r, g, b, a);
+            x += (int)(adv * t->sx);
+            adv = pitch;
+            gl = 0;
+        }
+    }
+    ret = 1;
+    return ret;
+}
+
 /* @implements 0x07ba68 us f_07ba68
    WHAT IT DOES: Returns the width of an ASCII string in a text style: digits, capitals, lower
    case letters, a two byte code introduced by 0x83 and the 0x81 code each add their glyph's
@@ -153,6 +320,69 @@ extern "C" int f_07ba68(TextStyle *t, const char *s)
         } else if (c == 0x81) {
             i++;
             g = &D_1d33a0[149 + t->set];
+        }
+        if (g) {
+            w += g->width;
+            g = 0;
+        }
+    }
+    return w;
+}
+
+/* @implements 0x07bbcc us f_07bbcc
+   WHAT IT DOES: Returns the width of an ASCII and Shift-JIS half width (katakana) string in a
+   text style, over the same character set as f_07ac48: each mapped character adds its glyph's
+   advance width, a space adds 9 and other characters add nothing. */
+extern "C" int f_07bbcc(TextStyle *t, const char *s)
+{
+    unsigned int len = strlen(s);
+    int w = 0;
+    Glyph *g = 0;
+    unsigned int i;
+
+    if (len == 0)
+        return 0;
+    for (i = 0; i < len; i++) {
+        unsigned char c = s[i];
+        if ((unsigned char)(c - '0') < 10)
+            g = &D_1d33a0[c - '0' + t->set];
+        else if ((unsigned char)(c - 'A') < 26)
+            g = &D_1d33a0[c - 'A' + 10 + t->set];
+        else if ((unsigned char)(c - 'a') < 26)
+            g = &D_1d33a0[c - 'a' + 36 + t->set];
+        else if ((unsigned char)(c - 0xc0) < 32)
+            g = &D_1d33a0[c - 0xc0 + 62 + t->set];
+        else if (c == 0x80)
+            g = &D_1d33a0[94 + t->set];
+        else if (c >= 0xe0)
+            g = &D_1d33a0[c - 0xe0 + 95 + t->set];
+        else if (c == 0x81)
+            g = &D_1d33a0[127 + t->set];
+        else if ((unsigned char)(c - '!') < 15)
+            g = &D_1d33a0[c - '!' + 128 + t->set];
+        else if ((unsigned char)(c - ':') < 7)
+            g = &D_1d33a0[c - ':' + 143 + t->set];
+        else if ((unsigned char)(c - '[') < 6)
+            g = &D_1d33a0[c - '[' + 150 + t->set];
+        else if ((unsigned char)(c - '{') < 4)
+            g = &D_1d33a0[c - '{' + 156 + t->set];
+        else if ((unsigned char)(c - 0xa1) < 3)
+            g = &D_1d33a0[c - 0xa1 + 160 + t->set];
+        else if (c == 0xa5)
+            g = &D_1d33a0[163 + t->set];
+        else if (c == 0xb1)
+            g = &D_1d33a0[164 + t->set];
+        else if (c == 0xb2)
+            g = &D_1d33a0[165 + t->set];
+        else if (c == 0xb7)
+            g = &D_1d33a0[166 + t->set];
+        else if (c == 0xbf)
+            g = &D_1d33a0[167 + t->set];
+        else if (c == 0x82)
+            g = &D_1d33a0[168 + t->set];
+        else if (c == ' ') {
+            g = 0;
+            w += 9;
         }
         if (g) {
             w += g->width;
@@ -301,6 +531,171 @@ extern "C" int f_07c344(TextStyle *t, int x, int y, int align, const char *s, fl
             gl = &D_1d33a0[c - 'A' + 10 + t->set];
         else if ((unsigned char)(c - 'a') < 26)
             gl = &D_1d33a0[c - 'a' + 36 + t->set];
+        if (gl) {
+            f_07d574(t, x, y, -1, gl->u, gl->v, x + (int)(gl->width * t->sx),
+                     y + (int)(gl->height * t->sy), -1, gl->u + gl->width, gl->v + gl->height,
+                     ((int *)t->m0)[gl->page], r, g, b, a);
+            x += (int)(gl->width * t->sx);
+            gl = 0;
+        }
+    }
+    ret = 1;
+    return ret;
+}
+
+/* @draft 0x07c610 us f_07c610
+   WHAT IT DOES: Draws an ASCII and Shift-JIS half width (katakana) string in a text style at
+   (x, y), one character cell of the given pitch per glyph, tinted by a colour given as four 0
+   to 1 floats: each mapped character (the f_07bbcc set) draws its glyph scaled by the style
+   and centred in its cell, a space is an empty cell and other characters are skipped.
+   Alignment 2 ends the text at x and 3 centres it on x. Returns 0 when the style has no
+   texture table or the string is empty, otherwise 1.
+   Remaining difference: global-alloc gives the style pointer s0 and the alignment/index s1
+   (retail the reverse: pseudo 182 is allocated before 186/195 here); every other word matches. */
+extern "C" int f_07c610(TextStyle *t, int x, int y, int pitch, int align, const char *s,
+                        float r, float g, float b, float a)
+{
+    int ret = 0;
+    Glyph *gl;
+    unsigned int len;
+    unsigned int i;
+
+    if (t->m0 == 0)
+        return ret;
+    len = strlen(s);
+    gl = 0;
+    if (len == 0)
+        return ret;
+    if (align == 2)
+        x -= pitch * len;
+    else if (align == 3)
+        x -= (int)((float)(int)(pitch * len) * 0.5f);
+    for (i = 0; i < len; i++) {
+        unsigned char c = s[i];
+        if ((unsigned char)(c - '0') < 10)
+            gl = &D_1d33a0[c - '0' + t->set];
+        else if ((unsigned char)(c - 'A') < 26)
+            gl = &D_1d33a0[c - 'A' + 10 + t->set];
+        else if ((unsigned char)(c - 'a') < 26)
+            gl = &D_1d33a0[c - 'a' + 36 + t->set];
+        else if ((unsigned char)(c - 0xc0) < 32)
+            gl = &D_1d33a0[c - 0xc0 + 62 + t->set];
+        else if (c == 0x80)
+            gl = &D_1d33a0[94 + t->set];
+        else if (c >= 0xe0)
+            gl = &D_1d33a0[c - 0xe0 + 95 + t->set];
+        else if (c == 0x81)
+            gl = &D_1d33a0[127 + t->set];
+        else if ((unsigned char)(c - '!') < 15)
+            gl = &D_1d33a0[c - '!' + 128 + t->set];
+        else if ((unsigned char)(c - ':') < 7)
+            gl = &D_1d33a0[c - ':' + 143 + t->set];
+        else if ((unsigned char)(c - '[') < 6)
+            gl = &D_1d33a0[c - '[' + 150 + t->set];
+        else if ((unsigned char)(c - '{') < 4)
+            gl = &D_1d33a0[c - '{' + 156 + t->set];
+        else if ((unsigned char)(c - 0xa1) < 3)
+            gl = &D_1d33a0[c - 0xa1 + 160 + t->set];
+        else if (c == 0xa5)
+            gl = &D_1d33a0[163 + t->set];
+        else if (c == 0xb1)
+            gl = &D_1d33a0[164 + t->set];
+        else if (c == 0xb2)
+            gl = &D_1d33a0[165 + t->set];
+        else if (c == 0xb7)
+            gl = &D_1d33a0[166 + t->set];
+        else if (c == 0xbf)
+            gl = &D_1d33a0[167 + t->set];
+        else if (c == 0x82)
+            gl = &D_1d33a0[168 + t->set];
+        else if (c == ' ') {
+            gl = 0;
+            x += pitch;
+        }
+        if (gl) {
+            float w = gl->width * t->sx;
+            int x0 = x + (int)(((float)pitch - w) * 0.5f);
+            f_07d574(t, x0, y, -1, gl->u, gl->v, x0 + (int)w, y + (int)(gl->height * t->sy), -1,
+                     gl->u + gl->width, gl->v + gl->height, ((int *)t->m0)[gl->page], r, g, b, a);
+            x += pitch;
+            gl = 0;
+        }
+    }
+    ret = 1;
+    return ret;
+}
+
+/* @draft 0x07cb24 us f_07cb24
+   WHAT IT DOES: Draws an ASCII and Shift-JIS half width (katakana) string in a text style at
+   (x, y) with proportional spacing, tinted by a colour given as four 0 to 1 floats: each
+   mapped character (the f_07bbcc set) is drawn scaled by the style and the pen advances by
+   its scaled width; a space advances 9 and other characters are skipped. Alignment 2 ends the
+   text at x and 3 centres it on x (using the width f_07bbcc measures). Returns 0 when the
+   style has no texture table or the string is empty, otherwise 1.
+   Remaining difference: as in f_07c344, global-alloc gives the style pointer s1 and the
+   alignment/index s2 (retail the reverse), the four colour floats land in other saved FPRs,
+   and both alignment blocks pick the FP temporaries in the other order. */
+extern "C" int f_07cb24(TextStyle *t, int x, int y, int align, const char *s, float r, float g,
+                        float b, float a)
+{
+    int ret = 0;
+    Glyph *gl;
+    unsigned int len;
+    unsigned int i;
+
+    if (t->m0 == 0)
+        return ret;
+    len = strlen(s);
+    gl = 0;
+    if (len == 0)
+        return ret;
+    if (align == 2) {
+        x -= (int)(f_07bbcc(t, s) * t->sx);
+    } else if (align == 3) {
+        x -= (int)((int)(f_07bbcc(t, s) * t->sx) * 0.5f);
+    }
+    for (i = 0; i < len; i++) {
+        unsigned char c = s[i];
+        if ((unsigned char)(c - '0') < 10)
+            gl = &D_1d33a0[c - '0' + t->set];
+        else if ((unsigned char)(c - 'A') < 26)
+            gl = &D_1d33a0[c - 'A' + 10 + t->set];
+        else if ((unsigned char)(c - 'a') < 26)
+            gl = &D_1d33a0[c - 'a' + 36 + t->set];
+        else if ((unsigned char)(c - 0xc0) < 32)
+            gl = &D_1d33a0[c - 0xc0 + 62 + t->set];
+        else if (c == 0x80)
+            gl = &D_1d33a0[94 + t->set];
+        else if (c >= 0xe0)
+            gl = &D_1d33a0[c - 0xe0 + 95 + t->set];
+        else if (c == 0x81)
+            gl = &D_1d33a0[127 + t->set];
+        else if ((unsigned char)(c - '!') < 15)
+            gl = &D_1d33a0[c - '!' + 128 + t->set];
+        else if ((unsigned char)(c - ':') < 7)
+            gl = &D_1d33a0[c - ':' + 143 + t->set];
+        else if ((unsigned char)(c - '[') < 6)
+            gl = &D_1d33a0[c - '[' + 150 + t->set];
+        else if ((unsigned char)(c - '{') < 4)
+            gl = &D_1d33a0[c - '{' + 156 + t->set];
+        else if ((unsigned char)(c - 0xa1) < 3)
+            gl = &D_1d33a0[c - 0xa1 + 160 + t->set];
+        else if (c == 0xa5)
+            gl = &D_1d33a0[163 + t->set];
+        else if (c == 0xb1)
+            gl = &D_1d33a0[164 + t->set];
+        else if (c == 0xb2)
+            gl = &D_1d33a0[165 + t->set];
+        else if (c == 0xb7)
+            gl = &D_1d33a0[166 + t->set];
+        else if (c == 0xbf)
+            gl = &D_1d33a0[167 + t->set];
+        else if (c == 0x82)
+            gl = &D_1d33a0[168 + t->set];
+        else if (c == ' ') {
+            gl = 0;
+            x += 9;
+        }
         if (gl) {
             f_07d574(t, x, y, -1, gl->u, gl->v, x + (int)(gl->width * t->sx),
                      y + (int)(gl->height * t->sy), -1, gl->u + gl->width, gl->v + gl->height,
