@@ -35,7 +35,10 @@ Angle *f_099b98(Angle *p)
 
 /* @draft 0x099c30 us f_099c30
    WHAT IT DOES: Sine from the 64 step table: wraps the angle to a half turn and keeps the
-   sign separately. */
+   sign separately.
+   Remaining difference: the wrap loop only. Retail holds the loop's angle in f0, copied from f12
+   (mov.s in the entry and back-edge bc1t slots), with pi loaded straight into f1; here the loop
+   is rotated with bc1tl and pi is copied f0->f1, so retail's loop value is a pseudo apart from x. */
 float f_099c30(float x)
 {
     int neg = 0;

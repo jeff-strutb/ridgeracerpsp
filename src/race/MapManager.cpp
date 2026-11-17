@@ -191,7 +191,9 @@ void MapManager::AllocateFree(void *data, int area)
    are loaded into each other's registers, and the seven closing field stores come out in
    another order (retail keeps source order exactly, as if every store depended on the one
    before; making the int fields volatile reproduces it, which suggests a dependence this
-   source does not have). */
+   source does not have). sched1 (nmG, -fsched-verbose) ranks the stores 13020, isValid
+   (REG_DEAD of the QImode 1, INSN_REG_WEIGHT), 13008, 13016, 12992, 12996, 13004 at equal
+   priority; all store deps go only to the call, so retail's source order needs no 1 pseudo dying there. */
 void MapManager::Allocate(void *motionPack, void *classPack, int eventArg, int shadeArg,
                           int motionA, int motionB, int classArg, int a8, int a9, int a10,
                           int a11, int a12, int a13, int extra1, int extra0, int motionC)

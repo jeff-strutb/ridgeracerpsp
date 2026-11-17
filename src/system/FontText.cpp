@@ -369,7 +369,9 @@ extern "C" int f_07d060(TextStyle *t, int x, int y, int pitch, int align, unsign
    Returns 0 when the style has no texture table or the string is empty, otherwise 1.
    Remaining difference: in both alignment blocks local-alloc picks the FP registers in the
    other order (retail keeps the measured width in f0 and truncates in place); the loop and
-   every other word match. */
+   every other word match. In align 2 retail gives the int-in-FPR (mtc1) f0, the tied cvt/mul
+   pair f1 and the truncation f0 again: the mtc1 pseudo is allocated before the 4-ref cvt/mul qty,
+   which this source's priorities (refs/length) do not allow. */
 extern "C" int f_07d2d8(TextStyle *t, int x, int y, int align, unsigned int n, const char *s,
                         float r, float g, float b, float a)
 {

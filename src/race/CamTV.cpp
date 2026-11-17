@@ -695,7 +695,11 @@ void CCamTV::f_0803dc()
 /* @draft 0x0803e4 us _ZN7CamCtrl6CCamTV8f_0803e4Ev
    Remaining difference: the two %hi registers of 80/D_24144c are swapped (retail v0 for
    D_24144c); local-alloc gives the 80.0 pseudo the first choice because update_equiv_regs
-   moves its lui next to its use and shortens its life.
+   moves its lui next to its use and shortens its life. Checked 2026-11-16 in the lreg/greg
+   dumps: sched1 gives hi(D) 32, hi(80) 35, lw D 34, lw 80 37; update_equiv_regs re-emits
+   hi(80) as insn 124 right before 37, so the two %hi pseudos (190, 194) no longer overlap and
+   tie on priority, yet local-alloc still puts 190 in v1 (194, 185/186, 197, 203 take v0):
+   something keeps v0 busy over insns 32..34 that is not visible in the dump yet.
    WHAT IT DOES: The camera's aim offset: the course direction at the car, looking ahead by
    the shot's ramp read at the value at 656, scaled by half of 80 over the speed unit (at
    most 1, which is kept at 660). */
@@ -1169,7 +1173,11 @@ void CCamTV::f_07f8cc()
 /* @draft 0x07f834 us _ZN7CamCtrl6CCamTV8f_07f834EPi
    REMAINING DIFFERENCE: only the FP registers of the far distance (retail f0 for the
    result and the course value, f1 for 1000); an in-place multiply and a ternary were
-   tried.
+   tried. Cause (lreg dump): sched1 keeps lw D_23ff60 (65) before lw 1000 (68), so the
+   course pseudo lives one insn longer and local-alloc gives 1000 f0 first; d (global)
+   then follows the mult's first operand (set_preference) into f1. Retail needs the course
+   load after the constant's (or a tie in its favour); swapping the operands does not do
+   it (expand_binop swaps the constant back to op1).
    WHAT IT DOES: Starts the camera: puts lens setting 4 on the view, takes its far distance
    (300, or the course value times 1000 when the course setting is on) and marks the view
    and the previous camera's view. */

@@ -48,11 +48,7 @@ extern "C" float f_0cd3cc(float);
 
 extern CamLens D_241580[9];
 
-/* @draft 0x0823f0 us f_0823f0
-   REMAINING DIFFERENCE: retail loads all eight lens fields in store order before the
-   stores; here (a restrict view pointer gives the nearest result) the last int load is
-   hoisted first and the float loads take other registers. Locals in store order schedule
-   the loads by type instead.
+/* @implements 0x0823f0 us f_0823f0
    WHAT IT DOES: Puts lens setting n on a camera: half the field of view and its zoom (one
    over its tangent), and the lens's other parameters. */
 void f_0823f0(int n, CamView *__restrict v)
@@ -61,14 +57,22 @@ void f_0823f0(int n, CamView *__restrict v)
     v->m676 = 0;
     v->fov = l->fov * 0.5f;
     float zoom = 1.0f / f_0cd3cc(v->fov);
-    v->m736 = l->m40;
-    v->m712 = l->m4;
-    v->m716 = l->m12;
-    v->m720 = l->m48;
-    v->m724 = l->m16;
-    v->m728 = l->m24;
-    v->m668 = l->m28;
-    v->m732 = l->m44;
+    float a4 = l->m4;
+    int a12 = l->m12;
+    int a48 = l->m48;
+    int a16 = l->m16;
+    float a24 = l->m24;
+    int a28 = l->m28;
+    int a44 = l->m44;
+    float a40 = l->m40; /* read last: sched1 issues the lens pointer's last use first */
+    v->m736 = a40;
+    v->m712 = a4;
+    v->m716 = a12;
+    v->m720 = a48;
+    v->m724 = a16;
+    v->m728 = a24;
+    v->m668 = a28;
+    v->m732 = a44;
     v->zoom = zoom;
 }
 

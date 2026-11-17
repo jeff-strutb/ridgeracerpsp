@@ -1100,6 +1100,12 @@ int CNetSession::f_086bec()
 
 /* @draft 0x086c50 us f_086c50
    REMAINING DIFFERENCE: register choice only: retail puts the 5000000 constant in v1 and the m40 load in v0.
+   Cause (sched1 + lreg dumps, 2026-11-16): sched1 puts the speculative `li 180` (insn 40, from the
+   else block) between the call and the m40 load; update_equiv_regs then moves it back to its use,
+   so the load sits right after the call_value. local-alloc's INSN_SCHEDULING fake lifetime
+   (birth-2) then overlaps the call's v0 set, so the load gets v1. Retail must keep a
+   non-movable insn there (e.g. the 5000000 lui, insn 69); same mechanism as CarInitBlock
+   f_0bc714 and CamTV f_0803e4 (pseudo born right after a call avoids v0).
    WHAT IT DOES: Updates the hello data and broadcasts the session record, at most once every
    180 frames. */
 int CNetSession::f_086c50()
