@@ -469,7 +469,10 @@ float CourseAreas::f_0e3b30()
 /* @draft 0x0e3b3c us CourseAreas8f_0e3b3c
    WHAT IT DOES: Returns the distance from b to a along the ring, wrapped to within half a
    lap.
-   DIFFERS: 6/29 words differ, first at +0x14 (not yet worked). */
+   DIFFERS: 6/29 words: retail puts half in $f2 and -half in $f0; here half takes $f0. Both are
+   allocated by global-alloc, which takes half first on priority (4 refs over 9 insns against
+   -half's 3 over 6, refs weighted by block frequency). A separate -half variable declared first
+   changes nothing. Open: what in retail gives -half the higher priority. */
 float CourseAreas::f_0e3b3c(float a, float b)
 {
     float len = (float)n;
