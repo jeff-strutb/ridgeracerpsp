@@ -61,7 +61,9 @@ struct RaceInfo {
     int m192;
     struct InfoSub *sub;
     struct Records *rec;
-    char m204[16];
+    struct CarObj **list;
+    char m208[8];
+    int nlist;
     struct CarObj *car;
 };
 extern RaceInfo *D_2407fc;
@@ -72,7 +74,10 @@ extern RaceInfo *D_2407fc;
 struct CarObj {
     char m0[76];
     int m76;
-    char m80[64];
+    int m80;
+    char m84[16];
+    int m100;
+    char m104[40];
     float x;
     char m148[4];
     float z;
@@ -729,6 +734,45 @@ int C2DCourseMapWbattle::f_101b1c(Group *g, Race *r)
 int C2DCourseMapWbattle::Draw()
 {
     return 1;
+}
+
+/* @draft 0x102aa0 us C2DCourseMapWbattle8f_101b54
+   WHAT IT DOES: The wireless battle map's step: hides the nine car markers, then places a
+   marker for every car of the race's list: the player's (flag bit 0) with marker 9, the other
+   cars that are running with markers 8 downwards, each in its colour rectangle (its index plus 3
+   or plus 11). Returns 0.
+   Remaining difference (24 words): register choice in the first loop (retail: this s2, group
+   s1, counter s0) and the order of the marker call's argument loads. Separate loop variables
+   for the two loops took it from 44 to 24. */
+int C2DCourseMapWbattle::f_101b54()
+{
+    float m[2];
+    int i, j, k, n;
+
+    if (!C2DDecorationBase::f_101b54())
+        return 0;
+    k = 0;
+    for (i = 0; i < 9;) {
+        i++;
+        Show(i, 0);
+    }
+    n = D_2407fc->nlist;
+    for (j = 0; j < n; j++) {
+        CarObj *c = D_2407fc->list[j];
+
+        if (!c)
+            continue;
+        if (c->m80 & 1) {
+            f_101f7c(c->x, c->z, &m[0], &m[1]);
+            int s = f_101f54(9);
+            f_102190(s, D_2407fc->list[j]->m100 + 3, 1, m[0], m[1]);
+        } else if (c->m76) {
+            f_101f7c(c->x, c->z, &m[0], &m[1]);
+            int s = f_101f54(8 - k++);
+            f_102190(s, D_2407fc->list[j]->m100 + 11, 1, m[0], m[1]);
+        }
+    }
+    return 0;
 }
 
 /* @implements 0x102c5c us C2DTimeLimit8f_101b1c
