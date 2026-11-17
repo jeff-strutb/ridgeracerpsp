@@ -75,6 +75,12 @@ struct MapMgr {
         seed = seed * 0x19660d + 0x3c6ef35f;
         return (int)(seed >> 1) % 32768;
     }
+    /* The same draw with the modulo taken unsigned (an and, not a subtract). */
+    int RandU()
+    {
+        seed = seed * 0x19660d + 0x3c6ef35f;
+        return (seed >> 1) % 32768;
+    }
     char m0[12144];
     EvData m12144;
     char m12152[96];
@@ -2265,11 +2271,14 @@ void CCycleWork::Update()
    WHAT IT DOES: Takes the event and its flash count, and gives each flash a random period
    (up to the event's first parameter) and a random offset (across the second, up the
    third).
-   Remaining difference (16 B): the second and third Rand's `% 32768` stays as srl/sll/subu
-   where retail has andi 0x7fff (the first Rand is subu in both). The combine dump shows the
-   inlined Rand's return pseudo is also expand_divmod's quotient target (set twice, insns
-   122/125), so combine cannot fold the three insns; what retail did differently for the
-   later two calls is not known. CFlashWork::Update has the same difference. */
+   2026-11-16: the second and third draws' andi 0x7fff is expand_divmod's unsigned-modulo
+   path (an and, never a quotient), so retail took those two `% 32768` unsigned while the
+   first stays signed (srl/sll/subu, as all three of HatoBird::Scatter's): they now call
+   RandU (`(seed >> 1) % 32768` unsigned, returned as int). Size 480 -> 464 = retail.
+   Remaining difference (33 words, scheduling only): around the first draw retail loads h
+   and forms m16+i*4 before the m20 load and issues `time = 0` before the m16[i] store;
+   ours loads m20 first and stores m16[i] first (sched1/register choice, a0 vs a1 for the
+   seed). Not yet diagnosed. CFlashWork::Update has the same change and remainder. */
 void CFlashWork::Setup(::Event *e)
 {
     ev = e;
@@ -2282,8 +2291,8 @@ void CFlashWork::Setup(::Event *e)
         int h = *f_0dad68(ev, 0xe00000, 3);
         m16[i] = period * D_23c820.Rand() / 32768;
         m20[i].time = 0;
-        m20[i].x = (float)(w * (D_23c820.Rand() - 16384) / 32768);
-        m20[i].y = (float)(h * D_23c820.Rand() / 32768);
+        m20[i].x = (float)(w * (D_23c820.RandU() - 16384) / 32768);
+        m20[i].y = (float)(h * D_23c820.RandU() / 32768);
     }
 }
 
@@ -2300,7 +2309,10 @@ void CFlashWork::Stop()
 /* @draft 0x0d4738 us _ZN3Map5Event10CFlashWork6Update
    WHAT IT DOES: While any job holds it and no replay runs, counts each flash's period down;
    when one runs out it fires again at full level with a new random period and offset.
-   Remaining difference (16 B): the second and third Rand's modulo, as in Setup. */
+   2026-11-16: second and third draws via RandU (unsigned modulo), as in Setup: 516 -> 500 B
+   = retail. Remaining difference (27 words, scheduling only): retail loads h and forms
+   m16+i before the m20 load, and stores level/time after the m16[i] store and the next
+   seed load; same open cause as Setup. */
 void CFlashWork::Update()
 {
     if (ref == 0)
@@ -2315,8 +2327,8 @@ void CFlashWork::Update()
             m16[i] = period * D_23c820.Rand() / 32768;
             m20[i].level = 1.0f;
             m20[i].time = 0;
-            m20[i].x = (float)(w * (D_23c820.Rand() - 16384) / 32768);
-            m20[i].y = (float)(h * D_23c820.Rand() / 32768);
+            m20[i].x = (float)(w * (D_23c820.RandU() - 16384) / 32768);
+            m20[i].y = (float)(h * D_23c820.RandU() / 32768);
         }
     }
 }
