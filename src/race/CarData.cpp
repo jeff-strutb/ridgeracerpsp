@@ -166,8 +166,11 @@ void f_03702c(void)
    Remaining difference (4 words): in the second loop retail stores the settings pair to its
    two stack copies in the first loop's order (high words, then the low word of the copy, the
    variable's low word in the branch slot); here the two copies come out the other way
-   (retail sw 4, 20, 16, slot 0; here 20, 4, 0, slot 16). Unexamined lead: stack slot reuse
-   between the two loops' Pair temporaries may have swapped which copy lives at 0 and 16. */
+   (retail sw 4, 20, 16, slot 0; here 20, 4, 0, slot 16). Confirmed from the lreg MEM attrs:
+   loop 1 has p at sp+0, r (GetM's local) at sp+16, as retail; loop 2 here reuses them swapped
+   (p at 16, r at 0) because temp-slot reuse hands the newest freed slot (r's) to the first
+   decl (p). Retail keeps p at 0 in loop 2, so its loop 2 allocates r's slot before p's (or
+   differs in nesting). One p at function scope for both loops grows the function to 412 B. */
 void f_037108(void)
 {
     int i;

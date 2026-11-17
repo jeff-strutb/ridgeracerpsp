@@ -138,7 +138,9 @@ CDjEvent::~CDjEvent()
    buffer) tie in sched2 and go by luid; update_equiv_regs puts each single-use HIGH just before
    its argument register set, which expand emits a0 first, so retail's sched2 input had the
    t0/t1 HIGHs ahead of a0's. The same reversed-argument order shows in RaceEffects f_031c40;
-   both calls take a call result (here the varargs double from f_16401c). */
+   both calls take a call result (here the varargs double from f_16401c). Not the call's shape:
+   DjCheck f_08e160 (exact) makes the same f_02db68 call with a varargs __extendsfdf2 double and
+   retail there has a0's HIGH first, so the cause lies in how this cpu value is formed. */
 int CDjEvent::f_08d484()
 {
     unsigned int t0 = sceKernelGetSystemTimeLow();

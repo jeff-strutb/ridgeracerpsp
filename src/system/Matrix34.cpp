@@ -237,7 +237,11 @@ float Mat34::f_0a0140() const
    returns it.
    Remaining difference: sched2 puts sw ra first; retail stores it after the argument moves.
    Cause (RTL dumps): f_0a0140 is defined above in this file, so GCC marks it pure and the call
-   carries memory dependences on the saves; a callee not detected as pure gives retail's order. */
+   carries memory dependences on the saves; a callee not detected as pure gives retail's order.
+   (2026-11-16: consistent with sched-deps: a pure call's (use (mem:BLK scratch)) is a true read
+   of the prologue stores, a plain call only anti-depends on them. f_0a0140's exact body has no
+   store, loop or volatile read, so only a non-local binding (one-only/weak) or a call through
+   another decl would keep it impure; an in-class inline would be inlined. Unresolved.) */
 Mat34 &Mat34::f_0a01ac(const Mat34 &s)
 {
     float inv = 1.0f / s.f_0a0140();

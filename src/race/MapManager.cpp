@@ -193,7 +193,9 @@ void MapManager::AllocateFree(void *data, int area)
    before; making the int fields volatile reproduces it, which suggests a dependence this
    source does not have). sched1 (nmG, -fsched-verbose) ranks the stores 13020, isValid
    (REG_DEAD of the QImode 1, INSN_REG_WEIGHT), 13008, 13016, 12992, 12996, 13004 at equal
-   priority; all store deps go only to the call, so retail's source order needs no 1 pseudo dying there. */
+   priority; all store deps go only to the call, so retail's source order needs no 1 pseudo dying there.
+   Tried 2026-11-16: 'm13016 = m_isValid = 1;' (so the 1 dies at m13016) gives 13016, isValid,
+   13020, 13008, 12992, 12996, slot 13004 (12 words): 13008 still jumps the zero stores. */
 void MapManager::Allocate(void *motionPack, void *classPack, int eventArg, int shadeArg,
                           int motionA, int motionB, int classArg, int a8, int a9, int a10,
                           int a11, int a12, int a13, int extra1, int extra0, int motionC)
