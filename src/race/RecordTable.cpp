@@ -723,6 +723,113 @@ extern "C" int f_0e01a8(AnimData *pb, int *f0, int *f1, float *frac)
     return 1;
 }
 
+/* @draft 0x0e02dc us f_0e02dc
+   WHAT IT DOES: Builds the pose keys of every record at the animation's current time: with header
+   flag 0x100 they come from the spline tracks (0x0dffd8); otherwise the two frames around the time
+   are found (segment table, or the frame divider), all keys are built at one frame when the
+   fraction is 0 or 1 (or through 0x0de508 when the next frame is past the last), else the keys at
+   both frames are built and each is blended by the fraction, the angles the shorter way round.
+   Remaining difference: 1080 vs 1096 bytes, everything up to the blend loop matches. (1) In the
+   loop retail reads the second key's s[2] and its three angles through a second pointer
+   (&tmp[i] + 16, a3: lwc1 4(a3), lhu 8/10/12(a3)), so the source probably addresses that key
+   differently; the remaining 12 bytes are not located yet. (2) The divider path's frac == 1 test
+   branches back into the blend with bc1fl (retail) where this build ends in a j. Learned
+   (2026-11-16): the next-frame-past-the-end test is `if (f1 < frames) {...} else {0x0de508}`
+   (retail places the 0x0de508 call out of line); the other order cost 29 words. */
+extern "C" void f_0e02dc(Key *keys, AnimData *pb, int arg)
+{
+    Key tmp[500];
+    AngLerp l;
+    int f0, f1;
+    float frac;
+    int i;
+
+    if (pb->hdr->flags & 0x100) {
+        f_0dffd8(keys, pb, (AnimData *)arg);
+        return;
+    }
+    if (!f_0e01a8(pb, &f0, &f1, &frac)) {
+        unsigned int k = pb->hdr->mode >> 28;
+        float time = pb->time;
+        if (k < 2) {
+            f0 = (int)time;
+            f1 = f0 + 1;
+            if (f1 < pb->hdr->frames) {
+                frac = time - (float)f0;
+                if (frac == 0.0f) {
+                    pb->frame = (unsigned int)time;
+                    f_0dfb1c(keys, pb, arg);
+                    return;
+                }
+                if (frac == 1.0f) {
+                    pb->frame = f1;
+                    f_0dfb1c(keys, pb, arg);
+                    return;
+                }
+            } else {
+                pb->frame = (unsigned int)time;
+                ((void (*)(Key *, AnimData *, int))f_0de508)(keys, pb, arg);
+                return;
+            }
+        } else {
+            int last = pb->hdr->frames - 1;
+            f0 = (int)(time / (float)(int)k);
+            f1 = f0 + 1;
+            if (time == (float)last && last % (int)k != 0) {
+                pb->frame = f1;
+                f_0dfb1c(keys, pb, arg);
+                return;
+            }
+            if (pb->hdr->frames / (int)k < f1)
+                frac = (float)((int)time % (int)k) / (float)(pb->hdr->frames % (int)k);
+            else
+                frac = time / (float)(int)k - (float)f0;
+            if (frac == 0.0f) {
+                pb->frame = f0;
+                f_0dfb1c(keys, pb, arg);
+                return;
+            }
+            if (frac == 1.0f) {
+                pb->frame = f1;
+                f_0dfb1c(keys, pb, arg);
+                return;
+            }
+        }
+    }
+    pb->frame = f0;
+    f_0dfb1c(keys, pb, arg);
+    pb->frame = f1;
+    f_0dfb1c(tmp, pb, arg);
+    for (i = 0; i < pb->hdr->count; i++) {
+        Key *a = &keys[i];
+        Key *c = &tmp[i];
+        float x0, x1, x2, x3, x4, x5;
+        float d0, d1, d2, d3, d4, d5;
+
+        x0 = a->t[0]; x1 = a->t[1]; x2 = a->t[2];
+        x3 = a->s[0]; x4 = a->s[1]; x5 = a->s[2];
+        l.from[0] = a->r[0];
+        l.from[1] = a->r[1];
+        l.from[2] = a->r[2];
+        d0 = c->t[0] - x0; d1 = c->t[1] - x1; d2 = c->t[2] - x2;
+        d3 = c->s[0] - x3; d4 = c->s[1] - x4; d5 = c->s[2] - x5;
+        l.to[0] = c->r[0];
+        l.to[1] = c->r[1];
+        l.to[2] = c->r[2];
+        d0 *= frac; d1 *= frac; d2 *= frac; d3 *= frac; d4 *= frac; d5 *= frac;
+        a->t[0] = x0 + d0;
+        a->t[1] = x1 + d1;
+        a->t[2] = x2 + d2;
+        a->s[0] = x3 + d3;
+        a->s[1] = x4 + d4;
+        a->s[2] = x5 + d5;
+        f_0dbf04(&l);
+        a->r[0] = (int)((float)l.from[0] + frac * (float)l.delta[0]);
+        a->r[1] = (int)((float)l.from[1] + frac * (float)l.delta[1]);
+        a->r[2] = (int)((float)l.from[2] + frac * (float)l.delta[2]);
+    }
+}
+
 /* @implements 0x0e0724 us f_0e0724
    WHAT IT DOES: Sets the animation's whole frame number from its current time (an unsigned
    conversion), then calls the routine at 0x0de508. */
@@ -790,6 +897,95 @@ extern "C" void f_0e0778(Key *out, AnimData *pb, int arg, int idx)
     f_0dedd0(out, pb, arg, idx);
     pb->frame = f1;
     f_0dedd0(&tmp, pb, arg, idx);
+    out->t[0] = out->t[0] + (tmp.t[0] - out->t[0]) * frac;
+    out->t[1] = out->t[1] + (tmp.t[1] - out->t[1]) * frac;
+    out->t[2] = out->t[2] + (tmp.t[2] - out->t[2]) * frac;
+    out->s[0] = out->s[0] + (tmp.s[0] - out->s[0]) * frac;
+    out->s[1] = out->s[1] + (tmp.s[1] - out->s[1]) * frac;
+    out->s[2] = out->s[2] + (tmp.s[2] - out->s[2]) * frac;
+    l.from[0] = out->r[0];
+    l.from[1] = out->r[1];
+    l.from[2] = out->r[2];
+    l.to[0] = tmp.r[0];
+    l.to[1] = tmp.r[1];
+    l.to[2] = tmp.r[2];
+    f_0dbf04(&l);
+    out->r[0] = (int)((float)l.from[0] + frac * (float)l.delta[0]);
+    out->r[1] = (int)((float)l.from[1] + frac * (float)l.delta[1]);
+    out->r[2] = (int)((float)l.from[2] + frac * (float)l.delta[2]);
+}
+
+/* @draft 0x0e0b08 us f_0e0b08
+   WHAT IT DOES: The 0x0e0778 blend for every record whose key byte equals the given key (through
+   0x0dfa88): the key is reset to no translation, unit scale and zero angles, the two frames around
+   the current time are found, the key is built at one frame when the fraction is 0 or 1, otherwise
+   a second (reset) key is built at the second frame and blended into the first by the fraction, the
+   angles the shorter way round.
+   Remaining difference: 20 words (size equal), two places. (1) sched1 hoists the r[2] store
+   (sh zero,28) above the 1.0 load; retail issues it after the s stores. (2) The lerp loads the
+   second key's six floats before out's, the same as 0x0e0778's note (2). Learned (2026-11-16): the
+   frac == 1 test is written in each arm, not once after both; with one shared test the 1.0 of the
+   reset was not CSE'd into f21 (the join has two predecessors) and the function was 992 bytes. */
+extern "C" void f_0e0b08(Key *out, AnimData *pb, int key)
+{
+    int f0, f1;
+    float frac;
+    Key tmp;
+    AngLerp l;
+    unsigned int k = pb->hdr->mode >> 28;
+
+    out->t[0] = out->t[1] = out->t[2] = 0.0f;
+    out->s[0] = out->s[1] = out->s[2] = 1.0f;
+    out->r[0] = out->r[1] = out->r[2] = 0;
+    if (!f_0e01a8(pb, &f0, &f1, &frac)) {
+        if (k < 2) {
+            float time = pb->time;
+            f0 = (int)time;
+            f1 = f0 + 1;
+            frac = time - (float)f0;
+            if (frac == 0.0f) {
+                pb->frame = (unsigned int)time;
+                f_0dfa88(out, pb, key);
+                return;
+            }
+            if (frac == 1.0f) {
+                pb->frame = f1;
+                f_0dfa88(out, pb, key);
+                return;
+            }
+        } else {
+            float time = pb->time;
+            int last = pb->hdr->frames - 1;
+            f0 = (int)(time / (float)(int)k);
+            f1 = f0 + 1;
+            if (time == (float)last && last % (int)k != 0) {
+                pb->frame = f1;
+                f_0dfa88(out, pb, key);
+                return;
+            }
+            if (pb->hdr->frames / (int)k < f1)
+                frac = (float)((int)time % (int)k) / (float)(pb->hdr->frames % (int)k);
+            else
+                frac = time / (float)(int)k - (float)f0;
+            if (frac == 0.0f) {
+                pb->frame = f0;
+                f_0dfa88(out, pb, key);
+                return;
+            }
+            if (frac == 1.0f) {
+                pb->frame = f1;
+                f_0dfa88(out, pb, key);
+                return;
+            }
+        }
+    }
+    pb->frame = f0;
+    f_0dfa88(out, pb, key);
+    pb->frame = f1;
+    tmp.t[0] = tmp.t[1] = tmp.t[2] = 0.0f;
+    tmp.s[0] = tmp.s[1] = tmp.s[2] = 1.0f;
+    tmp.r[0] = tmp.r[1] = tmp.r[2] = 0;
+    f_0dfa88(&tmp, pb, key);
     out->t[0] = out->t[0] + (tmp.t[0] - out->t[0]) * frac;
     out->t[1] = out->t[1] + (tmp.t[1] - out->t[1]) * frac;
     out->t[2] = out->t[2] + (tmp.t[2] - out->t[2]) * frac;
