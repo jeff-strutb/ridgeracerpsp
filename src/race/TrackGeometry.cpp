@@ -886,6 +886,8 @@ struct Flag {
    with base addressing (addiu t2,sp,496); a per-use ep gives offset addressing (496(a0)), so ep
    is a pointer variable and the re-forming is reload rematerialising it under pressure. Retail
    also spills hitAny (2284) where this keeps it in s6.
+   Open: the second look's xi selection. Retail keeps xi = V464.x inline and puts both other
+   cases out of line; the != form here and an == else-if chain (tried once) both differ.
    Layout aids with no counterpart in the original: the two unused angle locals (retail leaves
    a hole of two slots after the first outline loop) and the packed scratch array tt.
    Retail also reads a stale vector in the slide's second box (V1808 is the leftover of the
