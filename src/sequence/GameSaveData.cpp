@@ -398,12 +398,9 @@ void CSaveStream::f_0192f8()
     f_019128(sig, (unsigned char *)&crc);
 }
 
-/* @draft 0x0193a8 us f_0193a8
+/* @implements 0x0193a8 us f_0193a8
    WHAT IT DOES: Reads every object back from the stream and checks the signature. Returns 0,
-   or -1 (with a message in the log) when an object's version or the signature is wrong.
-   Remaining difference: none in the code; the two log strings are followed in .rodata by
-   "Icon0" where retail has "MainMenuSwg", because f_01a91c still loads its strings in another
-   order. */
+   or -1 (with a message in the log) when an object's version or the signature is wrong. */
 int CSaveStream::f_0193a8()
 {
     unsigned char *sig = cur;
@@ -802,7 +799,9 @@ int Sequence::CReplaySaveData::Size()
    WHAT IT DOES: Writes the replay into the stream: its version byte, its size and its
    bytes.
    Remaining difference (2 words): retail reloads the size before storing the stream position
-   after the size is written; here the two are in the other order. */
+   after the size is written; here the two are in the other order. sched1 sees the two as
+   independent with equal priority (4) and keeps insn order, where the cur store (from the
+   last Put8) comes first; retail needs the size load earlier in the insn stream. */
 int Sequence::CReplaySaveData::Save(CSaveStream *s)
 {
     start = s->cur;
@@ -846,14 +845,14 @@ int MemoryStick::f_01a90c()
     return result == 1;
 }
 
-/* @draft 0x01a91c us f_01a91c
+/* @implements 0x01a91c us f_01a91c
    WHAT IT DOES: Starts saving the game: writes the saved game into a new stream and opens the
    save dialog (automatic, or letting the player confirm) with the game's texts, the player's
    name and distance driven (in miles on an English console) and the menu package's icons and
    picture.
-   Remaining difference (29 words): register allocation; retail keeps "MainMenuSwg" in s2, the
-   package in s3 and the file table in s1 (the string's high part is hoisted early), here they
-   get s1, s2 and s3. The string order in .rodata follows from it. */
+   Each file index is its own variable, as in f_01afa8: the table address is first loaded
+   after the first index call, which gives retail's s1 for the table and s2 for
+   "MainMenuSwg", and retail's string order in .rodata. */
 void MemoryStick::f_01a91c(bool automatic)
 {
     char detail[1024];
@@ -872,11 +871,14 @@ void MemoryStick::f_01a91c(bool automatic)
     D_1e38f4.f_0061b0(D_233f70.f_019494(), D_233f70.Text1(), detail);
     void *p, *q;
     p = D_2301d4.f_002acc("Icon0");
-    D_1e38f4.f_006260(p, D_1c0614[f_00222c("Icon0", f_01c26c("MainMenuSwg"))].size);
+    int icon0 = f_00222c("Icon0", f_01c26c("MainMenuSwg"));
+    D_1e38f4.f_006260(p, D_1c0614[icon0].size);
     p = D_2301d4.f_002acc("Icon1");
-    D_1e38f4.f_006274(p, D_1c0614[f_00222c("Icon1", f_01c26c("MainMenuSwg"))].size);
+    int icon1 = f_00222c("Icon1", f_01c26c("MainMenuSwg"));
+    D_1e38f4.f_006274(p, D_1c0614[icon1].size);
     q = D_2301d4.f_002acc("Pic");
-    D_1e38f4.f_006288(q, D_1c0614[f_00222c("Pic", f_01c26c("MainMenuSwg"))].size);
+    int pic = f_00222c("Pic", f_01c26c("MainMenuSwg"));
+    D_1e38f4.f_006288(q, D_1c0614[pic].size);
     D_1e38f4.f_00629c();
     if (automatic)
         D_1e38f4.f_0063b4(0);
@@ -1114,7 +1116,12 @@ int MemoryStick::f_01b3b8()
    WHAT IT DOES: Starts saving a ghost to the given course's slot: writes it into a new stream
    and opens the save dialog with the ghost's texts and the result menu's icons and
    picture.
-   Remaining difference (18 words): the same register allocation difference as f_01afa8. */
+   Remaining difference (8 words): register allocation. Retail has the slot (+200) in s6 and
+   the icon pointer p in s5; here local-alloc gives the slot s5 (it is set once and dies once in
+   the one block, so it is local, with ld in s4 ahead of it) and global-alloc then gives p
+   (set twice, so global) s6. Splitting p into one variable per icon makes them local and
+   fixes the slot (s6) but then p takes s4 ahead of ld; retail's mix (ld s4, p s5, slot s6)
+   needs the slot to be a global-alloc pseudo, and what makes it one is not found. */
 void MemoryStick::f_01b4e8(int slot)
 {
     char *ld = D_1dd6b0;
@@ -1131,11 +1138,14 @@ void MemoryStick::f_01b4e8(int slot)
     D_1e38f4.f_0061b0(title, D_1d16a8[f_01c260()], replayText);
     void *p, *q;
     p = f_005c34(ld, "GIcon0");
-    D_1e38f4.f_006260(p, D_1c0614[f_00222c("GIcon0", f_01c26c("ResultMenu"))].size);
+    int icon0 = f_00222c("GIcon0", f_01c26c("ResultMenu"));
+    D_1e38f4.f_006260(p, D_1c0614[icon0].size);
     p = f_005c34(ld, "GIcon1");
-    D_1e38f4.f_006274(p, D_1c0614[f_00222c("GIcon1", f_01c26c("ResultMenu"))].size);
+    int icon1 = f_00222c("GIcon1", f_01c26c("ResultMenu"));
+    D_1e38f4.f_006274(p, D_1c0614[icon1].size);
     q = f_005c34(ld, "Pic");
-    D_1e38f4.f_006288(q, D_1c0614[f_00222c("Pic", f_01c26c("ResultMenu"))].size);
+    int pic = f_00222c("Pic", f_01c26c("ResultMenu"));
+    D_1e38f4.f_006288(q, D_1c0614[pic].size);
     D_1e38f4.f_0063fc(slot + 200);
     D_1e38f4.f_006664();
 }
@@ -1347,7 +1357,10 @@ int MemoryStick::f_01bc5c()
    (the compiler emits it outside .text, in a link once section)
    WHAT IT DOES: Copies a saved game, all but its vtable pointer.
    Remaining difference (7 words): retail copies the word at +20 before the one at +16; the
-   member grouping that gives that order is not found. */
+   member grouping that gives that order is not found. Retail's order means the load of +16
+   depends on the store to +12 while +20 does not; with three int fields all are provably
+   disjoint. Making +12/+16 a SavedPair member is wrong: it makes f_01959c's loads disjoint
+   from its D_1d1a94 stores (retail keeps them dependent) and blocks the +20 load too. */
 
 /* @implements 0x01c1dc us _ZN8Sequence13CGameSaveData4SizeEv
    (the compiler emits it outside .text, in a link once section)
