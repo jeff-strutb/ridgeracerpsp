@@ -897,8 +897,9 @@ struct Flag {
    different here: (the block after the k loop re-forms ep, as retail's addu s1,t2,s1);
    after the loop retail computes both V464 differences into $f0/$f1 and copies them to the
    argument registers, where this computes x straight into $f13.
-   Open: the second look's xi selection. Retail keeps xi = V464.x inline and puts both other
-   cases out of line; the != form here and an == else-if chain (tried once) both differ.
+   The second look's xi selection is an == else-if chain (V464.y == 0, then V480.y == 0): the
+   FP tests against 0 get no prediction (50/50), so bb-reorder follows the RTL fallthrough and
+   keeps xi = V464.x inline with the rest of the chain out of line, as retail does.
    Layout aids with no counterpart in the original: the two unused angle locals (retail leaves
    a hole of two slots after the first outline loop) and the packed scratch array tt.
    Retail also reads a stale vector in the slide's second box (V1808 is the leftover of the
@@ -1191,13 +1192,12 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                             Rot(ang, &V480.x, &V480.y);
                             if (V464.y * V480.y > 0.0f)
                                 continue;
-                            if (V464.y != 0.0f) {
-                                if (V480.y == 0.0f)
-                                    xi = V480.x;
-                                else
-                                    xi = V464.x - V464.y * ((V480.x - V464.x) / (V480.y - V464.y));
-                            } else
+                            if (V464.y == 0.0f)
                                 xi = V464.x;
+                            else if (V480.y == 0.0f)
+                                xi = V480.x;
+                            else
+                                xi = V464.x - V464.y * ((V480.x - V464.x) / (V480.y - V464.y));
                             V1840.x = Pp.x - Qp.x;
                             V1840.y = Pp.y - Qp.y;
                             V1856 = V1840;
