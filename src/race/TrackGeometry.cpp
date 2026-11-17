@@ -848,6 +848,11 @@ struct PVec {
         }                                                                                   \
     }
 
+struct Flag {
+    unsigned short v;
+    Flag() {}
+};
+
 /* @draft 0x0b2f18 us f_0b2f18
    WHAT IT DOES: Moves a car outline (the shape at the list's offset 4: a bounding circle and up
    to sixteen vertices) from the position Q to the position P (the orientations are the two
@@ -860,14 +865,17 @@ struct PVec {
    gets the final slide along the contact edge (height from the course areas), and the
    remaining outputs get the contact vertex angle, a speed, the edge direction and the edge's
    two end points. Returns 0 (no contact) to 3.
-   DRAFT: complete transcription of every path; size 13,716 vs 14,328 bytes and about 3,550 of
-   3,582 words differ. The frame (2400 bytes) and the stack slots of the temporaries, the angle
-   slots and the 16-aligned vertex arrays match retail's offsets, and the first loops are
-   close, but: retail keeps the four result/edge counters in memory where this keeps them in
-   registers (hitAny), retail's prologue has a four-iteration empty counting loop (127 down by
-   32) that is not reproduced, the loops index the edge array with a halfword doubled index
-   instead of this file's strength-reduced pointer, register choice and scheduling differ
-   throughout, and retail reloads the shape pointer and its count after every call.
+   DRAFT: complete transcription of every path; size 13,956 vs 14,328 bytes. Proven so far
+   (each matches retail's code at that point): flags is an array of a class with an empty
+   constructor (Flag), declared after result = 0 and before Qp, which gives retail's empty
+   127-step-32 loop and keeps the frame offsets; every loop indexes the edge points as Vec2
+   pts[128] through short jj = i * 2, storing through a float pointer (retail's separate
+   &pts + jj*8 base) and reading pts[jj] / pts[jj + 1]; the edge loops of the sweep and of the
+   second look are for loops with "if (flags[i].v) continue;", whose continue prediction (56%)
+   puts their bodies out of line at the function's end as in retail. The calls now line up to
+   0xea4. Open: retail keeps hitAny in memory (spilled) and hoists the angle addresses and the
+   constant 1 out of the first cull loop; the block with f_0b1b28 at retail 0x1e78 is still
+   placed differently; register choice and scheduling differ throughout.
    Layout aids with no counterpart in the original: the two unused angle locals (retail leaves
    a hole of two slots after the first outline loop) and the packed scratch array tt.
    Retail also reads a stale vector in the slide's second box (V1808 is the leftover of the
@@ -891,14 +899,9 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
     V4 w;
     float Ax[16], Ay[16], Bx[16], By[16], Cx[16], Cy[16];
     PVec v448, v464, v480;
-    float pts[64][4];
-    unsigned short flags[128];
-    Vec2 Qp, Pp, V1808, V1824, V1840, V1856, V1872, V1888, V1904;
-    PlaneRec seg;
-    Vec2 V1936;
-    V4 D, acc;
-    Vec2 V1984, V2000, V2016, V2032, V2048;
-    V4 v2064, v2080, v2096;
+    Vec2 pts[128];
+#define PJ(i) pts[(short)((i) * 2)]
+#define PK(i) pts[(short)((i) * 2) + 1]
     int bestEdge, bestVert, result, hitAny, side;
     float best, bestLen2, ang, xlo, xhi, yhi, ylo, rad, zero, ang2, xi;
     short i, k;
@@ -912,6 +915,13 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
     bestEdge = 0xffff;
     bestVert = 0xffff;
     result = 0;
+    Flag flags[128];
+    Vec2 Qp, Pp, V1808, V1824, V1840, V1856, V1872, V1888, V1904;
+    PlaneRec seg;
+    Vec2 V1936;
+    V4 D, acc;
+    Vec2 V1984, V2000, V2016, V2032, V2048;
+    V4 v2064, v2080, v2096;
     out3[0] = 0.0f;
     out3[1] = 0.0f;
     out3[2] = 0.0f;
@@ -934,6 +944,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
     V1872.x = Pp.x - Qp.x;
     V1872.y = Pp.y - Qp.y;
     V1808 = V1872;
+    V1856 = V1872;
+    V1840 = V1872;
     ang = -f_09a9dc(V1808.y, V1808.x);
     rad = o->m4->r + __builtin_sqrtf(o->m4->cx * o->m4->cx + o->m4->cz * o->m4->cz);
     xlo = -rad;
@@ -943,23 +955,25 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
 
     /* Cull the edges: flag 1 = outside the box around the motion. */
     i = 0;
-    do {
+    while (i < o->m0) {
         PlaneRec *e = o->m8[i];
-        pts[i][0] = e->x;
-        pts[i][1] = e->y;
-        pts[i][3] = e->w;
-        pts[i][2] = e->z;
-        V1808 = *(Vec2 *)&pts[i][0];
+        short jj = i * 2;
+        float *ep = &pts[jj].x;
+        ep[0] = e->x;
+        ep[1] = e->y;
+        V1808 = pts[jj];
         V1808.x = V1808.x - Qp.x;
         V1808.y = V1808.y - Qp.y;
         Rot(ang, &V1808.x, &V1808.y);
-        V1824 = *(Vec2 *)&pts[i][2];
+        ep[3] = e->w;
+        ep[2] = e->z;
+        V1824 = pts[jj + 1];
         V1824.x = V1824.x - Qp.x;
         V1824.y = V1824.y - Qp.y;
         Rot(ang, &V1824.x, &V1824.y);
         short j = i;
         i = i + 1;
-        flags[j] = 1;
+        flags[j].v = 1;
         if (V1808.x < xlo && V1824.x < xlo)
             continue;
         if (xhi < V1808.x && xhi < V1824.x)
@@ -969,8 +983,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
         if (V1808.y < ylo && V1824.y < ylo)
             continue;
         hitAny = 1;
-        flags[j] = 0;
-    } while (i < o->m0);
+        flags[j].v = 0;
+    }
     if (!hitAny)
         return 0;
 
@@ -1001,14 +1015,11 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
     __asm__("" : : "m"(pad1), "m"(pad2));
 
     /* Sweep the outline across every surviving edge. */
-    if (o->m0 != 0) {
-        i = 0;
-        do {
-            if (flags[i] == 0) {
-                SWEEP_EDGE(pts[i], 1, sw1)
-            }
-            i = i + 1;
-        } while (i < (int)o->m0);
+    for (i = 0; i < o->m0; i++) {
+        if (flags[i].v != 0)
+            continue;
+        short jj = i * 2;
+        SWEEP_EDGE(&pts[jj].x, 1, sw1)
     }
 
     /* First correction. */
@@ -1044,17 +1055,17 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
         }
         i = 0;
         do {
-            V1808 = *(Vec2 *)&pts[i][0];
+            V1808 = PJ(i);
             V1808.x = V1808.x - Qp.x;
             V1808.y = V1808.y - Qp.y;
             Rot(ang, &V1808.x, &V1808.y);
-            V1824 = *(Vec2 *)&pts[i][2];
+            V1824 = PK(i);
             V1824.x = V1824.x - Qp.x;
             V1824.y = V1824.y - Qp.y;
             Rot(ang, &V1824.x, &V1824.y);
             short j = i;
             i = i + 1;
-            flags[j] = 1;
+            flags[j].v = 1;
             if (V1808.x < xlo && V1824.x < xlo)
                 continue;
             if (xhi < V1808.x && xhi < V1824.x)
@@ -1063,7 +1074,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                 continue;
             if (V1808.y < ylo && V1824.y < ylo)
                 continue;
-            flags[j] = 0;
+            flags[j].v = 0;
         } while (i < o->m0);
     }
 
@@ -1081,11 +1092,12 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
     V1872.y = zero;
     bestLen2 = zero;
     ang2 = zero;
-    if (o->m0 != 0) {
-        i = 0;
-        do {
-            if (flags[i] == 0) {
-                float *ep = pts[i];
+    for (i = 0; i < o->m0; i++) {
+        if (flags[i].v != 0)
+            continue;
+            {
+                short jj = i * 2;
+                float *ep = &pts[jj].x;
                 float ex = ep[0] - ep[2];
                 float ey = ep[1] - ep[3];
                 k = 0;
@@ -1181,8 +1193,6 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                     } while (k < o->m4->n);
                 }
             }
-            i = i + 1;
-        } while (i < (int)o->m0);
     }
     if (bestLen2 != 0.0f) {
         result = 2;
@@ -1222,13 +1232,13 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
             i = 0;
             do {
                 PlaneRec *e = o->m8[i];
-                pts[i][0] = e->x;
-                pts[i][1] = e->y;
-                pts[i][3] = e->w;
-                pts[i][2] = e->z;
+                PJ(i).x = e->x;
+                PJ(i).y = e->y;
+                PK(i).y = e->w;
+                PK(i).x = e->z;
                 short j = i;
                 i = i + 1;
-                flags[j] = 1;
+                flags[j].v = 1;
                 if (e->x < xlo && e->z < xlo)
                     continue;
                 if (xhi < e->x && xhi < e->z)
@@ -1237,14 +1247,14 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                     continue;
                 if (e->y < ylo && e->w < ylo)
                     continue;
-                flags[j] = 0;
+                flags[j].v = 0;
             } while (i < cnt);
             cnt = o->m0;
             i = 0;
             if (cnt != 0) {
                 do {
-                    if (flags[i] == 0) {
-                        float *ep = pts[i];
+                    if (flags[i].v == 0) {
+                        float *ep = &PJ(i).x;
                         float ex = ep[0] - ep[2];
                         float ey = ep[1] - ep[3];
                         k = 0;
@@ -1385,7 +1395,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                                         PlaneRec *e = o->m8[j];
                                         short jj = j;
                                         j = j + 1;
-                                        flags[jj] = 0;
+                                        flags[jj].v = 0;
                                         if (e->x < xlo && e->z < xlo)
                                             continue;
                                         if (xhi < e->x && xhi < e->z)
@@ -1394,7 +1404,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                                             continue;
                                         if (e->y < ylo && e->w < ylo)
                                             continue;
-                                        flags[jj] = 0;
+                                        flags[jj].v = 0;
                                     }
                                 }
                             }
@@ -1511,14 +1521,14 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                 V1808.x = e->x - V448.x;
                 V1808.y = e->y - V448.y;
                 Rot(ang, &V1808.x, &V1808.y);
-                *(Vec2 *)&pts[i][0] = V1808;
+                PJ(i) = V1808;
                 V1824.y = e->w - V448.y;
                 V1824.x = e->z - V448.x;
                 Rot(ang, &V1824.x, &V1824.y);
-                *(Vec2 *)&pts[i][2] = V1824;
+                PK(i) = V1824;
                 short j = i;
                 i = i + 1;
-                flags[j] = 1;
+                flags[j].v = 1;
                 if (V1808.x < zero && V1824.x < zero)
                     continue;
                 if (xhi < V1808.x && xhi < V1824.x)
@@ -1528,7 +1538,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                 if (V1808.y < xlo && V1824.y < xlo)
                     continue;
                 hitAny = 1;
-                flags[j] = 0;
+                flags[j].v = 0;
             } while (i < o->m0);
         }
         if (hitAny) {
@@ -1550,8 +1560,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
             if (cnt != 0) {
                 i = 0;
                 do {
-                    if (flags[i] == 0) {
-                        seg = *(PlaneRec *)&pts[i][0];
+                    if (flags[i].v == 0) {
+                        seg = *(PlaneRec *)&PJ(i);
                         V1840.x = seg.z - seg.x;
                         V1840.y = seg.w - seg.y;
                         V1936 = V1840;
@@ -1641,21 +1651,21 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
             if (i < (int)cnt) {
                 do {
                     PlaneRec *e = o->m8[i];
-                    pts[i][0] = e->x;
-                    pts[i][1] = e->y;
-                    pts[i][3] = e->w;
-                    pts[i][2] = e->z;
-                    V1808 = *(Vec2 *)&pts[i][0];
+                    PJ(i).x = e->x;
+                    PJ(i).y = e->y;
+                    PK(i).y = e->w;
+                    PK(i).x = e->z;
+                    V1808 = PJ(i);
                     V1808.x = V1808.x - V2000.x;
                     V1808.y = V1808.y - V2000.y;
                     Rot(ang, &V1808.x, &V1808.y);
-                    V1824 = *(Vec2 *)&pts[i][2];
+                    V1824 = PK(i);
                     V1824.x = V1824.x - V2000.x;
                     V1824.y = V1824.y - V2000.y;
                     Rot(ang, &V1824.x, &V1824.y);
                     short j = i;
                     i = i + 1;
-                    flags[j] = 1;
+                    flags[j].v = 1;
                     if (V1808.x < xlo && V1824.x < xlo)
                         continue;
                     if (xhi < V1808.x && xhi < V1824.x)
@@ -1665,7 +1675,7 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                     if (V1808.y < xlo && V1824.y < xlo)
                         continue;
                     hitAny = 1;
-                    flags[j] = 0;
+                    flags[j].v = 0;
                 } while (i < (int)cnt);
                 if (hitAny) {
                     best = 0.0f;
@@ -1692,8 +1702,8 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                     i = istart;
                     if (i < (int)cnt) {
                         do {
-                            if (flags[i] == 0) {
-                                SWEEP_EDGE(pts[i], 0, sw2)
+                            if (flags[i].v == 0) {
+                                SWEEP_EDGE(&PJ(i).x, 0, sw2)
                             }
                             i = i + 1;
                         } while (i < (int)cnt);
