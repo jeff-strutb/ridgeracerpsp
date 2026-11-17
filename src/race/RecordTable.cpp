@@ -37,8 +37,6 @@ struct Obj {
 extern "C" void f_0df538(void *self, RecList *l, int i, int key);
 extern "C" void f_0dedd0(void *slot, RecList *l, int arg, int i);
 extern "C" void f_0de508(void *a, Obj *o);
-extern "C" void f_0e0efc(void *a, void *b, void *c, int d, int e, int f);
-extern "C" void f_0e12c0(void *a, void *b, void *c, int d, int e);
 
 /* Matrix-stack and transform routines (VFPU, src/system). */
 struct Matrix {
@@ -62,7 +60,7 @@ void f_028e9c(const Matrix *m);
    with the current frame at +24. */
 struct AnimHdr {
     unsigned short flags;
-    short m2;
+    unsigned short count;   /* +2: record count */
     short m4;
     unsigned short frameSize;
     int m8;
@@ -70,10 +68,11 @@ struct AnimHdr {
 };
 
 struct AnimRec {
-    int m0;
+    short m0;
+    short parent;           /* +2: -1 for a node with its own pose key */
     unsigned char kind;     /* +4 */
     char m5;
-    char m6;
+    unsigned char key;      /* +6: index into the pose key array */
     unsigned char flags;
     int start;
     int still;
@@ -84,15 +83,24 @@ struct AnimData {
     int *head;              /* +4 */
     AnimRec *recs;          /* +8 */
     unsigned char *nodes;   /* +12 */
-    void *tab;              /* +16 */
+    int *tab;               /* +16: three key-track offsets per record, then their key counts */
     int m20;
     int frame;              /* +24 */
+    float time;             /* +28 */
 };
 
 extern "C" unsigned char *f_0db0d0(AnimData *pb, int frame, int idx);
 extern "C" unsigned char *f_0daf64(AnimData *pb, unsigned int frame, int idx);
 extern "C" void f_0e1e34(AnimData *pb, const unsigned char *p, unsigned short *x, unsigned short *y,
                          unsigned short *z);
+
+/* A pose key (src/system/KeyBlend.c): translation, scale and three 16-bit angles. */
+struct Key {
+    float t[3];             /* +0 */
+    float s[3];             /* +12 */
+    short r[3];             /* +24 */
+    unsigned short pad;
+};
 
 /* A float read from four unaligned bytes. */
 /* A 16-bit angle (a full turn is 65536), read from two unaligned bytes. */
@@ -362,6 +370,53 @@ extern "C" void f_0db864(AnimData *pb, AnimData *pos, Matrix *out)
     f_028ca8();
 }
 
+/* Angle interpolation work block (src/system/KeyBlend.c): two angle triples in, the signed
+   difference and its squared length out. */
+struct AngLerp {
+    unsigned short from[3];     /* +0 */
+    unsigned short to[3];       /* +6 */
+    short delta[3];             /* +12 */
+    float dist;                 /* +20 */
+    int m24;
+};
+
+/* The difference of the two triples and its squared length. */
+static inline void Diff(AngLerp *l)
+{
+    unsigned short d0 = l->to[0] - l->from[0];
+    unsigned short d1 = l->to[1] - l->from[1];
+    unsigned short d2 = l->to[2] - l->from[2];
+    float x = (short)d0, y = (short)d1, z = (short)d2;
+
+    l->delta[0] = d0;
+    l->delta[1] = d1;
+    l->delta[2] = d2;
+    l->dist = x * x + y * y + z * z;
+}
+
+/* @draft 0x0dbf04 us f_0dbf04
+   WHAT IT DOES: Finds the shorter way from one angle triple to another: the target triple and its
+   equivalent (x + half a turn, half a turn - y, z + half a turn) are both measured, and the block
+   keeps the one with the smaller squared difference.
+   Remaining difference: register allocation and schedule only (size equal). This build keeps the
+   0x8000 constant in a register from the start and so uses one more temporary (t7), shifting every
+   later choice by one register; retail materialises it with the second triple's loads. */
+extern "C" void f_0dbf04(AngLerp *a)
+{
+    AngLerp l0 = *a;
+    AngLerp l1 = *a;
+
+    Diff(&l0);
+    l1.to[0] += 0x8000;
+    l1.to[1] = 0x8000 - l1.to[1];
+    l1.to[2] += 0x8000;
+    Diff(&l1);
+    if (l0.dist < l1.dist)
+        *a = l0;
+    else
+        *a = l1;
+}
+
 /* @draft 0x0dfa88 us f_0dfa88
    WHAT IT DOES: Calls the routine at 0x0df538 for each record of the list whose key equals the given key. */
 extern "C" void f_0dfa88(void *self, RecList *l, int key)
@@ -388,6 +443,116 @@ extern "C" unsigned f_0dfb98(Holder *h)
     return h->inner->flags >> 28;
 }
 
+/* A spline key: a value, its tangent and the frame it falls on. */
+struct HKey {
+    float v;                /* +0 */
+    float tan;              /* +4 */
+    unsigned short time;    /* +8 */
+    short pad;
+};
+
+/* @draft 0x0dfba8 us f_0dfba8
+   WHAT IT DOES: Evaluates a Hermite spline through n keys at frame t: finds the span whose end key
+   is at or after t and blends its two values and tangents with the cubic Hermite weights.
+   Remaining difference: the span search loop (8 bytes short, every later word shifted). Retail
+   counts i from 1 against n and recomputes j = i - 1 inside the loop and again on the normal exit,
+   then tests j == -1; this spelling counts j against n - 1 (blez guard). The arithmetic after the
+   search matches retail's instruction for instruction. */
+extern "C" float f_0dfba8(HKey *e, int n, float t)
+{
+    int j;
+
+    for (j = 0; j < n - 1; j++) {
+        if (t <= (float)e[j + 1].time)
+            break;
+    }
+    if (j == -1)
+        return 0.0f;
+    {
+        HKey *a = &e[j];
+        HKey *b = a + 1;
+        float s = (t - (float)a->time) / (float)(b->time - a->time);
+        return (1.0f - s) * (1.0f - s) * (1.0f + 2.0f * s) * a->v + (3.0f - 2.0f * s) * s * s * b->v +
+               (1.0f - s) * (1.0f - s) * s * a->tan + s * s * (s - 1.0f) * b->tan;
+    }
+}
+
+/* @draft 0x0dfca4 us f_0dfca4
+   WHAT IT DOES: The same spline evaluation for an angle key track, returning the result converted from
+   radians to a 16-bit angle.
+   Remaining difference: the span search loop, as in 0x0dfba8. */
+extern "C" short f_0dfca4(HKey *e, int n, float t)
+{
+    int j;
+    short r = 0;
+
+    for (j = 0; j < n - 1; j++) {
+        if (t <= (float)e[j + 1].time)
+            break;
+    }
+    if (j != -1) {
+        HKey *a = &e[j];
+        HKey *b = a + 1;
+        float s = (t - (float)a->time) / (float)(b->time - a->time);
+        r = (short)(int)(((1.0f - s) * (1.0f - s) * (1.0f + 2.0f * s) * a->v +
+                          (3.0f - 2.0f * s) * s * s * b->v + (1.0f - s) * (1.0f - s) * s * a->tan +
+                          s * s * (s - 1.0f) * b->tan) * 65536.0f / 6.28318548f);
+    }
+    return r;
+}
+
+/* @implements 0x0dfdc8 us f_0dfdc8
+   WHAT IT DOES: Builds a record's pose key from its spline tracks at the animation's current time:
+   the key is reset to no translation, unit scale and zero angles, then the record kind says which
+   angles (kinds 4 to 7) or the translation (kind 11) come from the tracks. */
+extern "C" void f_0dfdc8(AnimData *pb, Key *k, int idx)
+{
+    int j = idx * 3;
+
+    k->r[0] = k->r[1] = k->r[2] = 0;
+    k->t[0] = k->t[1] = k->t[2] = 0.0f;
+    k->s[0] = k->s[1] = k->s[2] = 1.0f;
+    AnimHdr *h = pb->hdr;
+    AnimRec *rec = &pb->recs[idx];
+    int *tab = pb->tab;
+    int *cnt = tab + h->count * 3;
+    HKey *e = (HKey *)((char *)h + tab[j]);
+    float t = pb->time;
+    switch (rec->kind) {
+    case 7:
+        k->r[0] = f_0dfca4(e, cnt[j], t);
+        j++;
+        e = (HKey *)((char *)h + tab[j]);
+        k->r[1] = f_0dfca4(e, cnt[j], t);
+        j++;
+        e = (HKey *)((char *)h + tab[j]);
+        k->r[2] = f_0dfca4(e, cnt[j], t);
+        break;
+    case 8:
+    case 9:
+    case 10:
+        break;
+    case 4:
+        k->r[0] = f_0dfca4(e, cnt[j], t);
+        break;
+    case 5:
+        k->r[1] = f_0dfca4(e, cnt[j], t);
+        break;
+    case 6:
+        k->r[2] = f_0dfca4(e, cnt[j], t);
+        break;
+    case 11:
+        k->t[0] = f_0dfba8(e, cnt[j], t);
+        j++;
+        e = (HKey *)((char *)h + tab[j]);
+        k->t[1] = f_0dfba8(e, cnt[j], t);
+        j++;
+        e = (HKey *)((char *)h + tab[j]);
+        k->t[2] = f_0dfba8(e, cnt[j], t);
+        break;
+    }
+}
+
 /* @draft 0x0e0724 us f_0e0724
    WHAT IT DOES: Stores a float as a fixed integer in the object's +24 field (values from 2^31 up keep the
    sign bit set), then calls the routine at 0x0de508. */
@@ -401,37 +566,167 @@ extern "C" void f_0e0724(void *a, Obj *o)
     f_0de508(a, o);
 }
 
+/* @draft 0x0e0efc us f_0e0efc
+   WHAT IT DOES: Walks the node stream of an animation and stores each node's transform, built from
+   the pose key of the same index (the record kind says which parts of the key apply), into the matrix
+   array; -1 restarts from the identity, or the given base matrix when the mode is 1, mirrored in x
+   when the mirror flag is 1.
+   Remaining difference: 10 words, global-alloc's choice between two pairs of parameters: retail
+   gives out s5 and keys s4, mode s7 and mirror s6; here they are swapped. Each pair has equal use
+   counts and live lengths one insn apart (from the order of the parameter copies), so the priority
+   tie goes the other way; the source shape that changes it is not found. */
+extern "C" void f_0e0efc(Matrix *out, Key *keys, AnimData *pb, int mirror, int mode, Matrix *base)
+{
+    const unsigned char *p;
+    short id;
+
+    f_028c70();
+    if (mode == 1)
+        f_028e9c(base);
+    else
+        f_02842c();
+    if (mirror == 1)
+        f_02884c(-1.0f, 1.0f, 1.0f);
+    p = pb->nodes;
+    while ((id = Read16(p)) != -2) {
+        p += 2;
+        if (id != -1) {
+            AnimRec *rec = &pb->recs[id];
+            Key *k = &keys[id];
+            switch (rec->kind) {
+            case 0:
+                f_02884c(k->s[0], 1.0f, 1.0f);
+                break;
+            case 1:
+                f_02884c(1.0f, k->s[1], 1.0f);
+                break;
+            case 2:
+                f_02884c(1.0f, 1.0f, k->s[2]);
+                break;
+            case 3:
+                f_02884c(k->s[0], k->s[1], k->s[2]);
+                break;
+            case 4:
+                f_0284bc(k->r[0] * 6.28318548f * (1.0f / 65536.0f));
+                break;
+            case 5:
+                f_0284fc(k->r[1] * 6.28318548f * (1.0f / 65536.0f));
+                break;
+            case 6:
+                f_02853c(k->r[2] * 6.28318548f * (1.0f / 65536.0f));
+                break;
+            case 7:
+                f_0287cc(k->t[0], k->t[1], k->t[2]);
+                f_02853c(k->r[2] * 6.28318548f * (1.0f / 65536.0f));
+                f_0284fc(k->r[1] * 6.28318548f * (1.0f / 65536.0f));
+                f_0284bc(k->r[0] * 6.28318548f * (1.0f / 65536.0f));
+                break;
+            case 8:
+                f_0287cc(k->t[0], 0.0f, 0.0f);
+                break;
+            case 9:
+                f_0287cc(0.0f, k->t[1], 0.0f);
+                break;
+            case 10:
+                f_0287cc(0.0f, 0.0f, k->t[2]);
+                break;
+            case 11:
+                f_0287cc(k->t[0], k->t[1], k->t[2]);
+                break;
+            case 12:
+            case 13:
+            case 14:
+            case 15:
+                break;
+            }
+            f_028d94(&out[id]);
+        } else {
+            if (mode == 1)
+                f_028e9c(base);
+            else
+                f_02842c();
+            if (mirror == 1)
+                f_02884c(-1.0f, 1.0f, 1.0f);
+        }
+    }
+    f_028ca8();
+}
+
 /* @implements 0x0e1254 us f_0e1254
    WHAT IT DOES: Calls the routine at 0x0e0efc with flag 1 and zeros for the last two. */
-extern "C" void f_0e1254(void *a, void *b, void *c)
+extern "C" void f_0e1254(Matrix *a, Key *b, AnimData *c)
 {
     f_0e0efc(a, b, c, 1, 0, 0);
 }
 
 /* @implements 0x0e1278 us f_0e1278
    WHAT IT DOES: Calls the routine at 0x0e0efc with zeros for the last three. */
-extern "C" void f_0e1278(void *a, void *b, void *c)
+extern "C" void f_0e1278(Matrix *a, Key *b, AnimData *c)
 {
     f_0e0efc(a, b, c, 0, 0, 0);
 }
 
 /* @implements 0x0e129c us f_0e129c
    WHAT IT DOES: Calls the routine at 0x0e0efc with the fourth argument zero, flag 1 and the fifth passed on. */
-extern "C" void f_0e129c(void *a, void *b, void *c, int d)
+extern "C" void f_0e129c(Matrix *a, Key *b, AnimData *c, Matrix *d)
 {
     f_0e0efc(a, b, c, 0, 1, d);
 }
 
+/* @draft 0x0e12c0 us f_0e12c0
+   WHAT IT DOES: Walks the node stream of an animation and stores, for every node with its own pose
+   key, the transform built from that key (translation, rotations about z, y and x, then scale) into
+   the matrix slot of the key; -1 restarts from the identity, or from the given base matrix when the
+   mode is 1.
+   Remaining difference: frame and every saved register. The second loop pass (rerun) hoists the
+   constants -2 (loop test) and 1 (mode test) into saved registers here (insns "life 1, savings 1",
+   moved in pass 2, "not desirable" in pass 1), which pushes out and keys onto the stack; retail
+   hoists only -1, so its loop as seen by loop.c's threshold test must be larger. */
+extern "C" void f_0e12c0(Matrix *out, Key *keys, AnimData *pb, int mode, Matrix *base)
+{
+    const unsigned char *p;
+    short id;
+
+    f_028c70();
+    if (mode == 1)
+        f_028e9c(base);
+    else
+        f_02842c();
+    p = pb->nodes;
+    while ((id = Read16(p)) != -2) {
+        p += 2;
+        if (id != -1) {
+            AnimRec *rec = &pb->recs[id];
+            if (rec->parent == -1) {
+                int k = rec->key;
+                Key *kk = &keys[k];
+                f_0287cc(kk->t[0], kk->t[1], kk->t[2]);
+                f_02853c(kk->r[2] * 6.28318548f * (1.0f / 65536.0f));
+                f_0284fc(kk->r[1] * 6.28318548f * (1.0f / 65536.0f));
+                f_0284bc(kk->r[0] * 6.28318548f * (1.0f / 65536.0f));
+                f_02884c(kk->s[0], kk->s[1], kk->s[2]);
+                f_028d94(&out[k]);
+            }
+        } else {
+            if (mode == 1)
+                f_028e9c(base);
+            else
+                f_02842c();
+        }
+    }
+    f_028ca8();
+}
+
 /* @implements 0x0e1498 us f_0e1498
    WHAT IT DOES: Calls the routine at 0x0e12c0 with zeros for the last two arguments. */
-extern "C" void f_0e1498(void *a, void *b, void *c)
+extern "C" void f_0e1498(Matrix *a, Key *b, AnimData *c)
 {
     f_0e12c0(a, b, c, 0, 0);
 }
 
 /* @implements 0x0e14b8 us f_0e14b8
    WHAT IT DOES: Calls the routine at 0x0e12c0 with flag 1 and the fifth argument passed on. */
-extern "C" void f_0e14b8(void *a, void *b, void *c, int d)
+extern "C" void f_0e14b8(Matrix *a, Key *b, AnimData *c, Matrix *d)
 {
     f_0e12c0(a, b, c, 1, d);
 }
