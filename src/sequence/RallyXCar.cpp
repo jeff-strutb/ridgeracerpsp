@@ -392,14 +392,15 @@ void f_0e930c(Car *c)
     }
 }
 
-/* @draft 0x0e9564 us f_0e9564
-   WHAT IT DOES: Runs an enemy's driver once per cell, when the car can turn.
-   DRAFT: one word differs: retail reloads the cell with lh before storing it, here it is lhu. */
+/* @implements 0x0e9564 us f_0e9564
+   WHAT IT DOES: Runs an enemy's driver once per cell, when the car can turn. The cell is
+   copied through a short local, which is promoted to a sign-extended register (retail's lh). */
 void f_0e9564(Car *c, Car *player)
 {
     if (f_0e8930(c) && c->thought != c->cell) {
         c->think(player, c);
-        c->thought = c->cell;
+        short cell = c->cell;
+        c->thought = cell;
     }
 }
 
