@@ -1730,7 +1730,27 @@ public:
 /* Moving models (type 6 and relatives): a placement matrix and a camera cut counter. */
 class CMotWork : public CEventJobWorkBase {
 public:
-    virtual void Update();
+    /* Defined in the class, so emitted at the end of the object file (0x0d5124). */
+    virtual void Update()
+    {
+        if (D_23c820.replay)
+            return;
+        if (ref == 0)
+            return;
+        MotKey k0, k1;
+        Step();
+        f_0e0778(&k0, &anim, 0, 0);
+        f_0e0778(&k1, &anim, 0, 1);
+        f_028c70();
+        f_02842c();
+        f_0287cc(k0.t[0], k0.t[1], k0.t[2]);
+        f_02853c(Rad(k1.r[2]));
+        f_0284fc(Rad(k1.r[1]));
+        f_0284bc(Rad(k1.r[0]));
+        f_02884c(k0.s[0], k0.s[1], k0.s[2]);
+        f_028d94((Matrix *)matrix);
+        f_028ca8();
+    }
     virtual void Setup(::Event *e);
     virtual void Stop();
     virtual void Reset();
@@ -2263,6 +2283,11 @@ void CUshiWork::Reset()
    throw (the first call of f_0d2ef0) at once, and that instance meets the inliner's size limit
    with its real statement count; the later instances are instantiated by the inliner itself
    and inlined. */
+
+/* @implements 0x0d5124 us _ZN3Map5Event8CMotWork6Update
+   WHAT IT DOES: CMotWork::Update (defined in the class): while any job holds it and no replay
+   runs, steps its animation and builds its matrix from the two keys (translation, rotation z,
+   y, x, scale). */
 
 }
 }
