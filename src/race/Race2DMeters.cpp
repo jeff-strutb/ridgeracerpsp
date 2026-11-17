@@ -780,9 +780,9 @@ int C2DRallyXMeter::f_101b54()
     {
         float v = D_2407fc->rpm * (1.0f / D_2407fc->maxRpm);
         float m = MAX(v, 0.0f);
+        float t = MIN(m, 1.0f);
 
-        v = MIN(m, 1.0f);
-        f_1095fc(D_1d5fe8[type].r[11].x, D_1d5fe8[type].r[11].y, v);
+        f_1095fc(D_1d5fe8[type].r[11].x, D_1d5fe8[type].r[11].y, t);
     }
     {
         float k = 0.216f;
