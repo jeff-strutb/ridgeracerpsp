@@ -8,10 +8,24 @@
 #include <string.h>
 
 /* The fade sequence (FadeSequence.cpp). */
+struct View;
 class CFadeSequence {
 public:
     void f_0ff798();
+    unsigned int *f_0ff81c(View *v, unsigned int *p);
     void f_0ffa44();
+    void Set(int s, float level)
+    {
+        m8 = m4;
+        m4 = s;
+        m16 = level;
+    }
+
+    int m0;
+    int m4;
+    int m8;
+    float m12;
+    float m16;
 };
 extern CFadeSequence D_27f100;
 
@@ -51,6 +65,8 @@ extern unsigned char D_24063c[];
 extern const int D_1a2120;
 struct RaceInfo {
     char *m0;
+    char m4[16];
+    int m20;
 };
 extern RaceInfo *D_2407fc;
 
@@ -102,6 +118,76 @@ extern unsigned char D_27ecb3;
 
 void f_0eb3a4(void);
 void f_0eb41c(void);
+
+/* The course lighting the map manager holds (at +12512), as in RcoViewer.cpp. */
+struct LightSetup {
+    char p0[16];
+    float c1[3];
+    char p28[20];
+    float dir[3];
+    char p60[20];
+    float c2[3];
+    char p92[20];
+    float c4[3];
+    char p124[20];
+    float m144;
+    float m148;
+    char p152[80];
+    int m232;
+    float m236;
+    float m240;
+};
+
+/* The map manager, as far as the race view draw uses it. */
+struct MapMgr {
+    char p0[12512];
+    LightSetup light;
+};
+extern MapMgr D_23c820;
+
+/* One view of the race (752 bytes). */
+struct View {
+    char m0[660];
+    int m660;
+    char m664[88];
+};
+
+/* The race effects (RaceEffects.cpp). */
+class CRaceEffects {
+public:
+    void f_031cbc(View *view);
+};
+extern CRaceEffects D_2402e0;
+
+/* The car job controller (CarJobCtrl.cpp). */
+struct RaceCar {
+    char m0[1792];
+    float m1792;
+    char m1796[2108 - 1796];
+    int m2108;
+};
+class CCarJobCtrl {
+public:
+    RaceCar *f_03b518(int i);
+};
+
+void f_021720(void);
+void f_021750(void);
+unsigned int *f_0216d8(void);
+void f_0216e8(unsigned int *p);
+void f_118380(float a);
+void f_1184d8(int a);
+void f_1185dc(int light, int what, int color);
+void f_118428(int light, int what, int n, const float *v);
+void f_116898(int a);
+void f_118b64(int a, float b, float c);
+unsigned int *f_0cc584(View *view, unsigned int *p);
+unsigned int *f_029524(MapMgr *mm, int a, View *v, unsigned int *p);
+unsigned int *f_0cc4e4(int a, int b, int c, int d, unsigned int *p);
+extern "C" int f_0ea8a8(void);
+void f_0eaeb0(int a, View *v, CCarJobCtrl *ctrl, RaceCar *car);
+void f_0eb440(View *v2, View *v, int a);
+void f_0eb6b8(View *v, RaceCar *car);
 
 /* @implements 0x0eac84 us f_0eac84
    WHAT IT DOES: Returns 0. */
@@ -189,6 +275,114 @@ void f_0eb3a4(void)
 void f_0eb41c(void)
 {
     f_023250(f_0eac94());
+}
+
+/* A colour from three floats in 0..1 as packed bytes (red lowest). */
+static inline int Pack(const float *c)
+{
+    return (int)(c[0] * 255.0f) | (int)(c[1] * 255.0f) << 8 | (int)(c[2] * 255.0f) << 16;
+}
+
+/* @draft 0x0eba3c us f_0eba3c
+   WHAT IT DOES: Draws the race view of one player for a frame (the car is looked up from the
+   car controller when none is given): steps the view with the car, then twice (the map's
+   pass 0, then after the view's own draw its pass 4) sets the graphics engine's three lights
+   from the course lighting, records the view and the course map's display list (with a
+   closing command when the race is the second one); then the race effects (unless the view
+   is in mode 0x20003), the second view's overlay while the fade allows it, sets the fade's
+   state from the car (cleared when the race has none) and records the fade pass, closing it
+   with the full screen copy when the race is the second one. Clears the first blink flag. */
+void f_0eba3c(int a, View *v, View *v2, CCarJobCtrl *ctrl, RaceCar *car)
+{
+    if (!car)
+        car = ctrl->f_03b518(a);
+    f_0eb6b8(v, car);
+    f_021720();
+    MapMgr *mm = &D_23c820;
+    LightSetup *ls = &mm->light;
+    float *c4 = ls->c4;
+    float *dir = ls->dir;
+    float *c1 = ls->c1;
+    float *c2 = ls->c2;
+    unsigned int *p;
+
+    f_118380(ls->m144);
+    f_1184d8(1);
+    f_1185dc(0, 1, 0);
+    f_1185dc(0, 2, 0);
+    f_1185dc(0, 4, Pack(c4));
+    f_118428(0, 0, 6, dir);
+    f_1185dc(1, 1, Pack(c1));
+    f_1185dc(1, 2, Pack(c2));
+    f_1185dc(1, 4, 0);
+    f_118428(1, 0, 2, dir);
+    f_1185dc(2, 1, Pack(c1));
+    f_1185dc(2, 2, Pack(c2));
+    f_1185dc(2, 4, Pack(c4));
+    f_118428(2, 0, 6, dir);
+    f_116898(11);
+    f_116898(12);
+    f_116898(13);
+    f_116898(14);
+    f_118b64(ls->m232, ls->m236, ls->m240);
+    f_021750();
+    p = f_0216d8();
+    p = f_0cc584(v, p);
+    p = f_029524(mm, 0, v, p);
+    if (D_27ec88)
+        *p++ = 0x9b000000;
+    f_0216e8(p);
+
+    f_0eaeb0(a, v, ctrl, car);
+
+    f_021720();
+    f_118380(ls->m144);
+    f_1184d8(1);
+    f_1185dc(0, 1, 0);
+    f_1185dc(0, 2, 0);
+    f_1185dc(0, 4, Pack(c4));
+    f_118428(0, 0, 6, dir);
+    f_1185dc(1, 1, Pack(c1));
+    f_1185dc(1, 2, Pack(c2));
+    f_1185dc(1, 4, 0);
+    f_118428(1, 0, 2, dir);
+    f_1185dc(2, 1, Pack(c1));
+    f_1185dc(2, 2, Pack(c2));
+    f_1185dc(2, 4, Pack(c4));
+    f_118428(2, 0, 6, dir);
+    f_116898(11);
+    f_116898(12);
+    f_116898(13);
+    f_116898(14);
+    f_118b64(ls->m232, ls->m236, ls->m240);
+    f_021750();
+    p = f_0216d8();
+    p = f_0cc584(v, p);
+    p = f_029524(mm, 4, v, p);
+    if (D_27ec88)
+        *p++ = 0x9b000000;
+    f_0216e8(p);
+
+    if (v->m660 != 0x20003)
+        D_2402e0.f_031cbc(v);
+    if (f_0ea8a8() && ((D_1d5a90 != 0) & (v2 != 0))) {
+        if (D_27ecb1 != 2)
+            f_0eb440(v2, v, 0);
+    }
+    if (D_2407fc->m20)
+        D_27f100.Set(0, 0.0f);
+    else
+        D_27f100.Set(car->m2108, car->m1792);
+    p = f_0216d8();
+    p = D_27f100.f_0ff81c(v, p);
+    if (D_27ec88) {
+        *p++ = 0x9b000001;
+        p = f_0cc4e4(2048, 2048, 480, 272, p);
+    } else {
+        *p++ = 0x9b000000;
+    }
+    f_0216e8(p);
+    D_27ecb0 = 0;
 }
 
 /* @implements 0x0ec1cc us f_0ec1cc
