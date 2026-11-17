@@ -282,17 +282,14 @@ void CCamBurial::f_07f5e0(int *arg)
     areas->f_0e2f9c((int)m248, out, &m248, cur->pos.x, cur->pos.z);
 }
 
-/* @draft 0x0f29e0 us _ZN7CamCtrl10CCamBurial8f_07f5e8Ev
+/* @implements 0x0f29e0 us _ZN7CamCtrl10CCamBurial8f_07f5e8Ev
    WHAT IT DOES: Steps the camera: finds the car nearest the point's camera; when it is
    nearer than the zoom distance, the zoom target grows as it comes closer (full inside the
    full zoom distance), scaled by the car's speed above a threshold, and the zoom keeps the
    larger of it and its current value. The sway steps, and the view is placed at the point,
    turned by the point's angles plus the sway (stronger with more zoom), with the point's
    lens halved twice and its scale; the zoom then decays, and the car's setting, the lens
-   span and the eye are copied to the view.
-   Remaining difference: (1) retail loads the point pointer for the lens before the zoom
-   decay and the eye stores (here after them); (2) the four-word copy of the eye into m688
-   stores +700 first here (sched2 tie-break, handbook rows 88/159). */
+   span and the eye are copied to the view. */
 void CCamBurial::f_07f5e8()
 {
     Vec4 p, d;
@@ -342,6 +339,7 @@ void CCamBurial::f_07f5e8()
     Vec4 out;
     BView *v = View();
     f_0a4160(&out, &m, 4);
+    BPoint *g = cur;
     v->m608.x = out.x;
     v->m608.y = out.y;
     v->m608.z = out.z;
@@ -350,13 +348,13 @@ void CCamBurial::f_07f5e8()
     u->pos.x = eye.x;
     u->pos.y = eye.y;
     u->pos.z = eye.z;
-    u->m480 = cur->fov * 0.5f * 0.5f;
+    u->m480 = g->fov * 0.5f * 0.5f;
     u->m496 = 1.0f / f_0cd3cc(u->m480);
     BView *w = View();
     BCar *c = Car();
     w->m572 = c->m2212;
-    w->m708 = w->m480 + w->m480;
     w->m688 = w->eye;
+    w->m708 = w->m480 + w->m480;
 }
 
 /* @implements 0x0f2de0 us _ZN7CamCtrl10CCamBurial8f_07f5f8Ev
