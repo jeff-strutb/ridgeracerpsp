@@ -257,7 +257,8 @@ void CCamDammyEye1::f_07f5e0(int *arg)
    before the third angle's reload; the output copy into rot against the m608 store and
    the lens loads), plus the car setting's load scheduled after the previous view's load
    (retail loads the setting first; the store into the view is an int store, so the
-   previous view must be read before it in the source, which sched1 then issues first). */
+   previous view must be read before it in the source, which sched1 then issues first).
+   2026-11-16: residues as recorded for CCamDammyEye3::f_07f5e8 below; no new lever. */
 void CCamDammyEye1::f_07f5e8()
 {
     Vec4 eye;
@@ -373,7 +374,12 @@ void CCamDammyEye3::f_07f5e0(int *arg)
    Remaining difference: (1) the stores of the two offset vectors (sp+16, sp+32) come out in
    another order (sched2 tie-break among independent stores); (2) rot.w's zero store is
    placed before the third angle's reload, retail loads first; (3) after the output copy
-   into rot, the m608 store and the lens constant loads are scheduled differently. */
+   into rot, the m608 store and the lens constant loads are scheduled differently.
+   Cycle 2026-11-16 (sched2 dump): at +0x64 the ready stores are ofs.x/p.x ($f2, insns 61, 96)
+   and ofs.w/p.w ($f3, 73, 108); here 96 (p.x) is picked, retail 108 (p.w), and retail's p.x
+   goes last into the jal slot, so it is not plain luid order. For (2) retail's rot.z reload
+   precedes the rot.w zero store (load-delay fill); here the zero store issues first.
+   No source lever named for either; no change made. */
 void CCamDammyEye3::f_07f5e8()
 {
     Vec4 eye;

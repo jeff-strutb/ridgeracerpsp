@@ -17,7 +17,10 @@ extern const float D_1acfcc;    /* the decay of the lean with no steering */
    Remaining difference (29 words): retail forms c right after the first read and p in the
    bc1f slot, and re-reads the steering byte before the limit stores (here after); the
    magnitude path keeps r in f1. Reading the byte into an int local before the stores lets
-   CSE merge it with the first read (64 words), so retail's second read follows the join. */
+   CSE merge it with the first read (64 words), so retail's second read follows the join.
+   Cycle 2026-11-16: c declared before a and p = car + 5792 before the a < 0 test (for retail's
+   addiu in the bc1f slot): 29 -> 56 words (c and p swap v1/a0, the D_1acfcc branch becomes
+   likely), reverted. p's addiu reaching the slot is reorg's choice, not source order. */
 void f_0c2908(char *car, signed char *bits)
 {
     float a = (float)*bits;

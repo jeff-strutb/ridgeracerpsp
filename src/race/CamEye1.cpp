@@ -221,6 +221,9 @@ void CCamEye1::Reset()
    DRAFT: 12 words. The view stores match; retail schedules the height product before the
    w and z stores (constants loaded 0.9, 1, -100), here the 1.0 store goes first. All store
    orders, a reference, a pointer, an inline Set and reloading the car were tried.
+   Cycle 2026-11-16: the .rodata.cst4 pool follows source order and retail's is 300, 0.9, -100, 1.0,
+   so z is written before w (13 -> 12 words, pool now equal). Left: sched2 issues the 1.0 load and
+   w store ahead of the 0.9 load and multiply; retail the multiply first.
    WHAT IT DOES: Starts the camera: marks its view (and clears the previous camera's mark),
    sets a far distance of 300, and puts the eye's offset on the car (0.9 of its height up,
    100 forward) and takes a copy of it. */
@@ -239,8 +242,8 @@ void CCamEye1::f_07f5e0(int *arg)
     Vec4 &e = c->m10128;
     e.x = 0;
     e.y = c->m7708 * 0.9f;
-    e.w = 1.0f;
     e.z = -100.0f;
+    e.w = 1.0f;
     Vec4 t = Car()->m10128;
     ofs = t;
 }
@@ -252,7 +255,9 @@ void CCamEye1::f_07f5e0(int *arg)
    size 1624 vs 1608. What differs: (1) retail keeps one float zero in $f20 for the up
    vector's x and z (mtc1 zero + swc1 at the two stores); here, after the three Rad
    constructions, cse folds them to sw $0 (tried the Vec4 constructor, a chain, an inline
-   Set, a zero helper); (2) retail defines the address of the product matrix (sp+128) after
+   Set, a zero helper; 2026-11-16 also `float z = 0.0f;` first, used for rot and u's x and z:
+   no change at all, cse still folds it to sw $0 -- retail's mtc1 zero,$f20 sits between the
+   first and second Rad calls); (2) retail defines the address of the product matrix (sp+128) after
    the first transform call so it shares the register of the result pointer (sp+48), seven
    saved registers; here it is hoisted before that call and an eighth (s7) is needed;
    (3) the height clamp: retail stores the clamped y in a branch-likely delay slot and

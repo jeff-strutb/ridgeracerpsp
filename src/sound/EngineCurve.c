@@ -8,6 +8,9 @@ extern float D_24ec70[2][10];   /* the control points: first and second values *
 
 /* @draft 0x0ca0bc us f_0ca0bc
    DRAFT: only register numbering differs (the weight index j is in a1 and its counter in a0; retail has them the other way round).
+   Cause (greg): allocno order puts n (pseudo 203) before j (199); n takes the first free reg a0,
+   then j takes its preference a1 (hard-reg copy). Retail needs j=a0, n=a1.
+   Tried: the counter as the parameter step itself (incoming a1 preference): 8 -> 20 words, reverted.
    WHAT IT DOES: Evaluates the curve at a step (8 per segment): sums the basis weights of
    the four control points around it (indices clamped to 0..9) into both outputs. */
 void f_0ca0bc(void *unused, int step, float *a, float *b)

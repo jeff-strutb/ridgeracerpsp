@@ -8,7 +8,11 @@
    (+1612) itself for white (0xffffff), black for 0, else each of its three bytes scaled by the
    tint's low byte over 255.
    Remaining difference (24 words): register choice only; retail keeps the colour in v1 and
-   multiplies the middle byte first (products in a0, v0, a2), then ors low | middle. */
+   multiplies the middle byte first (products in a0, v0, a2), then ors low | middle.
+   Cycle 2026-11-16: the ior operand order and multiply order already equal retail's; only lreg
+   differs: c (pseudo 183) gets v0 here, retail v1, and the products then shift round. Also k's andi
+   precedes the 0x80808081 ori in retail's pre-reorg order (ori fills the beqz slot), here the
+   reverse. No source lever identified for either; no change made. */
 void f_0cb358(char *m, unsigned int tint)
 {
     unsigned int c, k, r;

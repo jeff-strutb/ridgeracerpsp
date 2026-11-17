@@ -21,7 +21,12 @@ static inline unsigned int FloatBits(float f)
    viewport commands 0x3a000000 and 0x3a000004 with two 0x3b float commands (the scale times
    37 over 100, doubled, and that times 0.5667), then the base and texture address commands of
    the command buffer. Returns the next command slot, or the same slot when the disc is too
-   small to draw. */
+   small to draw.
+   Remaining difference (24 words, cycle 2026-11-16): entry-block order only. sched1 (lreg dump)
+   issues the D_27e88c load and 0.01 compare (insns 29, 31, 35) first, ahead of the a/base chain
+   (158 high, 14 lo_sum, 16 sra ...); retail issues the a/base chain first and the compare late
+   (c.le.s at +0x34), then the tail differs only in f2/f3 and v0/v1. No source lever named yet for
+   the sched1 priority; no change made. */
 unsigned int *f_0e7114(unsigned int *p)
 {
     unsigned int c4 = 0x3a000004;

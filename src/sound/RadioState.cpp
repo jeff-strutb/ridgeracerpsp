@@ -688,6 +688,10 @@ void CState::f_0f9420()
 /* @draft 0x0f9444 us f_0f9444
    REMAINING DIFFERENCE: retail computes the next script index in place in v1 and hoists it
    above the blank-time test; here it stays below the test in t0.
+   Cycle 2026-11-16: retail's addiu/seh sit in the m60 test's own block (after the lw), so the j++
+   is hoisted by the scheduler, not by source order; j++ written above `if (m60 > 0)` instead puts
+   it in the m228 branch's delay slot: 10 -> 30 words, reverted. The decider is j's copy: here the
+   increment goes v1 = t0 + 1; t0 = seh v1 (two pseudos), retail one register in place.
    WHAT IT DOES: Step 10: goes on to the script's next file (step 4), stops when asked, waits
    out the blank time (step 9), goes on to the next script (step 11), or ends the node. */
 void CState::f_0f9444()
@@ -808,6 +812,10 @@ short CState::f_0f95c8()
 /* @draft 0x0f966c us f_0f966c
    REMAINING DIFFERENCE: retail loads and steps the next script index above the file test (in
    a0, this copied to a1); here the load fills the branch-likely slot.
+   Cycle 2026-11-16: j = m52 + 1 written above the k test gives retail's block shape and size
+   (no branch-likely, 160 B) but 29 -> 31 words, reverted: j then lands in a1 with a copy
+   (addiu v1,a1,1; seh a1,v1) and this stays in a0, where retail steps j in place in a0 and moves
+   this to a1. Same in-place-increment register choice as f_0f9444; needs that cause first.
    WHAT IT DOES: The stream channel of the sound file after the current one; -1 if none. */
 int CState::f_0f966c()
 {
