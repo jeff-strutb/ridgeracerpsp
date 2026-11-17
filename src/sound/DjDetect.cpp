@@ -20,6 +20,7 @@ struct CDataBase {
     char *f_0368e8(const char *col, const char *row, int colAdd, int rowAdd);
 };
 extern CDataBase D_240740;
+extern CDataBase D_2407d0;
 
 extern "C" void *memcpy(void *, const void *, unsigned int);
 
@@ -42,6 +43,8 @@ int f_093ca0(void *s, int i);
 int f_093cb4(void *s, int i);
 int f_093c78(void *s, int i);
 int f_093c8c(void *s, int i);
+float f_093c68(void *s);
+float f_093c70(void *s);
 
 struct CCar {
     char pad0[76];
@@ -50,7 +53,10 @@ struct CCar {
     float m192;
     char pad196[12];
     int rot[4];
-    char pad224[1568];
+    char pad224[1520];
+    float m1744;
+    float m1748;
+    char pad1752[40];
     float m1792;
     int m1796;
     int m1800;
@@ -80,12 +86,19 @@ struct CRaceInfo {
     int m48;
     int m52;
     int m56;
-    char pad60[48];
+    char pad60[8];
+    int m68;
+    char pad72[36];
     int m108;
     int m112;
     char pad116[12];
     int m128;
-    char pad132[64];
+    int m132;
+    char pad136[4];
+    float m140;
+    float m144;
+    char pad148[44];
+    int m192;
     CCar *player;
     int m200;
     CCar **cars;
@@ -107,6 +120,8 @@ extern CSystemFlags *D_1d88a0;
 extern int D_23f7f8;
 extern char D_245178[];
 void f_00d354(void *log, int level, const char *fmt, ...);
+extern char D_24517c[];
+void f_02db68(void *buf, int size, int x, int y, int color, const char *fmt, ...);
 
 /* One car's record for one section. */
 struct CSplit {
@@ -217,6 +232,73 @@ void CDjSection::f_08f8e4()
             delete[] m20;
         m20 = 0;
     }
+}
+
+/* @draft 0x08f988 us f_08f988
+   WHAT IT DOES: The cornering judge (CCorneringJudge::Process). State 0 waits for the player to
+   enter the section in turn (the debug screen shows its distance, its kind and the previous
+   section's limit and process times) and records the entry once the player is inside it; state
+   1 shows the progress through the section as dots, records the entry time if missing and,
+   once past the section's end, the exit time, moving to state 2; state 2 goes back to 0. An
+   unknown state is logged and reset. Returns the state.
+   Remaining difference: retail places the previous-section fix-up (m16 - 1 when m4 is 0) out of
+   line with a jump back; here bb-reorder keeps it inline (both if spellings, and the assign-
+   then-fix-up form, compile alike), shifting the state 0 tail; state 1's float registers
+   (section start in $f2, the 60.0 load after the division) are a local-alloc tie. */
+int CDjSection::f_08f988()
+{
+    CCar *p = D_2407fc->player;
+    if (m16 == 0) {
+        m0 = 0;
+        return m0;
+    }
+    if (m0 == 0) {
+        f_02db68(D_24517c, 0x800000, 1, 18, 0xffffff, "Next Corner Rzp = %.1f",
+                 m20[p->m2212][m4].m0);
+        if (m20[p->m2212][m4].m12 && m20[p->m2212][m4].m13)
+            f_02db68(D_24517c, 0x800000, 30, 18, 0xffffff, "(Cornering or Drift)");
+        else if (m20[p->m2212][m4].m12)
+            f_02db68(D_24517c, 0x800000, 30, 18, 0xffffff, "(Cornering)");
+        else if (m20[p->m2212][m4].m13)
+            f_02db68(D_24517c, 0x800000, 30, 18, 0xffffff, "(Drift)");
+        else
+            f_02db68(D_24517c, 0x800000, 30, 18, 0xffffff, "(not assigned)");
+        f_02db68(D_24517c, 0x800000, 1, 19, 0xffffff, "MyCar Rzp = %.1f", D_2407fc->m144);
+        {
+            int prev = m4 - 1;
+            if (m4 == 0)
+                prev = m16 - 1;
+            f_02db68(D_24517c, 0x800000, 1, 21, 0xffffff, "Limit time = %d",
+                     m20[p->m2212][prev].m8);
+            f_02db68(D_24517c, 0x800000, 1, 22, 0xffffff, "Process time = %d",
+                     m20[p->m2212][prev].m20 - m20[p->m2212][prev].m16);
+        }
+        if (m20[p->m2212][m4].m0 < D_2407fc->m144 && D_2407fc->m144 < m20[p->m2212][m4].m4
+            && m20[p->m2212][m4].m16 == 0)
+            m0 = 1;
+    } else if (m0 == 1) {
+        int n = (int)((D_2407fc->m144 - m20[p->m2212][m4].m0)
+                      / (m20[p->m2212][m4].m4 - m20[p->m2212][m4].m0) * 60.0f);
+        f_02db68(D_24517c, 0x800000, 1, 18, 0xffffff, "timing......");
+        f_02db68(D_24517c, 0x800000, 1, 19, 0xffffff, "MyCar Rzp = %.1f", D_2407fc->m144);
+        for (int i = 0; i < n; i++)
+            f_02db68(D_24517c, 0x800000, i, 20, 0xffffff, ".");
+        f_02db68(D_24517c, 0x800000, 1, 21, 0xffffff, "Limit time = %d",
+                 m20[p->m2212][m4].m8);
+        f_02db68(D_24517c, 0x800000, 1, 22, 0xffffff, "timing......");
+        if (m20[p->m2212][m4].m16 == 0)
+            m20[p->m2212][m4].m16 = D_2407fc->m48 / 3;
+        if (m20[p->m2212][m4].m20 == 0 && m20[p->m2212][m4].m4 < D_2407fc->m144) {
+            m20[p->m2212][m4].m20 = D_2407fc->m48 / 3;
+            m0 = 2;
+        }
+    } else if (m0 == 2) {
+        m0 = 0;
+    } else {
+        f_00d354(D_245178, 0x800000, "Errer!! in func CCorneringJudge::Process(): nState = %d\n", m0);
+        m0 = 0;
+    }
+    return m0;
 }
 
 /* @implements 0x08fef4 us f_08fef4
@@ -763,6 +845,75 @@ void CDjDetect::f_090aa4()
     }
 }
 
+/* @implements 0x090c2c us f_090c2c
+   WHAT IT DOES: The end of race checks, every frame: on the last lap past the final straight
+   (or the last corner when the course has no straight) raises event 48 (49 without a straight)
+   and stops the event checks; then, in race mode 2, the result events for states 1 (50 to 53
+   by place), 2 (61 or 60 by the record), 3 (58 or 59), 4 (57, or 54 to 56 by the tour's extra
+   class) and 5 (58 or 59). */
+void CDjDetect::f_090c2c()
+{
+    int first = 1;
+    float pos = f_093c68(D_242c90.sections);
+    if (pos == 0) {
+        pos = f_093c70(D_242c90.sections);
+        first = 0;
+    }
+    if (f_0903c4()->m2212 == D_2407fc->m36 - 1 && pos <= D_2407fc->m144) {
+        if (first)
+            f_0902e8(48);
+        else
+            f_0902e8(49);
+        m400 = 1;
+    }
+    CRaceInfo *ri = D_2407fc;
+    if (ri->m56 != 2)
+        return;
+    if (f_090654()) {
+        int lap = ri->m112;
+        if (lap == 0)
+            f_0902e8(50);
+        if (lap == 1)
+            f_0902e8(51);
+        if (lap == 2)
+            f_0902e8(52);
+        if (lap >= 3)
+            f_0902e8(53);
+    }
+    if (f_09066c()) {
+        if (D_2407fc->m132 < D_2407fc->m20[1])
+            f_0902e8(61);
+        else
+            f_0902e8(60);
+    }
+    if (f_090684()) {
+        if (D_2407fc->m112 == 0)
+            f_0902e8(58);
+        else
+            f_0902e8(59);
+    }
+    if (f_09069c()) {
+        if (D_2407fc->m112 < D_2407fc->m68) {
+            char *f = D_2407d0.f_0368e8("TourExtra", (char *)D_2407fc->m0[0], 0, 0);
+            memcpy(D_24063c, f, D_1a211c[1]);
+            int cls = D_24063c[0];
+            if (cls == 1)
+                f_0902e8(54);
+            if (cls == 2)
+                f_0902e8(55);
+            if (cls == 3)
+                f_0902e8(56);
+        } else
+            f_0902e8(57);
+    }
+    if (f_0906b4()) {
+        if (D_2407fc->m112 == 0)
+            f_0902e8(58);
+        else
+            f_0902e8(59);
+    }
+}
+
 /* @implements 0x090ef0 us f_090ef0
    WHAT IT DOES: The per-car checks: the boost gauges (events 25, and 26 outside state 2), the
    player's full gauges in mode 1 (27 to 29), the drift against the nearest rival (38, 37, 40,
@@ -839,6 +990,72 @@ void CDjDetect::f_0910f4()
         r = f_091a4c();
         if (r == 1)
             f_0902bc(34);
+    }
+}
+
+/* @implements 0x091258 us f_091258
+   WHAT IT DOES: The idle checks of race modes 5 and 1: 300 frames of a race flag raise event
+   78; the player standing still for over 300 frames raises 79; over 180 frames at a speed of
+   50 or less raises 81 in state 2, otherwise 80; then the race time events: 64 and 65 below
+   3:02.7 and 1:32.7 (not in state 3), and 66 to 76 as the time falls below the thresholds
+   from 32.7 down to 0.15 seconds. */
+void CDjDetect::f_091258()
+{
+    CRaceInfo *ri = D_2407fc;
+    if ((ri->m56 == 5) | (ri->m56 == 1)) {
+        if (ri->m192 == 0)
+            m380 = 0;
+        else if (++m380 == 300) {
+            f_0902bc(78);
+            m380 = 0;
+        }
+        int wait = 300;
+        CCar *p = f_0903c4();
+        if (p->m1744 == 0 && p->m1748 == 0) {
+            if (++m384 > wait) {
+                f_0902bc(79);
+                m384 = 0;
+            }
+        } else
+            m384 = 0;
+        int slow = 180;
+        if (D_2407fc->m140 > 50.0f)
+            m388 = 0;
+        else if (++m388 > slow) {
+            if (f_09066c())
+                f_0902bc(81);
+            else
+                f_0902bc(80);
+            m388 = 0;
+        }
+        if (!f_090684()) {
+            if (D_2407fc->m20[3] < 182700)
+                f_0902e8(64);
+            if (D_2407fc->m20[3] < 92700)
+                f_0902e8(65);
+        }
+        if (D_2407fc->m20[3] < 32699)
+            f_0902e8(66);
+        if (D_2407fc->m20[3] < 29699)
+            f_0902e8(67);
+        if (D_2407fc->m20[3] < 26699)
+            f_0902e8(68);
+        if (D_2407fc->m20[3] < 23700)
+            f_0902e8(69);
+        if (D_2407fc->m20[3] < 20700)
+            f_0902e8(70);
+        if (D_2407fc->m20[3] < 17700)
+            f_0902e8(71);
+        if (D_2407fc->m20[3] < 14700)
+            f_0902e8(72);
+        if (D_2407fc->m20[3] < 11700)
+            f_0902e8(73);
+        if (D_2407fc->m20[3] < 8700)
+            f_0902e8(74);
+        if (D_2407fc->m20[3] < 5700)
+            f_0902e8(75);
+        if (D_2407fc->m20[3] < 150)
+            f_0902e8(76);
     }
 }
 
@@ -928,9 +1145,9 @@ int CDjDetect::f_09196c()
    changed, notes an overtake made (1) or suffered (-1), or cancels it if the place went back.
    Otherwise counts the frames of a pending overtake: after 48 it is dropped, and once the gap
    (behind for a pass made, ahead for one suffered) exceeds 10 it returns 1 or -1; else 0.
-   Remaining difference: the result variable is zeroed at the top and lives in a2 (the race
-   pointer then takes a1); retail sets the return value in a0 on each path after the pointer's
-   last use, so the zero stores belong to the individual exits, not one initialised local. */
+   Remaining difference: the registers and the frame now match; retail zeroes the result in
+   every lap-change exit block (move a0,zero before each jump), here the exits share one r = 0
+   join block, which moves the delay-slot fills and the block order after the -1 case. */
 int CDjDetect::f_091714()
 {
     float ahead = 500.0f;
@@ -953,8 +1170,7 @@ int CDjDetect::f_091714()
         m368 = 0;
         m372 = 0;
     }
-    int r = 0;
-    int wait = 48;
+    int r;
     if (m36 != D_2407fc->m112) {
         m372 = 0;
         if (m368 == 0) {
@@ -973,23 +1189,31 @@ int CDjDetect::f_091714()
             else if (D_2407fc->m112 > m36)
                 m368 = -1;
         }
-    } else if (m368 == 1) {
-        if (++m372 > wait) {
-            m372 = 0;
-            m368 = 0;
-        } else if (behind > lim) {
-            r = 1;
-            m372 = 0;
-            m368 = 0;
-        }
-    } else if (m368 == -1) {
-        if (++m372 > wait) {
-            m372 = 0;
-            m368 = 0;
-        } else if (ahead > lim) {
-            r = -1;
-            m372 = 0;
-            m368 = 0;
+        r = 0;
+    } else {
+        r = 0;
+        if (m368 != 0) {
+            if (m368 == 1) {
+                int wait = 48;
+                if (++m372 > wait) {
+                    m372 = 0;
+                    m368 = 0;
+                } else if (behind > lim) {
+                    r = 1;
+                    m372 = 0;
+                    m368 = 0;
+                }
+            } else if (m368 == -1) {
+                int wait = 48;
+                if (++m372 > wait) {
+                    m372 = 0;
+                    m368 = 0;
+                } else if (ahead > lim) {
+                    r = -1;
+                    m372 = 0;
+                    m368 = 0;
+                }
+            }
         }
     }
     return r;
