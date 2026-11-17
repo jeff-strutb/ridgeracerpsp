@@ -279,7 +279,13 @@ static inline void SetScreen(RcoViewer *v, int w, int h, float half)
    the screen to the 32 bit format.
    DRAFT: same size and calls; the four constants kept in float registers across the calls
    (0.0, 0.5, 1.0, 300.0) take other registers than in retail (retail f21 = 1.0, f22 = 0.0,
-   f23 = 0.5; here f21 = 0.0, f22 = 0.5, f23 = 1.0), which changes 46 of 88 words. */
+   f23 = 0.5; here f21 = 0.0, f22 = 0.5, f23 = 1.0), which changes 46 of 88 words.
+   Retail's .rodata.cst4 pool order (first use at expand) is 1.0472, 0.5, 1.0, 1.7647, 300,
+   2000000, 1400, 3000000 (ours: 0.5 and 1.0472 swapped, 1.7647 after 2000000), and retail's
+   mul is 1.0472 * 0.5 by operand order. Tried: 'float ang = 1.0471967f;' before half and the
+   aspect store right after 'one': pool order and the mul then match, but the FPR choice is
+   unchanged and the aspect/near loads swap (48 words), so reverted. The FPR assignment is
+   decided elsewhere (global alloc priority), not by the pseudo creation order. */
 extern "C" void f_0e5460(RcoViewer *v)
 {
     float half = 0.5f;
@@ -318,7 +324,8 @@ extern "C" void f_0e5460(RcoViewer *v)
 
 /* @draft 0x0e55c0 us f_0e55c0
    WHAT IT DOES: The same setup for the second mode (the same numbers).
-   DRAFT: as f_0e5460 (float constants in other registers). */
+   DRAFT: as f_0e5460 (float constants in other registers); same cause and same recorded
+   attempt as f_0e5460's note (pool-order source change did not move the FPRs). */
 extern "C" void f_0e55c0(RcoViewer *v)
 {
     float half = 0.5f;
@@ -394,7 +401,14 @@ void f_0e9e58(int a);
    for its last-argument store (retail v1/v0, here s0/v0) and the search loop's registers and
    bottom (retail keeps the counter step and the break test after the type test, here the
    step and the bound compare are hoisted above it and every loop register is one higher)
-   differ: 32 of 175 words. */
+   differ: 32 of 175 words.
+   Diagnosis (sched1 dump): sched1's interblock pass makes 3 speculative motions: the k++
+   (insn 327) and the k < n compare (252) leave the loop latch for the loop's top block
+   (e = it->e[k]), which keeps the compare result live across the body (hence every loop
+   register one higher). Retail did not hoist them: its k++ sits in the m960-test block and
+   the compare stays in the latch. Not yet known what in retail's source stops that motion
+   (same CFG and block count; is_cfg_nonregular would, e.g. an EH handler in the function,
+   but retail is the same size, so no landing pad). No source change tried. */
 extern "C" void f_0e5760(RcoViewer *v, void *p2, void *p3, void *p4, void *p5, void *p6,
                          void *p7, void *p8, void *p9, void *p10, void *p11, void *p12,
                          void *p13, void *p14, int p15, void *p16, void *p17, void *p18)
@@ -532,7 +546,12 @@ static inline int Pack(const float *c)
    the copies onto the scene (the first 120 instructions after the second call) load and
    store in another order with other float registers, and the closing commands compute the
    list end as a second pointer (retail: addiu v1,v0,16; move a0,v1) rather than adding to the
-   returned pointer. */
+   returned pointer.
+   Tried for that list end: '*p++ = ...' four times then f_0216e8(p): each increment stays a
+   separate addiu (no auto-inc folding outside a loop), 1740 bytes, 392 words; reverted.
+   Retail's v1 = p + 16 then a0 = v1 means p + 16 lives in its own pseudo that is not the
+   argument register (and v1 also carried the first command word): untried candidates are a
+   named end pointer computed before the stores. */
 extern "C" void f_0e5a60(RcoViewer *v, float t)
 {
     MapMgr *mm;
@@ -657,14 +676,14 @@ extern "C" void f_0e6124(RcoViewer *unused, RcoViewer *v)
 
 extern float D_23fa84;
 
-/* @draft 0x0e617c us f_0e617c
+/* @implements 0x0e617c us f_0e617c
    WHAT IT DOES: Points a viewer's camera at its first sprite source: fits the source (with
    the given size setting), takes the lens from the course's angle (in degrees, halved, with
    its scale), puts the camera at the source's position and turns it to the source's angles,
    then builds the camera matrix from the position and the three angles and hands it to the
    camera.
-   DRAFT: same size and calls; the position and angle copies load and store their three
-   floats in a different order and take other float registers (17 of 85 words). */
+   Byte-exact: each three-float copy reads all three floats into locals before storing them,
+   so each group's loads come ahead of its stores in program order (retail's order). */
 extern "C" void f_0e617c(RcoViewer *v, RcoViewer *c, float size)
 {
     Matrix m;
@@ -677,15 +696,24 @@ extern "C" void f_0e617c(RcoViewer *v, RcoViewer *c, float size)
     c->scale = 1.0f / f_0cd3cc(c->fov);
     Vec4 *p = &s->pos;
     Vec4 *r = &s->rot;
-    c->pos.x = p->x;
-    c->pos.y = p->y;
-    c->pos.z = p->z;
-    c->rx = r->x;
-    c->ry = r->y;
-    c->rz = r->z;
-    c->m688 = p->x;
-    c->m692 = p->y;
-    c->m696 = p->z;
+    {
+        float x = p->x, y = p->y, z = p->z;
+        c->pos.x = x;
+        c->pos.y = y;
+        c->pos.z = z;
+    }
+    {
+        float x = r->x, y = r->y, z = r->z;
+        c->rx = x;
+        c->ry = y;
+        c->rz = z;
+    }
+    {
+        float x = p->x, y = p->y, z = p->z;
+        c->m688 = x;
+        c->m692 = y;
+        c->m696 = z;
+    }
     f_028c70();
     f_02842c();
     a = c->rz;
@@ -770,7 +798,15 @@ extern "C" float f_0e6460(Sprite *s)
    and colours with the preset for that class and for light number idx (0 or 1).
    DRAFT: same size and control flow (the four presets share their store tails as in retail);
    about 36 of 150 words differ: the constants take other registers and the stores of each
-   preset come out in a different order. */
+   preset come out in a different order.
+   Diagnosis (sched1/flow2/sched2 dumps): sched1 puts each preset's stores as 76 first, then
+   the non-shared ones in source order (20 24 28 36 44 48 52 60 64), then the zero/shared
+   ones (0 4 8 12 16 32 40 56 68 72); flow2 cross-jumps that sched1 order into the shared
+   tails (retail's tails are the same, so the zero/shared group matches); sched2 then hoists
+   the first two int stores above 76. Retail's int stores come out 60 44 76 64 48 52 (ours
+   44 48 76 52 60 64), i.e. retail's sched1 order was 76, 60, 44, 64, 48, 52: the m60/m64
+   stores rank ahead of m48/m52 in retail. Source order or field types that give that rank
+   not yet worked out; no source change tried. */
 extern "C" void f_0e6474(Light *l, int idx, int cls)
 {
     if (cls == 1) {
