@@ -54,7 +54,7 @@ void f_09c314(Quat *o, const Vec3 *a);
 void f_09d858(Mat33 *o, const Quat *q);
 void f_09fd1c(Mat34 *o, const Quat *q);
 void f_09e770(Quat *o, const Mat33 *m);
-void f_09cc50(Quat *o, const Quat *a, const Quat *b, float t);
+Quat *f_09cc50(Quat *o, const Quat *a, const Quat *b, float t);
 
 /* @implements 0x09de90 us f_09de90
    WHAT IT DOES: Replaces the 3x3 matrix with the result of f_09dd08 on it (in-place inverse) and returns it. */
@@ -439,6 +439,98 @@ void f_09bf24(Quat *o, const void *in)
     o->v[2] = a[2];
 }
 
+/* @draft 0x09d228 us f_09d228
+   WHAT IT DOES: Builds the rotation matrix of three Euler angles with an axis order code (the
+   axis triple from the table at D_1abf6c; odd parity negates all three angles) from their
+   cosines and sines, written transposed (column by column).
+   Remaining difference: register allocation and order. Retail gives k, i and j to s1, s2 and
+   s3 (ours i, j, k), loads the order's third byte first, and swaps the registers of cos(tj)
+   and cos(th) (f22/f23). The index arithmetic is scheduled differently as a result. Control
+   flow and arithmetic match. */
+void f_09d228(Mat33 *o, const void *in)
+{
+    const EulIn *e = (const EulIn *)in;
+    const signed char *t = D_1abf6c + e->order * 3;
+    int i = t[0];
+    int j = t[1];
+    int k = t[2];
+    float ti, tj, th;
+    if (e->order & 1) {
+        ti = -e->a[i];
+        tj = -e->a[j];
+        th = -e->a[k];
+    } else {
+        ti = e->a[i];
+        tj = e->a[j];
+        th = e->a[k];
+    }
+    float ci = f_09a154(ti);
+    float cj = f_09a154(tj);
+    float ch = f_09a154(th);
+    float si = f_099fc4(ti);
+    float sj = f_099fc4(tj);
+    float sh = f_099fc4(th);
+    float cc = ci * ch;
+    float cs = ci * sh;
+    float sc = si * ch;
+    float ss = si * sh;
+    o->m[i][i] = cj * ch;
+    o->m[j][i] = sj * sc - cs;
+    o->m[k][i] = sj * cc + ss;
+    o->m[i][j] = cj * sh;
+    o->m[j][j] = sj * ss + cc;
+    o->m[k][j] = sj * cs - sc;
+    o->m[i][k] = -sj;
+    o->m[j][k] = cj * si;
+    o->m[k][k] = cj * ci;
+}
+
+/* @draft 0x09d450 us f_09d450
+   WHAT IT DOES: Builds the rotation matrix of three Euler angles with an axis order code (the
+   axis triple from the table at D_1abf6c; odd parity negates all three angles) from their
+   cosines and sines, written transposed (column by column).
+   Remaining difference: register allocation and order. Retail gives k, i and j to s1, s2 and
+   s3 (ours i, j, k), loads the order's third byte first, and swaps the registers of cos(tj)
+   and cos(th) (f22/f23). The index arithmetic is scheduled differently as a result. Control
+   flow and arithmetic match. (Twin of f_09d228.) */
+void f_09d450(Mat33 *o, const void *in)
+{
+    const EulIn *e = (const EulIn *)in;
+    const signed char *t = D_1abf6c + e->order * 3;
+    int i = t[0];
+    int j = t[1];
+    int k = t[2];
+    float ti, tj, th;
+    if (e->order & 1) {
+        ti = -e->a[i];
+        tj = -e->a[j];
+        th = -e->a[k];
+    } else {
+        ti = e->a[i];
+        tj = e->a[j];
+        th = e->a[k];
+    }
+    float ci = f_09a154(ti);
+    float cj = f_09a154(tj);
+    float ch = f_09a154(th);
+    float si = f_099fc4(ti);
+    float sj = f_099fc4(tj);
+    float sh = f_099fc4(th);
+    float cc = ci * ch;
+    float cs = ci * sh;
+    float sc = si * ch;
+    float ss = si * sh;
+    o->m[i][i] = cj * ch;
+    o->m[j][i] = sj * sc - cs;
+    o->m[k][i] = sj * cc + ss;
+    o->m[i][j] = cj * sh;
+    o->m[j][j] = sj * ss + cc;
+    o->m[k][j] = sj * cs - sc;
+    o->m[i][k] = -sj;
+    o->m[j][k] = cj * si;
+    o->m[k][k] = cj * ci;
+}
+
 float *f_099b98(float *a);
 float f_099fc4(float a);
 float cosf(float);
@@ -556,7 +648,7 @@ void f_09fbc4(Mat34 *d, const Vec3 *a)
 }
 
 void f_0a0bfc(Quat *o, const Mat34 *m);
-void f_09cc50(Quat *o, const Quat *a, const Quat *b, float t);
+Quat *f_09cc50(Quat *o, const Quat *a, const Quat *b, float t);
 
 /* @implements 0x0a0dcc us f_0a0dcc
    WHAT IT DOES: Converts the matrix to a quaternion, interpolates it toward q by t, and writes the result back as a 3x4 matrix. */
@@ -993,6 +1085,150 @@ void f_09c314(Vec4a *d, const FVec3 *v)
     *d = *(Vec4a *)&r;
 }
 
+
+}
+}
+
+/* ---- m210s: quaternion interpolation ---- */
+namespace m210s {
+struct Quat {
+    float v[4];
+    Quat() {}
+    Quat(float x, float y, float z, float w)
+    {
+        v[0] = x;
+        v[1] = y;
+        v[2] = z;
+        v[3] = w;
+    }
+};
+
+inline Quat operator*(float s, const Quat &q)
+{
+    return Quat(s * q.v[0], s * q.v[1], s * q.v[2], s * q.v[3]);
+}
+
+inline Quat operator+(const Quat &a, const Quat &b)
+{
+    return Quat(a.v[0] + b.v[0], a.v[1] + b.v[1], a.v[2] + b.v[2], a.v[3] + b.v[3]);
+}
+
+/* Sets o to x + y. */
+inline void Sum(Quat &o, const Quat &x, const Quat &y)
+{
+    o.v[0] = x.v[0] + y.v[0];
+    o.v[1] = x.v[1] + y.v[1];
+    o.v[2] = x.v[2] + y.v[2];
+    o.v[3] = x.v[3] + y.v[3];
+}
+
+/* An angle in radians, passed by value in an integer register. */
+union Angle {
+    float a;
+};
+
+/* An angle wrapped into (-pi, pi] on construction (through f_099b98, in memory). */
+extern "C" float *f_099b98(float *a);
+struct WAng {
+    float a;
+    WAng(float x) : a(x) { f_099b98(&a); }
+};
+
+extern "C" {
+float f_09ab88(float x);
+float f_099fc4(float a);
+
+/* @draft 0x09ca50 us f_09ca50
+   WHAT IT DOES: Quaternion interpolation from a toward b by a half angle: when a and b differ
+   (1 - |a.b| above a small epsilon) o is a weighted sum of a and b whose weights are the
+   sines of the wrapped angles (omega - t/2) and t/2 over sin(omega), omega the angle between
+   them (b's weight negated when their dot product is negative); otherwise o is a copy of a.
+   Returns o.
+   Remaining difference: register choice for t * 0.5 (kept across the calls in f21): retail
+   moves t itself into f21 and loads 0.5 into f0; here 0.5 lands in f21 and t in f0. */
+Quat *f_09ca50(Quat *o, const Quat *a, const Quat *b, Angle t)
+{
+    int flip;
+    float cosom = a->v[0] * b->v[0] + a->v[1] * b->v[1] + a->v[2] * b->v[2] + a->v[3] * b->v[3];
+    if (cosom < 0.0f) {
+        cosom = -cosom;
+        flip = 1;
+    } else
+        flip = 0;
+    if (1.0f - cosom > 9.99999975e-06f) {
+        float omega = f_09ab88(cosom);
+        float sinom = f_099fc4(omega);
+        WAng h(t.a * 0.5f);
+        WAng d(omega - h.a);
+        float scale0 = f_099fc4(d.a) / sinom;
+        WAng e(t.a * 0.5f);
+        float scale1 = f_099fc4(e.a) / sinom;
+        if (flip)
+            scale1 = -scale1;
+        Sum(*o, scale0 * *a, scale1 * *b);
+    } else
+        *o = *a;
+    return o;
+}
+
+/* @implements 0x09cc50 us f_09cc50
+   WHAT IT DOES: Spherical linear interpolation from quaternion a to b at t (through the
+   shorter arc: b's weight is negated when the dot product is negative), falling back to a
+   linear blend when the quaternions are nearly equal; writes o and returns it. The weight of
+   b is kept in t itself. */
+Quat *f_09cc50(Quat *o, const Quat *a, const Quat *b, float t)
+{
+    float scale0;
+    int flip;
+    float cosom = a->v[0] * b->v[0] + a->v[1] * b->v[1] + a->v[2] * b->v[2] + a->v[3] * b->v[3];
+    if (cosom < 0.0f) {
+        cosom = -cosom;
+        flip = 1;
+    } else
+        flip = 0;
+    if (1.0f - cosom > 9.99999975e-06f) {
+        float omega = f_09ab88(cosom);
+        float sinom = f_099fc4(omega);
+        scale0 = f_099fc4((1.0f - t) * omega) / sinom;
+        t = f_099fc4(t * omega) / sinom;
+    } else
+        scale0 = 1.0f - t;
+    if (flip)
+        t = -t;
+    *o = scale0 * *a;
+    *o = *o + t * *b;
+    return o;
+}
+
+/* @implements 0x09ce44 us f_09ce44
+   WHAT IT DOES: Spherical linear interpolation from quaternion a to b at t through the
+   longer arc (twin of f_09cc50 with the test reversed: b's weight is negated and the cosine
+   flipped when the dot product is not negative), falling back to a
+   linear blend when the quaternions are nearly equal; writes o and returns it. The weight of
+   b is kept in t itself. */
+Quat *f_09ce44(Quat *o, const Quat *a, const Quat *b, float t)
+{
+    float scale0;
+    int flip;
+    float cosom = a->v[0] * b->v[0] + a->v[1] * b->v[1] + a->v[2] * b->v[2] + a->v[3] * b->v[3];
+    if (cosom >= 0.0f) {
+        cosom = -cosom;
+        flip = 1;
+    } else
+        flip = 0;
+    if (1.0f - cosom > 9.99999975e-06f) {
+        float omega = f_09ab88(cosom);
+        float sinom = f_099fc4(omega);
+        scale0 = f_099fc4((1.0f - t) * omega) / sinom;
+        t = f_099fc4(t * omega) / sinom;
+    } else
+        scale0 = 1.0f - t;
+    if (flip)
+        t = -t;
+    *o = scale0 * *a;
+    *o = *o + t * *b;
+    return o;
+}
 
 }
 }

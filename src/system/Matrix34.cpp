@@ -1,5 +1,7 @@
 /* The three by three float matrix of the camera math library (retail 0x09f344 to 0x09d228). */
 
+#include <math.h>
+
 extern "C" {
 float f_099fc4(float a);
 float f_09a154(float a);
@@ -31,7 +33,25 @@ struct Vec3 {
     Vec3 &f_09fe84(const Mat34 &m, const Vec3 &a);
     Vec3 &f_09ff1c(const Mat34 &m, const Vec3 &a);
     Vec3 &f_0a0994(const Mat34 &m, const Vec3 &a);
+    Vec3 &f_09b474(const Vec3 &a, const Vec3 &b);
 };
+
+/* A row of four floats. */
+struct Vec4 {
+    float v[4];
+    Vec4() {}
+    Vec4(float x, float y, float z, float w)
+    {
+        v[0] = x;
+        v[1] = y;
+        v[2] = z;
+        v[3] = w;
+    }
+};
+
+/* Row orders for the orthonormalisation: kept, made perpendicular, replaced by the cross
+   product. */
+extern "C" const signed char D_1ac12c[6][3];
 
 struct Mat34 {
     float m[3][4];
@@ -46,6 +66,7 @@ struct Mat34 {
     Mat34(const Mat43 &s);
     Mat34(const Mat44 &s);
     Mat34 &f_09ff44();
+    Mat34 &f_09ff78(int order);
     float f_0a0140() const;
     Mat34 &f_0a01ac(const Mat34 &s);
     Mat34 &f_0a039c();
@@ -165,6 +186,40 @@ Mat34 &Mat34::f_09ff44()
     m[2][0] = 0;
     m[2][1] = 0;
     m[0][0] = m[1][1] = m[2][2] = 1.0f;
+    return *this;
+}
+
+/* Scales the first three floats to unit length. */
+static inline void Normalize(float *v)
+{
+    float inv = 1.0f / sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    v[0] = v[0] * inv;
+    v[1] = v[1] * inv;
+    v[2] = v[2] * inv;
+}
+
+/* @draft 0x09ff78 us f_09ff78
+   WHAT IT DOES: Re-orthonormalises the three rows in place (Gram-Schmidt) in the row order
+   chosen by the code: the first row normalised, the second made perpendicular to it and
+   normalised, the third replaced by their cross product (with 1 as its fourth word); returns
+   the matrix.
+   Remaining difference: scheduling only. The row codes' second and third bytes load in the
+   opposite order to retail, and the third row's address and the constant's lui are placed
+   around the sqrt.s instead of after it (a tie in sched1/sched2, not yet pinned down). */
+Mat34 &Mat34::f_09ff78(int order)
+{
+    float *a = m[D_1ac12c[order][0]];
+    float *b = m[D_1ac12c[order][1]];
+    float *c = m[D_1ac12c[order][2]];
+    Normalize(a);
+    float d = b[0] * a[0] + b[1] * a[1] + b[2] * a[2];
+    Vec4 p(d * a[0], d * a[1], d * a[2], 1.0f);
+    b[0] = b[0] - p.v[0];
+    b[1] = b[1] - p.v[1];
+    b[2] = b[2] - p.v[2];
+    Normalize(b);
+    ((Vec3 *)&p)->f_09b474(*(Vec3 *)a, *(Vec3 *)b);
+    *(Vec4 *)c = p;
     return *this;
 }
 
