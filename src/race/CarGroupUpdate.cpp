@@ -323,7 +323,7 @@ int f_0c3514(int n, CCar *player, CCar *c)
    physics steps one after the other over the group, the others the one step of their kind.
    DRAFT: instruction for instruction the same as retail; only two registers are swapped (the
    count of normal cars and the "any normal cars" flag) and the two stack array pointers are set
-   up in the other order. */
+   up in the other order. Tried (2026-11-16): declaring nb before na changes nothing (27 words). */
 void f_0c3e34(int n, CCar **cars)
 {
     CCar *a[16];
