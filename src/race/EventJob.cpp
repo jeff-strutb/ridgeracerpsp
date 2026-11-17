@@ -299,6 +299,42 @@ struct HatoBird {
         z = r * VSin(a);
         anim.time = 0;
     }
+
+    /* Defined in the class, so emitted at the end of the object file (0x0d5294). */
+    void Update()
+    {
+        switch (state) {
+        case 0:
+            break;
+        case 1:
+            speed = speed + 1.0f;
+            if (speed >= 0.0f)
+                state = 2;
+            break;
+        case 2:
+            speed = speed + 1.0f;
+            anim.time = speed;
+            if ((float)anim.hdr->frames <= speed) {
+                state = 3;
+                anim.time = (float)(anim.hdr->frames - 1);
+            }
+            break;
+        case 3:
+            break;
+        }
+        MotKey k0, k1;
+        f_0e0778(&k0, &anim, 0, 0);
+        f_0e0778(&k1, &anim, 0, 1);
+        f_028c70();
+        f_02842c();
+        f_0287cc(k0.t[0], k0.t[1], k0.t[2]);
+        f_02853c(Rad(k1.r[2]));
+        f_0284fc(Rad(k1.r[1]));
+        f_0284bc(Rad(k1.r[0]));
+        f_02884c(k0.s[0], k0.s[1], k0.s[2]);
+        f_028d94(&m);
+        f_028ca8();
+    }
 };
 
 /* The shared flock of type 17 (Map::Event::CHatoWork). */
@@ -371,6 +407,54 @@ public:
     static int Run(EventWork *w, int arg);
     static void Release(EventWork *w);
 };
+
+extern "C" {
+Matrix *f_0cdbc4(const Matrix *m, Matrix *out);
+Vec4 *f_027edc(Vec4 *d, const Vec4 *a, const Vec4 *b);
+Vec4 *f_027f18(Vec4 *d, const Vec4 *a);
+}
+
+/* The shading and the mode of the frame being run (set by Begin). */
+extern void *D_2542a4;
+extern int D_2542a8;
+
+/* @implements 0x0cfaf4 us f_0cfaf4
+   WHAT IT DOES: Begins a frame of the course events: records the camera, the shading and the
+   mode, builds the camera-facing matrix from the camera's (the transpose of its rotation),
+   and from it the matrix that faces the camera about the vertical axis only (the camera's
+   direction flattened and normalised, with the side and top axes crossed from it). The up
+   vector is copied from a static constant (retail's four word loads from .rodata; a local
+   initialiser stores the elements one by one). */
+extern "C" void f_0cfaf4(void *view, void *shade, int mode)
+{
+    D_2542a4 = shade;
+    D_2542a8 = mode;
+    D_2542a0 = (Vec4 *)view;
+    f_0cdbc4((Matrix *)((char *)view + 288), &D_2542b0);
+    D_2542f0 = D_2542b0;
+    static const Vec4 kUp = {0, 1, 0, 0};
+    Vec4 up = kUp;
+    Vec4 side, top, dir;
+    dir.x = -D_2542b0.m[2][0];
+    dir.y = 0;
+    dir.z = -D_2542b0.m[2][2];
+    f_027f18(&dir, &dir);
+    f_027edc(&side, &dir, &up);
+    f_027f18(&side, &side);
+    f_027edc(&top, &side, &dir);
+    D_2542f0.m[0][0] = side.x;
+    D_2542f0.m[0][1] = top.x;
+    D_2542f0.m[0][2] = dir.x;
+    D_2542f0.m[0][3] = 0;
+    D_2542f0.m[1][0] = side.y;
+    D_2542f0.m[1][1] = top.y;
+    D_2542f0.m[1][2] = dir.y;
+    D_2542f0.m[1][3] = 0;
+    D_2542f0.m[2][0] = side.z;
+    D_2542f0.m[2][1] = top.z;
+    D_2542f0.m[2][2] = dir.z;
+    D_2542f0.m[2][3] = 0;
+}
 
 /* @implements 0x0cfc6c us _ZN8CEvent004Eval
    WHAT IT DOES: Asks to run while the event's object is in view and within its draw radius
@@ -766,7 +850,11 @@ void CEvent05::Release(EventWork *w)
    WHAT IT DOES: Takes the shared object on the job's first frame (building it when this is
    the first taker, and restarting it when the camera has changed), places the event at the
    object's offset, starts the event's sound when it has one, and scores like type 0.
-   DIFFERS: the first-frame block's layout and the copy of the placed position. */
+   DIFFERS: the first-frame block's layout and the copy of the placed position.
+   2026-11-16 cycle: the visible arm's camera load (third argument of f_027e0c) uses a fresh
+   lui where retail reuses s4, as in type 34 (see the note there: gcse's global const-prop
+   turns the InView block's copy of the PRE register back into a `high`, so the arm keeps
+   that pseudo). No change made. */
 float CEvent06::Eval(EventWork *w)
 {
     Event *ev = w->ev;
@@ -1177,7 +1265,11 @@ float CEvent23::Eval(EventWork *w)
    says): the current frame of the cycle fully, fading in over the event's fade time, and the
    other frames fading out over the fade time after their turn.
    DIFFERS: retail keeps the fade-time block in line after its test; this build moves it out
-   of line, shifting the code that follows. */
+   of line, shifting the code that follows.
+   2026-11-16 cycle (bp dump): the fade test's only heuristic is the call heuristic (70% for
+   skipping the guarded f_0dad68 call); (leu x 0x800) gets no opcode heuristic. Retail needs
+   the block at >= 50%, i.e. some heuristic for entering it; no source form found that
+   gives one and keeps `andi 0x3800; sltiu 2049`. No change made. */
 int CEvent23::Run(EventWork *w, int arg)
 {
     Event *ev = w->ev;
@@ -1503,6 +1595,10 @@ void CEvent17::Release(EventWork *w)
    WHAT IT DOES: While the event's object is in view, sets the job's alpha by interpolating the
    event's (distance, alpha) keys at the camera's distance along the course (fading to 0 at the
    event's end distance), then scores like type 0; without keys it never runs.
+   2026-11-16 cycle (lreg): w is pseudo 182 (10 refs over 91 insns) and the map manager 183
+   (3 refs over 78), so global gives w s1 first; retail has the map manager in s1, which
+   needs it ahead in greg's priority order (more refs or a shorter life). Not settled; no
+   change made.
    DIFFERS: the job and the map manager take each other's saved registers, and the map
    manager's address is rebuilt after the key search. */
 float CEvent19::Eval(EventWork *w)
@@ -1608,7 +1704,12 @@ void CEvent19::Release(EventWork *w)
    WHAT IT DOES: Starts the shared animation (once) when the camera's distance along the
    course reaches the event's start distance, then scores like type 0.
    DIFFERS: the object table load in the visible arm takes v1 rather than v0, and the camera
-   pointer is loaded late for the subtraction (+4 B). */
+   pointer is loaded late for the subtraction (+4 B).
+   2026-11-16 cycle (cse/gcse/lreg dumps): retail reuses the D_2542a0 high (s5) in the visible
+   arm. Here cse1 gives the InView block and the arm one high pseudo (229); gcse PRE makes
+   the InView use a copy of the entry block's high (277), but global const-prop then turns
+   that copy back into `229 = high`, so the arm's load keeps 229 and reload rematerialises a
+   lui. Type 0 matches because it has no D_2542a0 use before InView. No change made. */
 float CEvent34::Eval(EventWork *w)
 {
     Event *ev = w->ev;
@@ -1812,9 +1913,12 @@ public:
     virtual void Stop();
     CCycleWork() { m12 = 0; m16 = 0; }
 
-    int *m12;
+    int *m12;           /* per cyclist: its interval */
     int *m16;
-    int m20[4];
+    int count;          /* +20 */
+    int cur;            /* +24: the cyclist due next */
+    int time;           /* +28 */
+    int m32;
 };
 
 /* The flashes. */
@@ -1825,9 +1929,16 @@ public:
     virtual void Stop();
     CFlashWork() { m16 = 0; m20 = 0; }
 
-    int m12;
-    int *m16;
-    int *m20;
+    /* One flash: its offset and its time. */
+    struct Flash {
+        float x, y;
+        int time;
+        float level;
+    };
+
+    int m12;            /* the flash count */
+    int *m16;           /* per flash: its period */
+    Flash *m20;
 };
 
 /* The fireworks: started through the effect manager. */
@@ -2024,24 +2135,24 @@ void CEventJobWorkBase::Reset()
 {
 }
 
-/* @draft 0x0d3eb0 us _ZN3Map5Event8CMotWork4Init
+/* @implements 0x0d3eb0 us _ZN3Map5Event8CMotWork4Init
    WHAT IT DOES: Sets the moving model up from its event: its animation's parameter block from
    the model class the event names, its start time and speed (from the event's parameters
    when given, else 0 and 60), whether it loops, and no camera seen yet.
-   Remaining difference: the first test's arms are laid out the other way round. The bp pass
-   gives `n < 2` the opcode-positive heuristic (canonicalised to n > 1, 79%) on top of the call
-   heuristic (30%), 61.7% for the call arm, so bbro makes it the fall-through; retail keeps
-   the zero store there, as for `n < 3`. */
+   The first test is written `n >= 2` with the call arm first: its jump-if-false is
+   (lt n 2), which no opcode heuristic covers, so only the call heuristic (30%) applies and
+   bbro keeps the zero store as the fall-through, as retail. `n < 2` jumps on (ge n 2),
+   canonicalised to (gt n 1), whose opcode-positive heuristic (79%) made the call arm 61.7%. */
 void CMotWork::Init()
 {
     int id = *f_0dad68(ev, 0xe0, 0);
     memset(&anim, 0, sizeof anim);
     f_0daf30(&anim, f_0d8114(D_23c820.Classes(), id));
     int n = (ev->flags & 0x3800) >> 11;
-    if (n < 2)
-        m1136 = 0;
-    else
+    if (n >= 2)
         m1136 = (float)*f_0dad68(ev, 0x3800, 1) * 60.0f;
+    else
+        m1136 = 0;
     if (n < 3)
         m1140 = 60.0f;
     else
@@ -2093,6 +2204,35 @@ void CHeliWork::Update()
     f_028ca8();
 }
 
+/* @implements 0x0d4224 us _ZN3Map5Event10CCycleWork5Setup
+   WHAT IT DOES: Takes the event and its cyclist count, reads each cyclist's interval from the
+   event's parameters (each one's second table entry taken from the one before it when its
+   interval is -1 for the first or 0 for the rest, else 0), and picks a pseudo-random first
+   cyclist and start time when the first interval is positive. The interval is read back into
+   a local before the test (retail loads it once, ahead of the branch); the zero stores are
+   written time first (sched2 issues the later store first). */
+void CCycleWork::Setup(::Event *e)
+{
+    int i;
+
+    ev = e;
+    count = (e->flags & 0x3800) >> 11;
+    m12 = new int[count];
+    m16 = new int[count];
+    for (i = 0; i < count; i++) {
+        m12[i] = *f_0dad68(e, 0x3800, i);
+        int v = m12[i];
+        m16[i] = (i == 0 ? v == -1 : v == 0) ? m16[i - 1] : 0;
+    }
+    if (m12[0] > 0) {
+        cur = 0x1e3779af % count;
+        time = 0x23a81499 % m12[cur];
+    } else {
+        time = 0;
+        cur = 0;
+    }
+}
+
 /* @implements 0x0d4380 us _ZN3Map5Event10CCycleWork4Stop
    WHAT IT DOES: Frees the two tables. */
 void CCycleWork::Stop()
@@ -2103,6 +2243,50 @@ void CCycleWork::Stop()
         delete[] m16;
 }
 
+/* @implements 0x0d43d8 us _ZN3Map5Event10CCycleWork6Update
+   WHAT IT DOES: While any job holds it and no replay runs, advances the time and passes on to
+   the next cyclist each time it runs past the current one's interval (60 units a step), and
+   keeps the position along the whole cycle, 65535 to a cyclist, divided by the count. */
+void CCycleWork::Update()
+{
+    if (ref == 0)
+        return;
+    if (D_23c820.replay)
+        return;
+    time += 1024;
+    while (time >= m12[cur] * 60) {
+        time -= m12[cur] * 60;
+        cur = (cur + 1) % count;
+    }
+    m32 = (int)((float)(cur * 65535) + (float)time * 65535.0f / (float)(m12[cur] * 60)) / count;
+}
+
+/* @draft 0x0d4510 us _ZN3Map5Event10CFlashWork5Setup
+   WHAT IT DOES: Takes the event and its flash count, and gives each flash a random period
+   (up to the event's first parameter) and a random offset (across the second, up the
+   third).
+   Remaining difference (16 B): the second and third Rand's `% 32768` stays as srl/sll/subu
+   where retail has andi 0x7fff (the first Rand is subu in both). The combine dump shows the
+   inlined Rand's return pseudo is also expand_divmod's quotient target (set twice, insns
+   122/125), so combine cannot fold the three insns; what retail did differently for the
+   later two calls is not known. CFlashWork::Update has the same difference. */
+void CFlashWork::Setup(::Event *e)
+{
+    ev = e;
+    m12 = *f_0dad68(e, 0xe00000, 0);
+    m16 = new int[m12];
+    m20 = new Flash[m12];
+    for (int i = 0; i < m12; i++) {
+        int period = *f_0dad68(ev, 0xe00000, 1);
+        int w = *f_0dad68(ev, 0xe00000, 2);
+        int h = *f_0dad68(ev, 0xe00000, 3);
+        m16[i] = period * D_23c820.Rand() / 32768;
+        m20[i].time = 0;
+        m20[i].x = (float)(w * (D_23c820.Rand() - 16384) / 32768);
+        m20[i].y = (float)(h * D_23c820.Rand() / 32768);
+    }
+}
+
 /* @implements 0x0d46e0 us _ZN3Map5Event10CFlashWork4Stop
    WHAT IT DOES: Frees the two tables. */
 void CFlashWork::Stop()
@@ -2111,6 +2295,30 @@ void CFlashWork::Stop()
         delete[] m16;
     if (m20)
         delete[] m20;
+}
+
+/* @draft 0x0d4738 us _ZN3Map5Event10CFlashWork6Update
+   WHAT IT DOES: While any job holds it and no replay runs, counts each flash's period down;
+   when one runs out it fires again at full level with a new random period and offset.
+   Remaining difference (16 B): the second and third Rand's modulo, as in Setup. */
+void CFlashWork::Update()
+{
+    if (ref == 0)
+        return;
+    if (D_23c820.replay)
+        return;
+    for (int i = 0; i < m12; i++) {
+        if (--m16[i] < -1) {
+            int period = *f_0dad68(ev, 0xe00000, 1);
+            int w = *f_0dad68(ev, 0xe00000, 2);
+            int h = *f_0dad68(ev, 0xe00000, 3);
+            m16[i] = period * D_23c820.Rand() / 32768;
+            m20[i].level = 1.0f;
+            m20[i].time = 0;
+            m20[i].x = (float)(w * (D_23c820.Rand() - 16384) / 32768);
+            m20[i].y = (float)(h * D_23c820.Rand() / 32768);
+        }
+    }
 }
 
 /* @implements 0x0d492c us _ZN3Map5Event11CHanabiWork5Setup
@@ -2125,7 +2333,11 @@ void CHanabiWork::Setup(::Event *e)
 
 /* @draft 0x0d4980 us _ZN3Map5Event11CHanabiWork4Stop
    WHAT IT DOES: Stops the firework if it is running.
-   DIFFERS: the field test is scheduled differently against the prologue (+4 B). */
+   DIFFERS: the field test is scheduled differently against the prologue (+4 B).
+   2026-11-16 cycle (lreg): sched1 moves the call's argument setup (a0 = &D_2543a0,
+   a1 = this) up into the test block, so `this` is live across the a1 set and gets a2.
+   Retail keeps `this` in a1 (the store uses a1) and lays the call block out of line after
+   the epilogue, as CLeafWork::Stop does here. No source cause found; no change made. */
 void CHanabiWork::Stop()
 {
     if (active == 1) {
@@ -2172,7 +2384,10 @@ void CLeafWork::Setup(::Event *e)
 /* @draft 0x0d4ac4 us _ZN3Map5Event9CLeafWork4Stop
    WHAT IT DOES: Stops the leaves if they are running.
    DIFFERS: retail loads the field ahead of the stack adjustment and fills the branch slot
-   with the return address store; this build keeps the prologue first (+4 B). */
+   with the return address store; this build keeps the prologue first (+4 B).
+   2026-11-16 cycle (sched2): the field load (insn 11) has a true dependence on the ra save
+   (insn 38): the frame store's alias set is 0 and base_alias_check does not separate a0
+   from sp here. Retail's load is independent of it. No source cause found; no change. */
 void CLeafWork::Stop()
 {
     if (active == 1) {
@@ -2217,6 +2432,19 @@ void CHatoWork::Stop()
 {
     if (birds)
         delete[] birds;
+}
+
+/* @implements 0x0d4d94 us _ZN3Map5Event9CHatoWork6Update
+   WHAT IT DOES: While any job holds the flock and no replay runs, updates and places each
+   bird. */
+void CHatoWork::Update()
+{
+    if (ref == 0)
+        return;
+    if (D_23c820.replay)
+        return;
+    for (int i = 0; i < count; i++)
+        birds[i].Update();
 }
 
 /* @implements 0x0d4e04 us _ZN3Map5Event9CUshiWork5Setup
@@ -2298,6 +2526,13 @@ void CUshiWork::Reset()
    WHAT IT DOES: CMotWork::Update (defined in the class): while any job holds it and no replay
    runs, steps its animation and builds its matrix from the two keys (translation, rotation z,
    y, x, scale). */
+
+/* @implements 0x0d5294 us _ZN8HatoBird6Update
+   WHAT IT DOES: HatoBird::Update (defined in the struct): a bird taking off speeds up until
+   it flies, a flying bird runs its animation to the last frame and stops there; then builds
+   the bird's matrix from its two keys (translation, rotation z, y, x, scale). The switch
+   names the empty states 0 and 3: with four cases the decision tree is rooted at 1 and
+   gives retail's `state < 2` branch to the end. */
 
 }
 }
