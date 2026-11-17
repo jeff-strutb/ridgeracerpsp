@@ -891,8 +891,10 @@ struct Flag {
    retail's move a0,v0, giving retail's bottom-tested loop with ep reloaded at each use. (With
    one ep, gcse PREs those loads into the latch: beqzl exit, latch reloads, j back.) Reading
    ex/ey as pts[jj0] - pts[jj0 + 1] also stops the PRE but gives offset addressing (496(v0))
-   where retail has base addressing. Still different here: retail copies n twice (move a1,v1;
-   move t0,v1; move a1,t0 inside the loop) and re-forms ep after the loop (addu s1,t2,s1);
+   where retail has base addressing. The k loop reads o->m4->n in its test and in the modulus
+   (no local n): gcse replaces the fully redundant in-loop loads with copies of the reaching
+   register, which are retail's move a1,v1 / move t0,v1 and the in-loop move a1,t0. Still
+   different here: retail re-forms ep after the loop (addu s1,t2,s1);
    after the loop retail computes both V464 differences into $f0/$f1 and copies them to the
    argument registers, where this computes x straight into $f13.
    Open: the second look's xi selection. Retail keeps xi = V464.x inline and puts both other
@@ -1296,10 +1298,9 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                         float *ep = &pts[jj0].x;
                         float ex = ep[0] - ep[2];
                         float ey = ep[1] - ep[3];
-                        int n = o->m4->n;
-                        for (k = 0; k < n; k++) {
+                        for (k = 0; k < o->m4->n; k++) {
                             float *ep = &pts[jj0].x;
-                            short k1 = (k + 1) % n;
+                            short k1 = (k + 1) % o->m4->n;
                             dA = ex * (By[k] - ep[1]) + ey * (ep[0] - Bx[k]);
                             dB = ey * (ep[0] - Bx[k1]) + ex * (By[k1] - ep[1]);
                             pA = dA * dB;
