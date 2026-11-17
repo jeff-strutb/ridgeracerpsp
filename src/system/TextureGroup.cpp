@@ -177,7 +177,10 @@ struct TexModel {
    its parts, each sized for the distinct textures of that group's draws, and gives every
    draw its texture's bucket.
    DIFFERS: s4 and s5 swapped (the second pass's part pointer and the texture count); 13
-   spellings of the loops, locals and the distinct-texture search tried. */
+   spellings of the loops, locals and the distinct-texture search tried. Global-alloc order
+   (nTex allocated before the part pointer) decides it, but fn.py --rtl prints nothing for this
+   free function (its key is the mangled name; the dump header is the C++ declaration), so no
+   priority evidence yet and no source change made blind. */
 void BuildTexGroups(TexModel *m)
 {
     int texs[256];

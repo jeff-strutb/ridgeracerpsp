@@ -301,6 +301,9 @@ int CTable::f_0f9e04()
    REMAINING DIFFERENCE: in the coin toss between the time attack and shared banks retail keeps
    the remainder in a0 and builds the result in a2 in place; the first sequence lookup also
    loads its two addresses in the other order.
+   tried res = (k != 0) * 4; res += 3 (was res = k != 0; res = res * 4 + 3): 8 -> 7 words, the
+   shift now lands in a2 as retail, but k != 0 still takes a2 (retail v0) and k % 2 stays in v1
+   (retail a0), so splitting res alone is not the remainder's register cause; kept.
    WHAT IT DOES: Picks the race's bank by the race's sequence: one of the shared banks or the
    course's own, at random, with the time attack, net and single race banks for their modes;
    -1 for an unknown mode or course. */
@@ -344,8 +347,8 @@ single:
         memcpy(D_24063c, D_2407d0.f_0368e8(col, (char *)r.a, 0, 0), size);
         if (IsSeq(2)) {
             int k = f_0f6b90() % 2;
-            res = k != 0;
-            res = res * 4 + 3;
+            res = (k != 0) * 4;
+            res += 3;
         } else {
             memcpy(D_24063c, D_2407d0.f_0368e8(col, (char *)r.a, 0, 0), size);
             if (IsSeq(5))

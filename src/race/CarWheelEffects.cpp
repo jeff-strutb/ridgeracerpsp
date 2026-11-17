@@ -187,30 +187,31 @@ void f_100ef8(RaceCar *c)
     c->flameWait = c->flameOn = 0;
 }
 
-/* @draft 0x100f78 us f_100f78
+/* @implements 0x100f78 us f_100f78
    WHAT IT DOES: One frame of a car's wheel effects. A car with the id 0x8001 only shows
    its flames. A car still on the grid revs (exhaust puffs) and leaves
    skid marks; otherwise each wheel's slide is its grip times its load, then come the smoke,
    the exhaust, the skid marks and the flames.
-   Remaining difference (9 words): retail keeps the slide loop's pointer in v0 and its counter
-   in v1, filling the grid test's delay slot with the pointer copy; here they land in v1 and
-   a2 and the copy is scheduled before the branch. */
+   The test is written !onGrid with the loop first: with the loop as the else arm, the onGrid
+   jump entered the loop at its top, so loop.c put the pointer/counter setup ahead of the
+   branch, live alongside onGrid's v0 (pointer v1, counter a2). As the fall-through arm the
+   setup comes after the branch, as in retail. */
 void f_100f78(RaceCar *c, int idx, unsigned int col, int all)
 {
     if (c->id == 0x8001) {
         FLAMES(c, idx);
         return;
     }
-    if (c->onGrid) {
-        f_10156c(c, idx, all);
-        f_1010e4(c, col);
-    } else {
+    if (!c->onGrid) {
         for (int i = 0; i < 4; i++)
             c->slide[i] = c->grip[i] * c->load[i];
         f_1011fc(c, col);
         f_1010e4(c, col);
         f_10156c(c, idx, all);
         f_10177c(c, idx);
+    } else {
+        f_10156c(c, idx, all);
+        f_1010e4(c, col);
     }
 }
 
