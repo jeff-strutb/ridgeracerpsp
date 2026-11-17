@@ -412,7 +412,8 @@ int C2DAnalogMeter::f_101b54()
 
             if (D_1d5fe8[type].flag == 2 && rpm < 0)
                 rpm *= 0.5f;
-            a = lo + 1.0f / (D_2407fc->maxRpm - 1000.0f) * (hi - lo) * rpm;
+            a = 1.0f / (D_2407fc->maxRpm - 1000.0f) * (hi - lo);
+            a = lo + a * rpm;
             if (a < 0)
                 a += 360.0f;
             a *= 0.017453292f;
