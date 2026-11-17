@@ -147,7 +147,7 @@ int CLeaves::f_035ef0(int n)
     return 0;
 }
 
-/* @draft 0x035fcc us f_035fcc
+/* @implements 0x035fcc us f_035fcc
    WHAT IT DOES: Frees the leaves. */
 void CLeaves::f_035fcc()
 {
@@ -267,7 +267,7 @@ unsigned int *CLeaves::f_0362a8(unsigned int *p)
     return p;
 }
 
-/* @draft 0x036600 us f_036600
+/* @implements 0x036600 us f_036600
    WHAT IT DOES: Throws up one leaf (the oldest is dropped when all are in use) at a position
    with a velocity, a fresh gust due at once, random spin angles and the height it lands at; it
    remembers and raises the thrower's count of live leaves. Returns the leaf. */
@@ -295,8 +295,8 @@ Leaf *CLeaves::f_036600(const Vec4 *pos, const Vec4 *vel, unsigned char *count, 
     return e;
 }
 
-/* @draft 0x0367c4 us __static_initialization_and_destruction_0
+/* @implements 0x0367c4 us __static_initialization_and_destruction_0
    WHAT IT DOES: At startup, seeds the leaves' random numbers with 0. */
 
-/* @draft 0x0367ec us _GLOBAL__I_
+/* @implements 0x0367ec us _GLOBAL__I_
    WHAT IT DOES: The startup entry for this file's static data. */

@@ -519,7 +519,7 @@ void CRaceSound::f_01d934()
         D_249330[i].f_0c9b54();
 }
 
-/* @draft 0x01d994 us f_01d994
+/* @implements 0x01d994 us f_01d994
    WHAT IT DOES: Ends the race sound: stops every emitter, pops the engine banks and the race
    bank, forgets the idling data, stops the map emitter, silences the effect volumes and
    restores the race volume and the output level. */

@@ -477,7 +477,7 @@ int CCarModel::f_01dbc4(CModelHeader *data, int a, int b, int colour)
     return 1;
 }
 
-/* @draft 0x01dee4 us f_01dee4
+/* @implements 0x01dee4 us f_01dee4
    WHAT IT DOES: Releases the model's resource and switches its animation table off. */
 void CCarModel::f_01dee4()
 {
@@ -824,14 +824,14 @@ void CCarModel::f_01e14c(Mat *world, void *p, void *v, void *c)
     f_028e9c(&save);
 }
 
-/* @draft 0x01e500 us f_01e500
+/* @implements 0x01e500 us f_01e500
    WHAT IT DOES: Places the model for drawing with the default lighting and no velocity. */
 void CCarModel::f_01e500(Mat *world)
 {
     f_01e14c(world, &model.part[0].m[12], &model.part[0].m[4], D_1d1770);
 }
 
-/* @draft 0x01e528 us f_01e528
+/* @implements 0x01e528 us f_01e528
    WHAT IT DOES: Builds the model's own matrix from its position and rotation, stores it as the
    body matrix, and places the model for drawing. */
 void CCarModel::f_01e528(Mat *world, void *p, void *v, void *c)
@@ -847,7 +847,7 @@ void CCarModel::f_01e528(Mat *world, void *p, void *v, void *c)
     f_01e14c(world, p, v, c);
 }
 
-/* @draft 0x01e5d0 us f_01e5d0
+/* @implements 0x01e5d0 us f_01e5d0
    WHAT IT DOES: Builds the model's own matrix from its position and rotation, stores it as the
    body matrix, and places the model with the default lighting. */
 void CCarModel::f_01e5d0(Mat *world)
@@ -1015,7 +1015,7 @@ void CCarModel::f_01e648(CCarState *s, Mat *world, Vec4 *p, Vec4 *v, void *c)
     f_028e9c(&save);
 }
 
-/* @draft 0x01ed64 us f_01ed64
+/* @implements 0x01ed64 us f_01ed64
    WHAT IT DOES: Unless the model is hidden, recomputes its world matrix from the given matrix
    and its body matrix. */
 void CCarModel::f_01ed64(Mat *world)
@@ -1052,7 +1052,7 @@ void f_01edb8(float *out, Mat *m)
         : : "r"(out), "r"(m) : "memory");
 }
 
-/* @draft 0x01edfc us f_01edfc
+/* @implements 0x01edfc us f_01edfc
    WHAT IT DOES: Computes the shadow vectors: the world matrix's first two columns, negated,
    stored for the body and transformed into each steering knuckle's frame. */
 void CCarModel::f_01edfc()
