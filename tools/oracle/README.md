@@ -118,56 +118,6 @@ Otherwise the function DIFFERS. A function no script reaches is UNCOVERED.
 - returning the module id + 1;
 - swapping the `sprintf` arguments.
 
-## Cases (`tools/oracle/cases.py`): the T3 test
-
-A function is behaviour-exact when the same inputs give the same outputs, so validating one needs no game at all, only its recorded inputs and outputs.
-
-- **Record (once per script):** `cases.py record` plays each script on retail with `--rr-record`. At calls of each placed draft the original runs as normal and one case is kept per distinct input (default 200 per function, `--per-fn`): the entry registers; every byte the call read before writing it, callees included (its inputs); and at its return every byte it wrote outside its own stack frame with its final value, plus its registers (its outputs). A call with a system call, an interrupt or a thread switch inside is not recorded.
-- **Validate (any time):** `cases.py validate [ADDR...]` boots rrbox once (`--rr-replay`), and for each case writes the inputs into RAM, sets the registers, runs the candidate's body for the slot (calling retail's callees) to its return, compares, and puts everything back. Compared: the recorded output bytes; no other byte outside its frame changed; v0 / v1 / f0 as the declared return type uses them; sp, `$s0`-`$s8`, `$f20`-`$f31`. A system call, an invalid jump or no return within the budget differs. Reads of bytes the original never read are reported beside the verdict. Verdicts go to the ledger (evidence `cases:SCRIPTS`; coverage = the candidate's instructions run over all cases).
-- `cases.py identity` replays with retail's own bodies: every case must pass.
-
-**Checks (2026-11-17):** all eight scripts recorded in 7.5 min (once); 31,858 cases for 312 functions, 408 MB. Identity: all 312 PASS, no unrecorded reads, replay of every case 12 s. Recording is nested (a call inside another recorded call is its own case) and keeps a case when it runs code no kept case ran, plus 50 ordinary ones: f_0b2f18 went from 1,000 cases covering 224 of 3,582 words to 122 cases covering 1,851. Planted bug (f_115068 passing 1 instead of 0 to f_115180): 75 of its 78 cases differ, with the extra reads reported; every other function passes. The first identity run failed: outputs had kept only bytes that ended different from their entry value, so a byte rewritten with its own value, never read, had no recorded entry and replay compared it against the booted machine's contents. Every written byte is now an output.
-
-## Per-call lockstep (`tools/oracle/lock.py`)
-
-The live form of the same test: run during a script, it tests calls as they happen instead of from recordings (slower, a full play per run). Kept for checking the recorder.
-
-A function is behaviour-exact when, given the same inputs, it gives the same outputs. So the game is never made to run on the drafts: it runs retail all the way, and at every real call of a placed draft rrbox (`--rr-lockstep`) tests that one call (as Boss Rally's t3live did):
-
-1. the original body runs; a byte journal records each byte's value before it is first written;
-2. at its return its outputs are kept (every byte it changed outside its own stack frame, its registers), memory is rolled back from the journal and the registers to the entry;
-3. the candidate's body for that slot (from the loaded M1 image) is written in, and runs from the same state, with the time slice held so no interrupt can land in it, under an instruction budget;
-4. compared: every byte either run changed outside its own frame must end the same; v0 / v1 / f0 as the declared return type uses them; sp, `$s0`-`$s8`, `$f20`-`$f31`;
-5. the candidate's writes are rolled back, the original body and the original's outputs and registers put back, and the game continues as retail, as if the candidate took no time.
-
-The candidate calls retail's callees, so only its own body is under test, and no draft's verdict depends on any other. A call is **skipped** when the original makes a system call, is interrupted, or the thread switches inside it (its inputs cannot be replayed); a candidate that makes a system call or runs past its budget **differs**.
-
-    python3 tools/oracle/lock.py run [SCRIPT...] [--only ADDR,..] [--per-fn N] [--no-ledger]
-    python3 tools/oracle/lock.py identity [SCRIPT...]
-
-Verdicts go to `config/us/t3_live.csv` (evidence `lock:SCRIPTS`, coverage the union over scripts); A5 keeps those rows. With `--only` and snapshots (below) a script starts just before the functions' first call.
-
-Every write must reach the write hook for this to hold, so rrbox runs the game's own memcpy / memset / memmove (PPSSPP's native replacements are off: they wrote memory directly) and `sv.q` stores through `Memory::Write_*`. Both had also been invisible to A5's per-call write hashes.
-
-**Checks (2026-11-17).** Identity (the candidate is retail's own body): boot_attract 62 functions, race_seaside_start 255 functions and 1,904,898 calls, all PASS, none differ; 95,107 race calls skipped (92,896 system calls, 2,211 thread switches). Planted bug (f_115068 passing 1 instead of 0 to f_115180): f_115068 differs in 75 calls, the other 61 functions all pass.
-
-## Snapshot start (`tools/oracle/snap.py`)
-
-A function is tested from a saved point just before it first runs, not by replaying from power-on. Replaying means every draft on the way (intro, menus, profile) must already behave exactly as retail does; the race run first called the course loader at frame 4,825 and the track geometry at 5,369, and through 2026-11-17 it still diverged at frame 2,137 for unrelated drafts.
-
-- `snap.py make SCRIPT` plays retail once with `--rr-save-at`: every 250 frames rrbox writes the whole machine (`frame_N.state`, 40 MB), the held buttons (`.meta`) and the memory stick folder (`.memstick/`, a host folder outside the savestate). The same run indexes the frame each watched function is first entered in (`index.json`). Race: 35 snapshots, 2,458 functions, 2 min 16 s, 1.4 GB.
-- `snap.py test ADDR...` picks the last snapshot before ADDR's first call and runs retail and the candidate from it (`--rr-start`: loaded at the end of the first frame, frame counter and buttons restored). The candidate is retail with **only ADDR's code replaced** (`--rr-patch`), so a difference is that function's; `--whole` patches every placed draft, as the M1 image does. The patch is every `.text` word where the loaded M1 image differs from loaded retail (a one-frame RAM dump of each; outside `.text` they must agree). Default window: 120 frames past the first call. Comparison is A5's (calls, writes, returns, clobbers) and A7's (RAM per frame, code and stacks left out), with time held equal at every watched boundary. About 15 to 30 s per function.
-- `snap.py check SCRIPT FRAME`: retail from the snapshot twice, and the candidate with an empty patch, must agree on every frame and call. 2026-11-17 at frame 4750: both identical over 120 frames, 1,235 functions called.
-
-Both sides start from one machine state, so the result does not depend on how faithfully a loaded snapshot reproduces a straight run, only on determinism. Two details matter:
-
-- The cycle reference (`--rr-cycles-ref`) is loaded after the snapshot. Loaded at startup, retail's per-call timings (numbered from the snapshot) were applied to the boot's own calls, moved the CPU clock before the load, and the empty-patch run diverged at once.
-- Call numbers, open calls, coverage and the call log restart at the load (`RRBox::Reset`).
-
-**Teeth:** one planted instruction (f_093bc8 passing 0 instead of its second argument to f_093e64) was caught: f_093e64's entries and f_093bc8's return differ, RAM from frame 4828.
-
-**First results (2026-11-17):** f_0b2f18 (track geometry, 14,288 B) PASS, 9,313 calls from frame 5,250 to the script's end, RAM identical, 1,797/3,572 instructions covered. CMapEnv::Load (0x0d8270) differed: its light keys read row 0 for every key (the `RDX` row argument where `RDX2` passes `i`); fixed, now PASS (1 call, 1,700/1,859 covered). Printf (0x00d354) is reported beside it only because its tag has no definition, so its never-set v0/v1 are compared.
-
 ## Fault injection
 
 A script line `force NAME N VALUE` makes the Nth call (0-based) of system function NAME return VALUE (hex) instead of its real result. The function still runs and has its side effects, just as a real failure would. Both retail and the candidate get the same forcing, so error paths that normal play never takes run and are compared.
@@ -179,9 +129,6 @@ The `fault_loader_*` scripts drive every path of the module loader: failed open,
 A `@draft` is **T3** when its `config/us/t3_live.csv` row says PASS with full coverage and the source hash still matches (`tools/progress.py`). The module loader (0x0004a4) is the first: 91 calls over seven scripts, all 72 instructions executed, and A7 identical on every script.
 
 ## Not built yet
-
-- Snapshot verdicts in the ledger: `snap.py test` prints them; `config/us/t3_live.csv` is still written only by A5.
-- Snapshots for the other scripts, and scripts that reach the rest of the track geometry's paths.
 
 - Driving the power-resume and shutdown paths, which still show as uncovered.
 - Display-list and audio comparison.

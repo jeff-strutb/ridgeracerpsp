@@ -84,9 +84,9 @@ def main():
                     t = tgt[1]
                 elif tgt[0] == 'data':
                     rr = c['rel'].get(addr + off - cstart)
-                    t = res.match(tgt, rr)[1] if res.match(tgt, rr)[0] is None else by_content(res, tgt, c['rel'], addr, osize)
-                    if t is None:
+                    if res.match(tgt, rr)[0] is not None:
                         refused.append(f'0x{addr:06x} {name}: data reference at +0x{off - cstart:x} not provably retail\'s'); ok = False; break
+                    t = res.match(tgt, rr)[1]
                     if obj.names[tgt[1]].startswith('.rodata') and any(r[1] == R_32 for r in obj.object_rels(tgt[1])):
                         refused.append(f'0x{addr:06x} {name}: has a jump table; not placeable in place'); ok = False; break
                 else:
@@ -121,25 +121,6 @@ def main():
         print('  refused ' + r)
     print(f'm1image: {len(placed)} draft bodies placed in their slots, {len(refused)} refused, '
           f'{fixed} HI16 entries outside them pre-resolved -> {os.path.relpath(out, ROOT)}')
-
-
-def by_content(res, tgt, rel, addr, osize):
-    """Retail target for a draft's data reference whose position differs from retail's
-    (scheduling moved it), proved by content: of every data target retail's own relocations
-    inside this function's range refer to, exactly one may hold the same bytes (the same
-    Resolver.check the positional proof uses). None if none or more than one does.
-    Oracle placement only: T4 grading (tools/score.py) stays positional."""
-    e = res.e
-    code = [(e.sh[i][3], e.sh[i][3] + e.sh[i][5]) for i in range(len(e.sh)) if e.sh[i][2] & 4]
-    cands = set()
-    for a in range(addr, addr + osize, 4):
-        rr = rel.get(a)
-        # Only retail's own paired HI16/LO16 targets (not the LO16 'alts' guesses), and only data.
-        if rr and rr['type'] in (R_HI16, R_LO16) and rr['target'] is not None \
-                and not any(lo <= rr['target'] < hi for lo, hi in code):
-            cands.add(rr['target'])
-    ok = [x for x in sorted(cands) if res.check(tgt, x) is None]
-    return ok[0] if len(ok) == 1 else None
 
 
 def repair_hi16(e, seg, rts, old, img):

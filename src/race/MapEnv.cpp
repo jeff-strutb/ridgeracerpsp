@@ -366,9 +366,7 @@ void CMapEnv::Free()
 
 /* @draft 0x0d8270 us _ZN3Map7CMapEnv4Load
    DRAFT: complete transcription; the same instructions as retail up to register choice and
-   some spill slots (7,436 of 7,452 bytes). Behaviour: each light key reads its own row (i),
-   as retail passes it; with row 0 every key had row 0's value (found by snap.py test, which
-   now passes from race snapshot 4750).
+   some spill slots (7,436 of 7,452 bytes).
    WHAT IT DOES: Loads the course's lighting from two game database tables (the course table,
    whose "Course" row holds the settings, and the light table, one row per key). In the light
    table column RZP is the course distance; a negative value ends a section: first the light
@@ -436,10 +434,10 @@ void CMapEnv::Load(void *course, void *lightDb, int flip, int total)
         int fs, bs;
         if (flip) {
             j = nKeys - i - 1;
-            keys[j].key = ((float)total - RDX2(db2, D_1a211c[4], "RZP", f)) - 1.0f;
+            keys[j].key = ((float)total - RDX(db2, D_1a211c[4], "RZP", 0, f)) - 1.0f;
         } else {
             j = i;
-            keys[i].key = RDX2(db2, D_1a211c[4], "RZP", f);
+            keys[i].key = RDX(db2, D_1a211c[4], "RZP", 0, f);
         }
         keys[j].fog[0] = RDX2(db2, SF(fs), "Near", f) * 1000.0f;
         keys[j].fog[1] = RDX2(db2, fs, "Far", f) * 1000.0f;
