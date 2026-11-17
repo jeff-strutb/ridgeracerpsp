@@ -312,6 +312,10 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 
 - **A constant hoisted into a saved register before a loop (`li s5,1`) for a store inside it**: hold the value in a local assigned before the element's address is formed (`unsigned short out = 1; flags[j].v = out;`). cse cannot fold a nonzero constant into a MIPS store, so the register spans the address insns (lifetime 2 luids instead of 1), and loop.c's test `threshold * savings * lifetime >= insn_count` (threshold about 64 in a loop with calls) then passes. An inline setter does not work: the tree inliner substitutes constant arguments. f_0b2f18 (all five cull loops).
 
+- **Both inputs of a pair loaded before either result is stored** (`lwc1 a; lwc1 b; ...; swc1; swc1` where the draft interleaves load/store/load/store): compute the pair into locals first (`float dx = e->z - e->x, dy = e->w - e->y; V.x = dx; V.y = dy;`). A store through a pointer or to a frame slot blocks sched1 from hoisting a later load whose address may alias it (same alias set, unknown or variable base), so retail's order must already be in the RTL. Also gives retail's `mov.s $f13,$f1` argument copies before an angle call (the value then outlives the copy, so local-alloc does not tie it to $f13). Seen ~15 times in f_0b2f18.
+- **A loop guard recomputed instead of a spilled comparison result**: an `int` loop start assigned to a `short` counter (`int istart; i = istart;`) is a sign extension, which gcse's copy propagation cannot see through, so the two guards are not redundant. f_0b2f18.
+- **A strength-reduced, spilled `&o->arr[i]` pointer that retail does not have**: read the element into a local before adding an offset to it (`e = o->m8[i]; v = (char *)e + 8 * s;`); with the offset arithmetic between the address and the load, loop.c sees a longer lifetime and hoists `i*4`/`o+i*4` out of the inner loop. f_0b2f18.
+
 ## Open residue (not understood; do not guess)
 
 - **f_0922a0.** Solved 2026-11-16: see the symptom table (ternary into a result variable).
