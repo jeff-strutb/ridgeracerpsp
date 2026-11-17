@@ -1243,7 +1243,8 @@ extern "C" void f_0fcc08(char *o)
    it folds the car's value at +136 against its bound at +140 into a triangle wave, stores the
    absolute value (clamped at 1.0) at the owner's +10092, and when the road sample at +428 and
    the car's +132 disagree in sign it advances the car's value at +124 and clears the counter.
-   Not yet byte-exact. */
+   Remaining difference: two words, the order of the two argument address setups for
+   0x0af380 (retail sets a0 = sp before a1 = sp + 4). */
 extern "C" void f_0fcd88(char *o)
 {
     char *p = o + 5792;
@@ -1252,9 +1253,12 @@ extern "C" void f_0fcd88(char *o)
     float f2, f3, ab, v, r, n136;
     float fa[2];
 
+    int cnt;
+
     s1 = 0;
+    cnt = INT(c, 128);
     INT(o, 10092) = 0;
-    if (INT(c, 128) == 0)
+    if (cnt == 0)
         return;
     f3 = FLD(c, 136);
     f2 = FLD(c, 140) * 0.5f;
@@ -1279,7 +1283,7 @@ extern "C" void f_0fcd88(char *o)
         s1 = 1;
     fa[1] = (float)INT(c, 132);
     fa[0] = (float)INT(p, 428);
-    if ((int)f_0af380(&fa[0], &fa[1]) >= 0)
+    if ((int)f_0af380(fa, &fa[1]) >= 0)
         s1 = 1;
     if (s1 == 0)
         return;
