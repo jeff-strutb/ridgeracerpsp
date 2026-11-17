@@ -828,8 +828,9 @@ struct PVec {
                     }                                                                       \
                 } else {                                                                    \
                     float fr = aB / (aA + aB);                                     \
-                    V1808.x = (Ax[k] - Bx[k]) * fr;                                               \
-                    V1808.y = (Ay[k] - By[k]) * fr;                                               \
+                    float vx = (Ax[k] - Bx[k]) * fr, vy = (Ay[k] - By[k]) * fr;    \
+                    V1808.x = vx;                                                  \
+                    V1808.y = vy;                                                  \
                 }                                                                           \
                 if (best < __builtin_sqrtf(V1808.x * V1808.x + V1808.y * V1808.y)) {        \
                     best = __builtin_sqrtf(V1808.x * V1808.x + V1808.y * V1808.y);          \
