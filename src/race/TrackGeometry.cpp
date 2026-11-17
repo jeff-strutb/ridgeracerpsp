@@ -1367,8 +1367,9 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                             k = 0;
                             if (o->m4->n > 0) {
                                 do {
-                                    V1808.x = Bx[k] - ep[0];
-                                    V1808.y = By[k] - ep[1];
+                                    float qx = Bx[k] - ep[0], qy = By[k] - ep[1];
+                                    V1808.x = qx;
+                                    V1808.y = qy;
                                     Rot(ang, &V1808.x, &V1808.y);
                                     Cx[k] = V1808.x;
                                     Cy[k] = -V1808.y;
@@ -1783,10 +1784,12 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                 }
             }
         }
-        out3[0] = out3[0] + acc.a[0];
-        w.a[0] = w.a[0] + acc.a[0];
-        w.a[2] = w.a[2] + acc.a[2];
-        out3[2] = out3[2] + acc.a[2];
+        float o0 = out3[0] + acc.a[0], w0 = w.a[0] + acc.a[0];
+        float w2 = w.a[2] + acc.a[2], o2 = out3[2] + acc.a[2];
+        out3[0] = o0;
+        w.a[0] = w0;
+        w.a[2] = w2;
+        out3[2] = o2;
     }
 
     /* The final slide and the contact data. */
