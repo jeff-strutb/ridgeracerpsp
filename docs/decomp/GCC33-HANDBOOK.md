@@ -310,6 +310,8 @@ Compile through the toolchain's own driver (`psp-gcc` / `psp-g++ -S`), which `sc
 - **FP equality tests against 0.0 get no branch prediction** (50/50: no opcode heuristic for CCmode compares with 0), so bb-reorder follows the RTL fallthrough: the then-arm of `if (a == 0.0f) x = A; else if (b == 0.0f) ...` stays inline and the rest goes out of line. f_0b2f18 (xi selection).
 - **A search loop with `slt`, a strength-reduced pointer walk and `andi` on the stored index, one count test**: an `int` counter, `(unsigned short)` at the store, no separate `if (n != 0)` guard. An `unsigned short` counter gives `sltu`, re-indexing and a doubled entry test. f_0b2f18.
 
+- **A constant hoisted into a saved register before a loop (`li s5,1`) for a store inside it**: hold the value in a local assigned before the element's address is formed (`unsigned short out = 1; flags[j].v = out;`). cse cannot fold a nonzero constant into a MIPS store, so the register spans the address insns (lifetime 2 luids instead of 1), and loop.c's test `threshold * savings * lifetime >= insn_count` (threshold about 64 in a loop with calls) then passes. An inline setter does not work: the tree inliner substitutes constant arguments. f_0b2f18 (all five cull loops).
+
 ## Open residue (not understood; do not guess)
 
 - **f_0922a0.** Solved 2026-11-16: see the symptom table (ternary into a result variable).
