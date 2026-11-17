@@ -250,7 +250,14 @@ void CCamDammyEye1::f_07f5e0(int *arg)
    orientation turned a fixed angle about one axis; a 55 degree lens halved and its scale,
    and the car's setting, speed and the eye position are copied. If a previous view exists,
    it is set up as the mirror of this one (turned half a turn, eye raised by the screen's
-   offset) with the screen's lens, aspect, far distance and clip rectangle. */
+   offset) with the screen's lens, aspect, far distance and clip rectangle.
+   Remaining difference: the three residues of the third eye camera's step below (the
+   offset vectors' store order: here the copy passed to the transform is stored first,
+   since only its address is taken and its stores lead to the call; rot.w's zero store
+   before the third angle's reload; the output copy into rot against the m608 store and
+   the lens loads), plus the car setting's load scheduled after the previous view's load
+   (retail loads the setting first; the store into the view is an int store, so the
+   previous view must be read before it in the source, which sched1 then issues first). */
 void CCamDammyEye1::f_07f5e8()
 {
     Vec4 eye;
