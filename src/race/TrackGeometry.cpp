@@ -1347,10 +1347,9 @@ extern "C" int f_0b2f18(PlaneList *o, const Pt3 *P, const Pt3 *Q, float *out3, f
                                 bestVert = (unsigned short)k;
                                 bestLen2 = Cy[k];
                             }
-                            int n = o->m4->n;
-                            for (k = 0; k < n; k++) {
+                            for (k = 0; k < o->m4->n; k++) {
                                 {
-                                    short k1 = (k + 1) % n;
+                                    short k1 = (k + 1) % o->m4->n;
                                     short lo, hi;
                                     float y;
                                     if (Cx[k] < Cx[k1]) {
