@@ -17,7 +17,9 @@ Landing pads (from the FDE's LSDA call-site table) are entered only by the
 unwinder from a call whose return address minus one lies in one of the pad's
 call-site ranges; the callee-saved registers s0-s8 then hold what they held
 after that call's delay slot, so a pad's state is the meet of those, s0-s8
-only.  (Pads used to be left unanalysed.)  Delay
+only.  (Pads used to be left unanalysed.)  A call to a function that never
+returns (NORETURN_SYMBOLS, located by an exact reference copy) does not fall
+through to the next word.  Delay
 slots execute before the transfer; a likely branch's slot only on the taken
 edge.
 
@@ -47,6 +49,12 @@ LUI_OVERWRITES = True
 JOIN_BY_VALUE = True
 COPY_MOVES = True
 PAD_STATES = True
+NORETURN = True
+# Functions that never return to their caller, by their GCC 3.3.3 source.  _Unwind_Resume
+# (gcc/unwind.inc) ends in abort() or in uw_install_context, which leaves through
+# __builtin_eh_return to the handler.  Each is located in retail as the one function start
+# whose words (relocated fields masked) and relocation types equal its reference copy.
+NORETURN_SYMBOLS = ('_Unwind_Resume',)
 CALLEE_SAVED = set(range(16, 24)) | {30}
 
 
@@ -140,8 +148,8 @@ def analyse(p, f, his, tables):
         elif i.name == 'jr':
             for _, t in tables.get(a, {}).get('entries', []):
                 join(t, s2)
-        else:                               # jal / jalr: the call returns
-            join(a + 8, s2)
+        elif not (i.name == 'jal' and i.target in f.get('noreturn', ())):
+            join(a + 8, s2)                 # jal / jalr: the call returns
     out = dict(IN)
     for a, st in SLOT.items():
         out[a] = st if a not in out else _m(out[a], st)
@@ -175,6 +183,39 @@ def call_sites(p, fde):
     return out
 
 
+def noreturn_addresses(p, funcs):
+    """Retail addresses of NORETURN_SYMBOLS: for each, the single function start whose masked
+    words and relocation types equal a reference copy of the symbol (libarchive.py)."""
+    from libarchive import load_blobs, blob_key, masked
+    starts = {f['addr']: f['size'] for f in funcs}
+    out = set()
+    blobs = load_blobs()
+    for name in NORETURN_SYMBOLS:
+        hits = set()
+        for b in blobs:
+            for off, size, nm, _ in b.syms:
+                if nm != name or not size:
+                    continue
+                sig = [blob_key(b, off // 4 + k) for k in range(size // 4)]
+                for a, n in starts.items():
+                    if n != size:
+                        continue
+                    ok = True
+                    for k in range(size // 4):
+                        ty = 0
+                        for r in p.reloc_at(a + 4 * k):
+                            ty = r.type_id
+                        if masked(p.word(a + 4 * k), ty) != sig[k]:
+                            ok = False
+                            break
+                    if ok:
+                        hits.add(a)
+        if len(hits) != 1:
+            raise ValueError(f'{name}: {len(hits)} retail copies')
+        out |= hits
+    return out
+
+
 def recover(p, funcs, which=None):
     """{lo16 addr: (target, lui addr)} for LO16s with which(reloc) true
     (default: those prx.py left without a target)."""
@@ -191,10 +232,12 @@ def recover(p, funcs, which=None):
         byf.setdefault(k, []).append(a)
     from ehframe import parse
     fdes = {x.start: x for x in parse(p)[1] if x.start is not None}
+    nor = noreturn_addresses(p, funcs) if NORETURN else set()
     for k, addrs in byf.items():
         f = dict(funcs[k])
         if f['addr'] in fdes:
             f['callsites'] = call_sites(p, fdes[f['addr']])
+        f['noreturn'] = nor
         before = analyse(p, f, his, tables)
         for a in addrs:
             st = before.get(a)
@@ -236,14 +279,14 @@ def selftest():
     # uses v1, loaded by `lui v1,0xa` at 0x0d3b34 before the loop and again at 0x0d3b84 in the
     # back edge's delay slot.  Its high half is the one the paired LO16 at 0x0d3b38 proves,
     # and its low half equals that LO16's, so its target is that pair's target.
-    global JOIN_BY_VALUE, COPY_MOVES, PAD_STATES
+    global JOIN_BY_VALUE, COPY_MOVES, PAD_STATES, NORETURN
     want = p.reloc_at(0x0d3b38)[0].target
     same_lo = p.reloc_at(0x0d3b38)[0].lo == p.reloc_at(0x0d3b5c)[0].lo
-    JOIN_BY_VALUE = COPY_MOVES = PAD_STATES = False
+    JOIN_BY_VALUE = COPY_MOVES = PAD_STATES = NORETURN = False
     try:
         old = recover(p, F)
     finally:
-        JOIN_BY_VALUE = COPY_MOVES = PAD_STATES = True
+        JOIN_BY_VALUE = COPY_MOVES = PAD_STATES = NORETURN = True
     print(f'0x0d3b5c (0x0d3b2c word 12): want {want:#x}; join by lui address gives '
           f'{old.get(0x0d3b5c, (None,))[0]}; join by value gives '
           f'{hex(rec[0x0d3b5c][0]) if 0x0d3b5c in rec else None}')
@@ -255,11 +298,29 @@ def selftest():
     # half the pair at 0x0010f8 proves; 0x005e6c is in the landing pad of 0x005d88, entered
     # from the call at 0x005e04 with s1 holding the high half the pair at 0x005dcc proves.
     # Both have their pair's low half, so their targets are their pair's.
-    COPY_MOVES = PAD_STATES = False
+    COPY_MOVES = PAD_STATES = NORETURN = False
     try:
         old2 = recover(p, F)
     finally:
-        COPY_MOVES = PAD_STATES = True
+        COPY_MOVES = PAD_STATES = NORETURN = True
+    # 0x0752cc (0x075224): its pad's state was emptied by the fall-through of the call to
+    # _Unwind_Resume just before it; the pair at 0x075268 proves its high half.
+    NORETURN = False
+    try:
+        old3 = recover(p, F)
+    finally:
+        NORETURN = True
+    print(f'_Unwind_Resume located at {sorted(hex(a) for a in noreturn_addresses(p, F))}')
+    pr = p.reloc_at(0x075268)[0]
+    got = rec.get(0x0752cc, (None,))[0]
+    print(f'0x0752cc: want {pr.target:#x} (pair 0x75268); calls returning '
+          f'{old3.get(0x0752cc, (None,))[0]}; now {hex(got) if got is not None else None}')
+    if got != pr.target or 0x0752cc in old3 or p.reloc_at(0x0752cc)[0].lo != pr.lo:
+        fails.append('0x0752cc known answer')
+    changed3 = [a for a in old3 if a not in rec or rec[a][0] != old3[a][0]]
+    print(f'without no-return calls: {len(old3)}; with: {len(rec)}; changed: {len(changed3)}')
+    if changed3:
+        fails.append(f'{len(changed3)} targets changed by the no-return rule')
     for a, pair in ((0x001120, 0x0010f8), (0x005e6c, 0x005dcc)):
         pr = p.reloc_at(pair)[0]
         want2 = pr.target

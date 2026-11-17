@@ -457,6 +457,7 @@ class Retail:
     def _lo16(self, funcmap):
         h = hashlib.sha256(hashlib.md5(self.p.data).digest())
         for f in ('tools/analysis/prx.py', 'tools/analysis/hilo.py', 'tools/analysis/funcmap.py',
+                  'tools/analysis/libarchive.py',
                   'tools/analysis/allegrex.py', 'tools/analysis/ehframe.py',
                   'config/us/funcs.csv', 'build/allegrex_ops.json'):
             h.update(f.encode() + b'\0' + (ROOT / f).read_bytes())
