@@ -904,7 +904,7 @@ extern "C" void f_0af064(CarPhys *p, CarPhys *q, float t)
 
 /* @draft 0x0ab0fc us f_0ab0fc
    WHAT IT DOES: Sets the car's ground height from the course areas: the position along the area (offset by 32, clamped to 1..62) picks two neighbouring entries of each of the two areas' height rows, each pair is interpolated, added to its area's base height, and the two results are blended by the car's blend factor.
-   Remaining difference (29 of 73 words): register choice only: retail keeps the first area's base height in $f11 and the second's in $f10 (here the reverse), and forms the row addresses in v0/v1 the other way round; the instruction sequence is otherwise retail's. */
+   Remaining difference (29 of 73 words): register choice only: retail keeps the first area's base height in $f11 and the second's in $f10 (here the reverse), and forms the row addresses in v0/v1 the other way round; the instruction sequence is otherwise retail's. 2026-11-16: y0/y1 are multi-block, so global-alloc's priority (refs/live length) decides f10: retail's y0 lives longer (h1 = y1+b issued before h0), here sched puts the a-chain and h0 first, so y0 dies first and wins f10; the order to fix is sched1's, not the allocator's. */
 extern "C" void f_0ab0fc(CarPhys *p)
 {
     float x = p->m140 + 32.0f;
@@ -1120,7 +1120,7 @@ extern "C" float *f_0a8fa8(float *out, CarPhys *c, const float *d)
 
 /* @draft 0x0af140 us f_0af140
    WHAT IT DOES: Blends wheel i of the cars p and q toward each other: the weight comes from where p's wheel height lies between its two limits (a quarter of the distance to the nearer one, clamped to 0..1); the surface index is shared (a negative one taken from the other car), and the angle (shortest turn, wrapped), the height and the second height are blended and written to both cars; q's surface id is copied to p.
-   Remaining difference: retail keeps i*4 in s0 from the prologue and stores q's blended heights in the other order. The -0.0 additions are retail's literals. */
+   Remaining difference: retail keeps i*4 in s0 from the prologue and stores q's blended heights in the other order. The -0.0 additions are retail's literals. Cause of the s0 choice (RTL): global-alloc's set_preference ties a sum's dest to its FIRST operand; retail forms p's element as i4+p (s0) and q's as q+i4 (s1), here the call argument &PF(p,288)[i] expands as p+i4 (non-address context) and the qa load as i4+q (address context), the first use in the block fixing each pseudo's form. Needs q's element first taken as a pointer and p's first in an address context. */
 extern "C" void f_0af140(CarPhys *p, CarPhys *q, int i)
 {
     float a = ((float *)((char *)p + 416))[i];
@@ -2058,7 +2058,7 @@ static inline int CourseDiff(int a, const int &b)
 
 /* @draft 0x0aa204 us f_0aa204
    WHAT IT DOES: Finds the course segment under the point pos between the course points lo and hi by bisection: tests the side of the middle point's heading line and recurses into the half that holds pos until the two points are neighbours, returning the lower point of the segment.
-   Remaining difference: stack slot numbering only (retail: wrap temporary 16, the copy of lo 20, lo 24, hi 28, then the angle and m); the instructions are otherwise retail's. Not a by-value, by-reference or pointer form of the distance helper, nor a 16-byte probe vector. */
+   Remaining difference: stack slot numbering only (retail: wrap temporary 16, the copy of lo 20, lo 24, hi 28, then the angle and m); the instructions are otherwise retail's. Not a by-value, by-reference or pointer form of the distance helper, nor a 16-byte probe vector, nor CourseWrap taking a const reference (no slot moves). Retail's order (wrap param before the distance copy, then lo, hi) means the wrap temporary exists before its argument is expanded. */
 extern "C" int f_0aa204(const float *pos, int lo, int hi)
 {
     float v[2];

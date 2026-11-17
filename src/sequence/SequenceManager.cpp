@@ -358,7 +358,11 @@ void f_00335c()
    and shows "Course<block>", copies the car's class record, and shows the engine sound scene
    for a plane-type car or for a truck-type car.
    Remaining difference: scheduling only; retail loads the address of D_240768 into s0
-   before the first call (in its delay slot), this build after it, shifting the prologue. */
+   before the first call (in its delay slot), this build after it, shifting the prologue.
+   2026-11-16 (sched2 dump): no EH region here, so sched2 hoists the saved-register address
+   sets across calls; lui s0 (insn 30) waits on the s0 save (anti dependence), which issues
+   last, and then the call wins the tie; retail issues lui s0 first. A scheduling order, not
+   the source's statement order. */
 void f_003404()
 {
     char *block = f_036b6c(D_240740, "CarGetBlock", D_1dd6b0.f_0031dc(0).a, -1);
@@ -476,7 +480,8 @@ static inline bool IsWireless()
    the wireless pause menu when the record says the race is wireless.
    Remaining difference: retail keeps &D_1dd6b0.m276 in s1 across the calls and forms
    &D_1dd6b0 as s1-276 for the last call; this build keeps &D_1dd6b0 in s1 (prologue order
-   and the final addiu differ). */
+   and the final addiu differ). Tried 2026-11-16: a Param *pm = &D_1dd6b0.m276 local with the
+   call on D_1dd6b0 itself folds every address to constants (no saved register, 36 words). */
 void f_0036a0()
 {
     CSequence *seq = &D_1dd6b0;

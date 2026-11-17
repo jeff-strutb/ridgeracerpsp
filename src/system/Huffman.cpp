@@ -427,7 +427,7 @@ void CCodec::f_04461c(int ch)
    WHAT IT DOES: The next byte of channel ch's saved form: a serialiser that gives the channel
    number, its flag, its bit count, the written and put byte counts, then the data bytes; 0 once
    done (and after the last data byte it rewinds the channel).
-   Remaining difference: the result and the channel base swap s0 and s1. */
+   Remaining difference: the result and the channel base swap s0 and s1. Both are global-alloc pseudos; the base is a cse-made (higher-numbered) pseudo, so a priority tie would go to r: retail's base must outrank r on refs/live length, i.e. r is referenced less or lives shorter there. */
 int CCodec::f_044644(int ch)
 {
     unsigned char r = 0;

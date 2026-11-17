@@ -890,9 +890,8 @@ Mat33 *f_09ec14(Mat33 *d, const Mat33 *a, const Mat33 *b)
     return d;
 }
 
-/* @draft 0x0a318c us f_0a318c
-   WHAT IT DOES: Inverts a rigid transform: the rotation part is transposed (f_0a0944) into d and the translation becomes the negated source translation rotated by the inverse (f_09fe84).
-   Remaining difference: callee-saved register choice (s0/s1 swapped) and the final copy's address form. */
+/* @implements 0x0a318c us f_0a318c
+   WHAT IT DOES: Inverts a rigid transform: the rotation part is transposed (f_0a0944) into d and the translation becomes the negated source translation rotated by the inverse (f_09fe84). The destination row pointer is taken before the call. */
 Mat44 *f_0a318c(Mat44 *d, const Mat44 *s)
 {
     Mat34 t;
@@ -901,15 +900,14 @@ Mat44 *f_0a318c(Mat44 *d, const Mat44 *s)
     *(Mat34 *)d = t;
     const Vec3 *tr = (const Vec3 *)s->m[3];
     Vec4 n(-s->m[3][0], -tr->v[1], -tr->v[2], 1.0f);
-    f_09fe84(&r, (const Mat34 *)d, &n);
     Vec4 *dt = (Vec4 *)d->m[3];
+    f_09fe84(&r, (const Mat34 *)d, &n);
     *dt = r;
     return d;
 }
 
-/* @draft 0x0a22cc us f_0a22cc
-   WHAT IT DOES: Inverts a 3x3 rotation plus translation transform: the rotation is transposed (f_09e4b8) into d and the translation becomes the negated source translation rotated by the inverse (f_09d9c8).
-   Remaining difference: register choice and the nine-word copy's tail. */
+/* @implements 0x0a22cc us f_0a22cc
+   WHAT IT DOES: Inverts a 3x3 rotation plus translation transform: the rotation is transposed (f_09e4b8) into d and the translation becomes the negated source translation rotated by the inverse (f_09d9c8). The destination row pointer is taken before the call. */
 Mat43 *f_0a22cc(Mat43 *d, const Mat43 *s)
 {
     Mat33 t;
@@ -918,8 +916,8 @@ Mat43 *f_0a22cc(Mat43 *d, const Mat43 *s)
     *(Mat33 *)d = t;
     const Vec3 *tr = (const Vec3 *)s->m[3];
     Vec4 n(-s->m[3][0], -tr->v[1], -tr->v[2], 1.0f);
-    f_09d9c8(&r, (const Mat33 *)d, &n);
     Vec4 *dt = (Vec4 *)d->m[3];
+    f_09d9c8(&r, (const Mat33 *)d, &n);
     *dt = r;
     return d;
 }

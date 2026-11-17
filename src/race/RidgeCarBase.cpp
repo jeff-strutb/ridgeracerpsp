@@ -1068,7 +1068,7 @@ extern "C" void f_0bb220(void *cp, void *spec)
    segment index forward until it matches the stored one, and stores the resulting distance
    (102 per step, less the manager's word at +8 when the car's word at +2212 is negative) at
    +496 and +472 of the record before calling f_0b6e44.
-   Remaining difference: 23 of 77 words; retail schedules move a0,sp after the c[5792] load (here hoisted), the 1000.0 constant load and the D_23c820 base differ in position, and trunc.w.s uses f0 not f1. */
+   Remaining difference: 23 of 77 words. Retail's lw v1,5792(a0) reads c through a0 (postreload's copy of s4), so in its pre-sched2 order the c[5792] load preceded a0=&v; here sched1 (-fsched-verbose) has a0=&v ready from t=0 and issues it at t=10 while the memory unit is busy, and ranks the two constant HIGHs above D_23c820's (retail builds D first); trunc.w.s uses f0 not f1 (local-alloc). */
 extern "C" void f_0b708c(void *cp)
 {
     char *c = (char *)cp;

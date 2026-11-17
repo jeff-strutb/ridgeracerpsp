@@ -220,7 +220,7 @@ float f_0b0ae0(PolySet *p, const Vec4 *v, const Cell *c)
 /* @draft 0x0af678 us f_0af678
    WHAT IT DOES: Loads a polygon set from its data block: the count, the cell list and the
    triangle table of the set, and the origin and cell size of its first record.
-   Remaining difference: size 272 vs 272; 49/68 words differ from +0x8 (the header stores are ordered differently around the f_0a5e6c call). */
+   Remaining difference: size 272 vs 272; 49/68 words differ from +0x8 (the header stores are ordered differently around the f_0a5e6c call). 2026-11-16: the running pointer lands in a1 because sched1 issues the n load before data+4, so data dies in the add and local-alloc ties the pointer to it; retail adds first (data still live, pointer in a3, freeing a1 for the early move a1,s1). */
 void f_0af678(PolySet *p, void *data)
 {
     char *a3 = (char *)data + 4;
@@ -605,7 +605,7 @@ unsigned short f_0b0500(PolySet *p, const Vec4 *v, float *h, const Rec **rec)
    running deltas from the cell's table); each triangle that holds the point is tested by
    the height of its plane, and the one nearest the point's y (within 2000 units) is returned,
    or 0xffff for none.
-   Remaining difference: size 316 vs 316; 25/79 words differ from +0x24 (register allocation and slot filling around the id build). */
+   Remaining difference: size 316 vs 316; 25/79 words differ from +0x24 (register allocation and slot filling around the id build). Tried 2026-11-16: reading rec->base twice (no base local) gives retail's gcse copy (lhu v1 at the loop top, rec in a2, the copy in the beqz slot) but the copy comes out andi v0,v1,0xffff (x is unsigned short, retail: move) and the early return no longer shares move v0,s5 (320 B); next: x as int with the cast only on the sum. */
 unsigned short f_0b07d4(PolySet *p, const Vec4 *v, const Rec **recp)
 {
     const Rec *rec = *recp;
