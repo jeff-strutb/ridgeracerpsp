@@ -291,7 +291,15 @@ static inline int Pack(const float *c)
    closing command when the race is the second one); then the race effects (unless the view
    is in mode 0x20003), the second view's overlay while the fade allows it, sets the fade's
    state from the car (cleared when the race has none) and records the fade pass, closing it
-   with the full screen copy when the race is the second one. Clears the first blink flag. */
+   with the full screen copy when the race is the second one. Clears the first blink flag.
+   Each pass's display list pointer is its own variable (one shared variable is allocated to
+   a2, the fade pass's register, instead of a1).
+   Remaining difference: 2 words, the second pass's f_118b64 float arguments are loaded 240
+   then 236 (retail 236 then 240). Named cause (sched1, -da): in the second pass ls dies at
+   the m240 load (its last use), so that insn's register weight is 0 and rank_for_schedule
+   issues it first; in the first pass ls stays live and the loads keep retail's order. Retail
+   needs ls not to die at the m240 load in the second pass; the source shape for that is not
+   yet known. */
 void f_0eba3c(int a, View *v, View *v2, CCarJobCtrl *ctrl, RaceCar *car)
 {
     if (!car)
@@ -304,8 +312,6 @@ void f_0eba3c(int a, View *v, View *v2, CCarJobCtrl *ctrl, RaceCar *car)
     float *dir = ls->dir;
     float *c1 = ls->c1;
     float *c2 = ls->c2;
-    unsigned int *p;
-
     f_118380(ls->m144);
     f_1184d8(1);
     f_1185dc(0, 1, 0);
@@ -326,7 +332,7 @@ void f_0eba3c(int a, View *v, View *v2, CCarJobCtrl *ctrl, RaceCar *car)
     f_116898(14);
     f_118b64(ls->m232, ls->m236, ls->m240);
     f_021750();
-    p = f_0216d8();
+    unsigned int *p = f_0216d8();
     p = f_0cc584(v, p);
     p = f_029524(mm, 0, v, p);
     if (D_27ec88)
@@ -356,12 +362,12 @@ void f_0eba3c(int a, View *v, View *v2, CCarJobCtrl *ctrl, RaceCar *car)
     f_116898(14);
     f_118b64(ls->m232, ls->m236, ls->m240);
     f_021750();
-    p = f_0216d8();
-    p = f_0cc584(v, p);
-    p = f_029524(mm, 4, v, p);
+    unsigned int *q = f_0216d8();
+    q = f_0cc584(v, q);
+    q = f_029524(mm, 4, v, q);
     if (D_27ec88)
-        *p++ = 0x9b000000;
-    f_0216e8(p);
+        *q++ = 0x9b000000;
+    f_0216e8(q);
 
     if (v->m660 != 0x20003)
         D_2402e0.f_031cbc(v);
@@ -373,15 +379,15 @@ void f_0eba3c(int a, View *v, View *v2, CCarJobCtrl *ctrl, RaceCar *car)
         D_27f100.Set(0, 0.0f);
     else
         D_27f100.Set(car->m2108, car->m1792);
-    p = f_0216d8();
-    p = D_27f100.f_0ff81c(v, p);
+    unsigned int *r = f_0216d8();
+    r = D_27f100.f_0ff81c(v, r);
     if (D_27ec88) {
-        *p++ = 0x9b000001;
-        p = f_0cc4e4(2048, 2048, 480, 272, p);
+        *r++ = 0x9b000001;
+        r = f_0cc4e4(2048, 2048, 480, 272, r);
     } else {
-        *p++ = 0x9b000000;
+        *r++ = 0x9b000000;
     }
-    f_0216e8(p);
+    f_0216e8(r);
     D_27ecb0 = 0;
 }
 
