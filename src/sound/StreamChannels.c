@@ -299,34 +299,30 @@ int f_111774(int ch, float v)
     return r;
 }
 
-/* @draft 0x1117d0 us f_1117d0
+/* @implements 0x1117d0 us f_1117d0
    WHAT IT DOES: Calls 0x110f58, then stores slot ch's record: size a3, a 0 word and 1/(float)a3 as a float. */
 int f_1117d0(int ch, int a1, int a2, int a3)
 {
-    int r = 0x8000000a;
-    if (!badch(ch)) {
-        f_110f58(ch, a1, a2);
-        D_291a48[ch].m8 = a3;
-        D_291a48[ch].m0 = 0;
-        D_291a48[ch].m4 = D_1b2e84 / (float)a3;
-        r = 0;
-    }
-    return r;
+    if (badch(ch))
+        return 0x8000000a;
+    f_110f58(ch, a1, a2);
+    D_291a48[ch].m8 = a3;
+    D_291a48[ch].m0 = 0;
+    D_291a48[ch].m4 = D_1b2e84 / (float)a3;
+    return 0;
 }
 
-/* @draft 0x111868 us f_111868
+/* @implements 0x111868 us f_111868
    WHAT IT DOES: Calls 0x111228 for ch, then stores slot ch's record: a1, a 0 word and D/(float)a1. */
 int f_111868(int ch, int a1)
 {
-    int r = 0x8000000a;
-    if (!badch(ch)) {
-        f_111228(ch);
-        D_291a48[ch].m8 = a1;
-        D_291a48[ch].m0 = 0;
-        D_291a48[ch].m4 = D_1b2e88 / (float)a1;
-        r = 0;
-    }
-    return r;
+    if (badch(ch))
+        return 0x8000000a;
+    f_111228(ch);
+    D_291a48[ch].m8 = a1;
+    D_291a48[ch].m0 = 0;
+    D_291a48[ch].m4 = D_1b2e88 / (float)a1;
+    return 0;
 }
 
 /* @draft 0x111900 us f_111900
