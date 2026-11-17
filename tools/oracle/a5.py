@@ -373,6 +373,34 @@ def evict(name, key):
                 pass  # scripts run in parallel; another one removed it first
 
 
+LEDGER = os.path.join(ROOT, 'config/us/t3_live.csv')
+LEDGER_FIELDS = ('addr', 'name', 'kind', 'verdict', 'calls', 'coverage', 'source', 'source_sha', 'date', 'evidence')
+
+
+def read_ledger():
+    """{addr: row} of config/us/t3_live.csv; rows written before the evidence column have none."""
+    if not os.path.exists(LEDGER):
+        return {}
+    return {r['addr']: {k: (r.get(k) or '') for k in LEDGER_FIELDS} for r in csv.DictReader(open(LEDGER))}
+
+
+def write_ledger(rows):
+    """Write {addr: row} sorted by address. evidence: 'a5' (a replay from power-on of every
+    script with every placed draft) or 'snap:SCRIPT@FROM-TO' (tools/oracle/snap.py: retail with
+    only this function's code replaced, from a snapshot)."""
+    tmp = LEDGER + '.tmp'
+    with open(tmp, 'w') as f:
+        f.write(','.join(LEDGER_FIELDS) + '\n')
+        for a in sorted(rows, key=lambda x: int(x, 16)):
+            f.write(','.join(str(rows[a][k]) for k in LEDGER_FIELDS) + '\n')
+    os.replace(tmp, LEDGER)
+
+
+def source_of(a, name):
+    return next(p for p in glob.glob(os.path.join(ROOT, 'src/**/*.c*'), recursive=True)
+                if f'0x{a:06x} us {name}' in open(p).read())
+
+
 def compare(rk, ret_r, ret_c):
     if ret_r is None or ret_c is None:
         return None if ret_r == ret_c else 'one side never returned'
@@ -461,8 +489,8 @@ def main():
                     if why:
                         v[2] = f'{name} call {n}: {why}'
                         break
-    ledger = os.path.join(ROOT, 'config/us/t3_live.csv')
-    rows = []
+    old = read_ledger()
+    rows = {}
     for a in sorted(w):
         kind, name, rk = w[a][:3]
         v = verdict[a]
@@ -473,14 +501,17 @@ def main():
         if v[0] == 'PASS' and miss:
             detail += ' (never ran: ' + ' '.join(f'{x:x}' for x in miss[:8]) + (' ...' if len(miss) > 8 else '') + ')'
         print(f'{v[0]:9s} 0x{a:06x} {name:24s} {kind:10s} {detail}')
-        src = next(p for p in glob.glob(os.path.join(ROOT, 'src/**/*.c*'), recursive=True)
-                   if f'0x{a:06x} us {name}' in open(p).read())
-        rows.append((f'0x{a:06x}', name, kind, v[0], v[1], cov, os.path.relpath(src, ROOT),
-                     hashlib.sha256(open(src, 'rb').read()).hexdigest()[:16], datetime.date.today().isoformat()))
-    with open(ledger, 'w') as f:
-        f.write('addr,name,kind,verdict,calls,coverage,source,source_sha,date\n')
-        for r in rows:
-            f.write(','.join(str(x) for x in r) + '\n')
+        src = source_of(a, name)
+        sha = hashlib.sha256(open(src, 'rb').read()).hexdigest()[:16]
+        prev = old.get(f'0x{a:06x}')
+        if prev and prev.get('evidence', '').startswith('snap:') and prev['source_sha'] == sha:
+            # a snapshot test of this source (tools/oracle/snap.py) replaced only this function's
+            # code; a replay from power-on also runs every other draft, so its row stands
+            rows[prev['addr']] = prev
+            continue
+        rows[f'0x{a:06x}'] = dict(zip(LEDGER_FIELDS, (f'0x{a:06x}', name, kind, v[0], v[1], cov, os.path.relpath(src, ROOT),
+                                                      sha, datetime.date.today().isoformat(), 'a5')))
+    write_ledger(rows)
     n = {k: sum(1 for v in verdict.values() if v[0] == k) for k in ('PASS', 'DIFFERS', 'UNCOVERED')}
     for name, *_, files, capped in results:
         cand = files['candidate']

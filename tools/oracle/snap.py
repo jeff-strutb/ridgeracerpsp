@@ -21,7 +21,9 @@ loaded snapshot reproduces a straight run, only on rrbox being deterministic (ch
     python3 tools/oracle/snap.py test ADDR... [--window N] [--script SCRIPT] [--whole] [--keep]
 
 `test` replaces only the named function's code (retail everywhere else), so what it reports is that
-function's behaviour; --whole patches every placed draft, as the M1 image does.
+function's behaviour, and records it in config/us/t3_live.csv (evidence snap:SCRIPT@FROM-TO; a
+DIFFERS too, so no older PASS outlives it). --whole patches every placed draft, as the M1 image
+does, and records nothing.
     python3 tools/oracle/snap.py check SCRIPT FRAME            determinism and empty-patch identity
 
 Snapshots live in build/oracle/snapshots/<script>-<key>/ (key: retail image, script, rrbox binary):
@@ -280,6 +282,19 @@ def test(addrs, window, script, whole=False, keep=False):
         cov = next((x.split() for x in open(cc + '.cov') if x.startswith(f'{addr:06x} ')), None) if os.path.exists(cc + '.cov') else None
         if cov:
             print(f'  coverage: {cov[2]}/{cov[1]} instructions executed')
+        if not whole and cov:
+            # the ledger row (a5.write_ledger): this function alone was replaced, so the verdict is
+            # its own; a DIFFERS is recorded too, so an older PASS cannot outlive it
+            verdict = v[addr][0] if bad is None or v[addr][0] != 'PASS' else 'DIFFERS'
+            calls = int(v[addr][1].split()[0]) if verdict == 'PASS' else 0
+            src = a5.source_of(addr, name)
+            rows = a5.read_ledger()
+            rows[f'0x{addr:06x}'] = dict(zip(a5.LEDGER_FIELDS, (
+                f'0x{addr:06x}', name, kind, verdict, calls, f'{cov[2]}/{cov[1]}', os.path.relpath(src, ROOT),
+                hashlib.sha256(open(src, 'rb').read()).hexdigest()[:16], __import__('datetime').date.today().isoformat(),
+                f'snap:{name_s}@{frame}-{end}')))
+            a5.write_ledger(rows)
+            print(f'  ledger: {verdict} recorded (config/us/t3_live.csv)')
         if not keep:
             for f in (rc, cc):
                 os.remove(f)  # call logs run to GBs; traces and coverage are kept
