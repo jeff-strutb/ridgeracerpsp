@@ -191,15 +191,15 @@ int f_1112a8(void)
     return 0;
 }
 
-/* @draft 0x1114f0 us f_1114f0
+/* @implements 0x1114f0 us f_1114f0
    WHAT IT DOES: Sets channel ch's flag byte and its two 32-bit limits (0xc000 and 0x40000). */
 int f_1114f0(int ch, int a1, int a2, int flag)
 {
     int r = 0x8000000a;
     if (!badch(ch)) {
-        D_291980[ch].m9 = flag;
         D_291980[ch].m148 = 0x40000;
         D_291980[ch].m144 = 0xc000;
+        D_291980[ch].m9 = flag;
         r = 0;
     }
     return r;
