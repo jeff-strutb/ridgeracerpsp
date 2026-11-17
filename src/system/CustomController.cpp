@@ -650,22 +650,21 @@ int CCustomController::f_04397c(int i)
     return (repeat & Mask(f_043b6c(i))) != 0;
 }
 
-/* @draft 0x043a0c us f_043a0c
+/* @implements 0x043a0c us f_043a0c
    WHAT IT DOES: The kind of action i's chosen assignment: actions 7 to 9 are plain buttons (1),
-   10 to 17 kind 0; 255 for none.
-   Remaining difference: block layout; retail keeps the table path as the fall-through and the kind mask after it (the same shape as f_043aa0, which matches), here the constant kinds come first. */
+   10 to 17 kind 0; 255 for none. The kind defaults to 0 after the m5 test (retail's
+   `move v0,zero` in the i < 7 branch slot, reused by the 10..17 path). */
 int CCustomController::f_043a0c(int i)
 {
     unsigned int k;
     if (m5 > 0)
         return 255;
+    k = 0;
     if (i < 7)
         k = D_1d5d70[m5][i].assign[f_042888(i)].kind;
     else if (i < 10)
         k = 1;
-    else if (i < 18)
-        k = 0;
-    else
+    else if (i >= 18)
         return 255;
     return k & 0xf;
 }

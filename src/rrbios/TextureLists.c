@@ -95,7 +95,10 @@ void f_0244e4(void)
    WHAT IT DOES: Records a texture id at the end of an area's part of the id array, moving the
    later areas up by one. Returns 0 if there is no array, the area is out of range or the array
    is full.
-   Remaining: register allocation of the saved high halves (s4/s5 against id in s3) and the store order after the memmove. */
+   Remaining: register allocation of the saved high halves (s4/s5 against id in s3) and the store order after the memmove.
+   The +4 B is the same dbr pattern as f_024754 (nmQ): retail leaves the stores before both
+   loop branches and fills the slots with `addiu s1,8` from the loop top; here dbr's backward
+   scan takes the store. dbr's backward scan stops only at a label or a resource conflict. */
 int f_02452c(unsigned int area, int id)
 {
     struct Slot *p = D_23c780;
@@ -165,7 +168,10 @@ void f_02463c(unsigned int area, int id)
 
 /* @draft 0x024754 us f_024754
    WHAT IT DOES: Removes every id of an area from the id array, moving the later areas down.
-   Remaining: register and order differences after the memmove. */
+   Remaining: register and order differences after the memmove. The +4 B is dbr (nmQ):
+   retail leaves `sw zero,4(s1)` before `beqz s0` and fills that slot with the loop's
+   `addiu s1,8` (from the fall-through), then steals the top `addiu` into the bnez slot;
+   here dbr takes the store into the beqz slot. Cause of retail's unmovable store unknown. */
 void f_024754(unsigned int area)
 {
     struct Slot *p = D_23c780;
@@ -288,7 +294,8 @@ void f_024930(struct H024 *h)
 /* @draft 0x0249a0 us f_0249a0
    WHAT IT DOES: Writes into a display list the GE calls of a texture's palette load list and
    select list (base, then call, for each one it has). Returns the new end of the list.
-   Remaining: retail rematerialises 0x10000000 and 0x0a000000 per block (only the 0xffffff mask is shared); here both stay in registers. */
+   Remaining: retail rematerialises 0x10000000 and 0x0a000000 per block (only the 0xffffff mask is shared); here both stay in registers. nmQ: an inline put(p, a) helper called twice gives retail's
+   `move t0,a0` copy of info but still shares the constants and copies p (34 words), reverted. */
 unsigned int *f_0249a0(struct CInfo *info, unsigned int *p)
 {
     int a = info->clutCall;
@@ -319,7 +326,10 @@ void f_024a28(void)
 /* @draft 0x024a3c us f_024a3c
    WHAT IT DOES: Like f_0249a0, but skips the palette or select list call when it is the one
    selected last. Returns the new end of the list.
-   Remaining: same constant sharing difference as f_0249a0, and the cache compare is scheduled earlier in retail. */
+   Remaining: same constant sharing difference as f_0249a0, and the cache compare is scheduled earlier in retail.
+   nmQ: here sched1's interblock pass speculates the base/call arithmetic above `beqz a`
+   (retail computes it after the test, constants per block). -fno-sched-interblock for the
+   file gives retail's size (176) but still 43 words and loses three EXACT; not the answer. */
 unsigned int *f_024a3c(struct CInfo *info, unsigned int *p)
 {
     int a = info->clutCall;

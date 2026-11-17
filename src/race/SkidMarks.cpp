@@ -130,10 +130,12 @@ extern "C" void f_034c2c(SkidPool *p, void *buf, int nvert, int nrec)
 /* @draft 0x034cfc us f_034cfc
    WHAT IT DOES: Takes a free strip from the pool, searching round from where the last search
    stopped; returns 0 when every strip is in use. 
-   Remaining: retail keeps the result in v1 (zeroed on both failure paths, moved to v0 at the single exit); this source holds it in a saved temporary, shifting registers. */
+   The result is set on each path (`else r = 0;` is hoisted by ce2 above the first test, so r
+   takes v1 as retail). Remaining: same size; only t1/t2/t3 are permuted (retail: p copy t3,
+   recs base t2, idx*16 t1). */
 extern "C" SkidRec *f_034cfc(SkidPool *p)
 {
-    SkidRec *r = 0;
+    SkidRec *r;
 
     if (p->used < p->count) {
         unsigned int idx = p->next;
@@ -147,11 +149,14 @@ extern "C" SkidRec *f_034cfc(SkidPool *p)
                 p->used++;
                 p->next = (p->next + 1) % p->count;
                 r = &p->recs[idx];
-                break;
+                goto out;
             }
             idx = (idx + 1) % p->count;
         }
-    }
+        r = 0;
+    } else
+        r = 0;
+out:
     return r;
 }
 

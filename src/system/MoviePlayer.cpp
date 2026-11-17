@@ -671,7 +671,10 @@ int CMoviePlayer::Start(const char *name)
    the ring buffer full, signals the display thread to start and returns 0; else -1.
    Remaining difference: the result register. Retail sets v0 directly (li v0,-1 in the branch
    slots, move v0,zero after the signal); here it is a2 with a move at the exit. The goto
-   spelling is needed for retail's reload of D_242b84 on the state path. */
+   spelling is needed for retail's reload of D_242b84 on the state path. Cause (nmQ RTL): ce2
+   (find_if_case) hoists each single-predecessor `ret = -1` block above its branch, so the
+   result pseudo spans the compares and cannot take v0. A shared `fail: return -1;` label
+   stops the hoist (v0 comes back) but leaves a trailing j/li block and loses the reload. */
 int CMoviePlayer::Ready()
 {
     if (*D_242b84->filled != *D_242b84->count)
@@ -708,20 +711,21 @@ int CMoviePlayer::FindStream(void *mpeg, CMovieFile *f, int *size)
     return 0;
 }
 
-/* @draft 0x08ba74 us f_08ba74
+/* @implements 0x08ba74 us f_08ba74
    WHAT IT DOES: The movie thread: runs the decoder on its copy of the player. When the movie
    ends normally it waits for the other threads to end and returns 0; otherwise it flushes the
    streams when asked to (10) and returns 1.
-   Remaining difference: retail keeps the result in a1 (set to 0 in the slots of the thread
-   waits, 1 after the flush) and returns through one exit; here it goes straight to v0. A
-   result variable, reusing r and a default of 1 all give v0. */
+   The separate `return 1` in the flush arm leaves a single-predecessor `return 1` block that
+   ce2 (find_if_case_2) hoists above the r == 10 test, so the result lives in a1 as retail. */
 int f_08ba74(SceSize args, void *argp)
 {
     CMoviePlayer *p = (CMoviePlayer *)argp;
     int r = p->Decode(p->ring, &p->streams);
     if (r != 0) {
-        if (r == 10)
+        if (r == 10) {
             sceMpegFlushAllStream(p);
+            return 1;
+        }
         return 1;
     }
     if (D_1d46f8)
@@ -804,24 +808,24 @@ int CMoviePlayer::Decode(void *rb, MovieStreams *s)
     return status;
 }
 
-/* @draft 0x08be98 us f_08be98
+/* @implements 0x08be98 us f_08be98
    WHAT IT DOES: The ring buffer callback: reads packets 2048 byte packets of the stream into
    data. A read that ends inside a packet is retried (holding the display) until it ends on a
    packet boundary. Returns the number of packets read.
-   Remaining difference: retail computes r % 2048 before the r != -1 test and joins both with
-   and; here the -1 test branches first. */
+   The two tests are joined with a non-short-circuit `&` (mod test first), and the display
+   flag is cleared on every retry inside the loop (retail's store in the read call's slot). */
 int f_08be98(void *data, int packets, void *param)
 {
     CMovieFile *f = (CMovieFile *)param;
     int unit = 2048;
     int size = packets << 11;
     int r = f->f_08d334(data, size);
-    if (r != -1 && r % unit != 0) {
+    if ((r % unit != 0) & (r != -1)) {
         sceKernelWaitSema(D_242b84->wait, 1, 0);
-        D_1d46f0 = 0;
-        do
+        do {
+            D_1d46f0 = 0;
             r = f->f_08d334(data, size);
-        while (r % unit != 0);
+        } while (r % unit != 0);
         D_1d46f0 = 1;
         sceKernelSignalSema(D_242b84->wait, 1);
     }

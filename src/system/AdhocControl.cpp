@@ -305,7 +305,10 @@ busy:
    WHAT IT DOES: Leaves the group and waits until the library reports the disconnection.
    Returns 1 after waiting, 0 when there was nothing to wait for, or a library error.
    Remaining difference: retail keeps the result in a0 (this source gets a1), and loads the
-   constant 9 for the wait loop before the joining flag store. */
+   constant 9 for the wait loop before the joining flag store. The +4 B: retail has one
+   delay call in the final loop (the s == 6 branch jumps into the s == 9 arm's call, li a0,1000
+   in its slot); here both arms keep a call. `s == 6 || s == 9` (nmQ) loses the saved 6/9
+   registers, 68 words, reverted. */
 int CAdhocControl::f_0887a8()
 {
     if (f_088338() == 9) {

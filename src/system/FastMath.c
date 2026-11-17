@@ -16,7 +16,7 @@ typedef struct Angle {
     float a;
 } Angle;
 
-/* @draft 0x099b98 us f_099b98
+/* @implements 0x099b98 us f_099b98
    WHAT IT DOES: Wraps an angle into (-pi, pi] by whole turns (the turn split in two parts
    for precision) and returns it. */
 Angle *f_099b98(Angle *p)
@@ -25,10 +25,9 @@ Angle *f_099b98(Angle *p)
         do {
             p->a = p->a - 6.28320312f + 1.78178198e-05f;
         } while (p->a > 3.14159274f);
-    } else if (p->a <= -3.14159274f) {
-        do {
+    } else {
+        while (p->a <= -3.14159274f)
             p->a = p->a + 6.28320312f - 1.78178198e-05f;
-        } while (p->a <= -3.14159274f);
     }
     return p;
 }
@@ -83,13 +82,13 @@ float f_099d14(float x)
     return r;
 }
 
-/* @draft 0x099da0 us f_099da0
+/* @implements 0x099da0 us f_099da0
    WHAT IT DOES: Cosine from the 32 step table: wraps the angle's magnitude to a half
-   turn. */
+   turn. The index comes from a and the fraction is subtracted from x in place (as f_099e7c). */
 float f_099da0(float x)
 {
     int i;
-    float a, t;
+    float a;
     const float *c;
     a = x;
     if (x < 0.0f)
@@ -101,27 +100,28 @@ float f_099da0(float x)
     if (x < 0.0f)
         a = -x;
     x = a;
-    i = (int)(x * 32.0f);
-    t = x - (float)i * 0.03125f;
+    i = (int)(a * 32.0f);
+    x = x - (float)i * 0.03125f;
     c = D_1ab3a0[i];
-    return ((c[0] * t + c[1]) * t + c[2]) * t + c[3];
+    return ((c[0] * x + c[1]) * x + c[2]) * x + c[3];
 }
 
-/* @draft 0x099e7c us f_099e7c
-   WHAT IT DOES: Cosine from the 32 step table for an angle already within a half turn. */
+/* @implements 0x099e7c us f_099e7c
+   WHAT IT DOES: Cosine from the 32 step table for an angle already within a half turn. The
+   index comes from a, and the fraction is subtracted from x in place (retail's sub.s into f12). */
 float f_099e7c(float x)
 {
     int i;
-    float a, t;
+    float a;
     const float *c;
     a = x;
     if (x < 0.0f)
         a = -x;
     x = a;
-    i = (int)(x * 32.0f);
-    t = x - (float)i * 0.03125f;
+    i = (int)(a * 32.0f);
+    x = x - (float)i * 0.03125f;
     c = D_1ab3a0[i];
-    return ((c[0] * t + c[1]) * t + c[2]) * t + c[3];
+    return ((c[0] * x + c[1]) * x + c[2]) * x + c[3];
 }
 
 /* @implements 0x099efc us f_099efc
@@ -148,7 +148,10 @@ float f_099efc(float x)
 
 /* @draft 0x099fc4 us f_099fc4
    WHAT IT DOES: Sine by a degree 11 polynomial for an angle within a half turn (mirrored
-   about a quarter turn). */
+   about a quarter turn).
+   Remaining difference: retail builds |x| in f0, then copies it to f3 (mov.s f3,f0) for the
+   rest; here |x| goes straight to f3 (one word shorter). nmQ tried |x| in the result
+   variable p then `a = p;`: 43 words differ, reverted. */
 float f_099fc4(float x)
 {
     float a = x;

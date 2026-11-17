@@ -232,7 +232,9 @@ void f_026efc(LightTable *t)
    marked faded only if all eight of its levels reached zero. The fade phase counts 0 to 15.
    Remaining difference: retail recomputes the column address (sll/addu from the lamp index)
    every outer pass and steps the faded flag by a byte pointer; this source strength reduces
-   both, which adds one register and shifts the rest. */
+   both, which adds one register and shifts the rest. nmQ: the inner giv also splits its
+   constant differently: retail a1 = 2*i + t with displacement 80 (row 40 + v 40 folded as one
+   constant); here a1 = (t + 2i) + 64 with displacement 16, so the address tree differs. */
 void f_026f70(LightTable *t)
 {
     int i, j;

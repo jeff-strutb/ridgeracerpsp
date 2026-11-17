@@ -348,7 +348,10 @@ void CCodec::f_044294(int ch, int bits, int n)
 
 /* @draft 0x0443e0 us f_0443e0
    WHAT IT DOES: Writes a left-aligned code of c.len bits to channel ch, a byte at a time.
-   Remaining difference: the constant 8 of the length clamp is hoisted out of the loop into a saved register; retail loads it in the loop (one saved register fewer). */
+   Remaining difference: the constant 8 of the length clamp is hoisted out of the loop into a saved register; retail loads it in the loop (one saved register fewer). nmQ: `m = n; if (m > 8) m = 8;`
+   gives retail's frame (s4 for the buffer) but a branch instead of `min` (36 words, +12 B),
+   reverted; retail's in-loop `li v1,8` looks like the hoisted 8 left unallocated and
+   rematerialised by reload. */
 void CCodec::f_0443e0(int ch, Code c)
 {
     Word w;

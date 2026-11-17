@@ -317,7 +317,10 @@ extern "C" void f_0bef6c(void *a0, void *a1, void *a2, void *a3)
    WHAT IT DOES: calls the handler f_0be85c on D_245ec0 when the event is 1 with the code
    0xffff, and f_0be86c when it is 0 with the code 0xffff.
    Remaining difference: 17 of 29 words differ, size 116 vs 108; the retail code saves the
-   first argument across the call and orders the two tests differently. */
+   first argument across the call and orders the two tests differently. nmQ: retail keeps
+   both calls on the fall-through (beqz around them) and tests the second as and(ok, a==0);
+   here bb-reorder moves the calls out of line and combine splits the second test into
+   bnez/bnezl. The `and` operands are ok first (and v0,s0,v0). */
 extern "C" void f_0bf190(int a, int b)
 {
     int t1 = (a == 1);

@@ -655,6 +655,10 @@ int CNetSession::f_085f58(char tag)
 
 /* @draft 0x085f90 us f_085f90
    REMAINING DIFFERENCE: register choice: retail keeps this in s1 and the record in s0 (swapped here).
+   The +4 B (nmQ): sched1's interblock pass speculates D_241e98's lui/addiu above `bnez v1`
+   (the state >= 7 test); retail leaves them in the call block (lui in the bnez slot, addiu in
+   the jal slot). Same speculation as TextureLists f_024a3c. Unverified lead: a whole-function
+   sched region exists only under max-sched-region-blocks/insns (10/100).
    WHAT IT DOES: Asks a host seen to let this console join (a record without the host flag
    means go back to the host list). */
 int CNetSession::f_085f90(Rec *r)
@@ -1461,7 +1465,9 @@ int CNetSession::f_0877a8(bool quick)
 }
 
 /* @draft 0x0878b4 us f_0878b4
-   REMAINING DIFFERENCE: block order of the accept and refuse paths differs.
+   REMAINING DIFFERENCE: block order of the accept and refuse paths differs. Retail's loop
+   giv is `this` itself (lb 506(s1), &req[i] = s0+488 / s1+488); here it is this+488. Indexing
+   req[i] directly (no q) was tried (nmQ): three givs, 71 words differ, reverted.
    WHAT IT DOES: The host's join requests: accepts the first one queued while listening with
    room, else refuses it; closes the session when the table is full and reopens it when
    there is room again. */
