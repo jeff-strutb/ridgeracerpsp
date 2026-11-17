@@ -5,15 +5,22 @@
    channel in the wrong state, 0x80000000 for a count out of range. */
 
 struct Chan {
-    char m0[9];
+    int m0;
+    int m4;
+    unsigned char m8;
     unsigned char m9;
     char m10[2];
     int m12;
     unsigned short state;
     unsigned short m18;
-    char m20[12];
+    short m20;
+    short m22;
+    int m24;
+    int m28;
     int m32;
-    char m36[20];
+    int m36;
+    char m40[12];
+    int m52;
     int m56;
     int m60;
     char m64[36];
@@ -34,6 +41,25 @@ struct Chan {
     void *m192;
 };
 
+struct Info {
+    int m0;
+    int m4;
+    unsigned char m8;
+    unsigned char m9;
+    char m10[2];
+    int m12;
+    short m16;
+    short m18;
+    short m20;
+    short m22;
+    int m24;
+    int m28;
+    int m32;
+    int m36;
+    int m40;
+    char m44[4];
+};
+
 struct Slot {
     int m0;
     float m4;
@@ -47,6 +73,7 @@ extern struct Slot D_291a48[];
 extern int D_281ec0;
 extern const float D_1b2e78;
 extern const float D_1b2e7c;
+extern const float D_1b2e80;
 extern const float D_1b2e84;
 extern const float D_1b2e88;
 extern const float D_1b2e8c;
@@ -62,6 +89,7 @@ void f_111f18(int ch, int a1);
 int f_110f58(int ch, int a1, int a2);
 int f_111228(int ch);
 int f_111030(int ch);
+int f_111900(int ch, int a1);
 
 static __inline__ int badch(int ch)
 {
@@ -216,6 +244,45 @@ int f_111228(int ch)
 int f_1112a8(void)
 {
     return 0;
+}
+
+/* @draft 0x1113e4 us f_1113e4
+   WHAT IT DOES: Fills info with stream ch's state: the disc stream's length and loop words
+   (also kept in the channel), its format bytes, volume (0..127), state, pan, position and
+   the played time from 0x111900; returns the channel's sub-state, 0x8000000a for a bad
+   channel.
+   Remaining difference: retail reads the channel's fields ahead of the stores into info (the
+   +16..+39 block through its own base register, t4), as if read into locals or copied by an
+   inline on a sub-record; here each store follows its load. */
+int f_1113e4(int ch, struct Info *info)
+{
+    struct Chan *c;
+    int len;
+    int vol;
+
+    if (badch(ch))
+        return 0x8000000a;
+    c = &D_291980[ch];
+    len = D_291980[0].m52;
+    c->m0 = len;
+    info->m0 = len;
+    vol = (int)(c->m176 * D_1b2e80);
+    c->m4 = D_291980[0].m56;
+    info->m4 = c->m4;
+    info->m9 = c->m9;
+    info->m12 = c->m12;
+    info->m8 = c->m8;
+    c->m20 = vol;
+    info->m16 = c->state;
+    info->m18 = c->m18;
+    info->m22 = c->m22 + c->m172;
+    info->m24 = c->m24;
+    info->m28 = c->m28;
+    info->m32 = c->m32;
+    info->m36 = c->m36;
+    info->m20 = vol;
+    info->m40 = f_111900(ch, len);
+    return c->m100;
 }
 
 /* @implements 0x1114f0 us f_1114f0
