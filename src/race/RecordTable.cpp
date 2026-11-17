@@ -90,6 +90,7 @@ struct AnimData {
 };
 
 extern "C" unsigned char *f_0db0d0(AnimData *pb, int frame, int idx);
+extern "C" unsigned char *f_0daf64(AnimData *pb, unsigned int frame, int idx);
 extern "C" void f_0e1e34(AnimData *pb, const unsigned char *p, unsigned short *x, unsigned short *y,
                          unsigned short *z);
 
@@ -98,11 +99,6 @@ extern "C" void f_0e1e34(AnimData *pb, const unsigned char *p, unsigned short *x
 union Bytes2 {
     unsigned short v;
     unsigned char b[2];
-};
-
-/* Three angles, as unpacked by the 0x0e1e34 routine. */
-struct Angle3 {
-    unsigned short x, y, z;
 };
 
 union Bytes4 {
@@ -118,20 +114,14 @@ static inline short Read16(const unsigned char *p)
     return (short)(p[0] | (p[1] << 8));
 }
 
-/* @draft 0x0db2c4 us f_0db2c4
+/* @implements 0x0db2c4 us f_0db2c4
    WHAT IT DOES: Walks the node stream of an animation at its current frame and stores each node's
    transform into the matrix array: -1 restarts from the identity (or the given base matrix), -2 ends;
-   each node's record kind says whether its data is a scale, a rotation or a translation.
-   Remaining difference: 54 words, all one cause. Retail spills the three angle unions to 16-byte
-   aligned slots (32, 48, 64), which reload gives a HImode pseudo that is also referenced in SImode
-   (alter_reg uses BIGGEST_ALIGNMENT, 16 here, when the widest reference exceeds the mode); here they
-   have HImode references only, so the slots are 2-byte aligned and every frame offset differs. The
-   same cause shows in the rotation cases, where retail stores the zero-extended copy (a0) to r.x and
-   this build stores v1. */
+   each node's record kind says whether its data is a scale, a rotation or a translation. */
 extern "C" void f_0db2c4(AnimData *pb, Matrix *out, int useBase, Matrix *base)
 {
     Bytes2 ax, ay, az;
-    Angle3 r;
+    unsigned short rx, ry, rz;
     const unsigned char *p;
     short id;
 
@@ -173,29 +163,38 @@ extern "C" void f_0db2c4(AnimData *pb, Matrix *out, int useBase, Matrix *base)
                 case 4: {
                     ax.b[0] = d[0];
                     ax.b[1] = d[1];
-                    r.x = ax.v;
-                    f_0284bc(r.x * 6.28318548f * (1.0f / 65536.0f));
+                    {
+                        unsigned short a = ax.v;
+                        rx = a;
+                    }
+                    f_0284bc(rx * 6.28318548f * (1.0f / 65536.0f));
                     break;
                 }
                 case 5: {
                     ay.b[0] = d[0];
                     ay.b[1] = d[1];
-                    r.x = ay.v;
-                    f_0284fc(r.x * 6.28318548f * (1.0f / 65536.0f));
+                    {
+                        unsigned short a = ay.v;
+                        rx = a;
+                    }
+                    f_0284fc(rx * 6.28318548f * (1.0f / 65536.0f));
                     break;
                 }
                 case 6: {
                     az.b[0] = d[0];
                     az.b[1] = d[1];
-                    r.x = az.v;
-                    f_02853c(r.x * 6.28318548f * (1.0f / 65536.0f));
+                    {
+                        unsigned short a = az.v;
+                        rx = a;
+                    }
+                    f_02853c(rx * 6.28318548f * (1.0f / 65536.0f));
                     break;
                 }
                 case 7: {
-                    f_0e1e34(pb, d, &r.x, &r.y, &r.z);
-                    f_02853c(r.z * 6.28318548f * (1.0f / 65536.0f));
-                    f_0284fc(r.y * 6.28318548f * (1.0f / 65536.0f));
-                    f_0284bc(r.x * 6.28318548f * (1.0f / 65536.0f));
+                    f_0e1e34(pb, d, &rx, &ry, &rz);
+                    f_02853c(rz * 6.28318548f * (1.0f / 65536.0f));
+                    f_0284fc(ry * 6.28318548f * (1.0f / 65536.0f));
+                    f_0284bc(rx * 6.28318548f * (1.0f / 65536.0f));
                     break;
                 }
                 case 8:
@@ -242,6 +241,125 @@ extern "C" void f_0db824(AnimData *a, Matrix *b)
 extern "C" void f_0db844(AnimData *a, Matrix *b, Matrix *d)
 {
     f_0db2c4(a, b, 0, d);
+}
+
+/* @implements 0x0db864 us f_0db864
+   WHAT IT DOES: The same node walk as 0x0db2c4, starting from the identity, with a second animation
+   supplying the translation for nodes of kind 7 (followed by that node's packed rotation); kinds 12
+   to 15 store the transform unchanged. */
+extern "C" void f_0db864(AnimData *pb, AnimData *pos, Matrix *out)
+{
+    Bytes2 ax, ay, az;
+    unsigned short rx, ry, rz;
+    const unsigned char *p;
+    short id;
+
+    f_028c70();
+    f_02842c();
+    ax.v = 0;
+    ay.v = 0;
+    az.v = 0;
+    p = pb->nodes;
+    while ((id = Read16(p)) != -2) {
+        p += 2;
+        if (id != -1) {
+            unsigned char *d = f_0db0d0(pb, pb->frame, id);
+            if (d) {
+                unsigned char *t = f_0daf64(pos, pos->frame, id);
+                AnimRec *rec = &pb->recs[id];
+                switch (rec->kind) {
+                case 0:
+                    f_02884c((float)d[0], 1.0f, 1.0f);
+                    break;
+                case 1:
+                    f_02884c(1.0f, (float)d[0], 1.0f);
+                    break;
+                case 2:
+                    f_02884c(1.0f, 1.0f, (float)d[0]);
+                    break;
+                case 3: {
+                    Bytes4 x, y, z;
+                    x.b.b0 = d[0]; x.b.b1 = d[1]; x.b.b2 = d[2]; x.b.b3 = d[3];
+                    d += 4;
+                    y.b.b0 = d[0]; y.b.b1 = d[1]; y.b.b2 = d[2]; y.b.b3 = d[3];
+                    d += 4;
+                    z.b.b0 = d[0]; z.b.b1 = d[1]; z.b.b2 = d[2]; z.b.b3 = d[3];
+                    f_02884c(x.f, y.f, z.f);
+                    break;
+                }
+                case 4:
+                    ax.b[0] = d[0];
+                    ax.b[1] = d[1];
+                    {
+                        unsigned short a = ax.v;
+                        rx = a;
+                    }
+                    f_0284bc(rx * 6.28318548f * (1.0f / 65536.0f));
+                    break;
+                case 5:
+                    ay.b[0] = d[0];
+                    ay.b[1] = d[1];
+                    {
+                        unsigned short a = ay.v;
+                        rx = a;
+                    }
+                    f_0284fc(rx * 6.28318548f * (1.0f / 65536.0f));
+                    break;
+                case 6:
+                    az.b[0] = d[0];
+                    az.b[1] = d[1];
+                    {
+                        unsigned short a = az.v;
+                        rx = a;
+                    }
+                    f_02853c(rx * 6.28318548f * (1.0f / 65536.0f));
+                    break;
+                case 7: {
+                    Bytes4 x, y, z;
+                    x.b.b0 = t[0]; x.b.b1 = t[1]; x.b.b2 = t[2]; x.b.b3 = t[3];
+                    t += 4;
+                    y.b.b0 = t[0]; y.b.b1 = t[1]; y.b.b2 = t[2]; y.b.b3 = t[3];
+                    t += 4;
+                    z.b.b0 = t[0]; z.b.b1 = t[1]; z.b.b2 = t[2]; z.b.b3 = t[3];
+                    f_0287cc(x.f, y.f, z.f);
+                    f_0e1e34(pb, d, &rx, &ry, &rz);
+                    f_02853c(rz * 6.28318548f * (1.0f / 65536.0f));
+                    f_0284fc(ry * 6.28318548f * (1.0f / 65536.0f));
+                    f_0284bc(rx * 6.28318548f * (1.0f / 65536.0f));
+                    break;
+                }
+                case 8:
+                    f_0287cc((float)d[0], 0.0f, 0.0f);
+                    break;
+                case 9:
+                    f_0287cc(0.0f, (float)d[0], 0.0f);
+                    break;
+                case 10:
+                    f_0287cc(0.0f, 0.0f, (float)d[0]);
+                    break;
+                case 11: {
+                    Bytes4 x, y, z;
+                    x.b.b0 = d[0]; x.b.b1 = d[1]; x.b.b2 = d[2]; x.b.b3 = d[3];
+                    d += 4;
+                    y.b.b0 = d[0]; y.b.b1 = d[1]; y.b.b2 = d[2]; y.b.b3 = d[3];
+                    d += 4;
+                    z.b.b0 = d[0]; z.b.b1 = d[1]; z.b.b2 = d[2]; z.b.b3 = d[3];
+                    f_0287cc(x.f, y.f, z.f);
+                    break;
+                }
+                case 12:
+                case 13:
+                case 14:
+                case 15:
+                    break;
+                }
+                f_028d94(&out[id]);
+            }
+        } else {
+            f_02842c();
+        }
+    }
+    f_028ca8();
 }
 
 /* @draft 0x0dfa88 us f_0dfa88
