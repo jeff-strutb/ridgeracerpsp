@@ -443,14 +443,12 @@ void f_09bf24(Quat *o, const void *in)
     o->v[2] = a[2];
 }
 
-/* @draft 0x09d228 us f_09d228
+/* @implements 0x09d228 us f_09d228
    WHAT IT DOES: Builds the rotation matrix of three Euler angles with an axis order code (the
    axis triple from the table at D_1abf6c; odd parity negates all three angles) from their
    cosines and sines, written transposed (column by column).
-   Remaining difference: register allocation and order. Retail gives k, i and j to s1, s2 and
-   s3 (ours i, j, k), loads the order's third byte first, and swaps the registers of cos(tj)
-   and cos(th) (f22/f23). The index arithmetic is scheduled differently as a result. Control
-   flow and arithmetic match. */
+   The matrix is written flat through row bases i*3, j*3, k*3 held in locals, so each index is
+   formed as row + column before the *4 (m[i][i] folds to i*16). */
 void f_09d228(Mat33 *o, const void *in)
 {
     const EulIn *e = (const EulIn *)in;
@@ -478,25 +476,25 @@ void f_09d228(Mat33 *o, const void *in)
     float cs = ci * sh;
     float sc = si * ch;
     float ss = si * sh;
-    o->m[i][i] = cj * ch;
-    o->m[j][i] = sj * sc - cs;
-    o->m[k][i] = sj * cc + ss;
-    o->m[i][j] = cj * sh;
-    o->m[j][j] = sj * ss + cc;
-    o->m[k][j] = sj * cs - sc;
-    o->m[i][k] = -sj;
-    o->m[j][k] = cj * si;
-    o->m[k][k] = cj * ci;
+    float *m = &o->m[0][0];
+    int ri = i * 3, rj = j * 3, rk = k * 3;
+    m[ri + i] = cj * ch;
+    m[rj + i] = sj * sc - cs;
+    m[rk + i] = sj * cc + ss;
+    m[ri + j] = cj * sh;
+    m[rj + j] = sj * ss + cc;
+    m[rk + j] = sj * cs - sc;
+    m[ri + k] = -sj;
+    m[rj + k] = cj * si;
+    m[rk + k] = cj * ci;
 }
 
-/* @draft 0x09d450 us f_09d450
+/* @implements 0x09d450 us f_09d450
    WHAT IT DOES: Builds the rotation matrix of three Euler angles with an axis order code (the
    axis triple from the table at D_1abf6c; odd parity negates all three angles) from their
    cosines and sines, written transposed (column by column).
-   Remaining difference: register allocation and order. Retail gives k, i and j to s1, s2 and
-   s3 (ours i, j, k), loads the order's third byte first, and swaps the registers of cos(tj)
-   and cos(th) (f22/f23). The index arithmetic is scheduled differently as a result. Control
-   flow and arithmetic match. (Twin of f_09d228.) */
+   The matrix is written flat through row bases i*3, j*3, k*3 held in locals, so each index is
+   formed as row + column before the *4 (m[i][i] folds to i*16). (Twin of f_09d228.) */
 void f_09d450(Mat33 *o, const void *in)
 {
     const EulIn *e = (const EulIn *)in;
@@ -524,15 +522,17 @@ void f_09d450(Mat33 *o, const void *in)
     float cs = ci * sh;
     float sc = si * ch;
     float ss = si * sh;
-    o->m[i][i] = cj * ch;
-    o->m[j][i] = sj * sc - cs;
-    o->m[k][i] = sj * cc + ss;
-    o->m[i][j] = cj * sh;
-    o->m[j][j] = sj * ss + cc;
-    o->m[k][j] = sj * cs - sc;
-    o->m[i][k] = -sj;
-    o->m[j][k] = cj * si;
-    o->m[k][k] = cj * ci;
+    float *m = &o->m[0][0];
+    int ri = i * 3, rj = j * 3, rk = k * 3;
+    m[ri + i] = cj * ch;
+    m[rj + i] = sj * sc - cs;
+    m[rk + i] = sj * cc + ss;
+    m[ri + j] = cj * sh;
+    m[rj + j] = sj * ss + cc;
+    m[rk + j] = sj * cs - sc;
+    m[ri + k] = -sj;
+    m[rj + k] = cj * si;
+    m[rk + k] = cj * ci;
 }
 
 float *f_099b98(float *a);
@@ -1571,17 +1571,15 @@ inline EulOut::EulOut(const float *m, int order_, const float &eps)
     int k = t[2];
     int i3 = 3 * i;
     float cy = sqrtf(m[i3 + i] * m[i3 + i] + m[i3 + j] * m[i3 + j]);
-    AngI last;
     if (cy > eps) {
         e[i] = Ang(c_atan2(m[3 * j + k], m[4 * k]));
         e[j] = Ang(c_atan2(-m[i3 + k], cy));
-        last = Ang(c_atan2(m[i3 + j], m[i3 + i]));
+        e[k] = Ang(c_atan2(m[i3 + j], m[i3 + i]));
     } else {
         e[i] = Ang(c_atan2(-m[3 * k + j], m[4 * j]));
         e[j] = Ang(c_atan2(-m[i3 + k], cy));
-        last = Ang(0.0f);
+        e[k] = Ang(0.0f);
     }
-    e[k] = last;
     if (order_ & 1) {
         e[0] = Ang(-*(float *)&e[0]);
         e[1] = Ang(-*(float *)&e[1]);
@@ -1592,7 +1590,8 @@ inline EulOut::EulOut(const float *m, int order_, const float &eps)
 extern "C" { extern const float D_1ac090; extern const float D_1ac094; }
 /* @draft 0x0a3938 us f_0a3938
    WHAT IT DOES: Extracts three Euler angles from a 3x3 rotation matrix for the axis order code (0..23, three signed bytes per order in the table at D_1abf6c plus a parity bit): the middle angle from atan2 of the off-axis element and the sqrt of the sum of squares of two elements, with the gimbal-lock fallback when that is below a threshold; every angle is wrapped by f_099b98, negated first when the order's low bit is set, and the order code is stored after the three angles.
-   Remaining difference: same size (704 bytes) but register assignment differs: retail keeps the two element addresses in saved registers and reuses the first axis register for the angle slot address, this source gets a different assignment and spills one address. */
+   e[k] is stored in each branch (as in EulOutB), so &e[j] and &e[k] are formed before the calls, as retail does.
+   Remaining difference: global-alloc swaps j and m (retail j in s1, m in s2; here the reverse), so both branches end up storing e[k] through s0 and cross-jumping merges the two stores into the join (one word short; retail stores through s1 in the first branch and s0 in the second, then bnezl). */
 void f_0a3938(EulOut *d, const float *m, int order)
 {
     new (d) EulOut(m, order, D_1ac090);
@@ -1600,7 +1599,8 @@ void f_0a3938(EulOut *d, const float *m, int order)
 
 /* @draft 0x0a3bf8 us f_0a3bf8
    WHAT IT DOES: Extracts three Euler angles from a 3x3 rotation matrix for the axis order code (0..23, three signed bytes per order in the table at D_1abf6c plus a parity bit): the middle angle from atan2 of the off-axis element and the sqrt of the sum of squares of two elements, with the gimbal-lock fallback when that is below a threshold; every angle is wrapped by f_099b98, negated first when the order's low bit is set, and the order code is stored after the three angles.
-   Remaining difference: same size (704 bytes) but register assignment differs: retail keeps the two element addresses in saved registers and reuses the first axis register for the angle slot address, this source gets a different assignment and spills one address. */
+   e[k] is stored in each branch (as in EulOutB), so &e[j] and &e[k] are formed before the calls, as retail does.
+   Remaining difference: global-alloc swaps j and m (retail j in s1, m in s2; here the reverse), so both branches end up storing e[k] through s0 and cross-jumping merges the two stores into the join (one word short; retail stores through s1 in the first branch and s0 in the second, then bnezl). */
 void f_0a3bf8(EulOut *d, const float *m, int order)
 {
     new (d) EulOut(m, order, D_1ac094);

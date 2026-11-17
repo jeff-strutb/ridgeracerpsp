@@ -223,7 +223,10 @@ void f_073f50(void *self)
 /* @draft 0x075b74 us f_075b74
    WHAT IT DOES: For kind 3 only: reads the word at offset 4352, and if it is nonzero clears it
    and, when the word at offset 4 is set, calls 0x04b290 on the sub-object at offset 4. Returns
-   the word read, or 0. */
+   the word read, or 0.
+   Remaining difference: retail keeps r (a2) apart from the loaded word (s0); here cse merges
+   them into one pseudo. Writing `r = s0;` once after the inner if splits them (r in a0) but
+   puts the call out of line (bnez v0 to it) and grows to 96 B, so it was not kept. */
 int f_075b74(void *self, int kind)
 {
     int r = 0;
@@ -693,8 +696,8 @@ void *f_046de0(void *, int, int, float, float, float, float, int, int, void *);
 void *f_047248(void *, int, int, float, float, float, float, float, float, int, int, void *);
 void *f_048410(void *, int, int, float, float, float, float, int, int, void *, float, float);
 void *f_048d1c(void *, int, int, float, float, float, float, int, int, int, void *, int);
-int f_0e7858(int);
-void f_0e7768(void);
+int f_0e7858(void);
+void f_0e7768(int);
 void f_0e798c(void);
 extern bool D_241444;
 void f_0452cc(void);
@@ -933,24 +936,26 @@ void f_07363c(void *self, char *p)
    WHAT IT DOES: destroys the composite menu object and then frees its memory with operator delete. */
 void f_07555c(MN *self) { self->~MN(); _ZdlPv(self); }
 
-/* @draft 0x076904 us f_076904
-   WHAT IT DOES: if the flags at self+521 and 523 allow, initialises the f_0e7768 helper once, polls f_0e7858(1) and on the pending condition calls f_0e798c, sets self+20 to 1 and clears the flags at +520 and +521; returns 0 or 1. */
+/* @implements 0x076904 us f_076904
+   WHAT IT DOES: if the flags at self+521 and 523 allow, initialises the f_0e7768 helper once
+   (argument 1), polls f_0e7858() and on the pending condition calls f_0e798c, sets self+20 to 1
+   and clears the flags at +520 and +521; returns 0 or 1 (1 when +523 is clear). */
 int f_076904(void *self)
 {
-    if (!at<bool>(self, 521))
-        return 0;
-    if (!at<bool>(self, 523))
-        return 1;
-    if (!D_241444) {
-        f_0e7768();
-        D_241444 = 1;
-    }
-    int a = f_0e7858(1);
-    if (at<bool>(self, 520) && ((D_245194 & 1) || a)) {
-        f_0e798c();
-        at<int>(self, 20) = 1;
-        at<bool>(self, 520) = 0;
-        at<bool>(self, 521) = 0;
+    if (at<bool>(self, 521)) {
+        if (!at<bool>(self, 523))
+            return 1;
+        if (!D_241444) {
+            f_0e7768(1);
+            D_241444 = 1;
+        }
+        int a = f_0e7858();
+        if (at<bool>(self, 520) && ((D_245194 & 1) || a)) {
+            f_0e798c();
+            at<int>(self, 20) = 1;
+            at<bool>(self, 520) = 0;
+            at<bool>(self, 521) = 0;
+        }
     }
     return 0;
 }

@@ -8103,19 +8103,19 @@ void f_04ca04(char *s, int a1, float sx, float sy, float dx, float dy) {
 
 /* @draft 0x04c668 us f_04c668
    WHAT IT DOES: converts the four floats (r,g,b,a) times a constant to unsigned bytes, packs them into one 32-bit color and stores it into the five vertex color slots of entry a1.
-   Remaining difference (36/84, register numbering only): the entry pointer is now computed in place in s (retail's lw a0,36(a0); addu a0,a0,v0). Retail keeps the partial colour in a1 and every cv() result in v1, and the last `| cv(a) << 24` goes to a fresh register (v0) that the five stores use in source order: next cycle, write that last OR into a new variable. */
+   Remaining difference (26/84): the last OR into its own variable v (36 -> 26) gives retail's v0 for the five stores, but the store to +24 is scheduled first; c and the cv() results swap registers (retail c in a1, cv() in v1) and the base load goes to v1 instead of a0 (retail lw a0,36(a0)). */
 void f_04c668(char *s, int a1, float r, float g, float b, float a) {
     if (*(int *)(s + 32) >= a1) {
     s = *(char **)(s + 36) + a1 * 172;
     unsigned c = cv(r) & 0xff;
     c |= (cv(g) & 0xff) << 8;
     c |= (cv(b) & 0xff) << 16;
-    c |= cv(a) << 24;
-    *(unsigned *)(s + 4) = c;
-    *(unsigned *)(s + 88) = c;
-    *(unsigned *)(s + 64) = c;
-    *(unsigned *)(s + 44) = c;
-    *(unsigned *)(s + 24) = c;
+    unsigned v = c | cv(a) << 24;
+    *(unsigned *)(s + 4) = v;
+    *(unsigned *)(s + 88) = v;
+    *(unsigned *)(s + 64) = v;
+    *(unsigned *)(s + 44) = v;
+    *(unsigned *)(s + 24) = v;
     }
 }
 
@@ -8568,6 +8568,7 @@ struct It2 {
 };
 void *memcpy(void *, const void *, unsigned);
 char *f_065060(unsigned, void *) throw();
+extern "C" void memcpy_v(void *, const void *, unsigned) throw() __asm__("memcpy");
 void f_1310e8(const char *);
 extern char D_1a3234[];
 extern char D_291400[];
@@ -8579,10 +8580,10 @@ void f_05daa4(void *, void *);
 void f_05e394(void *, void *, void *, void *);
 void f_04ed28(void *);
 void f_04e4b4(void *);
-/* @draft 0x061cc8 us f_061cc8
+/* @implements 0x061cc8 us f_061cc8
    WHAT IT DOES: builds a string rep from a char range [b,e): for an empty range shares the static empty rep (bumping its count under interrupt suspend); otherwise throws on a null begin, allocates a rep, copies the characters, stores the length and terminates it.
    f_065060 is declared throw() here: its call then no longer ends a block, so n, r and d are block-local and local-alloc gives retail's registers (35 -> 6 words).
-   Remaining difference (6/55): retail returns through one shared `move v0,s0` (the empty path does addiu s0,s0,12 and jumps there); one `d` variable for both arms gives that join but makes d global and reorders global-alloc (23/55), so not kept. */
+   memcpy is called through memcpy_v, a void alias: a value-returning call keeps v0 busy so the d+n temp took v1; with v0 for the temp the return pseudo conflicts with v0 and takes s0, giving retail's shared `move v0,s0` return. */
 char *f_061cc8(char *b, char *e, void *a, int x) throw() {
     Tmp16 t;
     if (b == e) {
@@ -8598,15 +8599,15 @@ char *f_061cc8(char *b, char *e, void *a, int x) throw() {
     unsigned n = e - b;
     char *r = f_065060(n, a);
     char *d = r + 12;
-    memcpy(d, b, n);
+    memcpy_v(d, b, n);
     *(unsigned *)r = n;
     d[n] = 0;
     return d;
 }
-/* @draft 0x061620 us f_061620
+/* @implements 0x061620 us f_061620
    WHAT IT DOES: twin of f_061cc8: builds a string rep from a char range [b,e): for an empty range shares the static empty rep (bumping its count under interrupt suspend); otherwise throws on a null begin, allocates a rep, copies the characters, stores the length and terminates it.
    f_065060 is declared throw() here: its call then no longer ends a block, so n, r and d are block-local and local-alloc gives retail's registers (35 -> 6 words).
-   Remaining difference (6/55): retail returns through one shared `move v0,s0` (the empty path does addiu s0,s0,12 and jumps there); one `d` variable for both arms gives that join but makes d global and reorders global-alloc (23/55), so not kept. */
+   memcpy is called through memcpy_v, a void alias: a value-returning call keeps v0 busy so the d+n temp took v1; with v0 for the temp the return pseudo conflicts with v0 and takes s0, giving retail's shared `move v0,s0` return. */
 char *f_061620(char *b, char *e, void *a, int x) throw() {
     Tmp16 t;
     if (b == e) {
@@ -8622,7 +8623,7 @@ char *f_061620(char *b, char *e, void *a, int x) throw() {
     unsigned n = e - b;
     char *r = f_065060(n, a);
     char *d = r + 12;
-    memcpy(d, b, n);
+    memcpy_v(d, b, n);
     *(unsigned *)r = n;
     d[n] = 0;
     return d;
@@ -15300,7 +15301,7 @@ struct Vs {
   virtual Str s21();
 
 };
-struct It4 { int p; int pad[3]; It4() {} It4(const It4 &o) { p = o.p; } It4 &operator=(const It4 &o) { p = o.p; return *this; } };
+struct It4 { int p; int pad[3]; It4() {} It4(int v) { p = v; } It4(const It4 &o) { p = o.p; } It4 &operator=(const It4 &o) { p = o.p; return *this; } };
 struct RefH { int p, rc; RefH() {} RefH(void *x) { f_05daa4(this, x); } RefH(const RefH &o) { p = o.p; rc = o.rc; if (rc) ++*(int *)rc; } ~RefH() { f_04ed28(this); } };
 void f_05e394(void *, void *, void *, void *);
 struct Val24 { int a, b, c, d; RefH r; };
@@ -15368,25 +15369,25 @@ struct Hn { Vs *p; int *c; Hn() {} ~Hn() { f_04ed28(this); } };
 
 /* @draft 0x0552c4 us f_0552c4
    WHAT IT DOES: takes the top node of the registry tree at +328, copies its counted handle (+8/+12), erases the node (f_05f64c), then asks the handle's object for an integer (virtual slot 7) and its name string (virtual slot 21), terminates the name and prints both with iprintf (D_1a2fec); releases the name and the handle.
-   Remaining difference: frame is 16 bytes short of retail (sp 112 vs 128); handle and iterator temporaries sit in other slots. */
+   The iterator argument is a temporary It4(nxp) (no named copy: retail's 128-byte frame), h is declared before it (retail h at 0, it at 16), and the top-node link is read as int so the first it.p store survives flow's dead-store pass (41 -> 1 word).
+   Remaining difference (1/96): blez vs retail blezl on the unwind-path string destructor, the same unexplained dbr case as f_05dcb8's note (line ~12524). */
 void f_05f64cv(void *, void *, It4) __asm__("f_05f64c");
 void f_0552c4(char *self) {
     char *t = self + 328;
+    Hn h;
     It4 it;
     it.p = *(int *)(t + 4);
     char *hdr = (char *)it.p;
-    char *top = *(char **)(hdr + 4);
-    Hn h;
+    char *top = (char *)*(int *)(hdr + 4);
     it.p = (int)top;
     h.p = *(Vs **)(top + 8);
     h.c = *(int **)(top + 12);
     if (h.c) ++*h.c;
     it.p = (int)hdr;
-    It4 nx;
-    nx.p = *(int *)(hdr + 4);
+    int nxp = *(int *)(hdr + 4);
     int out[4];
-    it.p = nx.p;
-    f_05f64cv(out, t, nx);
+    it.p = nxp;
+    f_05f64cv(out, t, It4(nxp));
     int n = h.p->s7();
     Str s = h.p->s21();
     s.p[*(int *)(s.p - 12)] = D_1a4d14[0];

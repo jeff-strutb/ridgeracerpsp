@@ -421,11 +421,11 @@ void CCamTV::Set(const CamParam *cp)
         shotPos.y = s->pos.y;
         shotPos.z = s->pos.z;
     }
-    s = shot;
-    if (s->glide.retarget != 0) {
+    TVGlide *g = &shot->glide;
+    if (g->retarget != 0) {
         float tmp;
-        areas->f_0e2d10(&s->glide.tgt.x, &tmp, &s->glide.tgt.z, s->glide.tgt.x, s->glide.tgt.z);
-        s->glide.retarget = 0;
+        D_23c820.Areas()->f_0e2d10(&g->tgt.x, &tmp, &g->tgt.z, g->tgt.x, g->tgt.z);
+        g->retarget = 0;
     }
     f_080b48();
     f_080b50();
@@ -672,7 +672,9 @@ extern float D_1d5d9c;
 extern float D_24144c;
 struct Ramp;
 float f_082588(Ramp *r, float x);
-extern "C" float *f_0a8fa8(float *out, void *c, const float *d);
+// Declared void here (the body returns out): an unused v0 result held v0 over the next insn
+// in local-alloc and swapped f_0803e4's two %hi registers.
+extern "C" void f_0a8fa8(float *out, void *c, const float *d);
 struct Tune;
 extern Tune D_241458;
 extern Tune D_241468;
@@ -704,14 +706,7 @@ void CCamTV::f_0803dc()
 {
 }
 
-/* @draft 0x0803e4 us _ZN7CamCtrl6CCamTV8f_0803e4Ev
-   Remaining difference: the two %hi registers of 80/D_24144c are swapped (retail v0 for
-   D_24144c); local-alloc gives the 80.0 pseudo the first choice because update_equiv_regs
-   moves its lui next to its use and shortens its life. Checked 2026-11-16 in the lreg/greg
-   dumps: sched1 gives hi(D) 32, hi(80) 35, lw D 34, lw 80 37; update_equiv_regs re-emits
-   hi(80) as insn 124 right before 37, so the two %hi pseudos (190, 194) no longer overlap and
-   tie on priority, yet local-alloc still puts 190 in v1 (194, 185/186, 197, 203 take v0):
-   something keeps v0 busy over insns 32..34 that is not visible in the dump yet.
+/* @implements 0x0803e4 us _ZN7CamCtrl6CCamTV8f_0803e4Ev
    WHAT IT DOES: The camera's aim offset: the course direction at the car, looking ahead by
    the shot's ramp read at the value at 656, scaled by half of 80 over the speed unit (at
    most 1, which is kept at 660). */
@@ -767,10 +762,10 @@ void CCamTV::f_0804bc()
 }
 
 /* @draft 0x081610 us _ZN7CamCtrl6CCamTV8f_081610Ev
-   Remaining difference (39 words, 440 vs 448 bytes; block layout now matches since the
-   zero is one return at the end): retail computes each f_0f4290 argument in its operand's
-   register and then moves it to f12 (x in f0; n / 150 and (n - 150) / 600 in n's f20), which
-   points to n being updated in place (n -= 150; n /= 600) and x kept apart from its clamp.
+   Remaining difference (12 words, same size; n updated in place in its callee-saved f20
+   fixed the size): local-alloc puts the eased x in f12 where retail keeps x, its division and
+   its eased value in f0 and moves it to f12 in the jal slot (writing x = f(x) * k in place did
+   not change that); the ternary's two addresses are built in a0 in retail, in v0 here.
    WHAT IT DOES: Steps the shot's timing from the frame count at 448: the eased progress
    over 600 frames (kept at 712), the span left after the two offsets, the previous zoom
    saved; eases the value at 512 toward the distance ramp (near or far set by 40000) over
@@ -793,14 +788,22 @@ float CCamTV::f_081610()
         float x = (float)m448 / 150.0f;
         if (1.0f < x)
             x = 1.0f;
-        float e = f_0f4290(x) * k;
-        m512 = a * e + m512 * (1.0f - e);
+        x = f_0f4290(x) * k;
+        m512 = a * x + m512 * (1.0f - x);
         int c = m448;
         float n = (float)c;
-        if (c < 150)
-            return f_0f4290(n / 150.0f) * k * f_082588(&D_1d3a6c, m656);
-        if (c < 750)
-            return (1.0f - f_0f4290((n - 150.0f) / 600.0f)) * k * f_082588(&D_1d3a6c, m656);
+        if (c < 150) {
+            n /= 150.0f;
+            n = f_0f4290(n) * k;
+            return n * f_082588(&D_1d3a6c, m656);
+        }
+        if (c < 750) {
+            n -= 150.0f;
+            n /= 600.0f;
+            n = 1.0f - f_0f4290(n);
+            n *= k;
+            return n * f_082588(&D_1d3a6c, m656);
+        }
     }
     return 0.0f;
 }
@@ -1196,10 +1199,13 @@ void f_0a4160(CamCtrl::Vec4 *o, const CamCtrl::Mat34 *m, int order);
 namespace CamCtrl {
 
 /* @draft 0x07fa84 us _ZN7CamCtrl6CCamTV8f_07fa84Ev
-   Remaining difference (2,148 vs 2,156 bytes; structure and stack layout match): global-alloc
+   Remaining difference (2,152 vs 2,156 bytes; structure and stack layout match): global-alloc
    swaps s0/s1 (retail s0 = the new shot, s1 = the constant 1); sched order of the 272 load,
-   of the aim height sum and of the shot position loads in both car-relative blocks (retail
-   loads z first, and the second block's test is a beql taking that load). Retail stores the
+   of the aim height sum and of the shot position loads in both car-relative blocks. The last
+   missing word is that block order: retail's fixed==2 block starts with the z load, so dbr
+   steals it into a beql; ours starts both arms with the x load, which dbr puts in a plain beq
+   slot shared by both arms (one word fewer). The area word came from a and b being set to
+   pos -/+ 1000 before the first call and then overwritten by the calls. Retail stores the
    shot position, the look point and the view angles straight from this (lw/sw at 464, 480,
    496), so these are real Vec4 members (a cast through shotX put the address in a register).
    WHAT IT DOES: Steps the camera once a frame. When the shot to show changes it takes the
@@ -1289,8 +1295,10 @@ void CCamTV::f_07fa84()
         CourseAreas *areas = D_23c820.Areas();
         if (m548 == 1) {
             int pos = (int)car->pos;
-            int a = areas->f_0e2690(pos - 1000);
-            int b = areas->f_0e2690(pos + 1000);
+            int a = pos - 1000;
+            int b = pos + 1000;
+            a = areas->f_0e2690(a);
+            b = areas->f_0e2690(b);
             m532 = (float)areas->f_0e2448(a, b, shotPos.x, shotPos.z);
         } else {
             float side;

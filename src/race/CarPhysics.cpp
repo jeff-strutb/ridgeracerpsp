@@ -659,9 +659,9 @@ void f_0aa748(CarPhys *p);
 void f_0ab370(CarPhys *p);
 }
 
-/* @draft 0x0a88ac us f_0a88ac
+/* @implements 0x0a88ac us f_0a88ac
    WHAT IT DOES: Updates the car's stored position and height, runs the track step f_0aa748, reads the track lookups for the car's position and copies the result into the car, then runs the wheel step when the lookup result is the sentinel and the two drive steps.
-   Remaining difference: first run; the ordering of the stored copies and the lookup pointer arithmetic are not yet matched. */
+   The polygon set pointer is one variable, reassigned to the areas' set (+112) for the retry, so it keeps s2 and 0xffff takes s3. */
 extern "C" void f_0a88ac(CarPhys *p)
 {
     float saved12 = p->m12;
@@ -681,23 +681,24 @@ extern "C" void f_0a88ac(CarPhys *p)
     p->m16 = p->m136;
     char *d = (char *)&D_23c820;
     p->m112 = f_0d5f78(d + 12144, (int)p->m136);
-    char *s2 = d + 12256;
     char *s5 = d + 12240;
+    char *set = d + 12256;
     float v[4];
     v[0] = p->m0;
     v[1] = p->m12;
     v[2] = p->m4;
     v[3] = 1.0f;
-    if (p->m116 == 0)
-        p->m92 = f_0af9c4(s2, v, &p->m12);
+    if (p->m116)
+        p->m92 = f_0b0234(set, v, &p->m12);
     else
-        p->m92 = f_0b0234(s2, v, &p->m12);
-    p->m104 = f_0af5e8(s2, &p->m92);
+        p->m92 = f_0af9c4(set, v, &p->m12);
+    p->m104 = f_0af5e8(set, &p->m92);
     if ((unsigned short)p->m92 == 0xffff) {
         f_0ab370(p);
         p->m12 = p->m144;
         p->m92 = p->m184;
-        p->m104 = f_0af5e8(s5 + 112, &p->m92);
+        set = s5 + 112;
+        p->m104 = f_0af5e8(set, &p->m92);
     }
     if ((unsigned short)p->m92 == 0xffff) {
         p->m12 = saved12;
@@ -1089,7 +1090,7 @@ static inline CoursePos CourseAt(CoursePt *list, float s)
 
 /* @draft 0x0a8fa8 us f_0a8fa8
    WHAT IT DOES: Writes into out the course direction at the car's course position: the course point d ahead (wrapped by f_0af478) minus the point at the position, with a last word of 1.0; returns out.
-   Remaining difference: retail copies the wrapped position to a new register and converts the second point index back through an integer register (mtc1); register choices follow from that. */
+   Remaining difference: retail copies the wrapped position to a new register and converts the second point index back through an integer register (mtc1); register choices follow from that. Both CourseAt expansions are identical in cse (fix:SI into the SI index pseudo, float:SF of it); the direct cvt here is reload reusing the fix's FP output, so retail's mtc1 means that FP value was not available at the second cvt: retail holds u in f3 (mov.s f3,f0) and puts (float)n in f0, here u stays in f0. Look at why u's pseudo is not tied to the call's f0 in retail (a second use of u, or u reaching CourseAt through a different expression). */
 extern "C" float *f_0a8fa8(float *out, CarPhys *c, const float *d)
 {
     CoursePt *list = D_23f7f0_pts;

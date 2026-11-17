@@ -29,7 +29,7 @@ extern Glyph D_1d3a30[];
 /* A text style: the texture table (one texture per glyph page, held as a word), the glyph
    set offset and the two scales. */
 struct TextStyle {
-    int m0;
+    int *m0;
     int set;
     float sx;
     float sy;
@@ -51,7 +51,7 @@ extern "C" void f_07ac1c(TextStyle *t)
 
 /* @implements 0x07ac38 us f_07ac38
    WHAT IT DOES: Sets the word at +0 of a text style. */
-extern "C" void f_07ac38(TextStyle *t, int v)
+extern "C" void f_07ac38(TextStyle *t, int *v)
 {
     t->m0 = v;
 }
@@ -63,15 +63,12 @@ extern "C" void f_07ac40(TextStyle *t)
     t->set = 0;
 }
 
-/* @draft 0x07ac48 us f_07ac48
+/* @implements 0x07ac48 us f_07ac48
    WHAT IT DOES: Converts an ASCII and Shift-JIS half width (katakana) string into glyph
    records in a text style: digits, letters, punctuation, katakana and a few symbols each
    append a copy of their glyph to the output list; other characters are skipped. Returns the
-   number of glyphs written.
-   REMAINING DIFFERENCE: the control flow and every case's address arithmetic match. Retail
-   hoists thirteen case bases out of the loop, all but the brace run's; this build also
-   hoists the brace run's base and not the 0xa1 to 0xa3 one, so the registers differ (and
-   retail keeps the output pointer in a2, copied back from s0 after strlen). */
+   number of glyphs written. The special glyphs are fixed table entries (94, 127, 163-168), and
+   the output is indexed by the count (loop strength reduction makes retail's pointer copy). */
 extern "C" int f_07ac48(TextStyle *t, const char *s, Glyph *out)
 {
     unsigned int len = strlen(s);
@@ -92,11 +89,11 @@ extern "C" int f_07ac48(TextStyle *t, const char *s, Glyph *out)
         else if ((unsigned char)(c - 0xc0) < 32)
             g = &D_1d33a0[c - 0xc0 + 62 + t->set];
         else if (c == 0x80)
-            g = &D_1d33a0[c - 0x80 + 222 + t->set];
+            g = &D_1d33a0[94 + t->set];
         else if (c >= 0xe0)
             g = &D_1d33a0[c - 0xe0 + 95 + t->set];
         else if (c == 0x81)
-            g = &D_1d33a0[c - 0x81 + 256 + t->set];
+            g = &D_1d33a0[127 + t->set];
         else if ((unsigned char)(c - '!') < 15)
             g = &D_1d33a0[c - '!' + 128 + t->set];
         else if ((unsigned char)(c - ':') < 7)
@@ -104,24 +101,23 @@ extern "C" int f_07ac48(TextStyle *t, const char *s, Glyph *out)
         else if ((unsigned char)(c - '[') < 6)
             g = &D_1d33a0[c - '[' + 150 + t->set];
         else if ((unsigned char)(c - '{') < 4)
-            g = &D_1d39b8[c - '{' + t->set];
+            g = &D_1d33a0[c - '{' + 156 + t->set];
         else if ((unsigned char)(c - 0xa1) < 3)
             g = &D_1d33a0[c - 0xa1 + 160 + t->set];
         else if (c == 0xa5)
-            g = &D_1d33a0[c - 0xa5 + 328 + t->set];
+            g = &D_1d33a0[163 + t->set];
         else if (c == 0xb1)
-            g = &D_1d33a0[c - 0xb1 + 341 + t->set];
+            g = &D_1d33a0[164 + t->set];
         else if (c == 0xb2)
-            g = &D_1d33a0[c - 0xb2 + 343 + t->set];
+            g = &D_1d33a0[165 + t->set];
         else if (c == 0xb7)
-            g = &D_1d3a1c[t->set];
+            g = &D_1d33a0[166 + t->set];
         else if (c == 0xbf)
-            g = &D_1d3a26[t->set];
+            g = &D_1d33a0[167 + t->set];
         else if (c == 0x82)
-            g = &D_1d3a30[t->set];
+            g = &D_1d33a0[168 + t->set];
         if (g) {
-            *out = *g;
-            out++;
+            out[n] = *g;
             n++;
             g = 0;
         }
@@ -194,7 +190,7 @@ next:
         if (gl) {
             f_07d574(t, x, y, -1, gl->u, gl->v, x + (int)(gl->width * t->sx),
                      y + (int)(gl->height * t->sy), -1, gl->u + gl->width, gl->v + gl->height,
-                     ((int *)t->m0)[gl->page], r, g, b, a);
+                     t->m0[gl->page], r, g, b, a);
             x += (int)(gl->width * t->sx);
             gl = 0;
         }
@@ -282,7 +278,7 @@ extern "C" int f_07b4c8(TextStyle *t, int x, int y, int pitch, int align, const 
         if (gl) {
             f_07d574(t, x, y, -1, gl->u, gl->v, x + (int)(gl->width * t->sx),
                      y + (int)(gl->height * t->sy), -1, gl->u + gl->width, gl->v + gl->height,
-                     ((int *)t->m0)[gl->page], r, g, b, a);
+                     t->m0[gl->page], r, g, b, a);
             x += (int)(adv * t->sx);
             adv = pitch;
             gl = 0;
@@ -486,7 +482,7 @@ extern "C" int f_07c03c(TextStyle *t, int x, int y, int pitch, int align, const 
             float w = gl->width * t->sx;
             int x0 = x + (int)(((float)pitch - w) * 0.5f);
             f_07d574(t, x0, y, -1, gl->u, gl->v, x0 + (int)w, y + (int)(gl->height * t->sy), -1,
-                     gl->u + gl->width, gl->v + gl->height, ((int *)t->m0)[gl->page], r, g, b, a);
+                     gl->u + gl->width, gl->v + gl->height, t->m0[gl->page], r, g, b, a);
             x += pitch;
             gl = 0;
         }
@@ -534,7 +530,7 @@ extern "C" int f_07c344(TextStyle *t, int x, int y, int align, const char *s, fl
         if (gl) {
             f_07d574(t, x, y, -1, gl->u, gl->v, x + (int)(gl->width * t->sx),
                      y + (int)(gl->height * t->sy), -1, gl->u + gl->width, gl->v + gl->height,
-                     ((int *)t->m0)[gl->page], r, g, b, a);
+                     t->m0[gl->page], r, g, b, a);
             x += (int)(gl->width * t->sx);
             gl = 0;
         }
@@ -616,7 +612,7 @@ extern "C" int f_07c610(TextStyle *t, int x, int y, int pitch, int align, const 
             float w = gl->width * t->sx;
             int x0 = x + (int)(((float)pitch - w) * 0.5f);
             f_07d574(t, x0, y, -1, gl->u, gl->v, x0 + (int)w, y + (int)(gl->height * t->sy), -1,
-                     gl->u + gl->width, gl->v + gl->height, ((int *)t->m0)[gl->page], r, g, b, a);
+                     gl->u + gl->width, gl->v + gl->height, t->m0[gl->page], r, g, b, a);
             x += pitch;
             gl = 0;
         }
@@ -699,7 +695,7 @@ extern "C" int f_07cb24(TextStyle *t, int x, int y, int align, const char *s, fl
         if (gl) {
             f_07d574(t, x, y, -1, gl->u, gl->v, x + (int)(gl->width * t->sx),
                      y + (int)(gl->height * t->sy), -1, gl->u + gl->width, gl->v + gl->height,
-                     ((int *)t->m0)[gl->page], r, g, b, a);
+                     t->m0[gl->page], r, g, b, a);
             x += (int)(gl->width * t->sx);
             gl = 0;
         }
@@ -750,7 +746,7 @@ extern "C" int f_07d060(TextStyle *t, int x, int y, int pitch, int align, unsign
             float w = gl->width * t->sx;
             int x0 = x + (int)(((float)pitch - w) * 0.5f);
             f_07d574(t, x0, y, -1, gl->u, gl->v, x0 + (int)w, y + (int)(gl->height * t->sy), -1,
-                     gl->u + gl->width, gl->v + gl->height, ((int *)t->m0)[gl->page], r, g, b, a);
+                     gl->u + gl->width, gl->v + gl->height, t->m0[gl->page], r, g, b, a);
             x += pitch;
             gl = 0;
         }
@@ -801,7 +797,7 @@ extern "C" int f_07d2d8(TextStyle *t, int x, int y, int align, unsigned int n, c
         if (gl) {
             f_07d574(t, x, y, -1, gl->u, gl->v, x + (int)(gl->width * t->sx),
                      y + (int)(gl->height * t->sy), -1, gl->u + gl->width, gl->v + gl->height,
-                     ((int *)t->m0)[gl->page], r, g, b, a);
+                     t->m0[gl->page], r, g, b, a);
             x += (int)(gl->width * t->sx);
             gl = 0;
         }
