@@ -1879,7 +1879,8 @@ void f_05a3e8(void *out, char *s, int len)
 /* @draft 0x052720 us f_052720
    WHAT IT DOES: Passes the sub-object at +340 and the value chain at +340 -> +4 -> +4
    to f_05f64c, then calls virtual slot 9 of the object reached through the +340 chain
-   (obj+4 -> +4 -> +8).    Remaining difference: 5 of 26 words differ, first at +0x28: the store/load order in the second half of the chain and the virtual-call setup.
+   (obj+4 -> +4 -> +8). The first chain value is stored to buf[0] before b so sched2 emits b's store first (handbook: last statement first).
+   Remaining difference: 2 words, vtable in v0 and function pointer in v1 (retail v1/v0). Expand order is vt, fn, a0 = obj, call; sched1 hoists a0 = obj (last use of obj) above the vt load, so vt and fn both live one insn and local-alloc's tie goes to the lower qty (vt) for v0. Retail needs vt born before the a0 move; spelling not found (same v0/v1 swap as f_0540a0).
    */
 void f_052720(char *p)
 {
@@ -1889,8 +1890,9 @@ void f_052720(char *p)
     int b;
     int a = *(int *)(s0 + 4);
     buf[0] = a;
-    b = *(int *)(a + 4);
-    buf[0] = b;
+    int v = *(int *)(a + 4);
+    buf[0] = v;
+    b = v;
     f_05f64c(out, s0, &b);
     int c = *(int *)(s0 + 4);
     b = c;
@@ -3052,7 +3054,7 @@ void f_0632d8(void *o, void *a)
 
 /* @draft 0x06396c us f_06396c
    WHAT IT DOES: Allocates a 16-byte Float, copies the two value words at +8 and +12 of the source and clears +4.
-   Remaining difference: instruction order after the allocation; retail loads the source words and the vptr in a different interleaving. */
+   Remaining difference: instruction order after the allocation; retail loads the source words and the vptr in a different interleaving. Retail issues the vtable lui first (v1), then a (a0) and b (a1), with the addiu after the restores; the same vtable-lui-first shape as f_06a534, so one cause likely covers both (not found). */
 void *f_06396c(void *o)
 {
     void *p = f_05db08(16);
@@ -3726,7 +3728,8 @@ extern "C" void *f_069e08(void *self, unsigned *obj) {
 }
 
 /* @draft 0x06a534 us f_06a534
-   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d38 and D_1a4d3c after it, hands it to f_05daa4 together with this, and returns this. */
+   WHAT IT DOES: allocates a 16-byte object with the rodata vtable at D_1a4270 and the two words of the rodata globals D_1a4d38 and D_1a4d3c after it, hands it to f_05daa4 together with this, and returns this.
+   Remaining difference: 5 words, the sched2 order of the three address loads after f_05db08 (retail: vtable lui, x, y, vtable addiu; ours: y, x, then the vtable pair). Reading x before y was tried: worse (7 words), it swaps x and y between a2 and a3. */
 struct SwgFC06a534 {
     SwgFM m;
     SwgFC06a534() {
@@ -5769,7 +5772,7 @@ void f_0454d4(int *p) {
 
 /* @draft 0x04d224 us f_04d224
    WHAT IT DOES: counts entries whose id at +128 equals the clip id for a1, stores the count through out if given, and returns the index of the first match or -1.
-   Remaining difference: retail initialises the index from the count's register (move v1,a2, with cnt = 0 scheduled before a1 = v0); ours sets both to $0 independently. cse folds a source copy (i = cnt) back to the constant, so the copy must come from a later pass; not found. */
+   Remaining difference: retail initialises the index from the count's register (move v1,a2, with cnt = 0 scheduled before a1 = v0); ours sets both to $0 independently. cse folds a source copy (i = cnt) back to the constant, so the copy must come from a later pass; not found. The greg and postreload dumps still hold v1 = const 0 after a2 = const 0 (reload_cse does not swap a zero for a register), so the copy is not made after reload either. */
 int f_04d224(char *s, int a1, int *out) {
     int cnt = 0, found = -1, i;
     void *o = *(void **)s;
@@ -8451,7 +8454,7 @@ void f_04f874(char *self, void *obj) {
 
 /* @draft 0x0540a0 us f_0540a0
    WHAT IT DOES: calls virtual slot 25 of the object, then copies the counted handle two links down the chain at +328 (bumping its refcount), calls f_05f64c with that chain, and calls virtual slot 18 of the handle's object with the +328 sub-object.
-   Remaining difference: same stack-store ordering as f_055220. */
+   Remaining difference: 2 words, the slot-25 function pointer is in v1 where retail has v0 (the stack-store note was stale). The lreg dump shows local-alloc giving v0 to the copy of p (pseudo 181, `Register 181 in 2`) and v1 to the pointer (184) although their lifetimes do not overlap; cause not found. */
 void f_0540a0(char *p) {
   H h; volatile int t[4]; int out[4]; volatile int b;
   char *q = p + 328;
@@ -8471,7 +8474,7 @@ void f_0540a0(char *p) {
 
 /* @draft 0x05414c us f_05414c
    WHAT IT DOES: same as f_0540a0 but calls virtual slot 19 of the handle's object.
-   Remaining difference: same as f_0540a0. */
+   Remaining difference: same as f_0540a0 (function pointer in v1, retail v0). */
 void f_05414c(char *p) {
   H h; volatile int t[4]; int out[4]; volatile int b;
   char *q = p + 328;
@@ -12485,7 +12488,7 @@ struct Obj9b : Base9 {
 };
 
 /* @draft 0x058a44 us f_058a44
-   Remaining difference: one word, the inlined string destructor on the unwind path uses blez where retail has blezl (branch likely).
+   Remaining difference: one word, the inlined string destructor on the unwind path uses blez where retail has blezl (branch likely). dbr fills the slot from the target block (move a0,s2 for f_04eee8, label used once) non-annulled because a0 is set first at the fall-through (move a0,sp for f_04ed28, REG_BR_PROB 531); retail's annul means a0 counted as live there (opposite_needed), cause not found.
    WHAT IT DOES: pops the top argument as a handle; asks the object at the next entry of the list at +344 (virtual slot 9) for a value, then if the handle's type (slot 6) is 7 and the value is nonzero, fetches its name string (slot 21), terminates it and passes it to f_15e078, otherwise returns slot 23 of the handle minus one; returns -1 for the null value case. */
 int f_058a44(char *s) {
     char *t = s + 328;
@@ -12923,15 +12926,14 @@ void f_04f070(Tr3 *o) { Tmp16 g; o->~Tr3(); Tr3::operator delete(o); }
 int f_05aaf8(void *, void *, void *, void *);
 struct Hq { Vo *p; int *c; Hq(const Hd7 &o) { c = o.c; p = o.p; if (c) ++*c; } ~Hq() { f_04ed28(this); } };
 struct Rq { int *p; int *c; int pad[6]; Rq() { p = 0; c = 0; } ~Rq() { f_04ed28(this); } };
-/* @draft 0x055a98 us f_055a98
-   WHAT IT DOES: takes the counted handle two links down the chain at +328, builds the +328 output buffer with f_05f64c, then calls f_05aaf8 with this object, the argument, a counted copy of the handle and an empty handle, returning its result.
-   Remaining difference: 2 words (the spill of the chain pointer to sp+16 is scheduled after the next load in ours). */
+/* @implements 0x055a98 us f_055a98
+   WHAT IT DOES: takes the counted handle two links down the chain at +328, builds the +328 output buffer with f_05f64c, then calls f_05aaf8 with this object, the argument, a counted copy of the handle and an empty handle, returning its result. The link is read as an int so it aliases the spill to buf[0] and stays after it. */
 int f_055a98(char *self, void *arg) {
   Hd7 h; int buf[4]; int out[4]; int b[4];
   char *q = self + 328;
   int a = Q7(q, 4);
   buf[0] = a;
-  int *v = *(int **)(a + 4);
+  int *v = (int *)Q7(a, 4);
   h.c = (int *)v[3]; h.p = (Vo *)v[2];
   buf[0] = (int)v;
   if (h.c) ++*h.c;
