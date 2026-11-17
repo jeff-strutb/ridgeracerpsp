@@ -150,7 +150,7 @@ struct Rot {
 
 /* @draft 0x0a6fb4 us f_0a6fb4
    WHAT IT DOES: Clears the car physics state: zeroes the position, motion and mode fields, sets the two rotations to the identity, and for each of the four wheels zeroes its per wheel values and sets its scale pair to one.
-   Remaining difference: store order only. sched1 ranks the w store (its 1.0 register dies there) ahead of x, and int stores pass the float ones; retail keeps x, w, y, z and interleaves 84/88/80 and the wheel loop's short stores differently. */
+   Remaining difference: store order only. sched1 ranks the w store (its 1.0 register dies there) ahead of x, and int stores pass the float ones; retail keeps x, w, y, z and interleaves 84/88/80 and the wheel loop's short stores differently. Retail's order x(0x40), 84, w, y, z, 88, 80 is not an alias-set effect (m88 is int by its other uses, line ~451); here w/y/z pass the int stores 44/48 because float vs int sets are disjoint, retail keeps them after 48. */
 extern "C" void f_0a6fb4(CarPhys *p)
 {
     int i;
@@ -978,7 +978,7 @@ extern "C" void f_0aa608(CarPhys *p)
 
 /* @draft 0x0aaf68 us f_0aaf68
    WHAT IT DOES: The one-wheel form of f_0aa608 for wheel i: stores the truncated height, places the wheel and its probe point, takes its surface id (or -1), runs f_0aa748 and keeps the results for that wheel.
-   Remaining difference: scheduling only: retail loads the height and heading first and stores the heading to the stack after the vector; the four result loads come out in another order. 720 setup orders and 72 result orders tried (the best is kept). */
+   Remaining difference: scheduling only: retail loads the height and heading first and stores the heading to the stack after the vector; the four result loads come out in another order. 720 setup orders and 72 result orders tried (the best is kept). Retail reads m16 through a0 and m8 through s1 (the saved copy), and stores v.y last (jal delay slot); the order permutations did not reach that, so the cause is not statement order. */
 extern "C" void f_0aaf68(CarPhys *p, int i)
 {
     Vec4 v;

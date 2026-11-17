@@ -55,9 +55,10 @@ static inline Vec2 operator*(const Vec2 &a, float s)
 /* @draft 0x0b1400 us f_0b1400
    WHAT IT DOES: Projects the vector from the first point to the third onto a direction: the
    component along the direction, scaled back into a vector.
-   Remaining difference: the frame is now 112 bytes as in retail, but the prologue schedules the
-   four loads after the stack adjustment and the struct temporaries are placed differently
-   (about 20 of 28 words differ, from +0x10). */
+   Remaining difference: this source compiles to a 48-byte frame (three slots: op- result 16, d 0,
+   product 32); retail's 112-byte frame has seven 16-byte slots with d at 16, the op- result at 64,
+   the product at 80 and 0/32/48/96 unused, so retail's inline helpers create four more stack
+   temporaries (e.g. constructor-built returns); not yet identified. */
 Vec2 f_0b1400(const Vec2 *a, const Vec2 *, const Vec2 *b, const Vec2 *dir)
 {
     Vec2 d = *b - *a;

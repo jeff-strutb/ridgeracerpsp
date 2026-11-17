@@ -263,7 +263,8 @@ Vec4a *f_0a512c(Vec4a *v, const Mat34 *m)
 }
 
 /* @draft 0x09d858 us f_09d858
-   WHAT IT DOES: Converts a quaternion to a 3x3 rotation matrix (scale 2/norm, or 0 when the norm is tiny). */
+   WHAT IT DOES: Converts a quaternion to a 3x3 rotation matrix (scale 2/norm, or 0 when the norm is tiny). 
+   Remaining difference: retail is the transpose of the earlier draft (m[0][1] = xy + wz etc.; fixed, 58 -> 17 words); left: z and w swap registers ($f9/$f8) in global-alloc (z 5 refs/25 insns, w 6/29), and sched2 orders the off-diagonal adds after that. */
 void f_09d858(Mat33 *m, const Quat *q)
 {
     float x = q->v[0], y = q->v[1], z = q->v[2], w = q->v[3];
@@ -274,18 +275,19 @@ void f_09d858(Mat33 *m, const Quat *q)
     float xy = x * ys, xz = x * zs, yz = y * zs;
     float wx = w * xs, wy = w * ys, wz = w * zs;
     m->m[0][0] = 1.0f - (yy + zz);
-    m->m[1][0] = xy + wz;
-    m->m[2][0] = xz - wy;
-    m->m[0][1] = xy - wz;
+    m->m[1][0] = xy - wz;
+    m->m[2][0] = xz + wy;
+    m->m[0][1] = xy + wz;
     m->m[1][1] = 1.0f - (xx + zz);
-    m->m[2][1] = yz + wx;
-    m->m[0][2] = xz + wy;
-    m->m[1][2] = yz - wx;
+    m->m[2][1] = yz - wx;
+    m->m[0][2] = xz - wy;
+    m->m[1][2] = yz + wx;
     m->m[2][2] = 1.0f - (xx + yy);
 }
 
 /* @draft 0x09d770 us f_09d770
-   WHAT IT DOES: Converts a quaternion to a 3x3 rotation matrix (scale 2/norm, or 0 when the norm is tiny). */
+   WHAT IT DOES: Converts a quaternion to a 3x3 rotation matrix (scale 2/norm, or 0 when the norm is tiny). 
+   Remaining difference: retail is the transpose of the earlier draft (m[0][1] = xy + wz etc.; fixed, 58 -> 17 words); left: z and w swap registers ($f9/$f8) in global-alloc (z 5 refs/25 insns, w 6/29), and sched2 orders the off-diagonal adds after that. */
 void f_09d770(Mat33 *m, const Quat *q)
 {
     float x = q->v[0], y = q->v[1], z = q->v[2], w = q->v[3];
@@ -296,18 +298,19 @@ void f_09d770(Mat33 *m, const Quat *q)
     float xy = x * ys, xz = x * zs, yz = y * zs;
     float wx = w * xs, wy = w * ys, wz = w * zs;
     m->m[0][0] = 1.0f - (yy + zz);
-    m->m[1][0] = xy + wz;
-    m->m[2][0] = xz - wy;
-    m->m[0][1] = xy - wz;
+    m->m[1][0] = xy - wz;
+    m->m[2][0] = xz + wy;
+    m->m[0][1] = xy + wz;
     m->m[1][1] = 1.0f - (xx + zz);
-    m->m[2][1] = yz + wx;
-    m->m[0][2] = xz + wy;
-    m->m[1][2] = yz - wx;
+    m->m[2][1] = yz - wx;
+    m->m[0][2] = xz - wy;
+    m->m[1][2] = yz + wx;
     m->m[2][2] = 1.0f - (xx + yy);
 }
 
 /* @draft 0x09fd1c us f_09fd1c
-   WHAT IT DOES: Converts a quaternion to a 3x4-padded rotation matrix (scale 2/norm, or 0 when the norm is tiny). */
+   WHAT IT DOES: Converts a quaternion to a 3x4-padded rotation matrix (scale 2/norm, or 0 when the norm is tiny). 
+   Remaining difference: retail is the transpose of the earlier draft (m[0][1] = xy + wz etc.; fixed, 58 -> 17 words); left: z and w swap registers ($f9/$f8) in global-alloc (z 5 refs/25 insns, w 6/29), and sched2 orders the off-diagonal adds after that. */
 void f_09fd1c(Mat34 *m, const Quat *q)
 {
     float x = q->v[0], y = q->v[1], z = q->v[2], w = q->v[3];
@@ -318,18 +321,19 @@ void f_09fd1c(Mat34 *m, const Quat *q)
     float xy = x * ys, xz = x * zs, yz = y * zs;
     float wx = w * xs, wy = w * ys, wz = w * zs;
     m->m[0][0] = 1.0f - (yy + zz);
-    m->m[1][0] = xy + wz;
-    m->m[2][0] = xz - wy;
-    m->m[0][1] = xy - wz;
+    m->m[1][0] = xy - wz;
+    m->m[2][0] = xz + wy;
+    m->m[0][1] = xy + wz;
     m->m[1][1] = 1.0f - (xx + zz);
-    m->m[2][1] = yz + wx;
-    m->m[0][2] = xz + wy;
-    m->m[1][2] = yz - wx;
+    m->m[2][1] = yz - wx;
+    m->m[0][2] = xz - wy;
+    m->m[1][2] = yz + wx;
     m->m[2][2] = 1.0f - (xx + yy);
 }
 
 /* @draft 0x09fc34 us f_09fc34
-   WHAT IT DOES: Converts a quaternion to a 3x4-padded rotation matrix (scale 2/norm, or 0 when the norm is tiny). */
+   WHAT IT DOES: Converts a quaternion to a 3x4-padded rotation matrix (scale 2/norm, or 0 when the norm is tiny). 
+   Remaining difference: retail is the transpose of the earlier draft (m[0][1] = xy + wz etc.; fixed, 58 -> 17 words); left: z and w swap registers ($f9/$f8) in global-alloc (z 5 refs/25 insns, w 6/29), and sched2 orders the off-diagonal adds after that. */
 void f_09fc34(Mat34 *m, const Quat *q)
 {
     float x = q->v[0], y = q->v[1], z = q->v[2], w = q->v[3];
@@ -340,13 +344,13 @@ void f_09fc34(Mat34 *m, const Quat *q)
     float xy = x * ys, xz = x * zs, yz = y * zs;
     float wx = w * xs, wy = w * ys, wz = w * zs;
     m->m[0][0] = 1.0f - (yy + zz);
-    m->m[1][0] = xy + wz;
-    m->m[2][0] = xz - wy;
-    m->m[0][1] = xy - wz;
+    m->m[1][0] = xy - wz;
+    m->m[2][0] = xz + wy;
+    m->m[0][1] = xy + wz;
     m->m[1][1] = 1.0f - (xx + zz);
-    m->m[2][1] = yz + wx;
-    m->m[0][2] = xz + wy;
-    m->m[1][2] = yz - wx;
+    m->m[2][1] = yz - wx;
+    m->m[0][2] = xz - wy;
+    m->m[1][2] = yz + wx;
     m->m[2][2] = 1.0f - (xx + yy);
 }
 

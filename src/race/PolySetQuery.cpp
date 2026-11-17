@@ -472,7 +472,7 @@ unsigned short f_0afc38(PolySet *p, const Vec4 *v, float *h, const Rec **rec)
 /* @draft 0x0afebc us f_0afebc
    WHAT IT DOES: Walks the triangles of one cell record and returns the first id whose triangle
    holds the point, or 0xffff for none.
-   Remaining difference: size 192 vs 192; 21/48 words differ from +0x1c (the record pointer is held in t3 where retail uses a2, and the loop-top moves are placed differently). */
+   Remaining difference: size 192 vs 192; 21/48 words differ from +0x1c (the record pointer is held in t3 where retail uses a2: retail loads rec->base at the loop top before `move a2,sp`, so rec dies there and takes a2; here sched1 puts the argument moves first, rec conflicts with a2; retail also sets i = 0 in the prologue and shares the 0xffff return). */
 unsigned short f_0afebc(PolySet *p, const Vec4 *v, const Rec **recp)
 {
     const Rec *rec = *recp;
