@@ -61,7 +61,7 @@ struct Info {
 };
 
 struct Slot {
-    int m0;
+    float m0;
     float m4;
     int m8;
 };
@@ -244,6 +244,41 @@ int f_111228(int ch)
 int f_1112a8(void)
 {
     return 0;
+}
+
+/* @draft 0x1112b0 us f_1112b0
+   WHAT IT DOES: Fades stream ch out over ms: a stream still opening or starting (state 1 or
+   2) is stopped at once (state 5); a playing one (state 3 or 4) gets a fade from its volume
+   to 0 in its slot. Ch -1 stops every stream not in state 2. 0x8000000c when nothing faded.
+   Remaining difference: register choice. The result gets a0 here (so ch is copied to a2)
+   where retail gives it v1 and keeps ch in a0. Block order and statements match. */
+int f_1112b0(int ch, int ms)
+{
+    struct Chan *c;
+    int i;
+
+    if (ch == -1) {
+        for (i = 0; i < D_291a44; i++) {
+            if (D_291980[i].state != 2)
+                f_111030(i);
+        }
+        return 0;
+    }
+    c = &D_291980[ch];
+    if ((unsigned short)(c->state - 1) < 2) {
+        f_111030(ch);
+        c->state = 5;
+        return 0x8000000c;
+    }
+    if ((unsigned short)(c->state - 3) < 2) {
+        float v = c->m176;
+
+        D_291a48[ch].m8 = ms;
+        D_291a48[ch].m0 = v;
+        D_291a48[ch].m4 = (0.0f - v) / (float)ms;
+        return 0;
+    }
+    return 0x8000000c;
 }
 
 /* @draft 0x1113e4 us f_1113e4
