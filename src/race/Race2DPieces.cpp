@@ -861,7 +861,12 @@ void C2DLapTime::f_101f74(float t)
    DRAFT: complete transcription, not byte-exact (see the remaining difference).
    WHAT IT DOES: Sets the nitro gauge up: its three bars empty, nothing counted.
    Remaining difference (4 words): for the first bar retail sets the three float arguments
-   before this; here this comes first. */
+   before this; here this comes first.
+   2026-11-16 cycle (no source change): the order is fixed at expand, not by a scheduler tie:
+   sched1 gives each f12/f13/f14 move an output dependence on the a0 move (insns 24 -> 26..28),
+   so the arg moves keep emission order (this, a1, floats). Retail emitted the floats before
+   this for the first call only; the 2nd/3rd calls match, so the first call's source form
+   differs (not found; z declared before the base call as here). */
 int C2DNitro::f_101b1c(Group *g, Race *r)
 {
     float z = 0;
@@ -1152,7 +1157,11 @@ int C2DPositionTour::Draw()
    low phase and the position blinks; otherwise they are plain white. Returns 0.
    Remaining difference: retail keeps 0.5 in two saved FPRs (f20 and a copy in f22, used for
    the add) and 1.0 in f21 in the pulse arm (frame +4 bytes, one more saved FPR); here the
-   copy is folded away (416 bytes against 436). */
+   copy is folded away (416 bytes against 436).
+   2026-11-16 cycle: retail's mul writes b's own register (mul.s f20,f0,f20) and the add reads the
+   copy in f22, so b is overwritten before the 0.5 is re-read: the copy is live because b dies at
+   the mul. Tried `float half = b;` hoisted before the if: identical output (CSE still folds the
+   copy into b). Untried: writing the update as two statements (b *= clk.lo; b += half;). */
 int C2DPositionTour::f_101b54()
 {
     if (!C2DDecorationBase::f_101b54())
@@ -1223,7 +1232,13 @@ int C2DLap::f_101b54()
    hidden, the lap digit (sprite 5, 10 pixels left) with its texture rectangle and the number
    of laps digit (sprite 3, 6 further left) with its rectangle, the second tens sprite (2)
    hidden.
-   Remaining difference: not compared in detail; the transcription is complete. */
+   2026-11-16 cycle: retail calls f_101f54(5) and f_101f54(3) once each (v0 kept in s1 for both
+   the rectangle and the move, group re-read after the call): written so, 704 -> 656 bytes
+   (retail 668), 171 -> 161 words.
+   Remaining difference: retail computes x + 40 before the first f_101f54(0) call and holds it
+   in a third saved FPR (f20; x in f21, y in f22, frame saves f20-f22); here x + 40 is formed
+   after the call, so only two FPRs are saved (12 bytes short). Untried: a local
+   `float x40 = x + 40.0f;` ahead of the first MOVE. */
 void C2DLap::f_104184(int n, int of, float x)
 {
     float y = 0.0f;
@@ -1233,12 +1248,20 @@ void C2DLap::f_104184(int n, int of, float x)
     MOVE(0, x + 40.0f, y);
     MOVE(1, x, y);
     Show(4, 0);
-    RECT(5, D_1b07bc[n % 10]);
-    MOVE(5, x + -10.0f, y);
+    {
+        int s = f_101f54(5);
+
+        f_04c1c8(group, s, D_1b07bc[n % 10]);
+        f_04c3c8(group, s, x + -10.0f, y);
+    }
     Show(2, 0);
-    RECT(3, D_1b071c[of % 10]);
-    x += -6.0f;
-    MOVE(3, x, y);
+    {
+        int s = f_101f54(3);
+
+        f_04c1c8(group, s, D_1b071c[of % 10]);
+        x += -6.0f;
+        f_04c3c8(group, s, x, y);
+    }
 }
 
 /* @implements 0x104420 us C2DFlag8f_101b1c
@@ -1934,7 +1957,13 @@ void C2DInfoWin::f_106120(float x, float y, int a, int b)
    positive), then the minutes in two digits (the tens hidden when zero), a colon, the seconds in
    two digits, a point and the milliseconds in three digits, each placed one digit width right
    of the last from the given position and coloured white or red (flag).
-   Remaining difference: about a third of the words; the register assignment (retail keeps the sprite set high part in a saved register) and the order of the arguments set for the texture and colour calls. */
+   Remaining difference: about a third of the words; the register assignment (retail keeps the sprite set high part in a saved register) and the order of the arguments set for the texture and colour calls.
+   2026-11-16 cycle (no source change): retail's s3 is the high part of the 11.0 literal
+   (lui s3 at +0x70, lwc1 3936(s3) at +0x78 and again at +0x2ac for the colon's x += 11).
+   Here CSE shares that high too (combine dump: pseudo 589, insns 171 and 449), but global
+   alloc gives it no hard register, so reload re-forms the lui at the second use, and s3
+   goes to the D_1b063c row copy instead (retail moves s0 -> s3 at +0x2f0, here +0x2a8).
+   So the first divergence is the allocator's priority for 589 against that copy. */
 void C2DInfoWin::f_10636c(int slot, int value, float *p, int flag)
 {
     float x = 0.0f;
@@ -2076,7 +2105,13 @@ int C2DAllTime::Draw()
    time in row 0 and the time left in row 2 (zero when out of time, hidden past six
    minutes); notes the best lap times by lap and which is the current best; and shows the
    three best times in rows 3 to 5, the best one in the highlight colour. Returns 0.
-   Remaining difference: scheduling only (the race pointer load and the first call's argument order). */
+   2026-11-16 cycle: retail loads D_2407fc (a1) and race (a0) once ahead of the m252 test and
+   reuses both through the blink test (no reload after the m248/m240 stores): held in locals
+   ri and r, 138 -> 4 words.
+   Remaining difference (4 words): (1) the first f_106e8c call sets a1 before a0 (this); the
+   later calls set this first, as here (same open question as C2DNitro 0x102e34). (2) reorg:
+   retail's `beqz m252` to the shared `sw m124,252(s0)` keeps a nop slot; here it becomes beqzl
+   with that store stolen from the target (branch-likely choice, cause not found). */
 int C2DAllTime::f_101b54()
 {
     int min, sec, ms;
@@ -2088,17 +2123,22 @@ int C2DAllTime::f_101b54()
         return 0;
     f_101cf4(D_2407fc->m132, &min, &sec, &ms);
     f_106e8c(1, min, sec, ms, 0, 1);
-    if (m252 != D_2407fc->m124) {
-        if (m252) {
-            m248 = 1;
-            m240 = race->clk.t;
+    {
+        RaceInfo *ri = D_2407fc;
+        Race *r = race;
+
+        if (m252 != ri->m124) {
+            if (m252) {
+                m248 = 1;
+                m240 = r->clk.t;
+            }
+            m252 = ri->m124;
         }
-        m252 = D_2407fc->m124;
+        if ((m240 > 0) & ((r->clk.t - m240) / 50 < 120))
+            m248 = ((unsigned)(r->clk.t / 50) >> 3 ^ 1) & 1;
+        else
+            m248 = 1;
     }
-    if ((m240 > 0) & ((race->clk.t - m240) / 50 < 120))
-        m248 = ((unsigned)(race->clk.t / 50) >> 3 ^ 1) & 1;
-    else
-        m248 = 1;
     f_101cf4(m252, &min, &sec, &ms);
     f_106e8c(0, min, sec, ms, 0, m248);
     f_101cf4(D_2407fc->timeLeft, &min, &sec, &ms);
@@ -2133,7 +2173,13 @@ int C2DAllTime::f_101b54()
    (the tens hidden when zero), the seconds in two digits and the milliseconds in three, each
    with its texture rectangle and the colour of the given row of the colour table. Rows other
    than the third show blank glyphs (11) in place of the digits of a time that is all zero.
-   Remaining difference: most words; the register assignment and the order of the scheduling around the sprite lookups differ. */
+   Remaining difference: most words; the register assignment and the order of the scheduling around the sprite lookups differ.
+   2026-11-16 cycle: retail has 17 f_101f54 calls to our 16: the tens-of-minutes Show is two
+   calls (the zero arm inline with a2 = 0, the shown arm out of line at +0x6b4 jumping back to
+   the shared f_04c248 call), so the source is an if/else of two Shows, not a ternary argument:
+   written so, 1692 -> 1720 bytes (retail 1752), 409 -> 413 words (shifted, not worse in
+   kind). Remaining: register assignment from the prologue on (retail forms row * 9 as
+   (row << 3) + row in v0 at +0x64 and holds different values in s4/s6/s7). */
 void C2DAllTime::f_106e8c(int row, int mn, int sc, int ms, int color, unsigned char show)
 {
     int d[3];
@@ -2157,7 +2203,10 @@ void C2DAllTime::f_106e8c(int row, int mn, int sc, int ms, int color, unsigned c
             d[1] = 11;
     }
     f_04c1c8(group, f_101f54(s), D_1b065c[d[0]]);
-    Show(s, d[0] ? show : 0);
+    if (d[0] == 0)
+        Show(s, 0);
+    else
+        Show(s, show);
     TCOLOR(s++, color);
     f_04c1c8(group, f_101f54(s), D_1b065c[d[1]]);
     Show(s, show);
