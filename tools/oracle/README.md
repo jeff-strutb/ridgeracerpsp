@@ -118,6 +118,23 @@ Otherwise the function DIFFERS. A function no script reaches is UNCOVERED.
 - returning the module id + 1;
 - swapping the `sprintf` arguments.
 
+## Snapshot start (`tools/oracle/snap.py`)
+
+A function is tested from a saved point just before it first runs, not by replaying from power-on. Replaying means every draft on the way (intro, menus, profile) must already behave exactly as retail does; the race run first called the course loader at frame 4,825 and the track geometry at 5,369, and through 2026-11-17 it still diverged at frame 2,137 for unrelated drafts.
+
+- `snap.py make SCRIPT` plays retail once with `--rr-save-at`: every 250 frames rrbox writes the whole machine (`frame_N.state`, 40 MB), the held buttons (`.meta`) and the memory stick folder (`.memstick/`, a host folder outside the savestate). The same run indexes the frame each watched function is first entered in (`index.json`). Race: 35 snapshots, 2,458 functions, 2 min 16 s, 1.4 GB.
+- `snap.py test ADDR...` picks the last snapshot before ADDR's first call and runs retail and the candidate from it (`--rr-start`: loaded at the end of the first frame, frame counter and buttons restored). The candidate is retail with **only ADDR's code replaced** (`--rr-patch`), so a difference is that function's; `--whole` patches every placed draft, as the M1 image does. The patch is every `.text` word where the loaded M1 image differs from loaded retail (a one-frame RAM dump of each; outside `.text` they must agree). Default window: 120 frames past the first call. Comparison is A5's (calls, writes, returns, clobbers) and A7's (RAM per frame, code and stacks left out), with time held equal at every watched boundary. About 15 to 30 s per function.
+- `snap.py check SCRIPT FRAME`: retail from the snapshot twice, and the candidate with an empty patch, must agree on every frame and call. 2026-11-17 at frame 4750: both identical over 120 frames, 1,235 functions called.
+
+Both sides start from one machine state, so the result does not depend on how faithfully a loaded snapshot reproduces a straight run, only on determinism. Two details matter:
+
+- The cycle reference (`--rr-cycles-ref`) is loaded after the snapshot. Loaded at startup, retail's per-call timings (numbered from the snapshot) were applied to the boot's own calls, moved the CPU clock before the load, and the empty-patch run diverged at once.
+- Call numbers, open calls, coverage and the call log restart at the load (`RRBox::Reset`).
+
+**Teeth:** one planted instruction (f_093bc8 passing 0 instead of its second argument to f_093e64) was caught: f_093e64's entries and f_093bc8's return differ, RAM from frame 4828.
+
+**First results (2026-11-17):** f_0b2f18 (track geometry, 14,288 B) PASS, 9,313 calls from frame 5,250 to the script's end, RAM identical, 1,797/3,572 instructions covered. CMapEnv::Load (0x0d8270) differed: its light keys read row 0 for every key (the `RDX` row argument where `RDX2` passes `i`); fixed, now PASS (1 call, 1,700/1,859 covered). Printf (0x00d354) is reported beside it only because its tag has no definition, so its never-set v0/v1 are compared.
+
 ## Fault injection
 
 A script line `force NAME N VALUE` makes the Nth call (0-based) of system function NAME return VALUE (hex) instead of its real result. The function still runs and has its side effects, just as a real failure would. Both retail and the candidate get the same forcing, so error paths that normal play never takes run and are compared.
@@ -129,6 +146,9 @@ The `fault_loader_*` scripts drive every path of the module loader: failed open,
 A `@draft` is **T3** when its `config/us/t3_live.csv` row says PASS with full coverage and the source hash still matches (`tools/progress.py`). The module loader (0x0004a4) is the first: 91 calls over seven scripts, all 72 instructions executed, and A7 identical on every script.
 
 ## Not built yet
+
+- Snapshot verdicts in the ledger: `snap.py test` prints them; `config/us/t3_live.csv` is still written only by A5.
+- Snapshots for the other scripts, and scripts that reach the rest of the track geometry's paths.
 
 - Driving the power-resume and shutdown paths, which still show as uncovered.
 - Display-list and audio comparison.

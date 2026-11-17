@@ -209,7 +209,7 @@ def entry_fields(entry, keys):
     return b' '.join(f for f in entry.split() if f.split(b'=', 1)[0].decode() in keys)
 
 
-def run(exe, script, trace, watch, calls, cycles_ref=None, cap=None, ref_trace=None):
+def run(exe, script, trace, watch, calls, cycles_ref=None, cap=None, ref_trace=None, extra=(), memstick=None):
     """Run rrbox; with `cap` (bytes), stop it once the call log passes that size, and with
     `ref_trace` (retail's per-frame trace lines), stop it at the first frame whose RAM hash
     differs from retail's. Returns True if it was stopped."""
@@ -221,13 +221,17 @@ def run(exe, script, trace, watch, calls, cycles_ref=None, cap=None, ref_trace=N
     shutil.copyfile(exe, staged)
     ms = os.path.join(stage, 'memstick')
     shutil.rmtree(ms, ignore_errors=True)
-    os.makedirs(ms)
+    if memstick:  # a snapshot's memory stick (tools/oracle/snap.py)
+        shutil.copytree(memstick, ms)
+    else:
+        os.makedirs(ms)
     env = dict(os.environ, RRBOX_EPOCH=a7.EPOCH, TZ='UTC', RRBOX_MEMSTICK=ms)
     cmd = [a7.BOX, staged, '-m', a7.ISO, '-i', '--graphics=software', f'--rr-frames={a7.frames_of(script)}',
            f'--rr-script={script}', f'--rr-trace={trace}', f'--rr-watch={watch}', f'--rr-calls={calls}',
            f'--rr-hash-skip={a7.TEXT_RAM[0]:x}:{a7.TEXT_RAM[1]:x}']
     if cycles_ref:
         cmd.append(f'--rr-cycles-ref={cycles_ref}')
+    cmd += list(extra)
     # A trace left by an earlier run would be read by the ref_trace check below before rrbox
     # rewrites it, and stop this run at once (isolate.py's second round got an empty call log).
     for f in (trace, calls):

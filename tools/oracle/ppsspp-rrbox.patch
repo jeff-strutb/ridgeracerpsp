@@ -154,11 +154,12 @@ index 6f39b1b..ff23447 100644
  
 diff --git a/Core/RRBox.cpp b/Core/RRBox.cpp
 new file mode 100644
-index 0000000..1cb76c3
+index 0000000..68a2e93
 --- /dev/null
 +++ b/Core/RRBox.cpp
-@@ -0,0 +1,244 @@
+@@ -0,0 +1,259 @@
 +#include "Core/RRBox.h"
++#include <algorithm>
 +#include <map>
 +#include <string>
 +#include "Core/MIPS/MIPS.h"
@@ -182,6 +183,7 @@ index 0000000..1cb76c3
 +static std::vector<Frame> g_frames;
 +static std::map<u32, u64> g_calls;      // calls seen per function
 +static FILE *g_log = nullptr;
++static std::string g_logPath;
 +static std::map<std::pair<u32, u64>, s64> g_refCycles;  // (func offset, call) -> retail cycles
 +static std::map<std::pair<u32, u64>, s64> g_refEntry;   // (func offset, call) -> retail time at entry
 +
@@ -222,6 +224,19 @@ index 0000000..1cb76c3
 +	g_watch.assign((g_hi - g_lo) / 4 + 1, 0);
 +	for (u32 a : addrs) g_watch[(a - g_lo) / 4] = 1;
 +	g_log = fopen(logFile, "w");
++	g_logPath = logFile;
++}
++
++void Reset() {
++	g_frames.clear();
++	g_calls.clear();
++	g_forceSeen.clear();
++	std::fill(g_exec.begin(), g_exec.end(), 0);
++	if (g_log) {
++		fclose(g_log);
++		g_log = fopen(g_logPath.c_str(), "w");
++	}
++	g_tracing = false;
 +}
 +
 +void LoadCycleRef(const char *path) {
@@ -404,10 +419,10 @@ index 0000000..1cb76c3
 +}
 diff --git a/Core/RRBox.h b/Core/RRBox.h
 new file mode 100644
-index 0000000..ed298e4
+index 0000000..011bea6
 --- /dev/null
 +++ b/Core/RRBox.h
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,25 @@
 +// rrbox: per-function call tracing for the Ridge Racer decomp's A5 oracle.
 +// Watched functions log their arguments at entry and, at return, their return registers plus a
 +// hash of the call's net effect on memory (callees included, calling thread only, own stack frames
@@ -427,11 +442,14 @@ index 0000000..ed298e4
 +// Fault injection: the Nth call (0-based) of system function NAME returns VALUE instead.
 +void AddForce(const char *name, int n, u32 value);
 +void OnSyscallReturn(const char *name);   // after the HLE function ran, before any thread switch
++// After a snapshot is loaded (--rr-start): forget the boot's open calls, call counts, coverage and
++// forced-call counts, and start the call log afresh, so both runs count from the snapshot.
++void Reset();
 +void OnPC(u32 pc);                      // before each interpreted instruction
 +void OnWrite(u32 addr, u64 value, int size);
 +}
 diff --git a/headless/Headless.cpp b/headless/Headless.cpp
-index 293878d..6579553 100644
+index 293878d..bacba71 100644
 --- a/headless/Headless.cpp
 +++ b/headless/Headless.cpp
 @@ -42,6 +42,7 @@
@@ -442,11 +460,13 @@ index 293878d..6579553 100644
  #include "Core/HLE/sceUtility.h"
  #include "Core/SaveState.h"
  #include "GPU/GPUCommon.h"
-@@ -51,6 +52,18 @@
+@@ -51,6 +52,20 @@
  
  #include "Compare.h"
  #include "HeadlessHost.h"
 +#include <map>
++#include <set>
++#include <filesystem>
 +#include <array>
 +#include <cmath>
 +#include "ext/xxhash.h"
@@ -461,7 +481,7 @@ index 293878d..6579553 100644
  #if defined(_WIN32)
  #include "WindowsHeadlessHost.h"
  #elif defined(SDL)
-@@ -171,6 +184,111 @@ static HeadlessHost *getHost(GPUCore gpuCore) {
+@@ -171,6 +186,120 @@ static HeadlessHost *getHost(GPUCore gpuCore) {
  	}
  }
  
@@ -479,6 +499,15 @@ index 293878d..6579553 100644
 +	std::string ref;             // reference trace: at the first frame whose hash differs, dump RAM and stop
 +	int dumpFrame = -1;          // write user RAM at the end of this frame to dumpFile
 +	std::string dumpFile;
++	// Snapshots (tools/oracle/snap.py). --rr-save-at=F1,F2,...:DIR writes, at the end of each
++	// listed frame, DIR/frame_F.state (the whole machine), DIR/frame_F.meta ("F held-buttons")
++	// and DIR/frame_F.memstick/ (the memory stick folder as it is then). --rr-start=DIR/frame_F
++	// loads that snapshot at the end of the first frame instead of playing up to it, and
++	// --rr-patch=FILE then writes the candidate's code into RAM (lines "ADDR HEXBYTES").
++	std::set<int> saveAt;
++	std::string saveDir;
++	std::string start;
++	std::string patch;
 +};
 +static RRBoxOptions g_rr;
 +
@@ -573,14 +602,17 @@ index 293878d..6579553 100644
  struct AutoTestOptions {
  	double timeout;
  	double maxScreenshotError;
-@@ -226,6 +344,40 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -226,6 +355,44 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		draw->BeginFrame(Draw::DebugFlags::NONE);
  	}
  
 +	// rrbox: A5 call tracing of watched functions (module loads at 0x08804000).
 +	if (!g_rrWatch.empty() && !g_rrCalls.empty())
 +		RRBox::Load(g_rrWatch.c_str(), g_rrCalls.c_str(), 0x08804000);
-+	if (!g_rrCyclesRef.empty())
++	// With --rr-start the reference is loaded only once the snapshot is: retail's timings are
++	// keyed by call number from the snapshot on, and applied to the boot's own calls they would
++	// move the CPU clock (downcount) before the load, which the load does not undo.
++	if (!g_rrCyclesRef.empty() && g_rr.start.empty())
 +		RRBox::LoadCycleRef(g_rrCyclesRef.c_str());
 +	// rrbox: load the script (frame -> held buttons) and open the trace.
 +	std::map<int, u32> rrScript;
@@ -610,11 +642,12 @@ index 293878d..6579553 100644
 +	}
 +	int rrFrame = 0;
 +	u32 rrHeld = 0;
++	bool rrStarted = false;
 +
  	bool passed = true;
  	double deadline = time_now_d() + opt.timeout;
  	coreState = coreParameter.startBreak ? CORE_STEPPING_CPU : CORE_RUNNING_CPU;
-@@ -238,6 +390,154 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -238,6 +405,221 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  		if (coreState == CORE_NEXTFRAME) {
  			coreState = CORE_RUNNING_CPU;
  			headlessHost->SwapBuffers();
@@ -622,6 +655,51 @@ index 293878d..6579553 100644
 +			// Reads in flight on the host I/O thread land first, so what is hashed, shot, dumped
 +			// or snapshotted never depends on host speed.
 +			__IoSyncHostThread();
++			if (!g_rr.start.empty() && !rrStarted) {
++				// Jump in: replace the machine booted so far with the snapshot, then write the
++				// candidate's code into it. Everything before the snapshot frame is not replayed.
++				rrStarted = true;
++				std::vector<u8> st;
++				if (FILE *f = fopen((g_rr.start + ".state").c_str(), "rb")) {
++					fseek(f, 0, SEEK_END); st.resize(ftell(f)); fseek(f, 0, SEEK_SET);
++					if (fread(st.data(), 1, st.size(), f) != st.size()) st.clear();
++					fclose(f);
++				}
++				std::string err;
++				if (st.empty() || SaveState::LoadFromRam(st, &err) != CChunkFileReader::ERROR_NONE) {
++					fprintf(stderr, "rrbox: cannot load snapshot %s.state: %s\n", g_rr.start.c_str(), err.c_str());
++					exit(3);
++				}
++				int fr = -1; unsigned held = 0;
++				FILE *m = fopen((g_rr.start + ".meta").c_str(), "r");
++				if (!m || fscanf(m, "%d %x", &fr, &held) != 2) { fprintf(stderr, "rrbox: bad %s.meta\n", g_rr.start.c_str()); exit(3); }
++				fclose(m);
++				rrFrame = fr;
++				// The host's button state is not part of a savestate (see the drive search).
++				__CtrlUpdateButtons(held, ~held);
++				rrHeld = held;
++				if (!g_rr.patch.empty()) {
++					FILE *p = fopen(g_rr.patch.c_str(), "r");
++					if (!p) { fprintf(stderr, "rrbox: cannot read %s\n", g_rr.patch.c_str()); exit(3); }
++					static char line[1 << 16];
++					int words = 0;
++					while (fgets(line, sizeof(line), p)) {
++						unsigned a; char hex[sizeof(line)];
++						if (sscanf(line, "%x %s", &a, hex) != 2) continue;
++						size_t n = strlen(hex) / 2;
++						if (!Memory::IsValidRange(a, (u32)n)) { fprintf(stderr, "rrbox: patch address %08x invalid\n", a); exit(3); }
++						u8 *dst = Memory::GetPointerWriteUnchecked(a);
++						for (size_t k = 0; k < n; k++) { unsigned b; sscanf(hex + 2 * k, "%2x", &b); dst[k] = (u8)b; }
++						currentMIPS->InvalidateICache(a, (int)n);
++						words += (int)(n / 4);
++					}
++					fclose(p);
++					fprintf(stderr, "rrbox: snapshot frame %d loaded, %d code words patched\n", fr, words);
++				}
++				RRBox::Reset();
++				if (!g_rrCyclesRef.empty())
++					RRBox::LoadCycleRef(g_rrCyclesRef.c_str());
++			}
 +			if (rrTrace && !g_drv.rolling) {
 +				const u8 *ram = Memory::GetPointerUnchecked(PSP_GetUserMemoryBase());
 +				u64 h;
@@ -693,8 +771,30 @@ index 293878d..6579553 100644
 +					fclose(d);
 +				}
 +			}
++			if (g_rr.saveAt.count(rrFrame) && !g_drv.rolling) {
++				char base[64];
++				snprintf(base, sizeof(base), "/frame_%05d", rrFrame);
++				const std::string out = g_rr.saveDir + base;
++				std::vector<u8> st;
++				SaveState::SaveToRam(st);
++				FILE *f = fopen((out + ".state").c_str(), "wb");
++				if (!f || fwrite(st.data(), 1, st.size(), f) != st.size()) { fprintf(stderr, "rrbox: cannot write %s.state\n", out.c_str()); exit(3); }
++				fclose(f);
++				// the memory stick is a host folder, not part of the savestate: keep it as it is now
++				if (const char *ms = getenv("RRBOX_MEMSTICK")) {
++					std::error_code ec;
++					std::filesystem::remove_all(out + ".memstick", ec);
++					std::filesystem::copy(ms, out + ".memstick", std::filesystem::copy_options::recursive, ec);
++					if (ec) { fprintf(stderr, "rrbox: cannot copy the memory stick: %s\n", ec.message().c_str()); exit(3); }
++				}
++				// written last: a snapshot with its .meta is complete
++				FILE *m = fopen((out + ".meta").c_str(), "w");
++				if (!m) { fprintf(stderr, "rrbox: cannot write %s.meta\n", out.c_str()); exit(3); }
++				fprintf(m, "%d %x\n", rrFrame, rrHeld);
++				fclose(m);
++			}
 +			rrFrame++;
-+			auto setHeld = [&](u32 m) { __CtrlUpdateButtons(m & ~rrHeld, rrHeld & ~m); rrHeld = m; };
++			auto setHeld =[&](u32 m) { __CtrlUpdateButtons(m & ~rrHeld, rrHeld & ~m); rrHeld = m; };
 +			if (g_drv.start < 0 || rrFrame < g_drv.start) {
 +				auto it = rrScript.find(rrFrame);
 +				if (it != rrScript.end())
@@ -769,7 +869,7 @@ index 293878d..6579553 100644
  		}
  		if (coreState == CORE_STEPPING_CPU && !coreParameter.startBreak) {
  			break;
-@@ -261,6 +561,7 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
+@@ -261,6 +643,7 @@ bool RunAutoTest(HeadlessHost *headlessHost, CoreParameter &coreParameter, const
  			Core_Stop();
  		}
  	}
@@ -777,7 +877,7 @@ index 293878d..6579553 100644
  	if (gpu) {
  		gpu->EndHostFrame();
  	}
-@@ -445,6 +746,59 @@ int main(int argc, const char* argv[])
+@@ -445,6 +828,73 @@ int main(int argc, const char* argv[])
  			teamCityMode = true;
  		else if (!strncmp(argv[i], "--state=", strlen("--state=")) && strlen(argv[i]) > strlen("--state="))
  			stateToLoad = argv[i] + strlen("--state=");
@@ -810,6 +910,20 @@ index 293878d..6579553 100644
 +			g_rr.dumpFrame = atoi(argv[i] + 16);
 +		else if (!strncmp(argv[i], "--rr-dump=", 10))
 +			g_rr.dumpFile = argv[i] + 10;
++		else if (!strncmp(argv[i], "--rr-save-at=", 13)) {
++			const char *s = argv[i] + 13, *colon = strchr(s, ':');
++			if (!colon) return printUsage(argv[0], "--rr-save-at=F1,F2,...:DIR");
++			for (const char *p = s; p < colon; ) {
++				g_rr.saveAt.insert(atoi(p));
++				const char *c = strchr(p, ',');
++				p = c && c < colon ? c + 1 : colon;
++			}
++			g_rr.saveDir = colon + 1;
++		}
++		else if (!strncmp(argv[i], "--rr-start=", 11))
++			g_rr.start = argv[i] + 11;
++		else if (!strncmp(argv[i], "--rr-patch=", 11))
++			g_rr.patch = argv[i] + 11;
 +		else if (!strncmp(argv[i], "--rr-drive=", 11)) {
 +			char out[1024] = {};
 +			sscanf(argv[i] + 11, "%d:%1023s", &g_drv.start, out);
@@ -837,7 +951,7 @@ index 293878d..6579553 100644
  		else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
  			return printUsage(argv[0], NULL);
  		else if (!strcmp(argv[i], "--ignore")) {
-@@ -558,6 +912,13 @@ int main(int argc, const char* argv[])
+@@ -558,6 +1008,13 @@ int main(int argc, const char* argv[])
  	g_Config.internalDataDirectory.clear();
  	g_Config.bUseOldAtrac = oldAtrac;
  	g_Config.iForceEnableHLE = 0xFFFFFFFF;  // Run all modules as HLE. We don't have anything to load in this context.
@@ -851,7 +965,7 @@ index 293878d..6579553 100644
  
  	// g_Config.bUseOldAtrac = true;
  
-@@ -572,6 +933,11 @@ int main(int argc, const char* argv[])
+@@ -572,6 +1029,11 @@ int main(int argc, const char* argv[])
  #elif !PPSSPP_PLATFORM(ANDROID)
  	g_Config.memStickDirectory = Path(std::string(getenv("HOME"))) / ".ppsspp";
  #endif
