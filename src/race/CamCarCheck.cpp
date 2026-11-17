@@ -108,12 +108,12 @@ extern CamCtrl::CPad D_1d8910;
 extern "C" {
 void f_0823f0(int n, CamCtrl::CView *v);
 float f_0cd3cc(float a);
-void f_099b98(CamCtrl::Angle *);
+CamCtrl::Angle *f_099b98(CamCtrl::Angle *);
 void f_09b394(CamCtrl::Angle a, float *x, float *y);
 void f_09c720(CamCtrl::Vec4 *o, void *m, CamCtrl::Vec4 *v);
-void f_09ff44(CamCtrl::M34 *m);
+CamCtrl::M34 *f_09ff44(CamCtrl::M34 *m);
 float f_09a9dc(float y, float x);
-void f_0a082c(CamCtrl::M34 *m, CamCtrl::Angle a, int i, int j);
+CamCtrl::M34 *f_0a082c(CamCtrl::M34 *m, CamCtrl::Angle a, int i, int j);
 void f_0a4160(CamCtrl::Vec4 *o, CamCtrl::M34 *m, int n);
 }
 

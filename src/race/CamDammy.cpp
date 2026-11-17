@@ -48,13 +48,13 @@ struct M34 {
 }
 
 extern "C" {
-void f_099b98(CamCtrl::Angle *);
+CamCtrl::Angle *f_099b98(CamCtrl::Angle *);
 float f_0cd3cc(float a);
 void f_09c720(CamCtrl::Vec4 *o, void *m, CamCtrl::Vec4 *v);
-void f_09ff44(CamCtrl::M34 *m);
-void f_0a082c(CamCtrl::M34 *m, CamCtrl::Angle a, int i, int j);
+CamCtrl::M34 *f_09ff44(CamCtrl::M34 *m);
+CamCtrl::M34 *f_0a082c(CamCtrl::M34 *m, CamCtrl::Angle a, int i, int j);
 void f_09fd1c(CamCtrl::M34 *m, void *q);
-void f_0a12ac(CamCtrl::M34 *o, CamCtrl::M34 *a, CamCtrl::M34 *b);
+CamCtrl::M34 *f_0a12ac(CamCtrl::M34 *o, CamCtrl::M34 *a, CamCtrl::M34 *b);
 void f_0a4160(CamCtrl::Vec4 *o, CamCtrl::M34 *m, int n);
 }
 
